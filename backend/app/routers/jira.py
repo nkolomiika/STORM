@@ -5,7 +5,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.dependencies import enforce_csrf, get_current_user, require_admin, require_project_access
 from app.models import User
-from app.schemas import JiraConfigOut, JiraConfigUpsert, JiraIssueLinkOut, ProjectJiraLinkOut, ProjectJiraLinkUpsert
+from app.schemas import (
+    JiraConfigOut,
+    JiraConfigUpsert,
+    JiraIssueLinkOut,
+    JiraTaskDetailOut,
+    JiraTaskListOut,
+    ProjectJiraLinkOut,
+    ProjectJiraLinkUpsert,
+)
 from app.services import JiraIntegrationService
 
 router = APIRouter(tags=["jira"])
@@ -70,3 +78,24 @@ async def export_vulnerability_to_jira(
     db: AsyncSession = Depends(get_db),
 ) -> JiraIssueLinkOut:
     return await JiraIntegrationService(db).export_vulnerability(project_id, vuln_id, current_user.id)
+
+
+# ── Раздел «Tasks»: read-only витрина задач Jira-проекта (по умолчанию STS) ──
+# Доступно всем аутентифицированным пользователям; только GET, без CSRF.
+@router.get("/tasks", response_model=JiraTaskListOut)
+async def list_jira_tasks(
+    query: str | None = None,
+    category: str | None = None,
+    _user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> JiraTaskListOut:
+    return await JiraIntegrationService(db).list_tasks(query=query, category=category)
+
+
+@router.get("/tasks/{key}", response_model=JiraTaskDetailOut)
+async def get_jira_task(
+    key: str,
+    _user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> JiraTaskDetailOut:
+    return await JiraIntegrationService(db).get_task(key)

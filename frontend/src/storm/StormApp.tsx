@@ -96,6 +96,8 @@ import {
   disableTwoFactor as apiDisableTwoFactor,
   exportVulnerabilityToJira as apiExportVulnerabilityToJira,
   getVulnerabilityJiraLink as apiGetVulnerabilityJiraLink,
+  getTasks as apiGetTasks,
+  getTask as apiGetTask,
 } from "../api";
 import { calculateCvssScore, severityFromCvssScore } from "../cvss";
 import { PROJECT_STATUS_ORDER } from "../projectStatus";
@@ -117,6 +119,9 @@ import type {
   Service as ApiService,
   Vulnerability as ApiVulnerability,
   JiraIssueLink,
+  JiraTask,
+  JiraTaskDetail,
+  JiraTaskCategory,
   Invitation as ApiInvitation,
 } from "../types";
 import {
@@ -415,6 +420,19 @@ interface StormState {
   vulnFilterStatuses: VStatus[];
   vulnFilterSeverities: Severity[];
   vulnFilterHost: string;
+  /* ── Раздел Tasks (Jira-проект STS, read-only) ────────────────────────────
+     Список грузится при входе в раздел; поиск по имени и фильтр по категории
+     статуса применяются на клиенте (как у списка уязвимостей). */
+  tasksRows: JiraTask[] | null;
+  tasksLoading: boolean;
+  tasksError: string | null;
+  tasksQuery: string;
+  tasksCat: "" | JiraTaskCategory;
+  /** Открытый ключ задачи (напр. "STS-123") — часть URL /tasks/{key}. */
+  tasksOpenKey: string | null;
+  tasksDetail: JiraTaskDetail | null;
+  tasksDetailLoading: boolean;
+  tasksDetailError: string | null;
   /** Real backend vulnerability id (not a list index) — it is part of the URL. */
   openVulnId: number | null;
   vulnDetailForm: VulnDetailForm;
@@ -592,6 +610,15 @@ const initialState: StormState = {
   vulnFilterStatuses: [],
   vulnFilterSeverities: [],
   vulnFilterHost: "",
+  tasksRows: null,
+  tasksLoading: false,
+  tasksError: null,
+  tasksQuery: "",
+  tasksCat: "",
+  tasksOpenKey: null,
+  tasksDetail: null,
+  tasksDetailLoading: false,
+  tasksDetailError: null,
   openVulnId: null,
   vulnDetailForm: {},
   jiraExportOpen: false,
@@ -707,6 +734,8 @@ function pathFor(s: {
   openNoteId: number | null;
   openHostId: number | null;
   openIp: string | null;
+  openJsFileId: number | null;
+  tasksOpenKey: string | null;
 }): string {
   if (s.view === "profile") return s.profileTab === "account" ? "/profile" : `/profile/${s.profileTab}`;
   if (s.view === "workspaceMembers") return "/members";
@@ -718,12 +747,15 @@ function pathFor(s: {
       // (an IP carries dots but stays a single segment — encode it to be safe).
       if (s.reconView === "hosts" && s.openHostId != null) return `${base}/hosts/${s.openHostId}`;
       if (s.reconView === "ips" && s.openIp != null) return `${base}/ips/${encodeURIComponent(s.openIp)}`;
+      if (s.reconView === "js" && s.openJsFileId != null) return `${base}/js/${s.openJsFileId}`;
       return `${base}/${s.reconView}`;
     }
     if (s.section === "vulns" && s.openVulnId != null) return `${base}/vulns/${s.openVulnId}`;
     if (s.section === "notes" && s.openNoteId != null) return `${base}/notes/${s.openNoteId}`;
     return `${base}/${s.section}`;
   }
+  // Открытая задача Jira — последний сегмент, карточка deep-linkable (/tasks/STS-123).
+  if (s.nav === "tasks") return s.tasksOpenKey ? `/tasks/${encodeURIComponent(s.tasksOpenKey)}` : "/tasks";
   return ({ projects: "/projects", tasks: "/tasks", mine: "/my-tasks", docs: "/docs", members: "/members" } as Record<NavId, string>)[s.nav] || "/projects";
 }
 
@@ -759,14 +791,15 @@ function navStateFromPath(path: string): Partial<StormState> {
     if (seg === "ips") {
       return { ...base, section: "hosts", reconView: "ips", openIp: parts[3] != null ? decodeURIComponent(parts[3]) : null };
     }
-    if (seg === "endpoints" || seg === "js") return { ...base, section: "hosts", reconView: seg };
+    if (seg === "endpoints") return { ...base, section: "hosts", reconView: seg };
+    if (seg === "js") return { ...base, section: "hosts", reconView: "js", openJsFileId: entityId() };
     // /projects/{id}/vulns/{vulnId} and /projects/{id}/notes/{noteId} — deep links.
     if (seg === "vulns") return { ...base, section: "vulns", openVulnId: entityId() };
     if (seg === "notes") return { ...base, section: "notes", openNoteId: entityId() };
     if (seg === "creds" || seg === "members" || seg === "activity") return { ...base, section: seg };
     return { ...base, section: "overview" };
   }
-  if (head === "tasks") return { view: "list", nav: "tasks" };
+  if (head === "tasks") return { view: "list", nav: "tasks", tasksOpenKey: parts[1] ? decodeURIComponent(parts[1]) : null };
   if (head === "my-tasks") return { view: "list", nav: "mine" };
   if (head === "docs") return { view: "list", nav: "docs" };
   if (head === "members") return { view: "workspaceMembers", nav: "members" };
@@ -2008,10 +2041,48 @@ export function StormApp() {
       openNoteId: state.openNoteId,
       openHostId: state.openHostId,
       openIp: state.openIp,
+      openJsFileId: state.openJsFileId,
+      tasksOpenKey: state.tasksOpenKey,
     });
     if (p !== location.pathname) navigate(p);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.view, state.nav, state.openProjectId, state.section, state.reconView, state.profileTab, state.openVulnId, state.openNoteId, state.openHostId, state.openIp, location.pathname]);
+  }, [state.view, state.nav, state.openProjectId, state.section, state.reconView, state.profileTab, state.openVulnId, state.openNoteId, state.openHostId, state.openIp, state.openJsFileId, state.tasksOpenKey, location.pathname]);
+
+  /* ── Раздел Tasks (Jira-проект STS) ──────────────────────────────────────
+     Список грузится один раз при входе в раздел (кэшируется в state); кнопка
+     «Refresh» перезапрашивает. Поиск по имени и фильтр по категории статуса —
+     на клиенте, как у списка уязвимостей. */
+  const reloadTasks = () => {
+    setState({ tasksLoading: true, tasksError: null });
+    void (async () => {
+      try {
+        const res = await apiGetTasks({});
+        setStateRaw((s) => ({ ...s, tasksRows: res.items, tasksLoading: false }));
+      } catch (e) {
+        setStateRaw((s) => ({ ...s, tasksRows: [], tasksLoading: false, tasksError: getApiErrorMessage(e, "Couldn't load tasks from Jira") }));
+      }
+    })();
+  };
+  useEffect(() => {
+    if (state.view === "list" && state.nav === "tasks" && !state.tasksOpenKey && state.tasksRows === null && !state.tasksLoading) reloadTasks();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.view, state.nav, state.tasksOpenKey]);
+  // Карточка задачи: грузим полную инфу по открытому ключу (deep-linkable).
+  useEffect(() => {
+    if (!(state.view === "list" && state.nav === "tasks" && state.tasksOpenKey)) return;
+    const key = state.tasksOpenKey;
+    setState({ tasksDetailLoading: true, tasksDetailError: null, tasksDetail: null });
+    let cancelled = false;
+    void (async () => {
+      try {
+        const detail = await apiGetTask(key);
+        if (!cancelled) setStateRaw((s) => (s.tasksOpenKey === key ? { ...s, tasksDetail: detail, tasksDetailLoading: false } : s));
+      } catch (e) {
+        if (!cancelled) setStateRaw((s) => (s.tasksOpenKey === key ? { ...s, tasksDetailLoading: false, tasksDetailError: getApiErrorMessage(e, "Couldn't load this task") } : s));
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [state.view, state.nav, state.tasksOpenKey]);
   /* Loaded as soon as the project opens, like every other collection — the tab's
      counter has to be right before the tab is ever visited. Entering the tab
      re-fetches, since the feed is a shared audit trail that others add to. */
@@ -3465,7 +3536,8 @@ export function StormApp() {
 
   const isList = state.view === "list" && state.nav === "projects";
   const isDocs = state.view === "list" && state.nav === "docs";
-  const isStub = state.view === "list" && state.nav !== "projects" && state.nav !== "members" && state.nav !== "docs";
+  const isTasks = state.view === "list" && state.nav === "tasks";
+  const isStub = state.view === "list" && state.nav !== "projects" && state.nav !== "members" && state.nav !== "docs" && state.nav !== "tasks";
   const stubTitle = ({ tasks: "Tasks", mine: "My Tasks" } as Record<string, string>)[state.nav] || "";
   const stubDesc =
     ({ tasks: "Track and assign engagement tasks across the team.", mine: "Your personally assigned tasks and reviews." } as Record<string, string>)[
@@ -4137,6 +4209,145 @@ export function StormApp() {
       </div>
     </div>
   );
+
+  // ---------- Tasks (Jira-проект STS, read-only) ----------
+  // Категория статуса → подпись и цвет точки/чипа (одинаково в списке и карточке).
+  const TASK_CAT: Record<JiraTaskCategory, { label: string; color: string }> = {
+    todo: { label: "To Do", color: "var(--st-text-3)" },
+    inprogress: { label: "In Progress", color: "var(--st-accent)" },
+    done: { label: "Done", color: "var(--st-success)" },
+    unknown: { label: "Unknown", color: "var(--st-text-faint)" },
+  };
+  const TASK_COLS = "110px minmax(0,2fr) 120px minmax(0,150px) 100px minmax(0,150px) 120px";
+
+  const renderTasks = () => {
+    if (state.tasksOpenKey) return renderTaskDetail();
+    const rows = state.tasksRows ?? [];
+    const q = state.tasksQuery.trim().toLowerCase();
+    const filtered = rows.filter(
+      (r) =>
+        (state.tasksCat === "" || r.status_category === state.tasksCat) &&
+        (q === "" || r.summary.toLowerCase().includes(q) || r.key.toLowerCase().includes(q)),
+    );
+    const firstLoad = state.tasksLoading && state.tasksRows === null;
+    return (
+      <div className="route" style={{ padding: "40px 48px 36px", width: "100%" }}>
+        {eyebrow([{ label: "Workspace", onClick: selProjects }, { label: "Tasks", muted: true }])}
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+          <div>
+            <h1 style={{ margin: 0, fontSize: 30, fontWeight: 800, letterSpacing: "-.7px", color: "var(--st-text)" }}>{t("Tasks")}</h1>
+          </div>
+          <button
+            className="clk"
+            onClick={reloadTasks}
+            disabled={state.tasksLoading}
+            style={{ display: "inline-flex", alignItems: "center", gap: 8, height: 40, padding: "0 16px", border: "1px solid var(--st-border-light)", borderRadius: 10, background: "var(--st-surface)", color: "var(--st-text-2)", font: "700 13px Inter,sans-serif", cursor: state.tasksLoading ? "default" : "pointer", opacity: state.tasksLoading ? 0.6 : 1 }}
+          >
+            <Icon name="refresh" size={15} sw={2.2} />{t("Refresh")}
+          </button>
+        </div>
+        {/* Поиск по имени — слева, фильтр по категории статуса — справа (как у уязвимостей). */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, margin: "24px 0 16px", flexWrap: "wrap" }}>
+          {searchBox(t("Filter tasks by name…"), state.tasksQuery, (v) => setState({ tasksQuery: v }), 320)}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "flex-end", marginLeft: "auto" }}>
+            <span className="mono" style={{ fontSize: 10.5, letterSpacing: 1, color: "var(--st-text-faint)", fontWeight: 700 }}>{t("STATUS")}</span>
+            {filterPill(t("All"), state.tasksCat === "", () => setState({ tasksCat: "" }))}
+            {(["todo", "inprogress", "done"] as JiraTaskCategory[]).map((c) => filterPill(t(TASK_CAT[c].label), state.tasksCat === c, () => setState({ tasksCat: c })))}
+          </div>
+        </div>
+        <div style={{ ...CARD, overflow: "hidden" }}>
+          {filtered.length > 0 && (
+            <div style={{ display: "grid", gridTemplateColumns: TASK_COLS, gap: 10, padding: "13px 20px", borderBottom: "1px solid var(--st-divider)", font: "700 11px Inter,sans-serif", letterSpacing: ".5px", color: "var(--st-text-faint)", textTransform: "uppercase" }}>
+              <div>{t("Key")}</div><div>{t("Summary")}</div><div>{t("Type")}</div><div>{t("Status")}</div><div>{t("Priority")}</div><div>{t("Assignee")}</div><div>{t("Updated")}</div>
+            </div>
+          )}
+          {firstLoad && <div style={{ padding: 52, textAlign: "center", color: "var(--st-text-faint)", fontSize: 14 }}>{t("Loading tasks…")}</div>}
+          {!state.tasksLoading && state.tasksError && (
+            <div style={{ padding: 52, textAlign: "center", color: "var(--st-text-3)", fontSize: 14 }}>{state.tasksError}</div>
+          )}
+          {!firstLoad && !state.tasksError && filtered.map((task) => {
+            const catc = TASK_CAT[task.status_category] ?? TASK_CAT.unknown;
+            return (
+              <div key={task.key} className="prow clk" onClick={() => setState({ tasksOpenKey: task.key })} style={{ display: "grid", gridTemplateColumns: TASK_COLS, alignItems: "center", gap: 10, padding: "14px 20px", borderBottom: "1px solid var(--st-divider)" }}>
+                <div className="mono" style={{ fontSize: 12.5, color: "var(--st-accent-2)", fontWeight: 700 }}>{task.key}</div>
+                <div style={{ font: "600 14px Inter,sans-serif", color: "var(--st-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{task.summary}</div>
+                <div className="mono" style={{ fontSize: 12, color: "var(--st-text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{task.issue_type}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 7, font: "600 12px Inter,sans-serif", color: catc.color, overflow: "hidden" }}><span style={{ width: 6, height: 6, flex: "none", borderRadius: "50%", background: catc.color }} /><span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{task.status}</span></div>
+                <div style={{ fontSize: 12.5, color: "var(--st-text-2)" }}>{task.priority || "—"}</div>
+                <div style={{ fontSize: 12.5, color: "var(--st-text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{task.assignee || "—"}</div>
+                <div className="mono" style={{ fontSize: 11.5, color: "var(--st-text-faint)" }}>{relTime(task.updated)}</div>
+              </div>
+            );
+          })}
+          {!firstLoad && !state.tasksError && filtered.length === 0 && (
+            <div style={{ padding: 52, textAlign: "center", color: "var(--st-text-faint)", fontSize: 14 }}>
+              {rows.length === 0 ? t("No tasks in the STS project yet.") : t("No tasks match these filters.")}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderTaskDetail = () => {
+    const d = state.tasksDetail;
+    const catc = d ? TASK_CAT[d.status_category] ?? TASK_CAT.unknown : TASK_CAT.unknown;
+    const metaCell = (label: string, value: string) => (
+      <div>
+        <div className="mono" style={{ fontSize: 10.5, letterSpacing: 1, color: "var(--st-text-faint)", fontWeight: 700, textTransform: "uppercase" }}>{label}</div>
+        <div style={{ fontSize: 13.5, color: "var(--st-text-2)", marginTop: 4, wordBreak: "break-word" }}>{value}</div>
+      </div>
+    );
+    return (
+      <div className="route" style={{ padding: "40px 48px 36px", width: "100%" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 18 }}>
+          <span className="clk" onClick={() => setState({ tasksOpenKey: null, tasksDetail: null, tasksDetailError: null })} style={{ display: "inline-flex", alignItems: "center", gap: 6, font: "600 12.5px Inter,sans-serif", color: "var(--st-text-2)", background: "var(--st-surface)", border: "1px solid var(--st-border-light)", borderRadius: 20, padding: "7px 13px", cursor: "pointer" }}>
+            <Icon name="chevron-left" size={15} />{t("All tasks")}
+          </span>
+          {d && (
+            <a className="clk" href={d.url} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 7, font: "700 12.5px Inter,sans-serif", color: "var(--st-accent)", background: "var(--st-accent-soft)", borderRadius: 20, padding: "7px 14px", textDecoration: "none", cursor: "pointer" }}>
+              <Icon name="link" size={14} />{t("Open in Jira")}
+            </a>
+          )}
+        </div>
+        {state.tasksDetailLoading && <div style={{ ...CARD, padding: 52, textAlign: "center", color: "var(--st-text-faint)", fontSize: 14 }}>{t("Loading task…")}</div>}
+        {!state.tasksDetailLoading && state.tasksDetailError && (
+          <div style={{ ...CARD, padding: 52, textAlign: "center", color: "var(--st-text-3)", fontSize: 14 }}>{state.tasksDetailError}</div>
+        )}
+        {!state.tasksDetailLoading && !state.tasksDetailError && d && (
+          <div style={{ ...CARD, padding: "26px 28px" }}>
+            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 6 }}>
+              <span className="mono" style={{ fontSize: 12.5, fontWeight: 700, color: "var(--st-accent-2)", background: "var(--st-accent-soft)", borderRadius: 7, padding: "3px 9px" }}>{d.key}</span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, font: "700 11px Inter,sans-serif", textTransform: "uppercase", letterSpacing: ".5px", color: catc.color }}><span style={{ width: 7, height: 7, borderRadius: "50%", background: catc.color }} />{d.status}</span>
+            </div>
+            <h1 style={{ margin: "4px 0 20px", fontSize: 24, fontWeight: 800, letterSpacing: "-.5px", color: "var(--st-text)" }}>{d.summary}</h1>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 16, marginBottom: 22 }}>
+              {metaCell(t("Type"), d.issue_type || "—")}
+              {metaCell(t("Priority"), d.priority || "—")}
+              {metaCell(t("Assignee"), d.assignee || "—")}
+              {metaCell(t("Reporter"), d.reporter || "—")}
+              {metaCell(t("Created"), toDispDate(d.created))}
+              {metaCell(t("Updated"), toDispDate(d.updated))}
+            </div>
+            {d.labels.length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <div className="mono" style={{ fontSize: 10.5, letterSpacing: 1, color: "var(--st-text-faint)", fontWeight: 700, textTransform: "uppercase" }}>{t("Labels")}</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
+                  {d.labels.map((l) => (
+                    <span key={l} className="mono" style={{ fontSize: 11.5, color: "var(--st-text-2)", background: "var(--st-hover)", borderRadius: 7, padding: "3px 9px" }}>{l}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div>
+              <div className="mono" style={{ fontSize: 10.5, letterSpacing: 1, color: "var(--st-text-faint)", fontWeight: 700, textTransform: "uppercase" }}>{t("Description")}</div>
+              <div style={{ marginTop: 10, whiteSpace: "pre-wrap", font: "400 13.5px/1.65 Inter,sans-serif", color: "var(--st-text-2)", wordBreak: "break-word" }}>{(d.description || "").trim() || t("No description.")}</div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   // ---------- Stub page ----------
   const renderStub = () => (
@@ -6166,7 +6377,7 @@ export function StormApp() {
           <nav style={{ padding: "0 12px", display: "flex", flexDirection: "column", gap: 3 }}>
             {([
               { id: "projects" as const, icon: "folder" as const, label: "Projects", onClick: selProjects },
-              { id: "tasks" as const, icon: "check-square" as const, label: "Tasks", onClick: () => setState({ nav: "tasks", view: "list" }) },
+              { id: "tasks" as const, icon: "check-square" as const, label: "Tasks", onClick: () => setState({ nav: "tasks", view: "list", tasksOpenKey: null }) },
               { id: "mine" as const, icon: "user1" as const, label: "My Tasks", onClick: () => setState({ nav: "mine", view: "list" }) },
               { id: "docs" as const, icon: "doc" as const, label: "Docs", onClick: () => setState({ nav: "docs", view: "list" }) },
               ...(isAdmin ? [{ id: "members" as const, icon: "users" as const, label: "Members", onClick: selWSMembers }] : []),
@@ -6188,6 +6399,7 @@ export function StormApp() {
                 <StormDocs isAdmin={isAdmin} onNavigateWorkspace={selProjects} />
               </Suspense>
             )}
+            {isTasks && renderTasks()}
             {isStub && renderStub()}
             {/* /members is admin-only (GET /users is too) — say so rather than
                 quietly showing the projects list instead. */}

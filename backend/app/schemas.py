@@ -381,6 +381,35 @@ class JiraIssueLinkOut(ORMBase):
     updated_at: datetime
 
 
+# ── Раздел «Tasks»: read-only проекция задач Jira-проекта (по умолчанию STS) ──
+# status_category сворачивает Jira statusCategory в одно из «вёдер»
+# todo / inprogress / done / unknown — универсально для любого воркфлоу.
+class JiraTaskOut(BaseModel):
+    key: str
+    summary: str
+    status: str
+    status_category: str
+    issue_type: str
+    priority: str | None = None
+    assignee: str | None = None
+    updated: str
+    created: str
+
+
+class JiraTaskDetailOut(JiraTaskOut):
+    reporter: str | None = None
+    description: str = ""
+    labels: list[str] = Field(default_factory=list)
+    url: str = ""
+
+
+class JiraTaskListOut(BaseModel):
+    # Jira Cloud перешла на токенную пагинацию (/search/jql): total не отдаётся.
+    items: list[JiraTaskOut]
+    next_page_token: str | None = None
+    is_last: bool = True
+
+
 class ProjectNoteCreate(InputBaseModel):
     title: str = Field(min_length=1, max_length=255)
     parent_id: int | None = None

@@ -643,3 +643,34 @@ export interface ProjectJiraLink {
   created_at: string;
   updated_at: string;
 }
+
+/* ── Jira «Tasks» (раздел Tasks) ─────────────────────────────────────────────
+   Read-only проекция задач Jira-проекта STS. Бэкенд ходит в Jira и отдаёт эти
+   поля; статус сворачивается в одну из четырёх категорий. */
+export type JiraTaskCategory = "todo" | "inprogress" | "done" | "unknown";
+
+export interface JiraTask {
+  key: string;
+  summary: string;
+  status: string;
+  status_category: JiraTaskCategory;
+  issue_type: string;
+  priority: string | null;
+  assignee: string | null;
+  updated: string;
+  created: string;
+}
+
+export interface JiraTaskDetail extends JiraTask {
+  reporter: string | null;
+  description: string;
+  labels: string[];
+  url: string;
+}
+
+/* Jira Cloud перешла на токенную пагинацию (/search/jql): total не отдаётся. */
+export interface JiraTaskList {
+  items: JiraTask[];
+  next_page_token: string | null;
+  is_last: boolean;
+}

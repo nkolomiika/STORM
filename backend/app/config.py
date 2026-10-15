@@ -75,11 +75,25 @@ class Settings(BaseSettings):
     jira_default_issue_type: str = "Task"
     # Все задачи создаются в этом Jira-проекте (напр. "SEC").
     jira_default_project_key: str = ""
+    # Раздел «Tasks» — read-only витрина задач этого Jira-проекта (пробел «STS»).
+    jira_tasks_project_key: str = "STS"
     jira_enabled: bool = True
     # Дата начала = сегодня, срок выполнения = сегодня + jira_due_in_days.
     # ID поля «Дата начала» специфичен для сайта (кастомное поле); пусто = не проставлять.
     jira_start_date_field: str = "customfield_10015"
     jira_due_in_days: int = 14
+    # --- Jira REST: версия API, аутентификация и ПУТИ эндпоинтов вынесены в env,
+    # чтобы подключить инстанс с немного другим API без правки кода. {version} и
+    # {key} подставляются автоматически. Значения по умолчанию = Jira Cloud (v3):
+    #   • Cloud:      версия 3, basic (email+token), поиск GET /search/jql
+    #   • Server/DC:  версия 2, bearer (PAT),        поиск POST /search
+    jira_api_version: str = "3"
+    jira_auth_type: str = "basic"  # basic (email+token) | bearer (PAT)
+    jira_search_path: str = "/rest/api/{version}/search/jql"
+    jira_search_method: str = "GET"  # GET (Cloud /search/jql) | POST (классический /search)
+    jira_issue_path: str = "/rest/api/{version}/issue/{key}"
+    jira_create_issue_path: str = "/rest/api/{version}/issue"
+    jira_browse_path: str = "/browse/{key}"
 
     # --- Recon farm: серверный пробив вставленных списков хостов и IP ---
     # Максимум различных хостов на один импорт (защита от network-amplification).
