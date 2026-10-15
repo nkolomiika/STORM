@@ -1,5 +1,7 @@
 import axios from "axios";
 import type {
+  JiraTaskDetail,
+  JiraTaskList,
   AuthLoginResponse,
   TwoFASetupResponse,
   VulnerabilityComment,
@@ -726,6 +728,16 @@ export async function getJsFiles(projectId: number): Promise<JsFile[]> {
   return data;
 }
 
+/** Zip найденных .js. `hostId` сужает архив до одного хоста; без него — весь проект.
+ *  Файлы не хранятся, поэтому бэкенд докачивает их по URL по требованию. */
+export async function downloadJsArchive(projectId: number, hostId?: number): Promise<Blob> {
+  const { data } = await api.get(`/projects/${projectId}/js-files/archive`, {
+    params: hostId != null ? { host_id: hostId } : {},
+    responseType: "blob",
+  });
+  return data as Blob;
+}
+
 export async function getPorts(projectId: number, hostId: number): Promise<Port[]> {
   const { data } = await api.get<Port[]>(`/projects/${projectId}/hosts/${hostId}/ports`);
   return data;
@@ -870,7 +882,7 @@ export async function createVulnerability(
     title: string;
     description?: string | null;
     // Необязательно: бэкенд по умолчанию ставит "unknown" (критичность не определена).
-    severity?: "critical" | "high" | "medium" | "low" | "info" | "unknown";
+    severity?: "critical" | "high" | "medium" | "low" | "info";
     cvss_version?: "4.0" | null;
     cvss_score?: number | null;
     cvss_vector?: string | null;
@@ -902,7 +914,7 @@ export async function updateVulnerability(
   payload: {
     title?: string;
     description?: string | null;
-    severity?: "critical" | "high" | "medium" | "low" | "info" | "unknown";
+    severity?: "critical" | "high" | "medium" | "low" | "info";
     cvss_version?: "4.0" | null;
     cvss_score?: number | null;
     cvss_vector?: string | null;
@@ -1149,5 +1161,26 @@ export async function getAuditLogs(
   const { data } = await api.get<PaginatedResponse<AuditLog>>("/audit-logs", {
     params: { page, size, ...filters },
   });
+  return data;
+}
+
+// ── Jira «Tasks» (раздел Tasks) ──────────────────────────────────────────────
+// Бэкенд проксирует задачи Jira-проекта STS (read-only). Поиск по имени и фильтр
+// по категории статуса выполняются на бэкенде (JQL), но фронт также фильтрует
+// загруженную страницу на клиенте — как список уязвимостей. Пагинация у Jira
+// Cloud токенная, поэтому total не возвращается — отдаём items + next_page_token.
+
+/** Список задач Jira (проект STS). category: "todo"|"inprogress"|"done"|"". */
+export async function getTasks(params: {
+  query?: string;
+  category?: string;
+} = {}): Promise<JiraTaskList> {
+  const { data } = await api.get<JiraTaskList>("/tasks", { params });
+  return data;
+}
+
+/** Полная карточка одной задачи Jira по ключу (напр. "STS-123"). */
+export async function getTask(key: string): Promise<JiraTaskDetail> {
+  const { data } = await api.get<JiraTaskDetail>(`/tasks/${encodeURIComponent(key)}`);
   return data;
 }

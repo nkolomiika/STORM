@@ -486,7 +486,6 @@ class JiraIntegrationService:
         "medium": "Средняя",
         "low": "Низкая",
         "info": "Информационная",
-        "unknown": "Не определена",
     }
 
     @staticmethod
@@ -620,6 +619,9 @@ class JiraIntegrationService:
             fields[config.start_date_field] = today.isoformat()
         payload = {"fields": fields}
         safe_base_url = self._validate_external_url(config.base_url)
+        # Путь создания issue и способ аутентификации берём из env (см. config).
+        auth, headers = self._jira_auth_headers(config)
+        create_url = f"{safe_base_url}{self._api_path(get_settings().jira_create_issue_path)}"
 
         # 3) Сетевой вызов с обёрткой ошибок и DNS-rebind защитой.
         try:
@@ -628,11 +630,7 @@ class JiraIntegrationService:
                 follow_redirects=False,
                 transport=_SafeJiraTransport(),
             ) as client:
-                response = await client.post(
-                    f"{safe_base_url}/rest/api/3/issue",
-                    json=payload,
-                    auth=(config.email, config.token),
-                )
+                response = await client.post(create_url, json=payload, auth=auth, headers=headers)
         except httpx.HTTPError as exc:
             await self._mark_link_error(link, f"Jira недоступна: {exc.__class__.__name__}: {exc}")
             raise ValidationError(f"Jira недоступна: {exc}") from exc
@@ -654,13 +652,207 @@ class JiraIntegrationService:
             raise ValidationError("Jira не вернула key созданной issue")
 
         link.jira_issue_key = issue_key
-        link.jira_issue_url = f"{safe_base_url}/browse/{issue_key}"
+        link.jira_issue_url = f"{safe_base_url}{self._api_path(get_settings().jira_browse_path, key=issue_key)}"
         link.status = "linked"
         link.last_error = None
         await self.db.commit()
         await self.db.refresh(link)
         await self.audit.log("CREATE", user_id=actor_id, entity_type="jira_issue_link", entity_id=link.id)
         return link
+
+    # ── Раздел «Tasks»: read-only витрина задач Jira-проекта (по умолчанию STS) ──
+    # В отличие от export_vulnerability здесь мы только ЧИТАЕМ задачи и ничего не
+    # пишем ни в Jira, ни в нашу БД. Те же креды (env/БД) и та же SSRF/DNS-rebind
+    # защита, что и у экспорта уязвимости.
+
+    # statusCategory в Jira универсальна (не зависит от кастомных статусов
+    # воркфлоу): new / indeterminate / done. Сворачиваем в три «ведра» для UI.
+    _STATUS_CATEGORY = {"new": "todo", "indeterminate": "inprogress", "done": "done"}
+    # Обратное отображение «ведро → имя statusCategory в JQL».
+    _JQL_CATEGORY = {"todo": "To Do", "inprogress": "In Progress", "done": "Done"}
+    _KEY_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]+-\d+$")
+
+    @staticmethod
+    def _tasks_project_key() -> str:
+        """Ключ Jira-проекта раздела Tasks (JIRA_TASKS_PROJECT_KEY, по умолчанию STS)."""
+        return (get_settings().jira_tasks_project_key or "STS").upper()
+
+    @staticmethod
+    def _api_path(template: str, **kw) -> str:
+        """Строит путь REST-эндпоинта из шаблона в env, подставляя {version}/{key}.
+
+        Эндпоинты вынесены в env (JIRA_SEARCH_PATH / JIRA_ISSUE_PATH /
+        JIRA_CREATE_ISSUE_PATH / JIRA_BROWSE_PATH), чтобы подключить инстанс с
+        немного другим API (напр. Server/DC v2 /search вместо Cloud v3
+        /search/jql) без правки кода. Лишние плейсхолдеры в kw игнорируются.
+        """
+        return template.format(version=get_settings().jira_api_version, **kw)
+
+    @classmethod
+    def _jira_auth_headers(cls, config: "JiraCredentials") -> tuple:
+        """(auth, headers) по JIRA_AUTH_TYPE: basic (email+token) | bearer (PAT).
+
+        Модель взята из эталонного клиента (QG SA): Jira Cloud — Basic
+        email:token, Server/DC — Bearer с персональным токеном (PAT).
+        """
+        headers = {"Accept": "application/json", "Content-Type": "application/json"}
+        if (get_settings().jira_auth_type or "basic").lower() == "bearer":
+            headers["Authorization"] = f"Bearer {config.token}"
+            return None, headers
+        return (config.email, config.token), headers
+
+    @classmethod
+    def _adf_to_text(cls, node: object) -> str:
+        """Разворачивает ADF-описание Jira Cloud в плоский текст.
+
+        Jira Cloud отдаёт описание как Atlassian Document Format (дерево узлов);
+        для read-only показа собираем текстовые листья, сохраняя переносы между
+        абзацами / заголовками / пунктами списков. Server/DC отдаёт строку — её
+        возвращаем как есть.
+        """
+        if node is None:
+            return ""
+        if isinstance(node, str):
+            return node
+        if isinstance(node, list):
+            return "".join(cls._adf_to_text(n) for n in node)
+        if not isinstance(node, dict):
+            return ""
+        ntype = node.get("type")
+        if ntype == "text":
+            return str(node.get("text", ""))
+        if ntype == "hardBreak":
+            return "\n"
+        inner = cls._adf_to_text(node.get("content"))
+        # Блочные узлы завершаем переводом строки, чтобы текст не слипался.
+        if ntype in {"paragraph", "heading", "listItem", "blockquote", "codeBlock", "rule"}:
+            return inner + "\n"
+        return inner
+
+    @classmethod
+    def _map_task(cls, issue: dict) -> dict:
+        """Jira issue → плоский словарь под JiraTaskOut."""
+        fields = issue.get("fields") or {}
+        status = fields.get("status") or {}
+        category = (status.get("statusCategory") or {}).get("key", "")
+        issue_type = fields.get("issuetype") or {}
+        priority = fields.get("priority")
+        assignee = fields.get("assignee")
+        return {
+            "key": issue.get("key", ""),
+            "summary": fields.get("summary") or "",
+            "status": status.get("name") or "",
+            "status_category": cls._STATUS_CATEGORY.get(category, "unknown"),
+            "issue_type": issue_type.get("name") or "",
+            "priority": priority.get("name") if isinstance(priority, dict) else None,
+            "assignee": assignee.get("displayName") if isinstance(assignee, dict) else None,
+            "updated": fields.get("updated") or "",
+            "created": fields.get("created") or "",
+        }
+
+    @staticmethod
+    def _jql_escape(value: str) -> str:
+        """Экранирует пользовательский ввод для строкового литерала JQL."""
+        return value.replace("\\", "\\\\").replace('"', '\\"')
+
+    def _build_jql(self, project_key: str, query: str | None, category: str | None) -> str:
+        clauses = [f'project = "{project_key}"']
+        if category and category in self._JQL_CATEGORY:
+            clauses.append(f'statusCategory = "{self._JQL_CATEGORY[category]}"')
+        if query and query.strip():
+            # Поиск по названию; совпадение по ключу берёт на себя клиент
+            # (JQL `key = "<слово>"` на не-ключе падает с ошибкой).
+            clauses.append(f'summary ~ "{self._jql_escape(query.strip())}"')
+        return " AND ".join(clauses) + " ORDER BY updated DESC"
+
+    async def _jira_request(
+        self, method: str, path: str, *, params: dict | None = None, json_body: dict | None = None
+    ) -> tuple[dict, str]:
+        """Запрос к Jira REST с теми же кредами, аутентификацией и SSRF/DNS-rebind защитой.
+
+        Возвращает (json, validated_base_url). «Не настроена» — осознанная 422
+        с понятным текстом, а не 500: UI показывает её в месте списка. Метод и
+        путь определяются вызывающим (из env), что позволяет работать и с
+        Cloud (GET /search/jql), и с Server/DC (POST /search).
+        """
+        config = await self.resolve_credentials()
+        if not config or not config.enabled:
+            raise ValidationError("Интеграция с Jira не настроена или отключена")
+        safe_base_url = self._validate_external_url(config.base_url)
+        auth, headers = self._jira_auth_headers(config)
+        try:
+            async with httpx.AsyncClient(
+                timeout=15.0,
+                follow_redirects=False,
+                transport=_SafeJiraTransport(),
+            ) as client:
+                response = await client.request(
+                    method.upper(),
+                    f"{safe_base_url}{path}",
+                    params=params,
+                    json=json_body,
+                    auth=auth,
+                    headers=headers,
+                )
+        except httpx.HTTPError as exc:
+            raise ValidationError(f"Jira недоступна: {exc}") from exc
+        if response.status_code == 404:
+            raise NotFoundError("Задача не найдена в Jira")
+        if response.status_code >= 400:
+            raise ValidationError(f"Jira вернула ошибку {response.status_code}: {response.text[:300]}")
+        try:
+            return response.json(), safe_base_url
+        except ValueError as exc:
+            raise ValidationError("Jira вернула не-JSON ответ") from exc
+
+    async def list_tasks(self, query: str | None = None, category: str | None = None) -> dict:
+        """Список задач Jira-проекта (read-only), сортировка по дате обновления.
+
+        Эндпоинт и метод берутся из env (JIRA_SEARCH_PATH / JIRA_SEARCH_METHOD):
+        Cloud — GET /search/jql (токенная пагинация, total не отдаётся), Server/DC
+        — POST /search (возвращает total). Разбор устойчив к обоим форматам: UI
+        грузит одну страницу и фильтрует её на клиенте (как список уязвимостей).
+        """
+        s = get_settings()
+        jql = self._build_jql(self._tasks_project_key(), query, category)
+        fields = ["summary", "status", "issuetype", "priority", "assignee", "updated", "created"]
+        path = self._api_path(s.jira_search_path)
+        if (s.jira_search_method or "GET").upper() == "POST":
+            # Классический /search ждёт fields списком в JSON-теле.
+            data, _ = await self._jira_request("POST", path, json_body={"jql": jql, "maxResults": 100, "fields": fields})
+        else:
+            # /search/jql ждёт fields строкой в query-параметрах.
+            data, _ = await self._jira_request("GET", path, params={"jql": jql, "maxResults": 100, "fields": ",".join(fields)})
+        issues = data.get("issues") or []
+        return {
+            "items": [self._map_task(issue) for issue in issues],
+            "next_page_token": data.get("nextPageToken"),
+            "is_last": bool(data.get("isLast", True)),
+        }
+
+    async def get_task(self, key: str) -> dict:
+        """Полная карточка одной задачи Jira по ключу (напр. STS-123)."""
+        key = (key or "").strip().upper()
+        if not self._KEY_RE.match(key):
+            raise ValidationError("Некорректный ключ задачи Jira")
+        fields = [
+            "summary", "status", "issuetype", "priority", "assignee",
+            "updated", "created", "description", "labels", "reporter",
+        ]
+        path = self._api_path(get_settings().jira_issue_path, key=key)
+        data, safe_base_url = await self._jira_request("GET", path, params={"fields": ",".join(fields)})
+        detail = self._map_task(data)
+        fields_data = data.get("fields") or {}
+        reporter = fields_data.get("reporter")
+        detail.update(
+            {
+                "reporter": reporter.get("displayName") if isinstance(reporter, dict) else None,
+                "description": self._adf_to_text(fields_data.get("description")).strip(),
+                "labels": list(fields_data.get("labels") or []),
+                "url": f"{safe_base_url}{self._api_path(get_settings().jira_browse_path, key=detail['key'])}",
+            }
+        )
+        return detail
 
 
 @dataclass
@@ -836,7 +1028,7 @@ class UserService:
             query = query.where(User.id != exclude_user_id)
         exists = await self.db.scalar(query)
         if exists:
-            raise ConflictError("username или email уже заняты")
+            raise ConflictError("Username or email is already taken")
 
     async def _enqueue_temporary_password_mail(
         self,
@@ -917,7 +1109,7 @@ class UserService:
         """Возвращает пользователя по идентификатору."""
         user = await self.db.scalar(select(User).where(User.id == user_id))
         if not user:
-            raise NotFoundError("Пользователь не найден")
+            raise NotFoundError("User not found")
         return user
 
     async def create_user(self, payload: dict, actor_id: int, ip_address: str | None = None) -> User:
@@ -928,7 +1120,7 @@ class UserService:
         if send_invite_email:
             self._ensure_mail_delivery_enabled()
         if not temporary_password and not send_invite_email:
-            raise ValidationError("Нужно указать пароль или включить отправку приглашения на email")
+            raise ValidationError("Provide a password or enable sending an email invitation")
         if not temporary_password:
             temporary_password = self._generate_temporary_password()
         user = User(
@@ -991,7 +1183,7 @@ class UserService:
         email = payload["email"]
         existing_user = await self.db.scalar(select(User).where(User.email == email))
         if existing_user:
-            raise ConflictError("Пользователь с таким email уже существует")
+            raise ConflictError("A user with this email already exists")
         now = datetime.now(UTC)
         active_invite = await self.db.scalar(
             select(Invitation).where(
@@ -1288,7 +1480,7 @@ class UserService:
         self._ensure_mail_delivery_enabled()
         user = await self.get_user(user_id)
         if not user.is_locked:
-            raise ValidationError("Пользователь не деактивирован")
+            raise ValidationError("The user is not deactivated")
         # Прежние неиспользованные ссылки гасим: активной остаётся только последняя.
         await self.db.execute(
             update(AccountReactivationToken)
@@ -1365,12 +1557,12 @@ class UserService:
         user = await self.get_user(user_id)
         submitted_email = payload.pop("email", None)
         if submitted_email is not None and submitted_email != user.email:
-            raise ValidationError("Администратор не может менять email пользователя. Пользователь должен изменить его сам.")
+            raise ValidationError("An admin can't change a user's email — the user must change it themselves")
         # Юзернейм неизменяем — даже админом: на него завязаны логин, упоминания и
         # история действий, поэтому его правку не принимаем (как и email).
         submitted_username = payload.pop("username", None)
         if submitted_username is not None and submitted_username != user.username:
-            raise ValidationError("Юзернейм менять нельзя — он закреплён за пользователем.")
+            raise ValidationError("The username can't be changed — it's tied to the user")
         await self._ensure_unique_identity(username=user.username, email=user.email, exclude_user_id=user.id)
         for key, value in payload.items():
             if value is not None:
@@ -1403,7 +1595,7 @@ class UserService:
         Всё авторство и связи при этом сохраняются.
         """
         if user_id == actor_id:
-            raise ValidationError("Нельзя удалить самого себя")
+            raise ValidationError("You can't block yourself")
         user = await self.get_user(user_id)
         user.is_locked = True
         await self.db.execute(
@@ -1811,7 +2003,7 @@ class ProjectService:
         await self.get_project(project_id)
         user = await self.db.scalar(select(User).where(User.id == user_id))
         if not user:
-            raise NotFoundError("Пользователь не найден")
+            raise NotFoundError("User not found")
         exists = await self.db.scalar(
             select(ProjectMember).where(and_(ProjectMember.project_id == project_id, ProjectMember.user_id == user_id))
         )
