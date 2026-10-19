@@ -5,6 +5,16 @@ import { StormApp } from "./StormApp";
 import { useAuthStore } from "../store";
 import * as api from "../api";
 
+// The rich-text steps/impact/remediation editors are TipTap (ProseMirror), which
+// doesn't expose a real `placeholder` attribute in jsdom. Mock it with a plain
+// textarea so the form assertions below can address it by placeholder/value.
+vi.mock("./StormMarkdownEditor", () => {
+  const Mock = ({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) => (
+    <textarea placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} />
+  );
+  return { __esModule: true, default: Mock, StormMarkdownEditor: Mock };
+});
+
 vi.mock("../api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../api")>();
   const mk = (id: number, name: string, status: string) => ({
@@ -182,7 +192,7 @@ vi.mock("../api", async (importOriginal) => {
        tests below opt in with mockResolvedValue. */
     listNotifications: vi.fn(async () => ({ items: [], total: 0, page: 1, size: 20, pages: 1 })),
     markNotificationRead: vi.fn(async () => undefined),
-    listAgentTokens: vi.fn(async () => [mkToken(1, "CI pipeline", "pcf_ci"), mkToken(2, "Slack alerts bot", "pcf_sl")]),
+    listAgentTokens: vi.fn(async () => [mkToken(1, "CI pipeline", "storm_ci"), mkToken(2, "Slack alerts bot", "storm_sl")]),
     createProject: vi.fn(async () => projects[0]),
     updateProject: vi.fn(async () => projects[0]),
     deleteProject: vi.fn(async () => undefined),
@@ -219,20 +229,25 @@ vi.mock("../api", async (importOriginal) => {
       id: 902, project_id: 2, kind: "js", status: "done", targets_total: 1, error: null, created_at: "2026-07-19T00:00:00Z",
       result: { domains_scanned: 1, files_found: 1, files_scanned: 1, files_failed: 0, secrets_found: 1, endpoints_found: 2, files: [], errors: [] },
     })),
-    getJsFiles: vi.fn(async () => [
-      {
-        id: 1, host_id: 11, hostname: "api.northwind.test", url: "https://api.northwind.test/static/app.bundle.js",
-        status: "ok", size_bytes: 4096, content_type: "application/javascript", secret_count: 1, endpoint_count: 2,
-        endpoints: ["/api/v1/secret-data", "/admin/panel"],
-        secrets: [{ kind: "aws_access_key", match_preview: "AKIA…MPLE", snippet: "cfg={key:\"AKIA…\"}", severity: "high" }],
-        fetched_at: "2026-07-19T00:00:00Z",
-      },
-      {
-        id: 2, host_id: 11, hostname: "api.northwind.test", url: "https://api.northwind.test/vendor.js",
-        status: "ok", size_bytes: 20480, content_type: "application/javascript", secret_count: 0, endpoint_count: 0,
-        endpoints: [], secrets: [], fetched_at: "2026-07-19T00:00:00Z",
-      },
-    ]),
+    getJsFilesPage: vi.fn(async () => ({
+      items: [
+        {
+          id: 1, host_id: 11, hostname: "api.northwind.test", url: "https://api.northwind.test/static/app.bundle.js",
+          status: "ok", size_bytes: 4096, content_type: "application/javascript", secret_count: 1, endpoint_count: 2,
+          endpoints: ["/api/v1/secret-data", "/admin/panel"],
+          secrets: [{ kind: "aws_access_key", match_preview: "AKIA…MPLE", snippet: "cfg={key:\"AKIA…\"}", severity: "high" }],
+          fetched_at: "2026-07-19T00:00:00Z",
+        },
+        {
+          id: 2, host_id: 11, hostname: "api.northwind.test", url: "https://api.northwind.test/vendor.js",
+          status: "ok", size_bytes: 20480, content_type: "application/javascript", secret_count: 0, endpoint_count: 0,
+          endpoints: [], secrets: [], fetched_at: "2026-07-19T00:00:00Z",
+        },
+      ],
+      total: 2, page: 1, size: 200, pages: 1,
+    })),
+    bulkDeleteJsFiles: vi.fn(async () => 1),
+    deleteJsFilesForHost: vi.fn(async () => undefined),
     downloadJsArchive: vi.fn(async () => new Blob(["zip"], { type: "application/zip" })),
     getHostFarmJob: vi.fn(async () => ({
       id: 900, project_id: 2, status: "done", targets_total: 2, error: null, created_at: "2026-07-19T00:00:00Z",
@@ -285,7 +300,7 @@ describe("StormApp (design prototype port)", () => {
   it("opens a project and lists its Vulnerabilities from the backend", async () => {
     render(<MemoryRouter><StormApp /></MemoryRouter>);
     fireEvent.click(await screen.findByText("Northwind API"));
-    fireEvent.click(screen.getByText("Vulnerabilities"));
+    fireEvent.click(screen.getByText("Issues"));
     expect(await screen.findByText("IDOR on GET /orders/{id}")).toBeInTheDocument();
     expect(screen.getByText("JWT algorithm confusion (alg=none)")).toBeInTheDocument();
     expect(vi.mocked(api.getVulnerabilities)).toHaveBeenCalledWith(2);
@@ -304,8 +319,8 @@ describe("StormApp (design prototype port)", () => {
     fireEvent.click(hostsCard as HTMLElement);
     expect(sectab("Recon")).toHaveClass("on");
     expect(sectab("Overview")).not.toHaveClass("on");
-    fireEvent.click(sectab("Vulnerabilities"));
-    expect(sectab("Vulnerabilities")).toHaveClass("on");
+    fireEvent.click(sectab("Issues"));
+    expect(sectab("Issues")).toHaveClass("on");
     expect(sectab("Recon")).not.toHaveClass("on");
   });
 
@@ -374,22 +389,23 @@ describe("StormApp (design prototype port)", () => {
   it("filters vulnerabilities by host", async () => {
     render(<MemoryRouter><StormApp /></MemoryRouter>);
     fireEvent.click(await screen.findByText("Northwind API"));
-    fireEvent.click(screen.getByText("Vulnerabilities"));
+    fireEvent.click(screen.getByText("Issues"));
     await screen.findByText("IDOR on GET /orders/{id}");
-    // The host filter now leads the toolbar (author filter was removed).
-    fireEvent.change(screen.getByPlaceholderText("Filter by host…"), { target: { value: "no-such-host" } });
+    // The lead search now matches host OR title (author has its own box).
+    fireEvent.change(screen.getByPlaceholderText("Filter by host or title…"), { target: { value: "no-such-host" } });
     expect(screen.queryByText("IDOR on GET /orders/{id}")).not.toBeInTheDocument();
   });
 
   it("opens a vulnerability detail page and can add a reproduction step", async () => {
     render(<MemoryRouter><StormApp /></MemoryRouter>);
     fireEvent.click(await screen.findByText("Northwind API"));
-    fireEvent.click(screen.getByText("Vulnerabilities"));
+    fireEvent.click(screen.getByText("Issues"));
     fireEvent.click(await screen.findByText("IDOR on GET /orders/{id}"));
     expect(screen.getByText("All findings")).toBeInTheDocument();
-    const before = screen.getAllByPlaceholderText("Describe this step… (paste a screenshot to attach)").length;
+    // Steps render through the (lazy) markdown editor, so wait for them to mount.
+    const before = (await screen.findAllByPlaceholderText("Describe this step… (paste a screenshot to attach)")).length;
     fireEvent.click(screen.getByText("Add step"));
-    expect(screen.getAllByPlaceholderText("Describe this step… (paste a screenshot to attach)").length).toBe(before + 1);
+    expect((await screen.findAllByPlaceholderText("Describe this step… (paste a screenshot to attach)")).length).toBe(before + 1);
   });
 
   // A finding's card is deep-linkable: its real id goes into the URL, which is
@@ -411,7 +427,7 @@ describe("StormApp (design prototype port)", () => {
   it("creates a finding from Title + Host and redirects to its detail card", async () => {
     render(<MemoryRouter><StormApp /></MemoryRouter>);
     fireEvent.click(await screen.findByText("Northwind API"));
-    fireEvent.click(screen.getByText("Vulnerabilities"));
+    fireEvent.click(screen.getByText("Issues"));
     await screen.findByText("IDOR on GET /orders/{id}");
     fireEvent.click(screen.getByRole("button", { name: /Add issue/i }));
     fireEvent.change(screen.getByPlaceholderText("e.g. Stored XSS in comments"), { target: { value: "SQLi in login" } });
@@ -428,7 +444,7 @@ describe("StormApp (design prototype port)", () => {
   it("derives vulnerability severity from a CVSS 4.0 vector", async () => {
     render(<MemoryRouter><StormApp /></MemoryRouter>);
     fireEvent.click(await screen.findByText("Northwind API"));
-    fireEvent.click(screen.getByText("Vulnerabilities"));
+    fireEvent.click(screen.getByText("Issues"));
     fireEvent.click(await screen.findByText("IDOR on GET /orders/{id}"));
     const vector = screen.getByPlaceholderText(/CVSS:4\.0/);
     fireEvent.change(vector, { target: { value: "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:H/SI:H/SA:H" } });
@@ -612,34 +628,39 @@ describe("StormApp (design prototype port)", () => {
     fireEvent.click(jsItem as HTMLElement);
   };
 
-  it("lists JS files grouped by host and reveals secrets + paths on expand", async () => {
+  it("lists JS grouped by host, expands to files, and opens a file card with its findings", async () => {
     await openJsView();
-    // The bundle row, collapsed, shows its secret/path counts.
+    // The host group row, collapsed, carries the host's aggregate counts.
+    const groupRow = (await screen.findByText("api.northwind.test", { selector: ".hostname" })).closest(".prow") as HTMLElement;
+    expect(within(groupRow).getByText(/1 .*secret/i)).toBeInTheDocument();
+    expect(within(groupRow).getByText(/2 .*path/i)).toBeInTheDocument();
+    // Expanding the group reveals its files; clicking a file opens its detail card.
+    fireEvent.click(groupRow);
     const fileRow = (await screen.findByText("app.bundle.js")).closest(".prow") as HTMLElement;
-    expect(within(fileRow).getByText(/1 .*secret/i)).toBeInTheDocument();
-    expect(within(fileRow).getByText(/2 .*path/i)).toBeInTheDocument();
-    // Expanding reveals the actual finding: the secret kind, its redacted value, and a path.
     fireEvent.click(fileRow);
+    // The file card shows the actual finding: kind, redacted value, and a path.
     expect(await screen.findByText("aws_access_key")).toBeInTheDocument();
     expect(screen.getByText("AKIA…MPLE")).toBeInTheDocument();
     expect(screen.getByText("/api/v1/secret-data")).toBeInTheDocument();
-    expect(vi.mocked(api.getJsFiles)).toHaveBeenCalledWith(2);
+    expect(vi.mocked(api.getJsFilesPage)).toHaveBeenCalledWith(2, 1, 200);
   });
 
   it("filters JS files to only those with secrets", async () => {
     await openJsView();
+    // Expand the host group so its files are visible.
+    fireEvent.click((await screen.findByText("api.northwind.test", { selector: ".hostname" })).closest(".prow") as HTMLElement);
     expect(await screen.findByText("app.bundle.js")).toBeInTheDocument();
     expect(screen.getByText("vendor.js")).toBeInTheDocument();
-    // "With secrets" drops the clean vendor.js bundle.
+    // "With secrets" drops the clean vendor.js bundle; the group stays expanded.
     const group = screen.getByText("Secrets", { selector: "span" }).parentElement as HTMLElement;
     fireEvent.click(within(group).getByText("With secrets"));
-    expect(screen.getByText("app.bundle.js")).toBeInTheDocument();
+    expect(await screen.findByText("app.bundle.js")).toBeInTheDocument();
     expect(screen.queryByText("vendor.js")).not.toBeInTheDocument();
   });
 
   it("picks domains then starts a JS scan and polls it to completion", async () => {
     await openJsView();
-    await screen.findByText("app.bundle.js");
+    await screen.findByText("api.northwind.test", { selector: ".hostname" });
     // The header button now opens a domain picker instead of scanning straight away.
     fireEvent.click(screen.getByRole("button", { name: /Select domains & scan/i }));
     // The picker seeds itself with the project's domains; starting sends that list.

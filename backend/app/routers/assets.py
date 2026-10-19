@@ -15,6 +15,7 @@ from app.schemas import (
     HostCreate,
     HostOut,
     HostUpdate,
+    JsBulkDeleteRequest,
     JsFileOut,
     PortCreate,
     PortOut,
@@ -281,14 +282,49 @@ async def delete_service(
     await AssetService(db).delete_service(project_id, port_id, service_id, current_user.id)
 
 
-@router.get("/projects/{project_id}/js-files", response_model=list[JsFileOut])
+@router.get("/projects/{project_id}/js-files", response_model=dict)
 async def list_js_files(
     project_id: int,
+    page: int = Query(1, ge=1),
+    size: int = Query(200, ge=1, le=1000),
     _project=Depends(require_project_access),
     db: AsyncSession = Depends(get_db),
-) -> list[JsFileOut]:
-    """JS-файлы проекта с находками — читает раздел JS (группируется по хосту на фронте)."""
-    return await AssetService(db).list_js_files(project_id)
+) -> dict:
+    """JS-файлы проекта с находками (пагинация) — раздел JS группирует по хосту на фронте."""
+    params = PageParams(page=page, size=size)
+    items, total = await AssetService(db).list_js_files(project_id, params.offset, params.size)
+    return to_paginated_response(
+        [JsFileOut.model_validate(it) for it in items], total, params
+    ).model_dump()
+
+
+@router.post("/projects/{project_id}/js-files/bulk-delete", response_model=dict)
+async def bulk_delete_js_files(
+    project_id: int,
+    payload: JsBulkDeleteRequest,
+    _: None = Depends(enforce_csrf),
+    current_user: User = Depends(get_current_user),
+    _project=Depends(require_project_access),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Удаляет JS-находки проекта по списку id. Отдаёт {"deleted": N}."""
+    deleted = await AssetService(db).bulk_delete_js_files(project_id, payload.ids, current_user.id)
+    return {"deleted": deleted}
+
+
+@router.delete(
+    "/projects/{project_id}/js-files/hosts/{host_id}", status_code=status.HTTP_204_NO_CONTENT
+)
+async def delete_js_for_host(
+    project_id: int,
+    host_id: int,
+    _: None = Depends(enforce_csrf),
+    current_user: User = Depends(get_current_user),
+    _project=Depends(require_project_access),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """Удаляет все JS-находки одного хоста в проекте."""
+    await AssetService(db).delete_js_for_host(project_id, host_id, current_user.id)
 
 
 @router.get("/projects/{project_id}/js-files/archive")

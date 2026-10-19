@@ -59,6 +59,15 @@ class TwoFAVerifyRequest(InputBaseModel):
     code: str = Field(min_length=6, max_length=10)
 
 
+class SsoConfigOut(BaseModel):
+    """Публичная конфигурация SSO для экрана входа фронтенда."""
+
+    enabled: bool = False
+    # Надпись на кнопке и адрес старта потока (навигация браузера, не XHR).
+    button_label: str = "Войти через SSO"
+    start_url: str = "/api/v1/auth/sso/login"
+
+
 class TwoFASetupResponse(BaseModel):
     secret: str
     otpauth_uri: str
@@ -1005,6 +1014,11 @@ class JsFarmRequest(InputBaseModel):
     raw: str = Field(default="", max_length=262144)
 
 
+class JsBulkDeleteRequest(InputBaseModel):
+    # id JS-файлов проекта на удаление; чужие/несуществующие игнорируются в SQL.
+    ids: list[int] = Field(default_factory=list)
+
+
 class JsSecretOut(ORMBase):
     kind: str
     match_preview: str
@@ -1163,20 +1177,20 @@ class ReverseFarmJobOut(ORMBase):
     created_at: datetime
 
 
-class PcfImportService(InputBaseModel):
+class StormImportService(InputBaseModel):
     name: str = Field(min_length=1, max_length=255)
     version: str | None = Field(default=None, max_length=100)
     banner: str | None = None
 
 
-class PcfImportPort(InputBaseModel):
+class StormImportPort(InputBaseModel):
     port_number: int = Field(ge=1, le=65535)
     protocol: Protocol = Protocol.TCP
     state: PortState = PortState.OPEN
-    services: list[PcfImportService] = Field(default_factory=list)
+    services: list[StormImportService] = Field(default_factory=list)
 
 
-class PcfImportEndpoint(InputBaseModel):
+class StormImportEndpoint(InputBaseModel):
     path: str | None = Field(default=None, min_length=1)
     method: HttpMethod | None = None
     description: str | None = None
@@ -1187,29 +1201,29 @@ class PcfImportEndpoint(InputBaseModel):
     request_headers: list[EndpointRequestHeader] = Field(default_factory=list)
 
     @model_validator(mode="after")
-    def validate_target_defined(self) -> "PcfImportEndpoint":
+    def validate_target_defined(self) -> "StormImportEndpoint":
         if not self.path and not self.request_raw:
             raise ValueError("Каждый endpoint должен содержать path или request_raw")
         return self
 
 
-class PcfImportHost(InputBaseModel):
+class StormImportHost(InputBaseModel):
     ip_address: str | None = Field(default=None, max_length=45)
     hostname: str | None = Field(default=None, max_length=255)
     status: HostStatus = HostStatus.UNKNOWN
     notes: str | None = None
-    ports: list[PcfImportPort] = Field(default_factory=list)
-    endpoints: list[PcfImportEndpoint] = Field(default_factory=list)
+    ports: list[StormImportPort] = Field(default_factory=list)
+    endpoints: list[StormImportEndpoint] = Field(default_factory=list)
 
     @model_validator(mode="after")
-    def validate_target_defined(self) -> "PcfImportHost":
+    def validate_target_defined(self) -> "StormImportHost":
         if not self.ip_address and not self.hostname:
             raise ValueError("Каждая запись host должна содержать ip_address или hostname")
         return self
 
 
-class PcfImportPayload(InputBaseModel):
-    hosts: list[PcfImportHost] = Field(default_factory=list)
+class StormImportPayload(InputBaseModel):
+    hosts: list[StormImportHost] = Field(default_factory=list)
 
 
 class AuditLogOut(ORMBase):

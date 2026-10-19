@@ -69,10 +69,10 @@ def test_page_params_reject_excessive_size_tc_pag_005() -> None:
 def test_settings_reject_too_short_jwt_secret() -> None:
     with pytest.raises(PydanticValidationError):
         Settings(
-            database_url="postgresql+asyncpg://user:password@localhost:5432/pcf_test",
+            database_url="postgresql+asyncpg://user:password@localhost:5432/storm_test",
             jwt_secret_key="short-secret",
             minio_endpoint="localhost:9000",
             minio_access_key="minio",
             minio_secret_key="minio",
-            minio_bucket_name="pcf-files",
+            minio_bucket_name="storm-files",
         )

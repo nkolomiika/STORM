@@ -1,4 +1,4 @@
-/* Design tokens ported from the STORM prototype (PCF.dc.html).
+/* Design tokens ported from the STORM prototype (STORM.dc.html).
    Colour pairs are {bg, color}; single dot/text colours are plain strings. */
 
 import type { HostStatus, Method, PortState, Role, Severity, VStatus, WsRole } from "./data";

@@ -1,12 +1,26 @@
 /* STORM sign-in screen. Styled in the STORM design language and wired to the
    real backend auth via useAuthStore.signIn (POST /api/v1/auth/login). */
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import "./storm.css";
 import { Icon, SberMark } from "./icons";
 import { PasswordInput } from "./PasswordInput";
-import { getApiErrorMessage, requestPasswordReset } from "../api";
+import { getApiErrorMessage, getSsoConfig, requestPasswordReset } from "../api";
+import type { SsoConfig } from "../types";
 import { useAuthStore, useToastStore } from "../store";
+
+/** Человекочитаемые сообщения по кодам ?sso_error=..., с которыми бэкенд
+    возвращает браузер на /login при неуспешном входе через SSO. */
+const SSO_ERROR_MESSAGES: Record<string, string> = {
+  disabled: "SSO sign-in is turned off.",
+  init_failed: "Couldn't start SSO sign-in. Try again later.",
+  idp_error: "The identity provider reported an error.",
+  invalid_request: "SSO sign-in was interrupted. Please try again.",
+  expired: "The SSO session expired. Please try again.",
+  state_mismatch: "SSO security check failed. Please try again.",
+  denied: "Access denied. Contact your administrator.",
+  failed: "SSO sign-in failed. Please try again.",
+};
 
 export function StormLogin() {
   const signIn = useAuthStore((s) => s.signIn);
@@ -21,6 +35,40 @@ export function StormLogin() {
   const [code, setCode] = useState("");
   const [resetEmail, setResetEmail] = useState("");
   const [resetBusy, setResetBusy] = useState(false);
+  const [sso, setSso] = useState<SsoConfig | null>(null);
+
+  // Загружаем конфигурацию SSO (нужна ли кнопка) и разбираем ?sso_error=...,
+  // с которым бэкенд возвращает браузер после неудачного входа через IdP.
+  useEffect(() => {
+    let active = true;
+    getSsoConfig()
+      .then((cfg) => {
+        if (active) setSso(cfg);
+      })
+      .catch(() => {
+        // SSO необязателен: если эндпоинт недоступен, просто не показываем кнопку.
+        if (active) setSso({ enabled: false, button_label: "", start_url: "" });
+      });
+
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get("sso_error");
+      if (code) {
+        pushToast(SSO_ERROR_MESSAGES[code] ?? "Couldn't sign in with SSO.", "error");
+        // Убираем параметр из URL, чтобы тост не повторялся при перезагрузке.
+        params.delete("sso_error");
+        const query = params.toString();
+        window.history.replaceState({}, "", window.location.pathname + (query ? `?${query}` : ""));
+      }
+    }
+    return () => {
+      active = false;
+    };
+  }, [pushToast]);
+
+  const startSso = () => {
+    if (sso?.enabled && sso.start_url) window.location.assign(sso.start_url);
+  };
 
   const disabled = isLoading || !username.trim() || !password;
   const codeDisabled = isLoading || code.trim().length < 6;
@@ -138,6 +186,38 @@ export function StormLogin() {
               >
                 Forgot password?
               </button>
+
+              {sso?.enabled && (
+                <>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "18px 0 14px" }}>
+                    <span style={{ flex: 1, height: 1, background: "var(--st-border-light)" }} />
+                    <span style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: 1, color: "var(--st-text-faint)", textTransform: "uppercase" }}>or</span>
+                    <span style={{ flex: 1, height: 1, background: "var(--st-border-light)" }} />
+                  </div>
+                  <button
+                    type="button"
+                    className="clk"
+                    onClick={startSso}
+                    style={{
+                      width: "100%",
+                      height: 46,
+                      borderRadius: 12,
+                      border: "1px solid var(--st-border)",
+                      background: "var(--st-surface)",
+                      color: "var(--st-text)",
+                      font: "700 14px Inter,sans-serif",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 9,
+                    }}
+                  >
+                    <Icon name="shield-check" size={17} color="var(--st-accent)" sw={2} />
+                    {sso.button_label || "Sign in with SSO"}
+                  </button>
+                </>
+              )}
             </form>
           ) : stage === "forgot" ? (
             <form onSubmit={handleForgot} style={{ background: "var(--st-surface)", border: "1px solid var(--st-border-light)", borderRadius: 20, boxShadow: "0 24px 60px rgba(15,27,45,.10)", padding: "32px 34px 30px" }}>

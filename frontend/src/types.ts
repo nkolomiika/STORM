@@ -29,6 +29,15 @@ export interface AuthLoginResponse {
   role?: UserRole;
 }
 
+export interface SsoConfig {
+  /** Показывать ли кнопку «Войти через SSO» на экране входа. */
+  enabled: boolean;
+  /** Надпись на кнопке. */
+  button_label: string;
+  /** Адрес старта потока (навигация браузера, не XHR). */
+  start_url: string;
+}
+
 export interface TwoFASetupResponse {
   secret: string;
   otpauth_uri: string;

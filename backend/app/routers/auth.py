@@ -1,10 +1,20 @@
+import logging
+import secrets
+from datetime import UTC, datetime, timedelta
+
 from fastapi import APIRouter, Cookie, Depends, Query, Request, Response, status
+from fastapi.responses import RedirectResponse
+from jose import jwt
+from jose.exceptions import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.status import HTTP_303_SEE_OTHER
 
 from app.config import get_settings
 from app.database import get_db
 from app.dependencies import enforce_csrf, get_client_ip, get_current_user
+from app.exceptions import UnauthorizedError
 from app.models import User
+from app.oidc import OidcClient
 from app.schemas import (
     InvitationAcceptRequest,
     InvitationInfoOut,
@@ -16,11 +26,14 @@ from app.schemas import (
     PasswordResetRequestOut,
     ReactivationInfoOut,
     RefreshResponse,
+    SsoConfigOut,
     TwoFAVerifyRequest,
     UsernameAvailabilityOut,
 )
 from app.security import TWO_FA_PENDING_TTL_MINUTES
 from app.services import AuthService, UserService
+
+logger = logging.getLogger("storm.auth")
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 settings = get_settings()
@@ -251,6 +264,142 @@ async def refresh(
     _set_auth_cookies(response, new_access, new_refresh)
     response.status_code = status.HTTP_200_OK
     return RefreshResponse(ok=True)
+
+
+# ---------------------------------------------------------------------------
+# SSO / OIDC (корпоративная IAM). Поток Authorization Code + PKCE:
+#   GET /auth/sso/login    -> 303 на IdP, state/nonce/PKCE кладём в cookie sso_tx
+#   GET /auth/sso/callback -> обмен кода, выдача обычной access/refresh сессии
+# ---------------------------------------------------------------------------
+
+# Транзакционная cookie одного входа. SameSite=Lax (а не strict): callback
+# приходит как top-level переход С домена IdP, и strict-cookie браузер бы не
+# прислал. Живёт коротко и ограничена путём /api/v1/auth/sso.
+SSO_TX_COOKIE = "sso_tx"
+SSO_TX_COOKIE_PATH = "/api/v1/auth/sso"
+SSO_TX_TTL_SECONDS = 600
+
+
+def _frontend_url(path: str) -> str:
+    """Абсолютный адрес страницы фронтенда (SPA) для финального редиректа."""
+    return settings.app_base_url.rstrip("/") + path
+
+
+def _sso_error_url(code: str) -> str:
+    """URL экрана входа с пометкой об ошибке SSO (фронтенд покажет тост)."""
+    return _frontend_url(f"/login?sso_error={code}")
+
+
+def _encode_sso_tx(state: str, nonce: str, code_verifier: str) -> str:
+    """Подписывает параметры транзакции SSO коротким JWT (ключ — JWT_SECRET_KEY)."""
+    now = datetime.now(UTC)
+    payload = {
+        "type": "sso_tx",
+        "state": state,
+        "nonce": nonce,
+        "cv": code_verifier,
+        "iat": int(now.timestamp()),
+        "exp": int((now + timedelta(seconds=SSO_TX_TTL_SECONDS)).timestamp()),
+    }
+    return jwt.encode(payload, settings.jwt_secret_key, algorithm="HS256")
+
+
+def _decode_sso_tx(token: str) -> dict:
+    """Проверяет и декодирует cookie sso_tx."""
+    payload = jwt.decode(token, settings.jwt_secret_key, algorithms=["HS256"])
+    if payload.get("type") != "sso_tx":
+        raise JWTError("Некорректный тип транзакционного токена")
+    return payload
+
+
+def _set_sso_tx_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        SSO_TX_COOKIE,
+        token,
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite="lax",
+        max_age=SSO_TX_TTL_SECONDS,
+        path=SSO_TX_COOKIE_PATH,
+    )
+
+
+def _clear_sso_tx_cookie(response: Response) -> None:
+    response.set_cookie(
+        SSO_TX_COOKIE,
+        "",
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite="lax",
+        max_age=0,
+        path=SSO_TX_COOKIE_PATH,
+    )
+
+
+@router.get("/sso/config", response_model=SsoConfigOut)
+async def sso_config() -> SsoConfigOut:
+    """Публичная конфигурация SSO: показывать ли кнопку входа и с какой надписью."""
+    if not settings.sso_configured:
+        return SsoConfigOut(enabled=False)
+    return SsoConfigOut(enabled=True, button_label=settings.sso_button_label)
+
+
+@router.get("/sso/login")
+async def sso_login() -> RedirectResponse:
+    """Старт входа через SSO: редирект на страницу авторизации IdM."""
+    if not settings.sso_configured:
+        return RedirectResponse(url=_sso_error_url("disabled"), status_code=HTTP_303_SEE_OTHER)
+    client = OidcClient(settings)
+    try:
+        auth_request = await client.build_authorization_request()
+    except Exception:  # noqa: BLE001
+        logger.exception("SSO: не удалось построить запрос авторизации")
+        return RedirectResponse(url=_sso_error_url("init_failed"), status_code=HTTP_303_SEE_OTHER)
+    response = RedirectResponse(url=auth_request.url, status_code=HTTP_303_SEE_OTHER)
+    _set_sso_tx_cookie(response, _encode_sso_tx(auth_request.state, auth_request.nonce, auth_request.code_verifier))
+    return response
+
+
+@router.get("/sso/callback")
+async def sso_callback(
+    request: Request,
+    state: str | None = Query(default=None),
+    code: str | None = Query(default=None),
+    error: str | None = Query(default=None),
+    sso_tx: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+) -> RedirectResponse:
+    """Возврат от IdP: сверяет state, меняет код на токены и выдаёт обычную сессию."""
+    if error:
+        logger.warning("SSO: IdP вернул ошибку %s", error)
+        return RedirectResponse(url=_sso_error_url("idp_error"), status_code=HTTP_303_SEE_OTHER)
+    if not code or not state or not sso_tx:
+        return RedirectResponse(url=_sso_error_url("invalid_request"), status_code=HTTP_303_SEE_OTHER)
+    try:
+        tx = _decode_sso_tx(sso_tx)
+    except JWTError:
+        return RedirectResponse(url=_sso_error_url("expired"), status_code=HTTP_303_SEE_OTHER)
+    if not secrets.compare_digest(str(tx.get("state", "")), str(state)):
+        return RedirectResponse(url=_sso_error_url("state_mismatch"), status_code=HTTP_303_SEE_OTHER)
+
+    try:
+        identity = await OidcClient(settings).exchange_code(code, tx["cv"], tx["nonce"])
+        access_token, refresh_token, _user = await AuthService(db).login_via_sso(identity, get_client_ip(request))
+    except UnauthorizedError as exc:
+        logger.warning("SSO: вход отклонён: %s", exc)
+        response = RedirectResponse(url=_sso_error_url("denied"), status_code=HTTP_303_SEE_OTHER)
+        _clear_sso_tx_cookie(response)
+        return response
+    except Exception:  # noqa: BLE001
+        logger.exception("SSO: ошибка обработки callback")
+        response = RedirectResponse(url=_sso_error_url("failed"), status_code=HTTP_303_SEE_OTHER)
+        _clear_sso_tx_cookie(response)
+        return response
+
+    response = RedirectResponse(url=_frontend_url("/projects"), status_code=HTTP_303_SEE_OTHER)
+    _set_auth_cookies(response, access_token, refresh_token)
+    _clear_sso_tx_cookie(response)
+    return response
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)

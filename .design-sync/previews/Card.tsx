@@ -7,9 +7,9 @@ import {
   Divider,
   Button,
   Box,
-} from "sberpcf-design-kit";
+} from "storm-design-kit";
 
-/** A vulnerability summary card — the primary surface in SberPCF. */
+/** A vulnerability summary card — the primary surface in STORM. */
 export function VulnerabilityCard() {
   return (
     <Card sx={{ maxWidth: 420 }}>
@@ -64,7 +64,7 @@ export function Basic() {
         <Typography variant="h6">Scan settings</Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
           Cards use a flat, zero-radius surface with a faint cyan border and no
-          shadow — the defining geometry of the SberPCF theme.
+          shadow — the defining geometry of the STORM theme.
         </Typography>
       </CardContent>
     </Card>

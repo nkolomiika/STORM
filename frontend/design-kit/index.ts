@@ -1,12 +1,12 @@
 /**
- * SberPCF Design Kit
+ * STORM Design Kit
  *
- * The themed building blocks of the SberPCF web application: the real MUI v6
- * components the product is built from, branded by the SberPCF dark theme, plus
+ * The themed building blocks of the STORM web application: the real MUI v6
+ * components the product is built from, branded by the STORM dark theme, plus
  * the theme itself and the root provider that applies it.
  *
  * This is not a reimplementation — every component is the genuine `@mui/material`
- * export. The SberPCF look comes entirely from `sberTheme` / `SberThemeProvider`.
+ * export. The STORM look comes entirely from `sberTheme` / `SberThemeProvider`.
  */
 
 // Theme + root provider — the source of all branding.
@@ -14,7 +14,7 @@ export { SberThemeProvider } from "./SberThemeProvider";
 export type { SberThemeProviderProps } from "./SberThemeProvider";
 export { sberTheme, createAppTheme } from "./theme";
 
-// Themed MUI primitives the SberPCF design system builds with.
+// Themed MUI primitives the STORM design system builds with.
 export {
   Alert,
   AppBar,

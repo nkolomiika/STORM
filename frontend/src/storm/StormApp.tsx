@@ -1,5 +1,5 @@
 /* STORM — Offensive Security Research & Management Console.
-   React port of the design prototype (PCF.dc.html). Every collection it renders
+   React port of the design prototype (STORM.dc.html). Every collection it renders
    is loaded from the backend; data.ts carries the view shapes only. */
 
 import {
@@ -58,7 +58,9 @@ import {
   getIpFarmJob as apiGetIpFarmJob,
   startJsScan as apiStartJsScan,
   getJsScanJob as apiGetJsScanJob,
-  getJsFiles as apiGetJsFiles,
+  getJsFilesPage as apiGetJsFilesPage,
+  bulkDeleteJsFiles as apiBulkDeleteJsFiles,
+  deleteJsFilesForHost as apiDeleteJsFilesForHost,
   downloadJsArchive as apiDownloadJsArchive,
   createEndpoint as apiCreateEndpoint,
   getEndpoints as apiGetEndpoints,
@@ -84,6 +86,9 @@ import {
   getProjectActivity as apiGetProjectActivity,
   listNotifications as apiListNotifications,
   uploadMyAvatar as apiUploadMyAvatar,
+  listVulnerabilityFiles as apiListVulnFiles,
+  uploadVulnerabilityFile as apiUploadVulnFile,
+  deleteVulnerabilityFile as apiDeleteVulnFile,
   markNotificationRead as apiMarkNotificationRead,
   markAllNotificationsRead as apiMarkAllNotificationsRead,
   listAgentTokens as apiListAgentTokens,
@@ -123,6 +128,7 @@ import type {
   JiraTaskDetail,
   JiraTaskCategory,
   Invitation as ApiInvitation,
+  VulnerabilityFile as ApiVulnFile,
 } from "../types";
 import {
   type ApiKey,
@@ -182,7 +188,7 @@ type ProfileTab = "account" | "security" | "api" | "customizing";
 /** Word report templates the backend can generate (POST /projects/{id}/reports/{kind}). */
 type ReportKind = "szi" | "pp";
 /** What the export dialog exports: the project report, or one of the recon lists. */
-type ExportScope = "report" | "hosts" | "ips" | "endpoints";
+type ExportScope = "report" | "hosts" | "ips" | "endpoints" | "js-endpoints" | "js-secrets";
 /** How many type-to-search suggestions a combo field offers at once. */
 const COMBO_MAX = 5;
 const REPORT_KINDS: { kind: ReportKind; title: string; desc: string }[] = [
@@ -303,6 +309,10 @@ interface StormState {
   openHostId: number | null;
   /** The IP address whose detail card is open (IPs have no stored id — keyed by address). */
   openIp: string | null;
+  /** Open JS file card, by backend id — part of the URL. */
+  openJsFileId: number | null;
+  /** Open "all files of host" JS page, by hostname. */
+  openJsHost: string | null;
   reconMenuOpen: boolean;
   hostQuery: string;
   /* Recon view filters. Methods are multi-select like every other pill filter:
@@ -436,6 +446,12 @@ interface StormState {
   /** Real backend vulnerability id (not a list index) — it is part of the URL. */
   openVulnId: number | null;
   vulnDetailForm: VulnDetailForm;
+  // ---- vulnerability attachments (evidence files in MinIO) ----
+  vulnFiles: ApiVulnFile[];
+  vulnFilesBusy: boolean;
+  vulnFileDrag: boolean;
+  /** Attachment opened in the preview modal, or null. */
+  filePreview: ApiVulnFile | null;
   // ---- Jira export modal ----
   jiraExportOpen: boolean;
   jiraExportVulnId: number | null;
@@ -519,6 +535,8 @@ const initialState: StormState = {
   reconView: "hosts",
   openHostId: null,
   openIp: null,
+  openJsFileId: null,
+  openJsHost: null,
   reconMenuOpen: false,
   hostQuery: "",
   epMethods: [],
@@ -621,6 +639,10 @@ const initialState: StormState = {
   tasksDetailError: null,
   openVulnId: null,
   vulnDetailForm: {},
+  vulnFiles: [],
+  vulnFilesBusy: false,
+  vulnFileDrag: false,
+  filePreview: null,
   jiraExportOpen: false,
   jiraExportVulnId: null,
   jiraExportChecking: false,
@@ -648,6 +670,95 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
    bubble. Rendered through a portal to document.body so it is never clipped by an
    ancestor's `overflow: hidden` (the recon cards clip), and positioned `fixed`
    against the hovered element's box. */
+/* Плавное раскрытие/сворачивание. Содержимое всегда смонтировано (нужно для
+   grid-rows анимации); видимость управляется только CSS-классом, поэтому высота
+   анимируется в обе стороны. */
+function Collapse({ open, children }: { open: boolean; children: ReactNode }) {
+  return (
+    <div className={`collapse${open ? " open" : ""}`} aria-hidden={!open}>
+      <div className="collapse-inner">{children}</div>
+    </div>
+  );
+}
+
+/* Attachment preview modal. Clicking a finding's file opens this instead of
+   downloading it: the bytes are fetched once into a blob URL (so nothing is
+   saved to disk), previewed by content type, and only written out if the user
+   presses the download arrow. Images, PDFs and text/code render inline; other
+   types show a "no preview" card with the download button as the only action. */
+function FilePreview({ file, onClose }: { file: ApiVulnFile; onClose: () => void }) {
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [text, setText] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const ct = file.content_type || "";
+  const isImage = ct.startsWith("image/");
+  const isPdf = ct === "application/pdf";
+  const isText = ct.startsWith("text/") || /(json|xml|javascript|x-sh|yaml|csv|html)/.test(ct);
+  const sizeLabel = file.size_bytes < 1024 ? `${file.size_bytes} B` : `${Math.round(file.size_bytes / 1024)} KB`;
+
+  useEffect(() => {
+    let url: string | null = null;
+    let cancelled = false;
+    setBlobUrl(null);
+    setText(null);
+    setError(null);
+    (async () => {
+      try {
+        const res = await fetch(`/api/v1/files/${file.id}/download`, { credentials: "same-origin" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const blob = await res.blob();
+        if (cancelled) return;
+        url = URL.createObjectURL(blob);
+        setBlobUrl(url);
+        if (isText) setText(await blob.text());
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : String(e));
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [file.id, isText]);
+
+  const loading = !blobUrl && !error;
+
+  return createPortal(
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 95, background: "rgba(10,16,26,.82)", display: "flex", alignItems: "center", justifyContent: "center", padding: 40, animation: "storm-fade .18s ease both" }}>
+      <div onClick={stop} style={{ display: "flex", flexDirection: "column", width: "min(1000px, 100%)", maxHeight: "100%", background: "var(--st-surface)", border: "1px solid var(--st-border)", borderRadius: 14, overflow: "hidden", boxShadow: "0 30px 80px rgba(0,0,0,.5)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 16px", borderBottom: "1px solid var(--st-divider)" }}>
+          <Icon name="doc" size={16} color="var(--st-text-3)" />
+          <span className="mono" style={{ flex: 1, minWidth: 0, fontSize: 13, color: "var(--st-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file.original_name}</span>
+          <span className="mono" style={{ flex: "none", fontSize: 11, color: "var(--st-text-faint)" }}>{sizeLabel}</span>
+          <a href={`/api/v1/files/${file.id}/download`} download={file.original_name} className="clk" title={t("Download")} style={{ display: "inline-flex", alignItems: "center", gap: 6, height: 34, padding: "0 14px", borderRadius: 9, background: "var(--st-accent)", color: "var(--st-on-accent)", font: "700 12.5px Inter,sans-serif", textDecoration: "none", cursor: "pointer" }}>
+            <Icon name="download" size={15} sw={2.2} />{t("Download")}
+          </a>
+          <div className="clk" onClick={onClose} title={t("Close")} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, borderRadius: 9, background: "var(--st-elevated)", color: "var(--st-text-2)", cursor: "pointer" }}>
+            <Icon name="close" size={16} />
+          </div>
+        </div>
+        <div style={{ flex: 1, minHeight: 0, overflow: "auto", background: "var(--st-sunken)", display: "flex", alignItems: isImage ? "center" : "stretch", justifyContent: "center" }}>
+          {loading && <div style={{ padding: 60, color: "var(--st-text-faint)", font: "500 14px Inter,sans-serif" }}>{t("Loading preview…")}</div>}
+          {error && <div style={{ padding: 60, color: "var(--st-danger)", font: "500 14px Inter,sans-serif" }}>{t("Could not load this file.")} ({error})</div>}
+          {blobUrl && isImage && <img src={blobUrl} alt={file.original_name} style={{ maxWidth: "100%", maxHeight: "78vh", objectFit: "contain", display: "block" }} />}
+          {blobUrl && isPdf && <iframe src={blobUrl} title={file.original_name} style={{ width: "100%", height: "78vh", border: "none", background: "#fff" }} />}
+          {blobUrl && isText && text != null && (
+            <pre className="mono" style={{ margin: 0, padding: "16px 18px", width: "100%", fontSize: 12.5, lineHeight: 1.6, color: "var(--st-text-2)", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{text}</pre>
+          )}
+          {blobUrl && !isImage && !isPdf && !isText && (
+            <div style={{ padding: 60, textAlign: "center", color: "var(--st-text-faint)", font: "500 14px Inter,sans-serif" }}>
+              <Icon name="doc" size={40} color="var(--st-text-faint)" />
+              <div style={{ marginTop: 14 }}>{t("No preview available for this file type.")}</div>
+              <div style={{ marginTop: 6, fontSize: 12.5 }}>{t("Use the download button to save it.")}</div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 function Tip({ label, children }: { label: string; children: ReactNode }) {
   const [box, setBox] = useState<DOMRect | null>(null);
   return (
@@ -765,7 +876,7 @@ function navStateFromPath(path: string): Partial<StormState> {
   const head = parts[0];
   if (!head) return { view: "list", nav: "projects" };
   if (head === "projects") {
-    if (parts.length === 1) return { view: "list", nav: "projects", openProjectId: null, openVulnId: null, openNoteId: null, openHostId: null, openIp: null };
+    if (parts.length === 1) return { view: "list", nav: "projects", openProjectId: null, openVulnId: null, openNoteId: null, openHostId: null, openIp: null, openJsFileId: null, openJsHost: null };
     const id = Number(parts[1]);
     const seg = parts[2];
     const base: Partial<StormState> = {
@@ -776,6 +887,8 @@ function navStateFromPath(path: string): Partial<StormState> {
       openNoteId: null,
       openHostId: null,
       openIp: null,
+      openJsFileId: null,
+      openJsHost: null,
     };
     /** `/…/vulns/7` → 7; a missing or non-numeric segment → null. */
     const entityId = () => {
@@ -1614,6 +1727,13 @@ export function StormApp() {
 
   // ================= JS files: backend-loaded, refreshed by jsTick =================
   const reloadJsFiles = () => setStateRaw((s) => ({ ...s, jsTick: s.jsTick + 1 }));
+  const lastJsReloadRef = useRef(0);
+  const reloadJsFilesThrottled = () => {
+    const now = Date.now();
+    if (now - lastJsReloadRef.current < 4000) return;
+    lastJsReloadRef.current = now;
+    reloadJsFiles();
+  };
   useEffect(() => {
     const pid = state.openProjectId;
     if (pid == null) {
@@ -1621,12 +1741,30 @@ export function StormApp() {
       return;
     }
     let cancelled = false;
+    // Стримим JS-файлы страницами и склеиваем накопитель: список появляется
+    // сразу после первой страницы и доливается, вместо одного ответа на тысячи
+    // файлов (каждый со своими secrets/endpoints). Каждая страница ЗАМЕНЯЕТ
+    // apiJsFiles накопленным срезом — идемпотентно даже при рефетче по jsTick.
     void (async () => {
-      try {
-        const files = await apiGetJsFiles(pid);
-        if (!cancelled) setStateRaw((s) => ({ ...s, apiJsFiles: files }));
-      } catch {
-        if (!cancelled) setStateRaw((s) => ({ ...s, apiJsFiles: [] }));
+      const PAGE = 200;
+      const acc: ApiJsFile[] = [];
+      let page = 1;
+      let first = true;
+      for (;;) {
+        let res;
+        try {
+          res = await apiGetJsFilesPage(pid, page, PAGE);
+        } catch {
+          if (first && !cancelled) setStateRaw((s) => ({ ...s, apiJsFiles: [] }));
+          return;
+        }
+        if (cancelled) return;
+        acc.push(...res.items);
+        const snapshot = acc.slice();
+        setStateRaw((s) => (s.openProjectId === pid ? { ...s, apiJsFiles: snapshot } : s));
+        first = false;
+        if (res.items.length < PAGE || page >= (res.pages || 1)) break;
+        page++;
       }
     })();
     return () => {
@@ -1732,11 +1870,12 @@ export function StormApp() {
       try {
         const next = await apiGetJsScanJob(pid, job.id);
         if (cancelled) return;
-        // The scan commits per file, so found files stream in as it runs.
-        reloadJsFiles();
+        // The scan commits per file, so found files stream in as it runs (throttled).
+        reloadJsFilesThrottled();
         if (isFarmJobInFlight(next.status)) {
           setStateRaw((s) => (s.jsFarmJob && s.jsFarmJob.id === next.id ? { ...s, jsFarmJob: next } : s));
         } else {
+          reloadJsFiles(); // финальное состояние — без дросселя
           setStateRaw((s) => (s.jsFarmJob && s.jsFarmJob.id === next.id ? { ...s, jsFarmJob: null } : s));
           if (next.status === "done" && next.result) {
             pushToast(`${t("Scan done")} — ${next.result.files_scanned} JS, ${next.result.secrets_found} ${t("secrets")}, ${next.result.endpoints_found} ${t("paths")}`, "success");
@@ -1991,8 +2130,8 @@ export function StormApp() {
      "Add hosts") — otherwise coming back would drop the user into a stale form
      instead of the list they asked for. */
   const setSection = (s: SectionId) =>
-    setState({ section: s, ...(s === "hosts" ? {} : { reconView: "hosts" as ReconView }), reconMenuOpen: false, openVulnId: null, openNoteId: null, noteEditorOpen: false, exportPageOpen: false, hostImportOpen: false, ipImportOpen: false, epImportOpen: false, jsScanSetupOpen: false });
-  const selRecon = (v: ReconView) => setState({ section: "hosts", reconView: v, reconMenuOpen: false, openHostId: null, openIp: null, exportPageOpen: false, hostImportOpen: false, ipImportOpen: false, epImportOpen: false, jsScanSetupOpen: false });
+    setState({ section: s, ...(s === "hosts" ? {} : { reconView: "hosts" as ReconView }), reconMenuOpen: false, openVulnId: null, openNoteId: null, noteEditorOpen: false, openJsFileId: null, openJsHost: null, exportPageOpen: false, hostImportOpen: false, ipImportOpen: false, epImportOpen: false, jsScanSetupOpen: false });
+  const selRecon = (v: ReconView) => setState({ section: "hosts", reconView: v, reconMenuOpen: false, openHostId: null, openIp: null, openJsFileId: null, openJsHost: null, exportPageOpen: false, hostImportOpen: false, ipImportOpen: false, epImportOpen: false, jsScanSetupOpen: false });
 
   /* ---- URL ↔ navigation-state sync (deep links to sections / projects) ----
      Two effects mirror each other: URL → state, and state → URL. They must never
@@ -2106,8 +2245,30 @@ export function StormApp() {
     const v = state.apiVulns.find((x) => x.id === state.openVulnId);
     if (!v) return;
     setStateRaw((s) => (s.vulnDetailForm.title === v.title ? s : { ...s, vulnDetailForm: vulnFormFrom(v) }));
-     
+
   }, [state.openVulnId, state.apiVulns]);
+
+  // Вложения открытой уязвимости: грузим при открытии карточки, чистим при закрытии.
+  useEffect(() => {
+    const pid = state.openProjectId;
+    const vid = state.openVulnId;
+    if (pid == null || vid == null) {
+      setStateRaw((s) => (s.vulnFiles.length === 0 ? s : { ...s, vulnFiles: [] }));
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const files = await apiListVulnFiles(pid, vid);
+        if (!cancelled) setStateRaw((s) => ({ ...s, vulnFiles: files }));
+      } catch {
+        if (!cancelled) setStateRaw((s) => ({ ...s, vulnFiles: [] }));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [state.openVulnId, state.openProjectId]);
 
   /* Esc dismisses the frontmost open overlay, mirroring a backdrop click. Modals
      and the notifications panel each carry their own onClose on `.modalback` /
@@ -2246,6 +2407,25 @@ export function StormApp() {
      known ports still contributes its bare name — otherwise it would vanish from
      an export that is supposed to list it. */
   const exportLinesFor = (scope: ExportScope): string[] => {
+    if (scope === "js-endpoints" || scope === "js-secrets") {
+      // Источник: открытая карточка файла → страница «все файлы хоста» → весь
+      // отфильтрованный список. Так «Экспорт» на странице файла даёт ровно его
+      // находки, а та же кнопка в списке — находки всего раздела.
+      const src = _jsd ? [_jsd] : _jsHost ? jsFiles.filter((f) => f.host === _jsHost) : jsFilesFiltered;
+      const out: string[] = [];
+      const uniq = new Set<string>();
+      for (const f of src) {
+        // Вид и значение — табом: секрет может содержать что угодно, таб переживает grep и вставку в таблицу.
+        const lines = scope === "js-endpoints" ? f.endpoints : f.secrets.map((sec) => `${sec.kind}\t${sec.match}`);
+        for (const line of lines) {
+          const v = line.trim();
+          if (!v || uniq.has(v)) continue;
+          uniq.add(v);
+          out.push(v);
+        }
+      }
+      return out;
+    }
     if (scope === "ips") {
       // The row already carries the ports of every host sharing this address.
       return ipsRows.flatMap((r) => (r.ports.length ? r.ports.map((p) => `${r.ip}:${p.n}`) : [r.ip]));
@@ -2311,7 +2491,12 @@ export function StormApp() {
     if (state.exportScope === "endpoints" && state.exportFormat === "openapi") {
       downloadText(endpointLinesToOpenApi(lines), `${name}_endpoints.json`, "application/json");
     } else {
-      const file = state.exportScope === "hosts" ? "hosts" : state.exportScope === "ips" ? "ips" : "endpoints";
+      const file =
+        state.exportScope === "hosts" ? "hosts"
+        : state.exportScope === "ips" ? "ips"
+        : state.exportScope === "js-endpoints" ? "js_paths"
+        : state.exportScope === "js-secrets" ? "js_secrets"
+        : "endpoints";
       downloadText(lines.join("\n"), `${name}_${file}.txt`);
     }
     closeReconExport();
@@ -2443,11 +2628,38 @@ export function StormApp() {
 
   const toggleEpGroup = (host: string) =>
     setState((s) => ({ epExpanded: s.epExpanded.includes(host) ? s.epExpanded.filter((x) => x !== host) : [...s.epExpanded, host] }));
-  // JS files share the epExpanded set, namespaced "js:<host>" so a host and its
-  // JS group don't collide.
-  const toggleJsFile = (url: string) => {
-    const key = `js:file:${url}`;
+  // JS groups share the epExpanded set, namespaced "js:host:<host>" so a host and
+  // its JS group don't collide. Files no longer expand in place — a click opens
+  // the file's own card, like hosts and IPs.
+  const toggleJsGroup = (host: string) => {
+    const key = `js:host:${host}`;
     setState((s) => ({ epExpanded: s.epExpanded.includes(key) ? s.epExpanded.filter((x) => x !== key) : [...s.epExpanded, key] }));
+  };
+  /** Deletes every JS finding of one host, after confirmation. */
+  const deleteJsHost = async (hostId: number | undefined, label: string) => {
+    const pid = state.openProjectId;
+    if (pid == null || hostId == null) return;
+    if (!window.confirm(`${t("Delete all JS findings for")} ${label}?`)) return;
+    try {
+      await apiDeleteJsFilesForHost(pid, hostId);
+      reloadJsFiles();
+      pushToast(t("JS findings deleted"), "success");
+    } catch (e) {
+      pushToast(getApiErrorMessage(e, t("Delete failed")), "error");
+    }
+  };
+  /** Bulk-deletes every JS file currently shown (after the section's filters). */
+  const bulkDeleteJsVisible = async (ids: number[]) => {
+    const pid = state.openProjectId;
+    if (pid == null || ids.length === 0) return;
+    if (!window.confirm(`${t("Delete")} ${ids.length} ${t("JS files")}?`)) return;
+    try {
+      const n = await apiBulkDeleteJsFiles(pid, ids);
+      reloadJsFiles();
+      pushToast(`${t("JS findings deleted")} (${n})`, "success");
+    } catch (e) {
+      pushToast(getApiErrorMessage(e, t("Delete failed")), "error");
+    }
   };
   /* Starts the scan on exactly the domains left in the setup page's list — the
      backend takes that list verbatim (empty would fall back to every project
@@ -3170,6 +3382,36 @@ export function StormApp() {
     setState({ section: "vulns", openVulnId: id, vulnDetailForm: v ? vulnFormFrom(v) : {} });
   };
   const closeVulnDetail = () => setState({ openVulnId: null });
+  // Вложения уязвимости: загрузка (drag-drop / выбор файлов) и удаление. Файлы
+  // привязаны к открытой уязвимости (openVulnId) — доказательная база в MinIO.
+  const uploadVulnFilesFor = async (files: File[]) => {
+    const pid = state.openProjectId;
+    const vid = state.openVulnId;
+    if (pid == null || vid == null || files.length === 0) return;
+    setState({ vulnFilesBusy: true });
+    try {
+      for (const f of files) {
+        await apiUploadVulnFile(pid, vid, f);
+      }
+      const fresh = await apiListVulnFiles(pid, vid);
+      setState({ vulnFiles: fresh, vulnFilesBusy: false });
+      pushToast(files.length === 1 ? t("File attached") : `${files.length} ${t("files attached")}`, "success");
+    } catch (e) {
+      setState({ vulnFilesBusy: false });
+      pushToast(getApiErrorMessage(e, t("Couldn't upload the file")), "error");
+    }
+  };
+  const removeVulnFile = async (fileId: number) => {
+    const pid = state.openProjectId;
+    const vid = state.openVulnId;
+    if (pid == null || vid == null) return;
+    try {
+      await apiDeleteVulnFile(pid, vid, fileId);
+      setState((s) => ({ vulnFiles: s.vulnFiles.filter((f) => f.id !== fileId) }));
+    } catch (e) {
+      pushToast(getApiErrorMessage(e, t("Couldn't delete the file")), "error");
+    }
+  };
   const updateVulnDetailForm = <K extends keyof VulnDetailForm>(k: K, v: VulnDetailForm[K]) =>
     setState((s) => ({ vulnDetailForm: { ...s.vulnDetailForm, [k]: v } }));
   const addVdStep = () => setState((s) => ({ vulnDetailForm: { ...s.vulnDetailForm, stepsList: [...(s.vulnDetailForm.stepsList ?? []), ""] } }));
@@ -3190,22 +3432,18 @@ export function StormApp() {
       list[i] = val;
       return { vulnDetailForm: { ...s.vulnDetailForm, stepsList: list } };
     });
-  const pasteVdStepImage = (i: number, e: ReactClipboardEvent<HTMLInputElement>) => {
-    const items = e.clipboardData?.items ?? [];
-    for (const it of Array.from(items)) {
-      if (it.type && it.type.indexOf("image") === 0) {
-        e.preventDefault();
-        const file = it.getAsFile();
-        if (!file) continue;
-        const reader = new FileReader();
-        reader.onload = (ev) =>
-          setState((s) => {
-            const imgs = { ...(s.vulnDetailForm.stepImages ?? {}) };
-            imgs[i] = [...(imgs[i] ?? []), String(ev.target?.result ?? "")];
-            return { vulnDetailForm: { ...s.vulnDetailForm, stepImages: imgs } };
-          });
-        reader.readAsDataURL(file);
-      }
+  /** Read image files (from a paste in the step editor) and append them to step i. */
+  const attachVdStepImages = (i: number, files: File[]) => {
+    for (const file of files) {
+      if (!file.type.startsWith("image/")) continue;
+      const reader = new FileReader();
+      reader.onload = (ev) =>
+        setState((s) => {
+          const imgs = { ...(s.vulnDetailForm.stepImages ?? {}) };
+          imgs[i] = [...(imgs[i] ?? []), String(ev.target?.result ?? "")];
+          return { vulnDetailForm: { ...s.vulnDetailForm, stepImages: imgs } };
+        });
+      reader.readAsDataURL(file);
     }
   };
   const removeVdStepImage = (i: number, imgIdx: number) =>
@@ -3674,7 +3912,8 @@ export function StormApp() {
   const vfA = state.vulnFilterAuthor.trim().toLowerCase();
   const vfS = state.vulnFilterStatuses;
   const vfSev = state.vulnFilterSeverities;
-  const vfH = state.vulnFilterHost.trim().toLowerCase();
+  // Единое поле поиска: совпадение по хосту ИЛИ по названию находки.
+  const vfQ = state.vulnFilterHost.trim().toLowerCase();
   // Within a group the selected values are OR-ed; the groups are AND-ed. An empty
   // group filters nothing, which is what makes "All" light up on its own.
   const vulns = d.vulns
@@ -3684,7 +3923,7 @@ export function StormApp() {
         (!vfA || v.author.toLowerCase().includes(vfA)) &&
         (vfS.length === 0 || vfS.includes(v.status)) &&
         (vfSev.length === 0 || vfSev.includes(v.sev)) &&
-        (!vfH || v.host.toLowerCase().includes(vfH))
+        (!vfQ || v.host.toLowerCase().includes(vfQ) || v.title.toLowerCase().includes(vfQ))
     )
     // Newest first: a just-added finding lands at the top, not buried at the end.
     // idx is captured above, so edit/delete still address the right d.vulns entry.
@@ -3859,8 +4098,19 @@ export function StormApp() {
   const jsGroups = [...new Set(jsFilesFiltered.map((f) => f.host))].map((host) => {
     const files = jsFilesFiltered.filter((f) => f.host === host);
     // Every file in a group shares one host, so its id names the archive scope.
-    return { host, hostId: files[0]?.hostId, files, count: files.length };
+    return { host, hostId: files[0]?.hostId, files, count: files.length, paths: files.reduce((n, f) => n + f.endpoints.length, 0) };
   });
+  /** File-name tail of a JS URL, and a compact byte size — shared by the JS views. */
+  const fileBase = (url: string) => url.split("/").pop() || url;
+  const kb = (n: number | null) => (n == null ? "" : n < 1024 ? `${n} B` : `${Math.round(n / 1024)} KB`);
+  /** Open JS file card — found over the whole list, so a list filter can't close it. */
+  const _jsd = state.openJsFileId != null ? jsFiles.find((f) => f.id === state.openJsFileId) : undefined;
+  const openJsFile = (id: number) => setState({ openJsFileId: id });
+  const closeJsFile = () => setState({ openJsFileId: null });
+  /** Open "all files of host" JS page, or null. */
+  const _jsHost = state.openJsHost;
+  const openJsHostDetail = (host: string) => setState({ openJsHost: host, openJsFileId: null });
+  const closeJsHostDetail = () => setState({ openJsHost: null });
 
   /* The domains the JS scan can target: every project domain the host filters
      leave on screen, minus IP-origin rows and IP literals (the farm scans names,
@@ -3928,7 +4178,7 @@ export function StormApp() {
   const sectionLabel =
     sec === "hosts"
       ? ({ hosts: "Hosts", ips: "IPs", endpoints: "Endpoints", js: "JS scan" } as Record<string, string>)[rv] || "Hosts"
-      : ({ overview: "Overview", vulns: "Vulnerabilities", notes: "Notes", creds: "Creds", members: "Members", activity: "Activity" } as Record<string, string>)[sec] || "Overview";
+      : ({ overview: "Overview", vulns: "Issues", notes: "Notes", creds: "Creds", members: "Members", activity: "Activity" } as Record<string, string>)[sec] || "Overview";
   /** The item open inside the section, if any — the last crumb (e.g. the note's title). */
   const crumbLeaf =
     // The recon full-page forms are crumbs of their own: Project / Hosts / Export,
@@ -3943,6 +4193,10 @@ export function StormApp() {
         ? t("Add endpoints")
         : sec === "hosts" && rv === "js" && state.jsScanSetupOpen
         ? t("Choose domains")
+        : sec === "hosts" && rv === "js" && _jsd
+        ? fileBase(_jsd.url)
+        : sec === "hosts" && rv === "js" && _jsHost
+        ? _jsHost
         : sec === "notes" && state.openNoteId != null
           ? d.notes.find((n) => n.id === state.openNoteId)?.title ?? ""
           : sec === "vulns" && state.openVulnId != null
@@ -4540,7 +4794,7 @@ export function StormApp() {
             })}
           </div>
         </div>
-        {tabItem(t("Vulnerabilities"), "star2", sv, () => setSection("vulns"), { text: String(d.vulns.length), color: sv.badgeColor, bg: sv.badgeBg })}
+        {tabItem(t("Issues"), "star2", sv, () => setSection("vulns"), { text: String(d.vulns.length), color: sv.badgeColor, bg: sv.badgeBg })}
         {tabItem(t("Notes"), "doc", sn, () => setSection("notes"), { text: String(d.notes.length), color: sn.badgeColor, bg: sn.badgeBg })}
         {tabItem(t("Creds"), "lock", scr, () => setSection("creds"), { text: String(d.creds.length), color: scr.badgeColor, bg: scr.badgeBg })}
         {canViewMembers && tabItem(t("Members"), "users", sm, () => setSection("members"), { text: String(d.members.length), color: sm.badgeColor, bg: sm.badgeBg })}
@@ -4646,10 +4900,16 @@ export function StormApp() {
               )}
               {/* Opens the domain picker rather than scanning straight away, so the
                   label says what the click does: choose what to scan. */}
-              {sec === "hosts" && rv === "js" && !state.jsScanSetupOpen && (
-                <button className="addbtn clk" onClick={openJsScanSetup} disabled={isFarmJobInFlight(state.jsFarmJob?.status ?? "")} style={{ height: 42, opacity: isFarmJobInFlight(state.jsFarmJob?.status ?? "") ? 0.6 : 1 }}>
-                  <Icon name="search" size={15} color="var(--st-on-accent)" sw={2.6} />{t("Select domains & scan")}
-                </button>
+              {/* Одна кнопка «Экспорт»: пути или секреты выбираются уже на странице экспорта. */}
+              {sec === "hosts" && rv === "js" && !state.jsScanSetupOpen && !state.exportPageOpen && !_jsd && (
+                <>
+                  <button className="clk" onClick={() => openReconExport("js-endpoints")} style={{ height: 42, padding: "0 16px", border: "1px solid var(--st-border)", borderRadius: 10, background: "var(--st-surface)", font: "700 13px Inter,sans-serif", color: "var(--st-accent-2)", display: "inline-flex", alignItems: "center", gap: 7 }}>
+                    <Icon name="upload" size={15} sw={2.2} color="var(--st-accent-2)" />{t("Export")}
+                  </button>
+                  <button className="addbtn clk" onClick={openJsScanSetup} disabled={isFarmJobInFlight(state.jsFarmJob?.status ?? "")} style={{ height: 42, opacity: isFarmJobInFlight(state.jsFarmJob?.status ?? "") ? 0.6 : 1 }}>
+                    <Icon name="search" size={15} color="var(--st-on-accent)" sw={2.6} />{t("Select domains & scan")}
+                  </button>
+                </>
               )}
               {/* В карточке уязвимости кнопка живёт в строке «All findings» (см. renderVulnDetail). */}
               {sec === "vulns" && state.openVulnId == null && (
@@ -5079,7 +5339,12 @@ export function StormApp() {
      list view renders: narrowing it there narrows what lands here. */
   const renderExport = () => {
     const scope = state.exportScope;
-    const title = scope === "hosts" ? t("Export hosts") : scope === "ips" ? t("Export IP addresses") : t("Export endpoints");
+    const title =
+      scope === "hosts" ? t("Export hosts")
+      : scope === "ips" ? t("Export IP addresses")
+      : scope === "js-endpoints" ? t("Export paths")
+      : scope === "js-secrets" ? t("Export secrets")
+      : t("Export endpoints");
     const kept = new Set(exportTextLines(state.exportText));
     const left = exportLinesFor(scope).filter((l) => kept.has(l));
     const keptCount = exportTextLines(state.exportText).length;
@@ -5087,7 +5352,8 @@ export function StormApp() {
     const paneCol: CSSProperties = { display: "flex", flexDirection: "column", minHeight: 0 };
     return (
       <div className="route">
-        {reconFilterRow(scope === "ips" ? "ips" : scope === "endpoints" ? "endpoints" : "hosts")}
+        {/* JS exports carry no recon filter row — the JS list has its own filters. */}
+        {!scope.startsWith("js-") && reconFilterRow(scope === "ips" ? "ips" : scope === "endpoints" ? "endpoints" : "hosts")}
         {/* Height leaves room for the filter row the card now sits under. */}
         <div style={{ ...CARD, padding: 0, overflow: "hidden", display: "flex", flexDirection: "column", height: "calc(100vh - 318px)" }}>
           <div style={{ flex: "none", display: "flex", alignItems: "center", gap: 10, padding: "16px 22px", borderBottom: "1px solid var(--st-divider)" }}>
@@ -5175,6 +5441,160 @@ export function StormApp() {
     );
   };
 
+  /** "All files of one host" page — aggregates its files, secrets and paths. */
+  const renderJsHostDetail = (host: string) => {
+    const files = jsFiles.filter((f) => f.host === host);
+    const allSecrets = files.flatMap((f) => f.secrets.map((s) => ({ ...s, file: fileBase(f.url) })));
+    const allPaths = [...new Set(files.flatMap((f) => f.endpoints))].sort();
+    const totalBytes = files.reduce((n, f) => n + (f.status === "ok" ? (f.size ?? 0) : 0), 0);
+    const secGrid = "minmax(0,130px) minmax(0,150px) minmax(0,1fr) minmax(0,1.2fr)";
+    return (
+      <div style={{ animation: "storm-fade .2s ease both" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
+          {/* Экспорт для этого хоста делает единственная кнопка «Export» в шапке
+              секции JS scan (она учитывает открытый хост), поэтому отдельной
+              кнопки экспорта в под-шапке нет. */}
+          <span className="clk" onClick={closeJsHostDetail} style={{ display: "inline-flex", alignItems: "center", gap: 6, font: "600 12.5px Inter,sans-serif", color: "var(--st-text-2)", background: "var(--st-surface)", border: "1px solid var(--st-border-light)", borderRadius: 20, padding: "7px 13px", cursor: "pointer" }}>
+            <Icon name="chevron-left" size={15} />{t("All JS files")}
+          </span>
+        </div>
+        <div style={{ ...CARD, padding: "22px 24px", marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <Icon name="globe2" size={17} sw={2.2} color="var(--st-text-2)" style={{ flex: "none" }} />
+            <span className="mono" style={{ font: "800 18px 'JetBrains Mono',monospace", color: "var(--st-text)", wordBreak: "break-all" }}>{host}</span>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 }}>
+            <span className="mono" style={{ fontSize: 11, fontWeight: 600, color: "var(--st-text-2)", background: "var(--st-hover)", border: "1px solid var(--st-border-light)", borderRadius: 6, padding: "3px 9px" }}>{files.length} {t("files")}</span>
+            <span className="mono" style={{ fontSize: 11, fontWeight: 600, color: "var(--st-text-2)", background: "var(--st-hover)", border: "1px solid var(--st-border-light)", borderRadius: 6, padding: "3px 9px" }}>{allPaths.length} {t("paths")}</span>
+            <span className="mono" style={{ fontSize: 11, fontWeight: 600, color: allSecrets.length ? "var(--st-danger)" : "var(--st-text-2)", background: "var(--st-hover)", border: "1px solid var(--st-border-light)", borderRadius: 6, padding: "3px 9px" }}>{allSecrets.length} {t("secrets")}</span>
+            <span className="mono" style={{ fontSize: 11, fontWeight: 600, color: "var(--st-text-2)", background: "var(--st-hover)", border: "1px solid var(--st-border-light)", borderRadius: 6, padding: "3px 9px" }}>{kb(totalBytes)}</span>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <span style={{ font: "700 13px Inter,sans-serif", color: "var(--st-text)" }}>{t("Files")} <span className="mono" style={{ color: "var(--st-text-3)", fontWeight: 600 }}>{files.length}</span></span>
+        </div>
+        <div style={{ ...CARD, overflow: "hidden", marginBottom: 20 }}>
+          {files.map((f) => (
+            <div key={f.id} className="prow clk" onClick={() => openJsFile(f.id)} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 84px 84px 96px", alignItems: "center", gap: 14, padding: "13px 20px", borderBottom: "1px solid var(--st-divider)" }}>
+              <span className="mono hostname" title={f.url} style={{ font: "600 13px 'JetBrains Mono',monospace", color: f.status === "ok" ? "var(--st-text)" : "var(--st-text-faint)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer" }}>{fileBase(f.url)}</span>
+              <span className="mono" style={{ fontSize: 11.5, color: "var(--st-text-3)" }}>{f.endpoints.length} {t("paths")}</span>
+              <span className="mono" style={{ fontSize: 11.5, fontWeight: 700, color: f.secrets.length ? "var(--st-danger)" : "var(--st-text-faint)" }}>{f.secrets.length}</span>
+              <span className="mono" style={{ fontSize: 11, color: "var(--st-text-faint)", textAlign: "right" }}>{f.status === "ok" ? kb(f.size) : f.status}</span>
+            </div>
+          ))}
+          {files.length === 0 && (
+            <div style={{ padding: 40, textAlign: "center", color: "var(--st-text-faint)", fontSize: 13.5 }}>{t("No JS files on this host.")}</div>
+          )}
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <span style={{ font: "700 13px Inter,sans-serif", color: "var(--st-text)" }}>{t("Secrets")} <span className="mono" style={{ color: "var(--st-text-3)", fontWeight: 600 }}>{allSecrets.length}</span></span>
+        </div>
+        <div style={{ ...CARD, overflow: "hidden", marginBottom: 20 }}>
+          {allSecrets.length > 0 && (
+            <div style={{ display: "grid", gridTemplateColumns: secGrid, gap: 14, alignItems: "center", padding: "12px 20px", borderBottom: "1px solid var(--st-divider)", font: "700 11px Inter,sans-serif", letterSpacing: ".5px", color: "var(--st-text-faint)", textTransform: "uppercase" }}>
+              <div>{t("File")}</div><div>{t("Kind")}</div><div>{t("Match")}</div><div>{t("Snippet")}</div>
+            </div>
+          )}
+          {allSecrets.map((sec, i) => {
+            const c = SECRET_SEV[sec.severity] ?? SECRET_SEV.low;
+            return (
+              <div key={i} className="prow" style={{ display: "grid", gridTemplateColumns: secGrid, alignItems: "start", gap: 14, padding: "13px 20px", borderBottom: "1px solid var(--st-divider)" }}>
+                <span className="mono" style={{ fontSize: 11, color: "var(--st-text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={sec.file}>{sec.file}</span>
+                <span className="mono" style={{ justifySelf: "start", fontSize: 10.5, fontWeight: 700, borderRadius: 5, padding: "2px 8px", background: c.bg, color: c.color }}>{sec.kind}</span>
+                <span className="mono" style={{ fontSize: 12, color: "var(--st-text-2)", wordBreak: "break-all" }}>{sec.match}</span>
+                <span className="mono" style={{ fontSize: 11.5, color: "var(--st-text-2)", whiteSpace: "pre-wrap", wordBreak: "break-all", lineHeight: 1.55, userSelect: "text" }}>{sec.snippet}</span>
+              </div>
+            );
+          })}
+          {allSecrets.length === 0 && (
+            <div style={{ padding: 40, textAlign: "center", color: "var(--st-text-faint)", fontSize: 13.5 }}>{t("No secrets on this host.")}</div>
+          )}
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <span style={{ font: "700 13px Inter,sans-serif", color: "var(--st-text)" }}>{t("Paths")} <span className="mono" style={{ color: "var(--st-text-3)", fontWeight: 600 }}>{allPaths.length}</span></span>
+        </div>
+        <div style={{ ...CARD, overflow: "hidden", marginBottom: 20 }}>
+          {allPaths.map((path, i) => (
+            <div key={i} className="prow" style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 20px", borderBottom: "1px solid var(--st-divider)" }}>
+              <span className="mono" style={{ fontSize: 12.5, color: "var(--st-text)", wordBreak: "break-all" }}>{path}</span>
+            </div>
+          ))}
+          {allPaths.length === 0 && (
+            <div style={{ padding: 40, textAlign: "center", color: "var(--st-text-faint)", fontSize: 13.5 }}>{t("No paths on this host.")}</div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  /** One JS file's card — its secrets table and paths list, with Export. */
+  const renderJsFileDetail = (f: JsFileEntry) => {
+    const canExport = f.endpoints.length > 0 || f.secrets.length > 0;
+    const secGrid = "minmax(0,150px) minmax(0,1fr) minmax(0,1.2fr)";
+    return (
+      <div style={{ animation: "storm-fade .2s ease both" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
+          <span className="clk" onClick={closeJsFile} style={{ display: "inline-flex", alignItems: "center", gap: 6, font: "600 12.5px Inter,sans-serif", color: "var(--st-text-2)", background: "var(--st-surface)", border: "1px solid var(--st-border-light)", borderRadius: 20, padding: "7px 13px", cursor: "pointer" }}>
+            <Icon name="chevron-left" size={15} />{t("All JS files")}
+          </span>
+          <div style={{ flex: 1 }} />
+          <button className="clk" onClick={() => openReconExport(f.endpoints.length ? "js-endpoints" : "js-secrets")} disabled={!canExport} style={{ height: 42, padding: "0 16px", border: "1px solid var(--st-border)", borderRadius: 10, background: "var(--st-surface)", font: "700 13px Inter,sans-serif", color: canExport ? "var(--st-accent-2)" : "var(--st-text-faint)", display: "inline-flex", alignItems: "center", gap: 7, cursor: canExport ? "pointer" : "default" }}>
+            <Icon name="upload" size={16} sw={2.2} color={canExport ? "var(--st-accent-2)" : "var(--st-text-faint)"} />{t("Export")}
+          </button>
+        </div>
+        <div style={{ ...CARD, padding: "22px 24px", marginBottom: 16 }}>
+          <div className="mono" style={{ font: "800 17px 'JetBrains Mono',monospace", color: "var(--st-text)", wordBreak: "break-all" }}>{fileBase(f.url)}</div>
+          <a className="mono" href={f.url} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 8, fontSize: 12, color: "var(--st-accent)", wordBreak: "break-all" }}>{f.url}</a>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 }}>
+            <span className="mono" style={{ fontSize: 11, fontWeight: 600, color: "var(--st-text-2)", background: "var(--st-hover)", border: "1px solid var(--st-border-light)", borderRadius: 6, padding: "3px 9px" }}>{f.host}</span>
+            <span className="mono" style={{ fontSize: 11, fontWeight: 600, color: "var(--st-text-2)", background: "var(--st-hover)", border: "1px solid var(--st-border-light)", borderRadius: 6, padding: "3px 9px" }}>{f.status === "ok" ? kb(f.size) : f.status}</span>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <span style={{ font: "700 13px Inter,sans-serif", color: "var(--st-text)" }}>{t("Secrets")} <span className="mono" style={{ color: "var(--st-text-3)", fontWeight: 600 }}>{f.secrets.length}</span></span>
+        </div>
+        <div style={{ ...CARD, overflow: "hidden", marginBottom: 20 }}>
+          {f.secrets.length > 0 && (
+            <div style={{ display: "grid", gridTemplateColumns: secGrid, gap: 14, alignItems: "center", padding: "12px 20px", borderBottom: "1px solid var(--st-divider)", font: "700 11px Inter,sans-serif", letterSpacing: ".5px", color: "var(--st-text-faint)", textTransform: "uppercase" }}>
+              <div>{t("Kind")}</div><div>{t("Match")}</div><div>{t("Snippet")}</div>
+            </div>
+          )}
+          {f.secrets.map((sec, i) => {
+            const c = SECRET_SEV[sec.severity] ?? SECRET_SEV.low;
+            return (
+              <div key={i} className="prow" style={{ display: "grid", gridTemplateColumns: secGrid, alignItems: "start", gap: 14, padding: "13px 20px", borderBottom: "1px solid var(--st-divider)" }}>
+                <span className="mono" style={{ justifySelf: "start", fontSize: 10.5, fontWeight: 700, borderRadius: 5, padding: "2px 8px", background: c.bg, color: c.color }}>{sec.kind}</span>
+                <span className="mono" style={{ fontSize: 12, color: "var(--st-text-2)", wordBreak: "break-all" }}>{sec.match}</span>
+                <span className="mono" style={{ fontSize: 11.5, color: "var(--st-text-2)", whiteSpace: "pre-wrap", wordBreak: "break-all", lineHeight: 1.55, userSelect: "text" }}>{sec.snippet}</span>
+              </div>
+            );
+          })}
+          {f.secrets.length === 0 && (
+            <div style={{ padding: 40, textAlign: "center", color: "var(--st-text-faint)", fontSize: 13.5 }}>{f.status === "ok" ? t("Nothing found in this file.") : t("File could not be scanned.")}</div>
+          )}
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <span style={{ font: "700 13px Inter,sans-serif", color: "var(--st-text)" }}>{t("Paths")} <span className="mono" style={{ color: "var(--st-text-3)", fontWeight: 600 }}>{f.endpoints.length}</span></span>
+        </div>
+        <div style={{ ...CARD, overflow: "hidden", marginBottom: 20 }}>
+          {f.endpoints.map((path, i) => (
+            <div key={i} className="prow" style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 20px", borderBottom: "1px solid var(--st-divider)" }}>
+              <span className="mono" style={{ fontSize: 12.5, color: "var(--st-text)", wordBreak: "break-all" }}>{path}</span>
+            </div>
+          ))}
+          {f.endpoints.length === 0 && (
+            <div style={{ padding: 40, textAlign: "center", color: "var(--st-text-faint)", fontSize: 13.5 }}>{t("No paths in this file.")}</div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const renderRecon = () => {
     if (state.exportPageOpen) return renderExport();
     if (rv === "js" && state.jsScanSetupOpen) return renderJsScanSetup();
@@ -5236,8 +5656,8 @@ export function StormApp() {
                   <span className="mono" style={{ font: "700 14px 'JetBrains Mono',monospace", color: "var(--st-text)", flex: 1 }}>{g.host}</span>
                   <span className="mono" style={{ fontSize: 11.5, fontWeight: 700, color: "var(--st-text-2)", background: "var(--st-hover)", borderRadius: 7, padding: "3px 9px" }}>{g.count}</span>
                 </div>
-                {g.expanded && (
-                  <div style={{ borderTop: "1px solid var(--st-divider)", animation: "storm-fade .2s ease both" }}>
+                <Collapse open={g.expanded}>
+                  <div style={{ borderTop: "1px solid var(--st-divider)" }}>
                     <div style={{ display: "grid", gridTemplateColumns: "72px minmax(0,1fr) 96px", gap: 10, padding: "11px 20px 11px 50px", borderBottom: "1px solid var(--st-divider)", font: "700 10.5px Inter,sans-serif", letterSpacing: ".5px", color: "var(--st-text-faint)", textTransform: "uppercase" }}>
                       <div>{t("Method")}</div><div>{t("Path")}</div><div />
                     </div>
@@ -5255,7 +5675,7 @@ export function StormApp() {
                       );
                     })}
                   </div>
-                )}
+                </Collapse>
               </div>
             ))}
             {endpointTotal === 0 && <div style={{ padding: 52, textAlign: "center", color: "var(--st-text-faint)", fontSize: 14, background: "var(--st-surface)", border: "1px solid var(--st-border-light)", borderRadius: 14 }}>{t("No endpoints discovered.")}</div>}
@@ -5264,9 +5684,15 @@ export function StormApp() {
       );
     }
     if (rv === "js") {
+      // Открытая карточка файла имеет приоритет над страницей хоста: клик по файлу
+      // со страницы хоста показывает файл, а «назад» возвращает на страницу хоста.
+      if (_jsd) return renderJsFileDetail(_jsd);
+      if (_jsHost) return renderJsHostDetail(_jsHost);
       const jsRunning = isFarmJobInFlight(state.jsFarmJob?.status ?? "");
-      const fileBase = (url: string) => url.split("/").pop() || url;
-      const kb = (n: number | null) => (n == null ? "" : n < 1024 ? `${n} B` : `${Math.round(n / 1024)} KB`);
+      // Та же сетка, что у таблицы хостов: домен — раскрывающаяся строка, файлы под
+      // ним — вложенные. Столбцы: chevron, хост, пути, секреты, действия.
+      const jsGrid = "24px minmax(0,1.6fr) 84px 84px 96px";
+      const allVisibleIds = jsFilesFiltered.map((f) => f.id);
       return (
         <div className="route">
           {reconFilterRow("js")}
@@ -5277,72 +5703,59 @@ export function StormApp() {
               {t("Scanning")} {state.jsFarmJob?.targets_total ?? ""} {t("domains — secrets and paths appear as files are scanned.")}
             </div>
           )}
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {jsGroups.map((g) => (
-              <div key={g.host} style={{ background: "var(--st-surface)", border: "1px solid var(--st-border-light)", borderRadius: 14, overflow: "hidden" }}>
-                <div className="prow" style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px" }}>
-                  <Icon name="globe2" size={16} color="var(--st-text-3)" />
-                  <span className="mono" style={{ font: "700 14px 'JetBrains Mono',monospace", color: "var(--st-text)", flex: 1 }}>{g.host}</span>
-                  <span className="mono" style={{ fontSize: 11.5, fontWeight: 700, color: "var(--st-text-2)", background: "var(--st-hover)", borderRadius: 7, padding: "3px 9px" }}>{g.count}</span>
-                  {/* Re-downloads this host's .js into a zip (files aren't stored). */}
-                  <button className="clk" title={t("Download JS archive")} onClick={() => downloadJsArchive(g.hostId, g.host)} style={{ display: "inline-flex", alignItems: "center", gap: 6, height: 30, padding: "0 12px", border: "1px solid var(--st-border)", borderRadius: 9, background: "var(--st-surface)", font: "700 12px Inter,sans-serif", color: "var(--st-accent-2)" }}>
-                    <Icon name="download" size={14} sw={2.2} color="var(--st-accent-2)" />{t("Archive")}
-                  </button>
-                </div>
-                <div style={{ borderTop: "1px solid var(--st-divider)" }}>
-                  {g.files.map((file) => {
-                    const open = state.epExpanded.includes(`js:file:${file.url}`);
-                    return (
-                      <div key={file.id} style={{ borderBottom: "1px solid var(--st-elevated)" }}>
-                        <div className="prow clk" onClick={() => toggleJsFile(file.url)} style={{ display: "grid", gridTemplateColumns: "18px minmax(0,1fr) 72px 72px 68px", alignItems: "center", gap: 12, padding: "12px 20px 12px 22px" }}>
-                          <Icon name="chevron-right" size={14} color="var(--st-text-faint)" sw={2.4} style={{ transform: open ? "rotate(90deg)" : "none", transition: "transform .2s" }} />
-                          <span className="mono" title={file.url} style={{ fontSize: 12.5, color: file.status === "ok" ? "var(--st-text)" : "var(--st-text-faint)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fileBase(file.url)}</span>
-                          {/* Secret count is the headline signal, so it is colour-flagged. */}
-                          <span className="mono" style={{ fontSize: 11.5, fontWeight: 700, color: file.secrets.length ? "var(--st-danger)" : "var(--st-text-faint)" }}>{file.secrets.length} {t("secrets")}</span>
-                          <span className="mono" style={{ fontSize: 11.5, color: "var(--st-text-3)" }}>{file.endpoints.length} {t("paths")}</span>
-                          <span className="mono" style={{ fontSize: 11, color: "var(--st-text-faint)", textAlign: "right" }}>{file.status === "ok" ? kb(file.size) : file.status}</span>
-                        </div>
-                        {open && (
-                          <div style={{ padding: "4px 20px 16px 40px", animation: "storm-fade .2s ease both" }}>
-                            {file.secrets.length > 0 && (
-                              <div style={{ marginBottom: file.endpoints.length ? 14 : 0 }}>
-                                <div style={{ font: "700 10.5px Inter,sans-serif", letterSpacing: ".5px", textTransform: "uppercase", color: "var(--st-text-faint)", marginBottom: 7 }}>{t("Secrets")}</div>
-                                {file.secrets.map((sec, i) => {
-                                  const c = SECRET_SEV[sec.severity] ?? SECRET_SEV.low;
-                                  return (
-                                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 5, minWidth: 0 }}>
-                                      <span className="mono" style={{ flex: "none", fontSize: 10.5, fontWeight: 700, borderRadius: 5, padding: "2px 8px", background: c.bg, color: c.color }}>{sec.kind}</span>
-                                      <span className="mono" style={{ flex: "none", fontSize: 12, color: "var(--st-text-2)" }}>{sec.match}</span>
-                                      {sec.snippet && <span className="mono" title={sec.snippet} style={{ fontSize: 11.5, color: "var(--st-text-faint)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sec.snippet}</span>}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
-                            {file.endpoints.length > 0 && (
-                              <div>
-                                <div style={{ font: "700 10.5px Inter,sans-serif", letterSpacing: ".5px", textTransform: "uppercase", color: "var(--st-text-faint)", marginBottom: 7 }}>{t("Paths")}</div>
-                                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                                  {file.endpoints.map((p, i) => (
-                                    <span key={i} className="mono" style={{ fontSize: 11.5, borderRadius: 6, padding: "2px 8px", background: "var(--st-elevated)", color: "var(--st-text-2)" }}>{p}</span>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                            {file.secrets.length === 0 && file.endpoints.length === 0 && (
-                              <div style={{ font: "500 12.5px Inter,sans-serif", color: "var(--st-text-faint)" }}>{file.status === "ok" ? t("Nothing found in this file.") : t("File could not be scanned.")}</div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+          <div style={{ ...CARD, overflow: "hidden" }}>
+            {jsGroups.length > 0 && (
+              <div style={{ display: "grid", alignItems: "center", gridTemplateColumns: jsGrid, gap: 14, padding: "12px 20px", borderBottom: "1px solid var(--st-divider)", font: "700 11px Inter,sans-serif", letterSpacing: ".5px", color: "var(--st-text-faint)", textTransform: "uppercase" }}>
+                <div /><div>{t("Host")}</div><div>{t("Paths")}</div><div>{t("Secrets")}</div>
+                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                  {canEditProject && allVisibleIds.length > 0 && (
+                    <button className="clk" title={t("Delete objects")} aria-label={t("Delete objects")} onClick={() => bulkDeleteJsVisible(allVisibleIds)} style={{ width: 27, height: 27, flex: "none", padding: 0, border: "1px solid var(--st-border)", borderRadius: 8, background: "var(--st-surface)", color: "var(--st-danger)", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                      <Icon name="trash" size={15} sw={2.2} color="var(--st-danger)" />
+                    </button>
+                  )}
                 </div>
               </div>
-            ))}
-            {state.apiJsFiles === null && <div style={{ padding: 52, textAlign: "center", color: "var(--st-text-faint)", fontSize: 14, background: "var(--st-surface)", border: "1px solid var(--st-border-light)", borderRadius: 14 }}>{t("Loading JS files…")}</div>}
+            )}
+            {jsGroups.map((g) => {
+              const exp = state.epExpanded.includes(`js:host:${g.host}`);
+              const groupSecrets = g.files.reduce((n, f) => n + f.secrets.length, 0);
+              return (
+                <div key={g.host} style={{ borderBottom: "1px solid var(--st-divider)" }}>
+                  <div className="prow clk" onClick={() => toggleJsGroup(g.host)} style={{ display: "grid", gridTemplateColumns: jsGrid, alignItems: "center", gap: 14, padding: "15px 20px" }}>
+                    <Icon name="chevron-right" size={15} color="var(--st-text-faint)" sw={2.4} style={{ transform: exp ? "rotate(90deg)" : "none", transition: "transform .2s" }} />
+                    {/* Клик по имени хоста открывает страницу «все файлы хоста»; клик по
+                        остальной строке — раскрывает список файлов под ней. */}
+                    <span className="mono hostname clk" onClick={(ev) => { ev.stopPropagation(); openJsHostDetail(g.host); }} title={t("Open all files of this host")} style={{ font: "700 14px 'JetBrains Mono',monospace", color: "var(--st-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer" }}>{g.host}</span>
+                    <span className="mono" style={{ fontSize: 12, color: g.paths ? "var(--st-text-2)" : "var(--st-text-faint)" }}>{g.paths} {t("paths")}</span>
+                    <span className="mono" style={{ fontSize: 12, fontWeight: 700, color: groupSecrets ? "var(--st-danger)" : "var(--st-text-faint)" }}>{groupSecrets} {t("secrets")}</span>
+                    <div style={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
+                      {/* Re-downloads this host's .js into a zip (files aren't stored). */}
+                      <Tip label={t("Download JS archive")}><div className="actbtn" onClick={(ev) => { ev.stopPropagation(); downloadJsArchive(g.hostId, g.host); }}><Icon name="download" size={15} /></div></Tip>
+                      {canEditProject && <Tip label={t("Delete host JS")}><div className="actbtn del" onClick={(ev) => { ev.stopPropagation(); deleteJsHost(g.hostId, g.host); }}><Icon name="trash" size={15} /></div></Tip>}
+                    </div>
+                  </div>
+                  <Collapse open={exp}>
+                    <div style={{ background: "var(--st-elevated)" }}>
+                      {g.files.map((file) => (
+                        <div key={file.id} className="prow clk" onClick={() => openJsFile(file.id)} style={{ display: "grid", gridTemplateColumns: jsGrid, alignItems: "center", gap: 14, padding: "13px 20px 13px 44px", borderTop: "1px solid var(--st-divider)" }}>
+                          <span />
+                          <span className="mono hostname" title={file.url} style={{ font: "600 13px 'JetBrains Mono',monospace", color: file.status === "ok" ? "var(--st-text)" : "var(--st-text-faint)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer" }}>{fileBase(file.url)}</span>
+                          <span className="mono" style={{ fontSize: 11.5, color: "var(--st-text-3)" }}>{file.endpoints.length} {t("paths")}</span>
+                          <span className="mono" style={{ fontSize: 11.5, fontWeight: 700, color: file.secrets.length ? "var(--st-danger)" : "var(--st-text-faint)" }}>{file.secrets.length} {t("secrets")}</span>
+                          <span className="mono" style={{ fontSize: 11, color: "var(--st-text-faint)", textAlign: "right" }}>{file.status === "ok" ? kb(file.size) : file.status}</span>
+                        </div>
+                      ))}
+                      {g.files.length === 0 && (
+                        <div style={{ padding: "13px 20px 13px 44px", borderTop: "1px solid var(--st-divider)", font: "500 12.5px Inter,sans-serif", color: "var(--st-text-faint)" }}>{t("No JS files on this host.")}</div>
+                      )}
+                    </div>
+                  </Collapse>
+                </div>
+              );
+            })}
+            {state.apiJsFiles === null && <div style={{ padding: 52, textAlign: "center", color: "var(--st-text-faint)", fontSize: 14 }}>{t("Loading JS files…")}</div>}
             {state.apiJsFiles !== null && jsGroups.length === 0 && (
-              <div style={{ padding: 52, textAlign: "center", color: "var(--st-text-faint)", fontSize: 14, background: "var(--st-surface)", border: "1px solid var(--st-border-light)", borderRadius: 14 }}>{t("No JS files yet — pick domains and scan.")}</div>
+              <div style={{ padding: 52, textAlign: "center", color: "var(--st-text-faint)", fontSize: 14 }}>{t("No JS files yet — pick domains and scan.")}</div>
             )}
           </div>
         </div>
@@ -5394,8 +5807,8 @@ export function StormApp() {
                   </div>
                 </div>
                 {/* Expanding a host lists its subdomains — the addresses live in the IPs view. */}
-                {exp && (
-                  <div style={{ background: "var(--st-elevated)", animation: "storm-fade .2s ease both" }}>
+                <Collapse open={exp}>
+                  <div style={{ background: "var(--st-elevated)" }}>
                     {visibleSubdomainsOf(h).map((sub) => (
                       <div key={sub.id} className="prow clk" onClick={(ev) => { ev.stopPropagation(); openHostDetail(sub.id); }} style={{ display: "grid", gridTemplateColumns: hostGrid, alignItems: "start", gap: 14, padding: "13px 20px 13px 44px", borderTop: "1px solid var(--st-divider)" }}>
                         <span style={{ width: 6, height: 6, borderRadius: "50%", background: STDOT[sub.status] ?? STDOT.unknown, marginTop: 8, justifySelf: "end" }} />
@@ -5414,7 +5827,7 @@ export function StormApp() {
                       <div style={{ padding: "13px 20px 13px 44px", borderTop: "1px solid var(--st-divider)", font: "500 12.5px Inter,sans-serif", color: "var(--st-text-faint)" }}>{t("No subdomains discovered.")}</div>
                     )}
                   </div>
-                )}
+                </Collapse>
               </div>
             );
           })}
@@ -5564,31 +5977,35 @@ export function StormApp() {
     if (state.openVulnId != null) return renderVulnDetail();
     return (
       <div className="route">
-        {/* Панель фильтров: поиск по хосту и автору — слева (как в разделе
-            «Эндпоинты»), пилюли статуса и критичности — справа, отодвинуты
-            flex-распоркой. Счётчик уязвимостей переехал к заголовку секции. */}
-        <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 16, flexWrap: "wrap", rowGap: 10 }}>
-          {searchBox(t("Filter by host…"), state.vulnFilterHost, (v) => setState({ vulnFilterHost: v }), 190)}
-          {searchBox(t("Filter by author…"), state.vulnFilterAuthor, (v) => setState({ vulnFilterAuthor: v }), 190)}
-          <div style={{ flex: "1 1 auto" }} />
+        {/* Панель фильтров. Слева — единый поиск (хост ИЛИ название) и поиск по
+            автору; справа — группы STATUS и SEVERITY. Блок фильтров прижат вправо
+            через marginLeft:auto, поэтому при нехватке ширины он целиком
+            переносится на вторую строку и там тоже остаётся справа, а поиски —
+            на первой. Каждая группа и строка поисков переносятся сами (flexWrap),
+            так что на узких экранах всё аккуратно встаёт в несколько строк. */}
+        <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 16, flexWrap: "wrap" }}>
+          {searchBox(t("Filter by host or title…"), state.vulnFilterHost, (v) => setState({ vulnFilterHost: v }), 260)}
+          {searchBox(t("Filter by author…"), state.vulnFilterAuthor, (v) => setState({ vulnFilterAuthor: v }), 220)}
           {/* Status / severity are multi-select: pills toggle, several can be held at
               once, and clearing the last one falls back to "All". Driven by the token
               lists so they cannot drift from the backend's vocabularies. */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <span className="mono" style={{ fontSize: 10.5, letterSpacing: 1, color: "var(--st-text-faint)", fontWeight: 700 }}>{t("STATUS")}</span>
-            {filterPill(t("All"), vfS.length === 0, () => setState({ vulnFilterStatuses: [] }))}
-            {VSTATUS_ORDER.map((s) => filterPill(t(VSTATUS_LABEL[s]), vfS.includes(s), () => setState((st) => ({ vulnFilterStatuses: toggleIn(st.vulnFilterStatuses, s) }))))}
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <span className="mono" style={{ fontSize: 10.5, letterSpacing: 1, color: "var(--st-text-faint)", fontWeight: 700 }}>{t("SEVERITY")}</span>
-            {filterPill(t("All"), vfSev.length === 0, () => setState({ vulnFilterSeverities: [] }))}
-            {(["critical", "high", "medium", "low", "info"] as Severity[]).map((s) => filterPill(cap(s), vfSev.includes(s), () => setState((st) => ({ vulnFilterSeverities: toggleIn(st.vulnFilterSeverities, s) }))))}
+          <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", marginLeft: "auto" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span className="mono" style={{ fontSize: 10.5, letterSpacing: 1, color: "var(--st-text-faint)", fontWeight: 700 }}>{t("STATUS")}</span>
+              {filterPill(t("All"), vfS.length === 0, () => setState({ vulnFilterStatuses: [] }))}
+              {VSTATUS_ORDER.map((s) => filterPill(t(VSTATUS_LABEL[s]), vfS.includes(s), () => setState((st) => ({ vulnFilterStatuses: toggleIn(st.vulnFilterStatuses, s) }))))}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span className="mono" style={{ fontSize: 10.5, letterSpacing: 1, color: "var(--st-text-faint)", fontWeight: 700 }}>{t("SEVERITY")}</span>
+              {filterPill(t("All"), vfSev.length === 0, () => setState({ vulnFilterSeverities: [] }))}
+              {(["critical", "high", "medium", "low", "info"] as Severity[]).map((s) => filterPill(cap(s), vfSev.includes(s), () => setState((st) => ({ vulnFilterSeverities: toggleIn(st.vulnFilterSeverities, s) }))))}
+            </div>
           </div>
         </div>
         <div style={{ ...CARD, overflow: "hidden" }}>
           {vulns.length > 0 && (
             <div style={{ display: "grid", gridTemplateColumns: "48px minmax(0,1.8fr) minmax(0,1fr) 140px 110px 130px 120px 64px", gap: 10, padding: "13px 20px", borderBottom: "1px solid var(--st-divider)", font: "700 11px Inter,sans-serif", letterSpacing: ".5px", color: "var(--st-text-faint)", textTransform: "uppercase" }}>
-              <div>#</div><div>{t("Title")}</div><div>{t("Asset")}</div><div>{t("Status")}</div><div>{t("Severity")}</div><div>{t("Author")}</div><div>{t("Updated")}</div><div />
+              <div>#</div><div>{t("Title")}</div><div>{t("Host")}</div><div>{t("Status")}</div><div>{t("Severity")}</div><div>{t("Author")}</div><div>{t("Updated")}</div><div />
             </div>
           )}
           {vulns.map((v) => (
@@ -5722,9 +6139,13 @@ export function StormApp() {
                 const imgs = (vd.stepImages ?? {})[i] ?? [];
                 return (
                   <div key={i} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
                       <span className="mono" style={{ flex: "none", width: 26, height: 26, borderRadius: 8, background: "var(--st-accent-soft)", color: "var(--st-accent)", fontWeight: 700, fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>{i + 1}</span>
-                      <input className="finp" placeholder={t("Describe this step… (paste a screenshot to attach)")} value={s} onChange={(e) => updateVdStep(i, e.target.value)} onPaste={(e) => pasteVdStepImage(i, e)} style={{ flex: 1, fontFamily: "ui-monospace,Menlo,monospace", fontSize: 12.5 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <Suspense fallback={<div className="stormmd" style={{ minHeight: 44, color: "var(--st-text-faint)", font: "500 14px Inter,sans-serif" }}>{t("Loading editor…")}</div>}>
+                          <StormMarkdownEditor value={s} onChange={(md) => updateVdStep(i, md)} onImagePaste={(files) => attachVdStepImages(i, files)} placeholder={t("Describe this step… (paste a screenshot to attach)")} minHeight={44} />
+                        </Suspense>
+                      </div>
                       <div className="actbtn del" onClick={() => removeVdStep(i)}><Icon name="trash" size={15} /></div>
                     </div>
                     {imgs.length > 0 && (
@@ -5745,8 +6166,46 @@ export function StormApp() {
               <Icon name="plus" size={13} sw={2.4} />{t("Add step")}
             </button>
           </div>
-          <div style={{ marginBottom: 18 }}><label className="flabel">{t("Impact")}</label><textarea className="finp" rows={2} placeholder={t("Business/security impact if exploited…")} value={vd.impact || ""} onChange={(e) => updateVulnDetailForm("impact", e.target.value)} /></div>
-          <div><label className="flabel">{t("Remediation")}</label><textarea className="finp" rows={3} placeholder={t("How to fix or mitigate this vulnerability…")} value={vd.remediation || ""} onChange={(e) => updateVulnDetailForm("remediation", e.target.value)} /></div>
+          {/* Вложения: дропзона (клик открывает проводник / drag-drop) + список файлов. */}
+          <div style={{ marginBottom: 18 }}>
+            <label className="flabel">{t("Attachments")}</label>
+            <label
+              onDragOver={(e) => { e.preventDefault(); if (!state.vulnFileDrag) setState({ vulnFileDrag: true }); }}
+              onDragLeave={() => setState({ vulnFileDrag: false })}
+              onDrop={(e) => { e.preventDefault(); setState({ vulnFileDrag: false }); void uploadVulnFilesFor(Array.from(e.dataTransfer.files)); }}
+              style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 6, padding: "22px 16px", border: `1.5px dashed ${state.vulnFileDrag ? "var(--st-accent)" : "var(--st-border)"}`, borderRadius: 12, background: state.vulnFileDrag ? "var(--st-accent-soft)" : "var(--st-surface)", cursor: "pointer", textAlign: "center" }}
+            >
+              <Icon name="upload" size={20} color="var(--st-text-faint)" sw={2} />
+              <div style={{ fontSize: 13, color: "var(--st-text-2)", fontWeight: 600 }}>{state.vulnFilesBusy ? t("Uploading…") : t("Drag & drop files here, or click to browse")}</div>
+              <div style={{ fontSize: 11.5, color: "var(--st-text-faint)" }}>{t("Up to 50 MB each")}</div>
+              <input type="file" multiple hidden onChange={(e) => { const fs = e.target.files ? Array.from(e.target.files) : []; e.currentTarget.value = ""; void uploadVulnFilesFor(fs); }} />
+            </label>
+            {state.vulnFiles.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10 }}>
+                {state.vulnFiles.map((f) => (
+                  <div key={f.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", border: "1px solid var(--st-divider)", borderRadius: 10, background: "var(--st-surface)" }}>
+                    <Icon name="doc" size={15} color="var(--st-text-3)" />
+                    <span className="mono clk" title={t("Click to preview")} onClick={() => setState({ filePreview: f })} style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: "var(--st-accent-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer" }}>{f.original_name}</span>
+                    <span className="mono" style={{ flex: "none", fontSize: 11, color: "var(--st-text-faint)" }}>{kb(f.size_bytes)}</span>
+                    <a href={`/api/v1/files/${f.id}/download`} download={f.original_name} className="actbtn clk" title={t("Download")} style={{ cursor: "pointer", textDecoration: "none" }} onClick={(e) => e.stopPropagation()}><Icon name="download" size={14} color="var(--st-text-3)" /></a>
+                    <div className="actbtn del clk" title={t("Delete file")} onClick={() => void removeVulnFile(f.id)} style={{ cursor: "pointer" }}><Icon name="trash" size={14} color="var(--st-danger)" /></div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div style={{ marginBottom: 18 }}>
+            <label className="flabel">{t("Impact")}</label>
+            <Suspense fallback={<div className="stormmd" style={{ minHeight: 90, color: "var(--st-text-faint)", font: "500 14px Inter,sans-serif" }}>{t("Loading editor…")}</div>}>
+              <StormMarkdownEditor value={vd.impact || ""} onChange={(md) => updateVulnDetailForm("impact", md)} placeholder={t("Business/security impact if exploited…")} minHeight={90} />
+            </Suspense>
+          </div>
+          <div>
+            <label className="flabel">{t("Remediation")}</label>
+            <Suspense fallback={<div className="stormmd" style={{ minHeight: 120, color: "var(--st-text-faint)", font: "500 14px Inter,sans-serif" }}>{t("Loading editor…")}</div>}>
+              <StormMarkdownEditor value={vd.remediation || ""} onChange={(md) => updateVulnDetailForm("remediation", md)} placeholder={t("How to fix or mitigate this vulnerability…")} minHeight={120} />
+            </Suspense>
+          </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 22, fontSize: 12, color: "var(--st-text-faint)" }}>
             <span>{t("Reported by")} <b style={{ color: "var(--st-text-3)" }}>{original?.author}</b> · {original?.updated}</span>
             <div style={{ display: "flex", gap: 10 }}>
@@ -6392,27 +6851,32 @@ export function StormApp() {
 
         {/* main column */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, overflow: "hidden" }}>
-          <main style={{ flex: 1, overflow: "auto" }}>
-            {isList && renderProjects()}
-            {isDocs && (
-              <Suspense fallback={<div className="route" style={{ padding: "40px 48px", color: "var(--st-text-faint)", font: "500 14px Inter,sans-serif" }}>{t("Loading docs…")}</div>}>
-                <StormDocs isAdmin={isAdmin} onNavigateWorkspace={selProjects} />
-              </Suspense>
-            )}
-            {isTasks && renderTasks()}
-            {isStub && renderStub()}
-            {/* /members is admin-only (GET /users is too) — say so rather than
-                quietly showing the projects list instead. */}
-            {state.view === "workspaceMembers" &&
-              (isAdmin
-                ? renderWorkspaceMembers()
-                : renderNoAccessPage("The Members section is admin-only — this is where users are created and roles assigned."))}
-            {state.view === "detail" && (state.accessDenied ? renderNoAccessPage() : renderDetail())}
-            {state.view === "profile" && renderProfile()}
+          {/* Скролл-контейнер — колонка: контент растёт и прижимает футер к низу,
+              поэтому футер виден только когда страница прокручена в самый низ
+              (а не висит постоянной полосой под областью прокрутки). */}
+          <main style={{ flex: 1, overflow: "auto", display: "flex", flexDirection: "column" }}>
+            <div style={{ flex: "1 0 auto" }}>
+              {isList && renderProjects()}
+              {isDocs && (
+                <Suspense fallback={<div className="route" style={{ padding: "40px 48px", color: "var(--st-text-faint)", font: "500 14px Inter,sans-serif" }}>{t("Loading docs…")}</div>}>
+                  <StormDocs isAdmin={isAdmin} onNavigateWorkspace={selProjects} />
+                </Suspense>
+              )}
+              {isTasks && renderTasks()}
+              {isStub && renderStub()}
+              {/* /members is admin-only (GET /users is too) — say so rather than
+                  quietly showing the projects list instead. */}
+              {state.view === "workspaceMembers" &&
+                (isAdmin
+                  ? renderWorkspaceMembers()
+                  : renderNoAccessPage("The Members section is admin-only — this is where users are created and roles assigned."))}
+              {state.view === "detail" && (state.accessDenied ? renderNoAccessPage() : renderDetail())}
+              {state.view === "profile" && renderProfile()}
+            </div>
+            <footer style={{ flex: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: 16, background: "transparent", fontSize: 12.5, color: "var(--st-text-faint)", flexWrap: "wrap" }}>
+              <span style={{ fontWeight: 700, color: "var(--st-text-3)" }}>{t("STORM")}</span><span>·</span><span>{t("Licensed to SberTech · Copyright © 2026. All rights reserved.")}</span>
+            </footer>
           </main>
-          <footer style={{ flex: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: 16, background: "transparent", fontSize: 12.5, color: "var(--st-text-faint)", flexWrap: "wrap" }}>
-            <span style={{ fontWeight: 700, color: "var(--st-text-3)" }}>{t("STORM")}</span><span>·</span><span>{t("Licensed to SberTech · Copyright © 2026. All rights reserved.")}</span>
-          </footer>
         </div>
       </div>
 
@@ -6946,6 +7410,7 @@ export function StormApp() {
           </div>
         </div>
       )}
+      {state.filePreview && <FilePreview file={state.filePreview} onClose={() => setState({ filePreview: null })} />}
     </div>
   );
 }

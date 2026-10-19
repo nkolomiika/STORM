@@ -3,6 +3,7 @@ import type {
   JiraTaskDetail,
   JiraTaskList,
   AuthLoginResponse,
+  SsoConfig,
   TwoFASetupResponse,
   VulnerabilityComment,
   VulnerabilityDetails,
@@ -168,6 +169,12 @@ export async function login(username: string, password: string): Promise<AuthLog
   assertRequired(username, "Username");
   assertRequired(password, "Password");
   const { data } = await api.post<AuthLoginResponse>("/auth/login", { username, password });
+  return data;
+}
+
+/** Публичная конфигурация SSO: показывать ли кнопку входа и её надпись. */
+export async function getSsoConfig(): Promise<SsoConfig> {
+  const { data } = await api.get<SsoConfig>("/auth/sso/config");
   return data;
 }
 
@@ -722,10 +729,29 @@ export async function getJsScanJob(projectId: number, jobId: number): Promise<Js
   return data;
 }
 
-/** JS-файлы проекта с находками — раздел JS группирует их по хосту. */
-export async function getJsFiles(projectId: number): Promise<JsFile[]> {
-  const { data } = await api.get<JsFile[]>(`/projects/${projectId}/js-files`);
+/** JS-файлы проекта с находками — раздел JS группирует их по хосту.
+ *  Постранично: раздел стримит страницы и склеивает их на клиенте, чтобы
+ *  проекты с тысячами файлов не упирались в один огромный ответ. */
+export async function getJsFilesPage(
+  projectId: number,
+  page: number,
+  size: number,
+): Promise<PaginatedResponse<JsFile>> {
+  const { data } = await api.get<PaginatedResponse<JsFile>>(`/projects/${projectId}/js-files`, {
+    params: { page, size },
+  });
   return data;
+}
+
+/** Массово удаляет JS-файлы по id. Возвращает `deleted`. */
+export async function bulkDeleteJsFiles(projectId: number, ids: number[]): Promise<number> {
+  const { data } = await api.post<{ deleted: number }>(`/projects/${projectId}/js-files/bulk-delete`, { ids });
+  return data.deleted;
+}
+
+/** Удалить все JS-находки указанного хоста в проекте. */
+export async function deleteJsFilesForHost(projectId: number, hostId: number): Promise<void> {
+  await api.delete(`/projects/${projectId}/js-files/hosts/${hostId}`);
 }
 
 /** Zip найденных .js. `hostId` сужает архив до одного хоста; без него — весь проект.

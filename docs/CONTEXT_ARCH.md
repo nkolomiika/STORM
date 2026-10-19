@@ -14,7 +14,7 @@
 - инвентарь (хосты с несколькими IP, порты, сервисы, HTTP endpoints);
 - уязвимости с CVSS v3.1/v4.0, workflow_steps, файлами-доказательствами, комментариями с `@mention`;
 - in-app уведомления и реалтайм через WebSocket;
-- импорт/экспорт PCF-JSON и OpenAPI/Swagger по эндпоинтам;
+- импорт/экспорт STORM-JSON и OpenAPI/Swagger по эндпоинтам;
 - Confluence-like заметки проекта;
 - Word-отчёты (СЗИ и ПП — у ПП все страницы в landscape);
 - Jira-интеграция (экспорт уязвимости в issue) — SSRF + DNS-rebind защита, claim-row anti-race;
@@ -128,7 +128,7 @@ STORM/
 
 ```yaml
 backend       # FastAPI (uvicorn) :8000
-mail-worker   # отдельный процесс, потребляет pcf.mail
+mail-worker   # отдельный процесс, потребляет storm.mail
 frontend      # React/Vite :3000
 db            # PostgreSQL 16 :5433→5432
 minio         # MinIO :9000 (S3) + :9001 (Console)

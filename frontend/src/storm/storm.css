@@ -1,5 +1,5 @@
 /* STORM — Offensive Security Research & Management Console
-   Global styles ported from the design prototype (PCF.dc.html).
+   Global styles ported from the design prototype (STORM.dc.html).
    Colours reference the design tokens in theme.css — never a raw hex — so the
    whole UI re-themes (light/dark) by flipping <html data-theme>. */
 
@@ -25,6 +25,12 @@ html, body, #root {
 
 @keyframes storm-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .storm .route { animation: storm-fade .22s ease both; }
+/* Плавное раскрытие списков (реконовские группы): grid-template-rows 0fr -> 1fr
+   анимирует высоту без фиксированных значений. Внутренний слой прячет overflow и
+   получает min-height:0, иначе содержимое не схлопывается. */
+.storm .collapse { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .26s cubic-bezier(.4,0,.2,1); }
+.storm .collapse.open { grid-template-rows: 1fr; }
+.storm .collapse > .collapse-inner { overflow: hidden; min-height: 0; }
 @keyframes storm-spin { to { transform: rotate(360deg); } }
 .storm .storm-spin { animation: storm-spin .7s linear infinite; }
 

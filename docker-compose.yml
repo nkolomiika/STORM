@@ -76,7 +76,7 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: pcf
+      POSTGRES_DB: storm
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
     ports:
@@ -99,7 +99,7 @@ services:
   rabbitmq:
     image: rabbitmq:3-management
     environment:
-      RABBITMQ_ERLANG_COOKIE: pcf_rabbitmq_dev_cookie_1234567890
+      RABBITMQ_ERLANG_COOKIE: storm_rabbitmq_dev_cookie_1234567890
     volumes:
       - ./rabbitmq.conf:/etc/rabbitmq/conf.d/99-local.conf:ro
     healthcheck:

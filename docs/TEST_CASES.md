@@ -210,7 +210,7 @@
 | TC-NOTIF-004 | Mark all as read | Есть несколько unread | PATCH `/api/v1/notifications/read-all` | 204; unread-count==0 | Запланирован |
 | TC-NOTIF-005 | WS push при @mention | WS-подключение к проекту | Создать комментарий с `@target` | `target` получает WS-сообщение `{event:"notification", ...}` | Запланирован |
 
-### 2.10 Импорт PCF/OpenAPI (TC-IMP-NNN)
+### 2.10 Импорт STORM/OpenAPI (TC-IMP-NNN)
 
 Связано с: `app/services.ImportService`, `app/routers/import_.py`.
 
@@ -231,9 +231,9 @@
 | TC-IMP-013 | Deprecated operations пропускаются | OpenAPI с `deprecated: true` | `import_openapi(...)` | `created=1`, в `errors` упоминание deprecated | Реализован |
 | TC-IMP-014 | Export OpenAPI собирает документ из endpoints | Host с endpoint /pet/{petId} | `export_openapi(project_id, host_id)` | `openapi=3.0.0`, parameters содержат query+header, в т.ч. example | Реализован |
 | TC-IMP-015 | Query params: enum/default подставляется как value | Param с `enum=[available,...]` | `_extract_openapi_query_params(...)` | `value="available"`, для `default=10` → `value="10"` | Реализован |
-| TC-IMP-016 | PCF JSON: host без ip и hostname отклоняется | — | `PcfImportPayload.model_validate({"hosts":[{"status":"unknown"}]})` (`tests/test_schemas.py`) | `pydantic.ValidationError` | Реализован |
-| TC-IMP-017 | PCF JSON: некорректный protocol порта отклоняется | — | Port с `protocol="icmp"` | `pydantic.ValidationError` | Реализован |
-| TC-IMP-018 | PCF JSON: endpoint без path и без request_raw отклоняется | — | Endpoint с `method=GET` без path | `pydantic.ValidationError` | Реализован |
+| TC-IMP-016 | STORM JSON: host без ip и hostname отклоняется | — | `StormImportPayload.model_validate({"hosts":[{"status":"unknown"}]})` (`tests/test_schemas.py`) | `pydantic.ValidationError` | Реализован |
+| TC-IMP-017 | STORM JSON: некорректный protocol порта отклоняется | — | Port с `protocol="icmp"` | `pydantic.ValidationError` | Реализован |
+| TC-IMP-018 | STORM JSON: endpoint без path и без request_raw отклоняется | — | Endpoint с `method=GET` без path | `pydantic.ValidationError` | Реализован |
 
 ### 2.11 Отчёты Word (TC-REPORT-NNN)
 

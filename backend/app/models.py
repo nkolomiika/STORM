@@ -306,7 +306,7 @@ class JiraInstance(Base, TimestampMixin):
 
 
 class ProjectJiraLink(Base, TimestampMixin):
-    """Привязка проекта PCF к Jira project key."""
+    """Привязка проекта STORM к Jira project key."""
 
     __tablename__ = "project_jira_links"
     __table_args__ = (UniqueConstraint("project_id", name="uq_project_jira_link_project"),)
@@ -736,7 +736,7 @@ class VulnerabilityAsset(Base):
 
 
 class JiraIssueLink(Base, TimestampMixin):
-    """Связь уязвимости PCF с issue в Jira."""
+    """Связь уязвимости STORM с issue в Jira."""
 
     __tablename__ = "jira_issue_links"
     __table_args__ = (UniqueConstraint("vulnerability_id", name="uq_jira_issue_link_vulnerability"),)

@@ -4,7 +4,7 @@ from pydantic import ValidationError as PydanticValidationError
 from app.schemas import (
     EndpointCreate,
     HostCreate,
-    PcfImportPayload,
+    StormImportPayload,
     PortCreate,
     UserCreate,
     VulnerabilityCreate,
@@ -52,14 +52,14 @@ def test_endpoint_requires_path_tc_ep_003() -> None:
         EndpointCreate(method="GET")
 
 
-def test_pcf_import_host_requires_ip_or_hostname() -> None:
+def test_storm_import_host_requires_ip_or_hostname() -> None:
     with pytest.raises(PydanticValidationError):
-        PcfImportPayload.model_validate({"hosts": [{"status": "unknown"}]})
+        StormImportPayload.model_validate({"hosts": [{"status": "unknown"}]})
 
 
-def test_pcf_import_rejects_invalid_port_protocol() -> None:
+def test_storm_import_rejects_invalid_port_protocol() -> None:
     with pytest.raises(PydanticValidationError):
-        PcfImportPayload.model_validate(
+        StormImportPayload.model_validate(
             {
                 "hosts": [
                     {
@@ -71,9 +71,9 @@ def test_pcf_import_rejects_invalid_port_protocol() -> None:
         )
 
 
-def test_pcf_import_endpoint_requires_path_or_request_raw() -> None:
+def test_storm_import_endpoint_requires_path_or_request_raw() -> None:
     with pytest.raises(PydanticValidationError):
-        PcfImportPayload.model_validate({"hosts": [{"hostname": "target.local", "endpoints": [{"method": "GET"}]}]})
+        StormImportPayload.model_validate({"hosts": [{"hostname": "target.local", "endpoints": [{"method": "GET"}]}]})
 
 
 def test_vulnerability_rejects_invalid_cvss_score_tc_vuln_005() -> None:

@@ -112,7 +112,7 @@
 
 ## Эпик 9. Импорт данных
 
-- [x] Импорт PCF JSON-дампа в проект (`POST .../projects/{id}/import`)
+- [x] Импорт STORM JSON-дампа в проект (`POST .../projects/{id}/import`)
 - [x] Импорт OpenAPI/Swagger в endpoints хоста (`POST .../hosts/{hid}/import-openapi`)
 - [x] Возврат `ImportResult` со счётчиками и предупреждениями
 - [ ] Импорт Burp Suite XML

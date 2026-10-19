@@ -1,22 +1,22 @@
-class PCFError(Exception):
+class StormError(Exception):
     """Базовое исключение приложения."""
 
 
-class NotFoundError(PCFError):
+class NotFoundError(StormError):
     """Сущность не найдена."""
 
 
-class ForbiddenError(PCFError):
+class ForbiddenError(StormError):
     """Доступ запрещён."""
 
 
-class ConflictError(PCFError):
+class ConflictError(StormError):
     """Конфликт данных."""
 
 
-class UnauthorizedError(PCFError):
+class UnauthorizedError(StormError):
     """Ошибка аутентификации."""
 
 
-class ValidationError(PCFError):
+class ValidationError(StormError):
     """Ошибка бизнес-валидации."""

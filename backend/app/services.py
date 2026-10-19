@@ -56,6 +56,7 @@ from app.models import (
     JiraInstance,
     JiraIssueLink,
     JsFile,
+    JsSecret,
     MailJob,
     Notification,
     PasswordResetToken,
@@ -89,7 +90,7 @@ from app.schemas import (
     NotificationContext,
     NotificationOut,
     OpenApiImportResult,
-    PcfImportPayload,
+    StormImportPayload,
     ProjectNoteCommentOut,
 )
 from app.security import (
@@ -890,6 +891,69 @@ class AuthService:
     async def issue_session_for_user(self, user_id: int) -> tuple[str, str]:
         """Выдаёт сессию без проверки пароля — для активации приглашения (пароль только что задан)."""
         return await self._issue_session(user_id)
+
+    async def login_via_sso(self, identity: "OidcIdentity", ip_address: str | None = None) -> tuple[str, str, User]:
+        """Вход по подтверждённой IdP-личности: находит/заводит пользователя и выдаёт сессию.
+
+        Локальная 2FA при SSO не запрашивается — второй фактор обеспечивает сам
+        провайдер (IAM). Пользователь ищется по email, затем по username из токена.
+        """
+        email = (identity.email or "").strip().lower() or None
+        claim_username = (identity.username or "").strip() or None
+
+        user: User | None = None
+        if email:
+            user = await self.db.scalar(select(User).where(func.lower(User.email) == email))
+        if user is None and claim_username:
+            user = await self.db.scalar(select(User).where(User.username == claim_username))
+
+        if user is None:
+            if not settings.sso_auto_create_users:
+                raise UnauthorizedError("Пользователь не найден. Обратитесь к администратору за доступом.")
+            if not email:
+                raise UnauthorizedError("IdP не передал email — автосоздание пользователя невозможно")
+            user = await self._provision_sso_user(email=email, username=claim_username, full_name=identity.full_name)
+        elif not user.is_active or user.is_locked:
+            raise UnauthorizedError("Пользователь деактивирован")
+
+        access_token, refresh_token = await self._issue_session(user.id)
+        await self.audit.log(
+            "LOGIN", user_id=user.id, ip_address=ip_address, details={"sso": True, "subject": identity.subject}
+        )
+        return access_token, refresh_token, user
+
+    async def _provision_sso_user(self, *, email: str, username: str | None, full_name: str | None) -> User:
+        """Создаёт локального пользователя при первом входе через SSO."""
+        base_username = (username or email.split("@", 1)[0]).strip()
+        unique_username = await self._unique_username(base_username)
+        role = UserRole.ADMIN if settings.sso_default_role.strip().lower() == "admin" else UserRole.PENTESTER
+        user = User(
+            username=unique_username,
+            email=email,
+            full_name=full_name,
+            # Локального пароля у SSO-пользователя нет: ставим недостижимый хэш,
+            # чтобы форма «логин/пароль» для него не срабатывала.
+            password_hash=hash_password(secrets.token_urlsafe(32)),
+            password_changed_at=datetime.now(UTC),
+            role=role,
+            is_active=True,
+        )
+        self.db.add(user)
+        await self.db.commit()
+        await self.db.refresh(user)
+        await self.audit.log("USER_CREATED", user_id=user.id, details={"via": "sso"})
+        return user
+
+    async def _unique_username(self, base: str) -> str:
+        """Подбирает свободный username (SSO-claim может конфликтовать с существующим)."""
+        candidate = (base[:100] or "user")
+        if not await self.db.scalar(select(User).where(User.username == candidate)):
+            return candidate
+        for suffix in range(2, 1000):
+            variant = f"{candidate[:90]}-{suffix}"
+            if not await self.db.scalar(select(User).where(User.username == variant)):
+                return variant
+        return f"{candidate[:80]}-{secrets.token_hex(4)}"
 
     async def login(self, username: str, password: str, ip_address: str | None = None) -> LoginOutcome:
         """Проверяет учётные данные. При включённом 2FA возвращает challenge вместо сессии."""
@@ -2911,24 +2975,34 @@ class AssetService:
     async def list_endpoints(self, host_id: int) -> list[Endpoint]:
         return list((await self.db.scalars(select(Endpoint).where(Endpoint.host_id == host_id).order_by(Endpoint.created_at.desc()))).all())
 
-    async def list_js_files(self, project_id: int) -> list[dict]:
-        """JS-файлы проекта с секретами и именем хоста — для раздела JS.
+    async def list_js_files(
+        self, project_id: int, offset: int = 0, limit: int = 200
+    ) -> tuple[list[dict], int]:
+        """JS-файлы проекта с секретами и именем хоста — для раздела JS (стр. пагинация).
 
         Отдаём готовые dict (а не ORM), чтобы подставить hostname хоста рядом с
-        host_id: JsFileOut его ждёт, а связи Host→JsFile нет.
+        host_id: JsFileOut его ждёт, а связи Host→JsFile нет. Возвращаем
+        (страница, всего) — как остальные пагинированные списки раздела.
         """
+        total = (
+            await self.db.scalar(
+                select(func.count()).select_from(JsFile).where(JsFile.project_id == project_id)
+            )
+        ) or 0
         files = (
             await self.db.scalars(
                 select(JsFile)
                 .options(selectinload(JsFile.secrets))
                 .where(JsFile.project_id == project_id)
                 .order_by(JsFile.secret_count.desc(), JsFile.url)
+                .offset(offset)
+                .limit(limit)
             )
         ).all()
         host_names = dict(
             (await self.db.execute(select(Host.id, Host.hostname).where(Host.project_id == project_id))).all()
         )
-        return [
+        items = [
             {
                 "id": f.id,
                 "host_id": f.host_id,
@@ -2953,6 +3027,61 @@ class AssetService:
             }
             for f in files
         ]
+        return items, total
+
+    async def _delete_js_where(self, project_id: int, extra) -> int:
+        """Удаляет JsFile проекта по доп. условию, снимая секреты явно.
+
+        Core-DELETE не триггерит ORM-каскад, а на каскад БД полагаться нельзя
+        (SQLite в тестах без PRAGMA его не применит), поэтому сначала чистим
+        js_secrets по подзапросу, затем сами файлы. Возвращает число файлов.
+        """
+        cond = and_(JsFile.project_id == project_id, extra)
+        file_ids = select(JsFile.id).where(cond)
+        await self.db.execute(delete(JsSecret).where(JsSecret.js_file_id.in_(file_ids)))
+        res = await self.db.execute(delete(JsFile).where(cond))
+        await self.db.commit()
+        return int(res.rowcount or 0)
+
+    async def delete_js_for_host(self, project_id: int, host_id: int, actor_id: int) -> int:
+        """Удаляет JS-находки указанного хоста в проекте. Возвращает число файлов."""
+        deleted = await self._delete_js_where(project_id, JsFile.host_id == host_id)
+        if deleted:
+            await self.audit.log(
+                "DELETE",
+                user_id=actor_id,
+                entity_type="js_farm",
+                entity_id=None,
+                details={"project_id": str(project_id), "host_id": str(host_id), "deleted": str(deleted)},
+            )
+        await ws_manager.broadcast(
+            project_id,
+            {"event": "deleted", "entity": "js", "project_id": str(project_id), "data": {"host_id": str(host_id)}},
+        )
+        return deleted
+
+    async def bulk_delete_js_files(self, project_id: int, ids: list[int], actor_id: int) -> int:
+        """Удаляет JS-находки проекта по списку id одним запросом (скоуп проекта в SQL).
+
+        Чужие/несуществующие id не удаляются. Пустой список — no-op.
+        """
+        clean = sorted({int(i) for i in ids if isinstance(i, int) or str(i).lstrip("-").isdigit()})
+        if not clean:
+            return 0
+        deleted = await self._delete_js_where(project_id, JsFile.id.in_(clean))
+        if deleted:
+            await self.audit.log(
+                "DELETE",
+                user_id=actor_id,
+                entity_type="js_farm",
+                entity_id=None,
+                details={"project_id": str(project_id), "deleted": str(deleted)},
+            )
+        await ws_manager.broadcast(
+            project_id,
+            {"event": "deleted", "entity": "js", "project_id": str(project_id), "data": {}},
+        )
+        return deleted
 
     async def create_endpoint(self, project_id: int, host_id: int, payload: dict, actor_id: int) -> Endpoint:
         await self._get_host(project_id, host_id)
@@ -4466,7 +4595,7 @@ class NotificationService:
 
 
 class ImportService:
-    """Сервис импорта инфраструктуры из JSON-формата PCF."""
+    """Сервис импорта инфраструктуры из JSON-формата STORM."""
 
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
@@ -5185,9 +5314,9 @@ class ImportService:
         except Exception as exc:
             raise ValidationError("Невалидный JSON-файл") from exc
         try:
-            import_payload = PcfImportPayload.model_validate(parsed)
+            import_payload = StormImportPayload.model_validate(parsed)
         except Exception as exc:
-            raise ValidationError(f"JSON импорта не соответствует схеме PCF: {exc}") from exc
+            raise ValidationError(f"JSON импорта не соответствует схеме STORM: {exc}") from exc
 
         result = ImportResult(hosts_created=0, ports_created=0, services_created=0, endpoints_created=0, errors=[])
         try:

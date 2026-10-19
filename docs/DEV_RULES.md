@@ -420,16 +420,16 @@ async def generate_pdf(self, content: str) -> bytes:
 
 ```python
 # exceptions.py — кастомные исключения
-class PCFError(Exception):
+class STORMError(Exception):
     """Базовое исключение приложения."""
 
-class NotFoundError(PCFError):
+class NotFoundError(STORMError):
     pass
 
-class ForbiddenError(PCFError):
+class ForbiddenError(STORMError):
     pass
 
-class ConflictError(PCFError):
+class ConflictError(STORMError):
     pass
 
 # main.py — централизованный обработчик

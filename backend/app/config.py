@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Union
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -30,12 +31,44 @@ class Settings(BaseSettings):
     cookie_samesite: str = "strict"
     csrf_allowed_origins: str = "https://localhost:3000,https://127.0.0.1:3000"
 
+    # --- SSO / OIDC (корпоративная IAM, Keycloak-совместимый провайдер) ---
+    # Включает кнопку «Войти через SSO» на экране входа и маршруты
+    # /api/v1/auth/sso/*. Поток — OpenID Connect Authorization Code + PKCE.
+    sso_enabled: bool = False
+    # Базовый issuer провайдера. Discovery-документ ищется по адресу
+    # {issuer}/.well-known/openid-configuration. Для Keycloak это обычно
+    # https://<host>/realms/<realm>. Либо задайте полный адрес в SSO_METADATA_URL.
+    sso_issuer: str = ""
+    sso_metadata_url: str = ""
+    sso_client_id: str = ""
+    # Секрет клиента. Пусто — публичный клиент (только PKCE, без client_secret).
+    sso_client_secret: str = ""
+    # Scope, запрашиваемые у IdP. По умолчанию — профиль и email пользователя.
+    sso_scopes: str = "openid profile email"
+    # Абсолютный публичный адрес приложения для redirect_uri. Пусто — APP_BASE_URL.
+    # В настройках клиента IdP должен быть разрешён redirect_uri:
+    #   {base}/api/v1/auth/sso/callback
+    sso_redirect_base: str = ""
+    # Claim'ы ID-токена, из которых берём username и email пользователя.
+    sso_username_claim: str = "preferred_username"
+    sso_email_claim: str = "email"
+    # Создавать локального пользователя при первом входе через SSO. false —
+    # пускать только тех, кто уже заведён (по email/username из токена).
+    sso_auto_create_users: bool = True
+    # Роль автосоздаваемого пользователя: "pentester" | "admin".
+    sso_default_role: str = "pentester"
+    # Надпись на кнопке входа через SSO.
+    sso_button_label: str = "Войти через SSO"
+    # true — проверять TLS системным бандлом; false — не проверять (только тест);
+    # путь — PEM-файл с CA (внутренний удостоверяющий центр Keycloak/IAM).
+    sso_verify_tls: Union[bool, str] = True
+
     initial_admin_username: str = "admin"
     initial_admin_email: str = "admin@example.com"
     initial_admin_password: str = "admin"
 
     rabbitmq_url: str = "amqp://guest:guest@rabbitmq/"
-    mail_queue_name: str = "pcf.mail"
+    mail_queue_name: str = "storm.mail"
     mail_enabled: bool = True
     smtp_host: str = "mailpit"
     smtp_port: int = 1025
@@ -45,7 +78,7 @@ class Settings(BaseSettings):
     smtp_use_ssl: bool = False
     smtp_timeout_seconds: float = 20.0
     smtp_from_email: str = "noreply@example.com"
-    smtp_from_name: str = "PCF"
+    smtp_from_name: str = "STORM"
 
     # "password" — обычный SMTP AUTH (mailpit, App Password и т.п.).
     # "xoauth2"  — отправка от лица Google-аккаунта через OAuth2 (см. поля ниже).
@@ -148,6 +181,17 @@ class Settings(BaseSettings):
     js_farm_max_concurrency: int = 10
     # Общий кап файлов на задачу — защита от разрастания.
     js_farm_max_total_files: int = 500
+    # --- Внешний JS-майнинг: trufflehog (verified-секреты) + jsluice (опц.) ---
+    # Regex-набор (jsscan) работает ВСЕГДА; инструменты добавляют покрытие сверху,
+    # когда их бинари есть в образе. Нет бинаря → молча откатываемся на regex.
+    js_farm_mine_enabled: bool = True
+    js_farm_trufflehog_bin: str = "trufflehog"
+    # Путь кастомных детекторов trufflehog (--config). Совпадает с COPY в Dockerfile.
+    js_farm_trufflehog_config: str = "/usr/local/share/storm/trufflehog-custom.yaml"
+    # jsluice в образ не кладём (как и во FROST) — путь оставлен для опционального
+    # включения; при отсутствии бинаря ветка просто не срабатывает.
+    js_farm_jsluice_bin: str = "jsluice"
+    js_farm_mine_timeout_seconds: float = 30.0
     # --- Определение технологий и CDN веб-порта при пробиве ---
     # Выключить, если инструменты не установлены: порты останутся «unknown».
     services_detect_enabled: bool = True
@@ -184,6 +228,44 @@ class Settings(BaseSettings):
     def jira_configured(self) -> bool:
         """Заданы ли все обязательные параметры подключения к Jira."""
         return bool(self.jira_base_url and self.jira_email and self.jira_api_token)
+
+    @field_validator("sso_verify_tls", mode="before")
+    @classmethod
+    def _parse_sso_verify_tls(cls, v):
+        """'true'/'false' -> bool, иначе путь к PEM-файлу с CA."""
+        if isinstance(v, bool):
+            return v
+        if isinstance(v, str):
+            s = v.strip().lower()
+            if s in ("1", "true", "yes", "on", ""):
+                return True
+            if s in ("0", "false", "no", "off"):
+                return False
+        return v
+
+    @property
+    def sso_discovery_url(self) -> str:
+        """Адрес OIDC discovery-документа (из SSO_METADATA_URL или issuer)."""
+        if self.sso_metadata_url.strip():
+            return self.sso_metadata_url.strip()
+        base = self.sso_issuer.strip().rstrip("/")
+        return f"{base}/.well-known/openid-configuration" if base else ""
+
+    @property
+    def sso_configured(self) -> bool:
+        """Достаточно ли настроек, чтобы показывать и обслуживать вход через SSO."""
+        return bool(self.sso_enabled and self.sso_client_id and self.sso_discovery_url)
+
+    @property
+    def sso_scope_list(self) -> list[str]:
+        """Список запрашиваемых scope (из строки через пробел/запятую)."""
+        return [s.strip() for s in self.sso_scopes.replace(",", " ").split() if s.strip()]
+
+    @property
+    def sso_redirect_uri(self) -> str:
+        """Абсолютный redirect_uri для callback (должен совпадать с настройкой IdP)."""
+        base = (self.sso_redirect_base.strip() or self.app_base_url).rstrip("/")
+        return f"{base}/api/v1/auth/sso/callback"
 
     @field_validator("jwt_secret_key")
     @classmethod

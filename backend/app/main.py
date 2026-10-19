@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app import models  # noqa: F401
 from app.config import get_settings
 from app.database import Base, SessionLocal, engine
-from app.exceptions import ConflictError, ForbiddenError, NotFoundError, PCFError, UnauthorizedError, ValidationError
+from app.exceptions import ConflictError, ForbiddenError, NotFoundError, StormError, UnauthorizedError, ValidationError
 from app.routers import (
     agent_tokens,
     assets,
@@ -36,9 +36,9 @@ from app.storage.minio_client import MinioStorage
 
 settings = get_settings()
 
-app = FastAPI(title="PCF API", version="1.0.0", openapi_url="/api/v1/openapi.json")
+app = FastAPI(title="STORM API", version="1.0.0", openapi_url="/api/v1/openapi.json")
 agent_api_v2 = FastAPI(
-    title="PCF Agent API",
+    title="STORM Agent API",
     version="2.0.0",
     openapi_url="/openapi.json",
     docs_url="/docs",
@@ -129,8 +129,8 @@ def _register_error_handlers() -> None:
     async def validation_handler(_: Request, exc: ValidationError) -> JSONResponse:
         return JSONResponse(status_code=422, content={"detail": str(exc)})
 
-    @app.exception_handler(PCFError)
-    async def app_error_handler(_: Request, exc: PCFError) -> JSONResponse:
+    @app.exception_handler(StormError)
+    async def app_error_handler(_: Request, exc: StormError) -> JSONResponse:
         return JSONResponse(status_code=400, content={"detail": str(exc)})
 
 
