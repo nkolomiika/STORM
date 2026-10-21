@@ -278,6 +278,27 @@ cp .env.prod.example .env.prod  # заполнить секреты, CERT_IP/CER
   CA** (Let's Encrypt / корпоративный) — смонтируйте его в `/etc/nginx/certs/` и
   отключите генератор.
 
+### Исходящий TLS к корпоративным сервисам (Works / IAM)
+
+Backend ходит к внутренним сервисам (`portal.works.prod.sbt`, Keycloak/IAM) по
+HTTPS с корпоративным сертификатом. Чтобы `httpx` ему доверял:
+
+- Положите цепочку корневого/промежуточного CA (расширение **`.crt`**) в
+  `backend/certs/` — например `works-chain.crt`. Реальные сертификаты в VCS не
+  коммитятся (в `.gitignore`), остаётся только README/.gitkeep.
+- При сборке образа они вшиваются в системный trust store
+  (`COPY certs/ … && update-ca-certificates`), а `SSL_CERT_FILE`/
+  `REQUESTS_CA_BUNDLE`/`PIP_CERT` переводят `httpx`/`requests`/`pip` на системный
+  бандл вместо `certifi`. После этого `WORKS_VERIFY_SSL=true` и
+  `SSO_VERIFY_TLS=true` работают из коробки — правок кода не нужно.
+- Альтернатива вшиванию: `WORKS_VERIFY_SSL`/`SSO_VERIFY_TLS` принимают **путь**
+  к PEM (например `/certs/works-chain.crt` из смонтированного тома).
+- Сборка за периметром: прокси передаётся build-арг(ами)
+  `BUILD_HTTP_PROXY`/`BUILD_HTTPS_PROXY`/`BUILD_NO_PROXY`
+  (`BUILD_HTTPS_PROXY=http://proxy:3128 docker compose build backend`).
+
+Подробности — в `backend/certs/README.md`.
+
 ---
 
 ## 10. Безопасность
