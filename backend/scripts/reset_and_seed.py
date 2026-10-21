@@ -164,11 +164,42 @@ async def seed_demo_data() -> None:
     now = datetime.now(UTC)
     today = date.today()
     severity_cycle = [Severity.CRITICAL, Severity.HIGH, Severity.MEDIUM, Severity.LOW, Severity.INFO]
+
+    # Профили CVSS для сид-находок. Критичность ВСЕГДА выводится из score (как в
+    # реальной логике create/update), поэтому карточка, таблица и отчёт совпадают.
+    # score=None → «проверка»: CVSS не задан, находка считается нереализуемой и в
+    # отчёте идёт только в раздел «Тесты» (4.4).
+    def _sev_from_score(score: float | None) -> Severity:
+        if score is None:
+            return Severity.UNREALIZED
+        if score >= 9.0:
+            return Severity.CRITICAL
+        if score >= 7.0:
+            return Severity.HIGH
+        if score >= 4.0:
+            return Severity.MEDIUM
+        if score > 0:
+            return Severity.LOW
+        return Severity.INFO
+
+    cvss_profiles: list[tuple[float | None, str | None]] = [
+        (9.3, "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:L/SI:L/SA:L"),
+        (8.1, "CVSS:4.0/AV:N/AC:L/AT:N/PR:L/UI:N/VC:H/VI:H/VA:N/SC:N/SI:N/SA:N"),
+        (5.9, "CVSS:4.0/AV:N/AC:L/AT:N/PR:L/UI:P/VC:L/VI:L/VA:L/SC:N/SI:N/SA:N"),
+        (3.1, "CVSS:4.0/AV:L/AC:H/AT:N/PR:L/UI:P/VC:L/VI:N/VA:N/SC:N/SI:N/SA:N"),
+        (None, None),  # проверка — без CVSS
+        (7.2, "CVSS:4.0/AV:N/AC:L/AT:P/PR:N/UI:N/VC:H/VI:L/VA:N/SC:N/SI:N/SA:N"),
+    ]
     status_cycle = [
         VulnerabilityStatus.OPEN,
         VulnerabilityStatus.IN_PROGRESS,
-        VulnerabilityStatus.FIXED,
-        VulnerabilityStatus.ACCEPTED_RISK,
+        VulnerabilityStatus.PROBLEM_ANALYSIS,
+        VulnerabilityStatus.NEED_INFO,
+        VulnerabilityStatus.PAUSED,
+        VulnerabilityStatus.RESOLVED,
+        VulnerabilityStatus.CLOSED,
+        VulnerabilityStatus.CANCELLED,
+        VulnerabilityStatus.SENT_BY_MISTAKE,
     ]
     project_statuses = [ProjectStatus.ACTIVE, ProjectStatus.ACTIVE, ProjectStatus.COMPLETED, ProjectStatus.ARCHIVED]
     folder_specs = [
@@ -520,18 +551,15 @@ async def seed_demo_data() -> None:
                     # 6 находок на проект, разнесены по окну (0.11 … 0.89) — график
                     # уязвимостей и «моих находок» на overview растёт плавной лесенкой.
                     vuln_time = added_at((host_index - 1 + vuln_index / 3.0) / 3.0)
+                    _cvss_score, _cvss_vector = cvss_profiles[(project_index + host_index + vuln_index) % len(cvss_profiles)]
                     vuln = Vulnerability(
                         project_id=project.id,
                         title=f"{project_name} / Host {host_index} / Finding {vuln_index}",
                         description="Тестовая уязвимость для проверки host-centric сценариев.",
-                        severity=severity_cycle[(project_index + host_index + vuln_index) % len(severity_cycle)],
-                        cvss_version=CvssVersion.V40,
-                        cvss_score=8.7 if vuln_index % 2 else 9.3,
-                        cvss_vector=(
-                            "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N/SA:N"
-                            if vuln_index % 2
-                            else "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:L/SI:L/SA:L"
-                        ),
+                        severity=_sev_from_score(_cvss_score),
+                        cvss_version=CvssVersion.V40 if _cvss_score is not None else None,
+                        cvss_score=_cvss_score,
+                        cvss_vector=_cvss_vector,
                         cwe_id="CWE-79" if vuln_index % 2 else "CWE-89",
                         status=status_cycle[(project_index + vuln_index) % len(status_cycle)],
                         # Каждый шаг — отдельная запись: в карточке у него своё поле,

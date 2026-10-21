@@ -14,7 +14,7 @@
 - инвентарь (хосты с несколькими IP, порты, сервисы, HTTP endpoints);
 - уязвимости с CVSS v3.1/v4.0, workflow_steps, файлами-доказательствами, комментариями с `@mention`;
 - in-app уведомления и реалтайм через WebSocket;
-- импорт/экспорт PCF-JSON и OpenAPI/Swagger по эндпоинтам;
+- импорт/экспорт STORM-JSON и OpenAPI/Swagger по эндпоинтам;
 - Confluence-like заметки проекта;
 - Word-отчёты (СЗИ и ПП — у ПП все страницы в landscape);
 - Jira-интеграция (экспорт уязвимости в issue) — SSRF + DNS-rebind защита, claim-row anti-race;
@@ -34,7 +34,7 @@
 | Auth | JWT (python-jose), bcrypt (passlib) — HttpOnly cookies, не Bearer |
 | Файлы | MinIO 7.2.x (S3-совместимое) |
 | Очередь | RabbitMQ + aio-pika |
-| SMTP | aiosmtplib (Gmail / sbertech / mailpit — конфиг через .env) |
+| SMTP | aiosmtplib (внешний SMTP — Gmail / sbertech, конфиг через .env; по умолчанию выкл.) |
 | Отчёты | python-docx (Word) |
 | HTTP-клиент | httpx 0.28 (+ кастомный transport для DNS-rebind protection в Jira) |
 | Frontend | React 18 + TypeScript, Vite 6, MUI 6, Zustand, axios, TipTap |
@@ -128,12 +128,11 @@ STORM/
 
 ```yaml
 backend       # FastAPI (uvicorn) :8000
-mail-worker   # отдельный процесс, потребляет pcf.mail
+mail-worker   # отдельный процесс, потребляет storm.mail
 frontend      # React/Vite :3000
 db            # PostgreSQL 16 :5433→5432
 minio         # MinIO :9000 (S3) + :9001 (Console)
 rabbitmq      # :15672 management + :5672 amqp
-mailpit       # dev SMTP catcher :1025 + :8025 web
 ```
 
 Volumes: `pgdata`, `miniodata`.
@@ -263,7 +262,7 @@ ClickHouse удалён из стека — audit_logs пишутся напря
 
 `mail.py` + `mail_worker.py` поддерживают любой SMTP по .env-переменным. В `.env.example` описаны три профиля:
 
-1. **mailpit** (dev) — `SMTP_HOST=mailpit`, без TLS, без auth.
+1. **Почта выключена** по умолчанию (`MAIL_ENABLED=false`): письма не шлются, ссылка/пароль возвращаются в ответе API.
 2. **Gmail** (тесты) — `smtp.gmail.com:587`, STARTTLS, App password (требует 2FA на аккаунте).
 3. **sbertech** (prod) — корпоративный SMTP, STARTTLS, реальные креды из vault.
 
@@ -298,4 +297,4 @@ Frontend — Vitest, расположен внутри `frontend/src/__tests__` 
 - `INITIAL_ADMIN_*` — стартовый админ при первом запуске.
 - `RABBITMQ_URL`, `MAIL_QUEUE_NAME`, `MAIL_ENABLED`, `MAIL_MAX_ATTEMPTS`.
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_USE_TLS`, `SMTP_USE_SSL`, `SMTP_FROM_EMAIL`, `SMTP_FROM_NAME`.
-- `MAIL_PREVIEW_URL` (mailpit UI в dev).
+- `MAIL_PREVIEW_URL` (ссылка на письмо в ответе, когда почта выключена).

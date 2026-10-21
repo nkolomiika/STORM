@@ -1,7 +1,7 @@
-# design-sync notes — SberPCF
+# design-sync notes — STORM
 
 ## Repo shape (read this first)
-- This repo is the **SberPCF web app** (`frontend/`), a Vite + React + **MUI v6** application — NOT a published component-library design system. There is no `dist/` of reusable exported components and `npm run build` produces an app bundle, not a library.
+- This repo is the **STORM web app** (`frontend/`), a Vite + React + **MUI v6** application — NOT a published component-library design system. There is no `dist/` of reusable exported components and `npm run build` produces an app bundle, not a library.
 - The "design system" is: the **dark MUI theme** defined inline in `frontend/src/main.tsx` (`createAppTheme`) + how MUI primitives are styled by it.
 - To sync, we built a small **themed-MUI-kit library** at `frontend/design-kit/` that re-exports the real `@mui/material` components the app uses, plus `sberTheme` / `SberThemeProvider` (the theme + root provider). It is NOT a reimplementation — every component is the genuine MUI export; the branding comes entirely from the theme.
 

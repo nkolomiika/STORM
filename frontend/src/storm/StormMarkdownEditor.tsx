@@ -24,13 +24,20 @@ interface Props {
   onChange: (markdown: string) => void;
   placeholder?: string;
   minHeight?: number;
+  /** Called with pasted image files (if any); the paste is then swallowed so
+      TipTap doesn't try to inline them. Text pastes fall through as usual. */
+  onImagePaste?: (files: File[]) => void;
 }
 
 /** tiptap-markdown hangs its serialiser off the editor's storage. */
 const getMarkdown = (storage: unknown): string =>
   (storage as { markdown?: { getMarkdown: () => string } }).markdown?.getMarkdown() ?? "";
 
-export function StormMarkdownEditor({ value, onChange, placeholder = "", minHeight = 260 }: Props) {
+export function StormMarkdownEditor({ value, onChange, placeholder = "", minHeight = 260, onImagePaste }: Props) {
+  /* onImagePaste can change identity between renders; keep the latest in a ref so
+     the editor's paste handler (created once) always calls the current one. */
+  const onImagePasteRef = useRef(onImagePaste);
+  onImagePasteRef.current = onImagePaste;
   /* The last Markdown we emitted or applied. Without it the two syncs below
      fight: onUpdate pushes a value up, the prop comes back down, setContent
      resets the document and the caret jumps to the start on every keystroke. */
@@ -57,7 +64,20 @@ export function StormMarkdownEditor({ value, onChange, placeholder = "", minHeig
       [placeholder]
     ),
     content: value,
-    editorProps: { attributes: { class: "stormmd-input", spellcheck: "true" } },
+    editorProps: {
+      attributes: { class: "stormmd-input", spellcheck: "true" },
+      // Intercept pasted images: hand the files to the caller and swallow the
+      // paste so TipTap doesn't try to inline them. Text pastes fall through.
+      handlePaste: (_view, event) => {
+        const cb = onImagePasteRef.current;
+        if (!cb) return false;
+        const files = Array.from(event.clipboardData?.files ?? []).filter((f) => f.type.startsWith("image/"));
+        if (files.length === 0) return false;
+        event.preventDefault();
+        cb(files);
+        return true;
+      },
+    },
     onUpdate: ({ editor: ed }) => {
       const md = getMarkdown(ed.storage);
       lastSyncedRef.current = md;

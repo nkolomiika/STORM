@@ -16,9 +16,9 @@
 - `backend` — FastAPI (uvicorn, порт 8000): REST API `/api/v1`, машинный API `/api/v2` для AI-агентов, WebSocket `/ws/*`.
 - `db` — PostgreSQL: основная БД (async-доступ через asyncpg). Хранит и доменные данные, и audit-журнал.
 - `minio` — S3-совместимое хранилище для аватаров пользователей и evidence-файлов уязвимостей.
-- `rabbitmq` — брокер сообщений для очереди отправки писем (`pcf.mail`).
-- `mail-worker` — отдельный sidecar-процесс, потребляющий `pcf.mail` и отправляющий письма по SMTP.
-- `mailpit` (dev) / внешний SMTP (prod) — приём писем.
+- `rabbitmq` — брокер сообщений для очереди отправки писем (`storm.mail`).
+- `mail-worker` — отдельный sidecar-процесс, потребляющий `storm.mail` и отправляющий письма по SMTP.
+- внешний SMTP — отправка писем (по умолчанию почта выключена, `MAIL_ENABLED=false`).
 
 ### Стек
 
@@ -59,7 +59,7 @@ backend/
 │   ├── enums.py                   # UserRole, ProjectStatus, Severity, VulnerabilityStatus,
 │   │                              # AssetType, HostStatus, Protocol, PortState, HttpMethod,
 │   │                              # CvssVersion, NotificationType
-│   ├── exceptions.py              # PCFError, NotFoundError, UnauthorizedError, ForbiddenError,
+│   ├── exceptions.py              # STORMError, NotFoundError, UnauthorizedError, ForbiddenError,
 │   │                              # ConflictError, ValidationError
 │   ├── models.py                  # ВСЕ ORM-модели одним файлом: User, RefreshToken,
 │   │                              # AgentApiToken, AgentApiTokenProjectGrant, MailJob,
@@ -100,7 +100,7 @@ backend/
 │   │   ├── files.py               # загрузка/скачивание/удаление evidence-файлов
 │   │   ├── comments.py            # комментарии к уязвимостям + @mention
 │   │   ├── notifications.py       # список, unread-count, mark-read, read-all
-│   │   ├── import_.py             # импорт PCF JSON, импорт/экспорт OpenAPI для хоста
+│   │   ├── import_.py             # импорт STORM JSON, импорт/экспорт OpenAPI для хоста
 │   │   ├── jira.py                # /jira/config (admin), /projects/{id}/jira-link,
 │   │   │                          # экспорт уязвимости в Jira issue
 │   │   ├── reports.py             # генерация Word-отчётов: ПП и СЗИ
@@ -188,8 +188,8 @@ frontend/src/
 |-------------|--------------------------------------------------------------|------------------------------------------------------------|
 | PostgreSQL  | основная БД                                                  | `database_url` (asyncpg), `app/database.py`                |
 | MinIO       | хранилище файлов (avatars, vulnerability evidence)           | `app/storage/minio_client.py` (`MinioStorage`)             |
-| RabbitMQ    | очередь `pcf.mail` для асинхронной отправки писем            | publish — `app/messaging.py`, consume — `app/worker/`      |
-| Mailpit/SMTP| отправка писем (dev — Mailpit, prod — внешний SMTP)          | `app/worker/mail_worker.py` (aiosmtplib)                   |
+| RabbitMQ    | очередь `storm.mail` для асинхронной отправки писем            | publish — `app/messaging.py`, consume — `app/worker/`      |
+| SMTP        | отправка писем через внешний SMTP (по умолчанию выключено)   | `app/worker/mail_worker.py` (aiosmtplib)                   |
 | Jira REST   | (опционально) экспорт уязвимостей в Jira issues              | `JiraIntegrationService` (httpx), backend-only             |
 
 ---
@@ -278,7 +278,7 @@ frontend/src/
 
 ### mail_worker (`app/worker/mail_worker.py`)
 
-- Подключается к RabbitMQ (`rabbitmq_url`), потребляет очередь `mail_queue_name` (по умолчанию `pcf.mail`).
+- Подключается к RabbitMQ (`rabbitmq_url`), потребляет очередь `mail_queue_name` (по умолчанию `storm.mail`).
 - На каждое сообщение находит `MailJob` в БД, рендерит письмо (`app/mail.py`) и отправляет через SMTP (`smtp_host:smtp_port`, опц. STARTTLS/SSL).
 - Ретраи: до `mail_max_attempts` попыток; при неудаче статус `MailJob.status = failed`, ошибка пишется в `last_error`.
 - `relay_pending_jobs`: периодическая задача, которая перепубликует в очередь зависшие `pending` MailJob'ы (например, если воркер был недоступен в момент publish).
@@ -326,7 +326,7 @@ frontend/src/
 | `/api/v1/projects/{id}/vulnerabilities/{vid}/comments` | комментарии + @mention                                  |
 | `/api/v1/projects/{id}/vulnerabilities/{vid}/jira/*`   | export уязвимости в Jira issue, чтение связи             |
 | `/api/v1/projects/{id}/jira-link`               | привязка проекта к Jira project key                            |
-| `/api/v1/projects/{id}/import`                  | импорт результатов сканеров (PCF JSON)                         |
+| `/api/v1/projects/{id}/import`                  | импорт результатов сканеров (STORM JSON)                         |
 | `/api/v1/projects/{id}/hosts/{hid}/import-openapi`     | импорт endpoints из OpenAPI                              |
 | `/api/v1/projects/{id}/hosts/{hid}/export-openapi`     | экспорт endpoints в OpenAPI                              |
 | `/api/v1/projects/{id}/reports/szi`             | генерация Word-отчёта СЗИ                                      |

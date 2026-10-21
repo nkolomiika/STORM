@@ -1,5 +1,5 @@
 /* STORM — Offensive Security Research & Management Console.
-   React port of the design prototype (PCF.dc.html). Every collection it renders
+   React port of the design prototype (STORM.dc.html). Every collection it renders
    is loaded from the backend; data.ts carries the view shapes only. */
 
 import {
@@ -29,6 +29,8 @@ import { StormDatePicker } from "./StormDatePicker";
 import { useAuthStore, useToastStore } from "../store";
 import { useThemeStore } from "./theme";
 import { StormSelect } from "./StormSelect";
+import { PasswordInput } from "./PasswordInput";
+import { StormAppSecFields, type AppSecFieldsValue } from "./StormAppSecFields";
 import { t, useLangStore } from "./i18n";
 import {
   getApiErrorMessage as rawGetApiErrorMessage,
@@ -38,6 +40,10 @@ import {
   getUsers,
   createProject as apiCreateProject,
   updateProject as apiUpdateProject,
+  getProject as apiGetProject,
+  getWorksConfig as apiGetWorksConfig,
+  getVulnerabilityWorksLink as apiGetVulnWorksLink,
+  exportVulnerabilityToWorks as apiExportVulnToWorks,
   deleteProject as apiDeleteProject,
   createInvitation as apiCreateInvitation,
   getInvitations as apiGetInvitations,
@@ -58,7 +64,9 @@ import {
   getIpFarmJob as apiGetIpFarmJob,
   startJsScan as apiStartJsScan,
   getJsScanJob as apiGetJsScanJob,
-  getJsFiles as apiGetJsFiles,
+  getJsFilesPage as apiGetJsFilesPage,
+  bulkDeleteJsFiles as apiBulkDeleteJsFiles,
+  deleteJsFilesForHost as apiDeleteJsFilesForHost,
   downloadJsArchive as apiDownloadJsArchive,
   createEndpoint as apiCreateEndpoint,
   getEndpoints as apiGetEndpoints,
@@ -84,6 +92,9 @@ import {
   getProjectActivity as apiGetProjectActivity,
   listNotifications as apiListNotifications,
   uploadMyAvatar as apiUploadMyAvatar,
+  listVulnerabilityFiles as apiListVulnFiles,
+  uploadVulnerabilityFile as apiUploadVulnFile,
+  deleteVulnerabilityFile as apiDeleteVulnFile,
   markNotificationRead as apiMarkNotificationRead,
   markAllNotificationsRead as apiMarkAllNotificationsRead,
   listAgentTokens as apiListAgentTokens,
@@ -94,6 +105,7 @@ import {
   setupTwoFactor as apiSetupTwoFactor,
   confirmTwoFactor as apiConfirmTwoFactor,
   disableTwoFactor as apiDisableTwoFactor,
+  changeMyPassword as apiChangeMyPassword,
   exportVulnerabilityToJira as apiExportVulnerabilityToJira,
   getVulnerabilityJiraLink as apiGetVulnerabilityJiraLink,
   getTasks as apiGetTasks,
@@ -119,10 +131,12 @@ import type {
   Service as ApiService,
   Vulnerability as ApiVulnerability,
   JiraIssueLink,
+  WorksIssueLink as ApiWorksLink,
   JiraTask,
   JiraTaskDetail,
   JiraTaskCategory,
   Invitation as ApiInvitation,
+  VulnerabilityFile as ApiVulnFile,
 } from "../types";
 import {
   type ApiKey,
@@ -160,6 +174,7 @@ import {
   VSTATUS_LABEL,
   VSTATUS_OPEN,
   VSTATUS_ORDER,
+  VSTATUS_FILTER,
   WS_ROLE,
   WS_ROLE_LABEL,
   type EditorType,
@@ -182,9 +197,14 @@ type ProfileTab = "account" | "security" | "api" | "customizing";
 /** Word report templates the backend can generate (POST /projects/{id}/reports/{kind}). */
 type ReportKind = "szi" | "pp";
 /** What the export dialog exports: the project report, or one of the recon lists. */
-type ExportScope = "report" | "hosts" | "ips" | "endpoints";
+type ExportScope = "report" | "hosts" | "ips" | "endpoints" | "js-endpoints" | "js-secrets";
 /** How many type-to-search suggestions a combo field offers at once. */
 const COMBO_MAX = 5;
+/** Макс. строк, которые рендерим в больших списках разом (как в FROST): остальное —
+ *  за фильтром, иначе тысячи DOM-узлов подвешивают рендер. */
+const LIST_CAP = 800;
+/** Макс. эндпоинтов, рисуемых внутри одной группы-хоста. */
+const EP_GROUP_CAP = 400;
 const REPORT_KINDS: { kind: ReportKind; title: string; desc: string }[] = [
   { kind: "szi", title: "Certification report", desc: "Security-system test report — for certification testing." },
   { kind: "pp", title: "Internal acceptance report", desc: "Acceptance protocol — for internal acceptance of the work." },
@@ -303,6 +323,10 @@ interface StormState {
   openHostId: number | null;
   /** The IP address whose detail card is open (IPs have no stored id — keyed by address). */
   openIp: string | null;
+  /** Open JS file card, by backend id — part of the URL. */
+  openJsFileId: number | null;
+  /** Open "all files of host" JS page, by hostname. */
+  openJsHost: string | null;
   reconMenuOpen: boolean;
   hostQuery: string;
   /* Recon view filters. Methods are multi-select like every other pill filter:
@@ -360,10 +384,13 @@ interface StormState {
   tab: "active" | "archived";
   query: string;
   projSort: "last" | "first";
+  worksEnabled: boolean;
   newName: string;
+  newNameError: boolean;
   newDesc: string;
   newStart: string;
   newEnd: string;
+  newAppsec: AppSecFieldsValue;
   view: ViewId;
   openProjectId: number | null;
   projEditOpen: boolean;
@@ -372,6 +399,7 @@ interface StormState {
   projEditStart: string;
   projEditEnd: string;
   projEditStatus: ProjectStatus;
+  projEditAppsec: AppSecFieldsValue;
   section: SectionId;
   expanded: number[];
   profileTab: ProfileTab;
@@ -414,6 +442,11 @@ interface StormState {
   twoFADisableOpen: boolean;
   twoFADisablePassword: string;
   twoFABusy: boolean;
+  // Смена пароля в профиле (только для не-SSO пользователей).
+  pwdCurrent: string;
+  pwdNew: string;
+  pwdConfirm: string;
+  pwdBusy: boolean;
   vulnFilterAuthor: string;
   /* Multi-select filters: every pill toggles, and an empty selection means "All"
      — so deselecting the last pill lands back on All by itself. */
@@ -427,7 +460,8 @@ interface StormState {
   tasksLoading: boolean;
   tasksError: string | null;
   tasksQuery: string;
-  tasksCat: "" | JiraTaskCategory;
+  tasksTab: "active" | "closed";
+  tasksSort: "last" | "first";
   /** Открытый ключ задачи (напр. "STS-123") — часть URL /tasks/{key}. */
   tasksOpenKey: string | null;
   tasksDetail: JiraTaskDetail | null;
@@ -436,6 +470,15 @@ interface StormState {
   /** Real backend vulnerability id (not a list index) — it is part of the URL. */
   openVulnId: number | null;
   vulnDetailForm: VulnDetailForm;
+  // ---- vulnerability attachments (evidence files in MinIO) ----
+  vulnFiles: ApiVulnFile[];
+  vulnFilesBusy: boolean;
+  // Связь открытой находки с тикетом Works (AppSec) + флаг экспорта.
+  vulnWorksLink: ApiWorksLink | null;
+  worksExportBusy: boolean;
+  vulnFileDrag: boolean;
+  /** Attachment opened in the preview modal, or null. */
+  filePreview: ApiVulnFile | null;
   // ---- Jira export modal ----
   jiraExportOpen: boolean;
   jiraExportVulnId: number | null;
@@ -452,7 +495,7 @@ interface StormState {
   jiraBulkSkipped: number;
   jiraBulkFailed: number;
   jiraBulkFinished: boolean;
-  /** Ссылка на Jira-проект — выводится из URL созданной задачи, для кнопки «Open Jira». */
+  /** Ссылка на Jira-проект — выводится из URL созданной задачи, для кнопки «Open Task Tracker». */
   jiraBulkProjectUrl: string | null;
 }
 
@@ -519,6 +562,8 @@ const initialState: StormState = {
   reconView: "hosts",
   openHostId: null,
   openIp: null,
+  openJsFileId: null,
+  openJsHost: null,
   reconMenuOpen: false,
   hostQuery: "",
   epMethods: [],
@@ -561,10 +606,13 @@ const initialState: StormState = {
   tab: "active",
   query: "",
   projSort: "last",
+  worksEnabled: false,
   newName: "",
+  newNameError: false,
   newDesc: "",
   newStart: "",
   newEnd: "",
+  newAppsec: { appsec_component_code: null, appsec_component_name: null, appsec_version_code: null, appsec_version_name: null, appsec_assignee: null, appsec_ticket_url: null, appsec_ticket_key: null },
   view: "list",
   openProjectId: null,
   projEditOpen: false,
@@ -573,6 +621,7 @@ const initialState: StormState = {
   projEditStart: "",
   projEditEnd: "",
   projEditStatus: "active",
+  projEditAppsec: { appsec_component_code: null, appsec_component_name: null, appsec_version_code: null, appsec_version_name: null, appsec_assignee: null, appsec_ticket_url: null, appsec_ticket_key: null },
   section: "overview",
   expanded: [],
   profileTab: "account",
@@ -606,6 +655,10 @@ const initialState: StormState = {
   twoFADisableOpen: false,
   twoFADisablePassword: "",
   twoFABusy: false,
+  pwdCurrent: "",
+  pwdNew: "",
+  pwdConfirm: "",
+  pwdBusy: false,
   vulnFilterAuthor: "",
   vulnFilterStatuses: [],
   vulnFilterSeverities: [],
@@ -614,13 +667,20 @@ const initialState: StormState = {
   tasksLoading: false,
   tasksError: null,
   tasksQuery: "",
-  tasksCat: "",
+  tasksTab: "active",
+  tasksSort: "last",
   tasksOpenKey: null,
   tasksDetail: null,
   tasksDetailLoading: false,
   tasksDetailError: null,
   openVulnId: null,
   vulnDetailForm: {},
+  vulnFiles: [],
+  vulnFilesBusy: false,
+  vulnWorksLink: null,
+  worksExportBusy: false,
+  vulnFileDrag: false,
+  filePreview: null,
   jiraExportOpen: false,
   jiraExportVulnId: null,
   jiraExportChecking: false,
@@ -648,6 +708,95 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
    bubble. Rendered through a portal to document.body so it is never clipped by an
    ancestor's `overflow: hidden` (the recon cards clip), and positioned `fixed`
    against the hovered element's box. */
+/* Плавное раскрытие/сворачивание. Содержимое всегда смонтировано (нужно для
+   grid-rows анимации); видимость управляется только CSS-классом, поэтому высота
+   анимируется в обе стороны. */
+function Collapse({ open, children }: { open: boolean; children: ReactNode }) {
+  return (
+    <div className={`collapse${open ? " open" : ""}`} aria-hidden={!open}>
+      <div className="collapse-inner">{children}</div>
+    </div>
+  );
+}
+
+/* Attachment preview modal. Clicking a finding's file opens this instead of
+   downloading it: the bytes are fetched once into a blob URL (so nothing is
+   saved to disk), previewed by content type, and only written out if the user
+   presses the download arrow. Images, PDFs and text/code render inline; other
+   types show a "no preview" card with the download button as the only action. */
+function FilePreview({ file, onClose }: { file: ApiVulnFile; onClose: () => void }) {
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [text, setText] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const ct = file.content_type || "";
+  const isImage = ct.startsWith("image/");
+  const isPdf = ct === "application/pdf";
+  const isText = ct.startsWith("text/") || /(json|xml|javascript|x-sh|yaml|csv|html)/.test(ct);
+  const sizeLabel = file.size_bytes < 1024 ? `${file.size_bytes} B` : `${Math.round(file.size_bytes / 1024)} KB`;
+
+  useEffect(() => {
+    let url: string | null = null;
+    let cancelled = false;
+    setBlobUrl(null);
+    setText(null);
+    setError(null);
+    (async () => {
+      try {
+        const res = await fetch(`/api/v1/files/${file.id}/download`, { credentials: "same-origin" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const blob = await res.blob();
+        if (cancelled) return;
+        url = URL.createObjectURL(blob);
+        setBlobUrl(url);
+        if (isText) setText(await blob.text());
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : String(e));
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [file.id, isText]);
+
+  const loading = !blobUrl && !error;
+
+  return createPortal(
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 95, background: "rgba(10,16,26,.82)", display: "flex", alignItems: "center", justifyContent: "center", padding: 40, animation: "storm-fade .18s ease both" }}>
+      <div onClick={stop} style={{ display: "flex", flexDirection: "column", width: "min(1000px, 100%)", maxHeight: "100%", background: "var(--st-surface)", border: "1px solid var(--st-border)", borderRadius: 14, overflow: "hidden", boxShadow: "0 30px 80px rgba(0,0,0,.5)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 16px", borderBottom: "1px solid var(--st-divider)" }}>
+          <Icon name="doc" size={16} color="var(--st-text-3)" />
+          <span className="mono" style={{ flex: 1, minWidth: 0, fontSize: 13, color: "var(--st-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file.original_name}</span>
+          <span className="mono" style={{ flex: "none", fontSize: 11, color: "var(--st-text-faint)" }}>{sizeLabel}</span>
+          <a href={`/api/v1/files/${file.id}/download`} download={file.original_name} className="clk" title={t("Download")} style={{ display: "inline-flex", alignItems: "center", gap: 6, height: 34, padding: "0 14px", borderRadius: 9, background: "var(--st-accent)", color: "var(--st-on-accent)", font: "700 12.5px Inter,sans-serif", textDecoration: "none", cursor: "pointer" }}>
+            <Icon name="download" size={15} sw={2.2} />{t("Download")}
+          </a>
+          <div className="clk" onClick={onClose} title={t("Close")} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, borderRadius: 9, background: "var(--st-elevated)", color: "var(--st-text-2)", cursor: "pointer" }}>
+            <Icon name="close" size={16} />
+          </div>
+        </div>
+        <div style={{ flex: 1, minHeight: 0, overflow: "auto", background: "var(--st-sunken)", display: "flex", alignItems: isImage ? "center" : "stretch", justifyContent: "center" }}>
+          {loading && <div style={{ padding: 60, color: "var(--st-text-faint)", font: "500 14px Inter,sans-serif" }}>{t("Loading preview…")}</div>}
+          {error && <div style={{ padding: 60, color: "var(--st-danger)", font: "500 14px Inter,sans-serif" }}>{t("Could not load this file.")} ({error})</div>}
+          {blobUrl && isImage && <img src={blobUrl} alt={file.original_name} style={{ maxWidth: "100%", maxHeight: "78vh", objectFit: "contain", display: "block" }} />}
+          {blobUrl && isPdf && <iframe src={blobUrl} title={file.original_name} style={{ width: "100%", height: "78vh", border: "none", background: "#fff" }} />}
+          {blobUrl && isText && text != null && (
+            <pre className="mono" style={{ margin: 0, padding: "16px 18px", width: "100%", fontSize: 12.5, lineHeight: 1.6, color: "var(--st-text-2)", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{text}</pre>
+          )}
+          {blobUrl && !isImage && !isPdf && !isText && (
+            <div style={{ padding: 60, textAlign: "center", color: "var(--st-text-faint)", font: "500 14px Inter,sans-serif" }}>
+              <Icon name="doc" size={40} color="var(--st-text-faint)" />
+              <div style={{ marginTop: 14 }}>{t("No preview available for this file type.")}</div>
+              <div style={{ marginTop: 6, fontSize: 12.5 }}>{t("Use the download button to save it.")}</div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 function Tip({ label, children }: { label: string; children: ReactNode }) {
   const [box, setBox] = useState<DOMRect | null>(null);
   return (
@@ -699,6 +848,15 @@ const toDispDate = (s?: string): string => {
   if (!s) return "";
   const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})$/);
   return m ? `${m[3]}.${m[2]}.${m[1]}` : s;
+};
+
+/** ISO-таймстамп → «ДД.ММ.ГГГГ, ЧЧ:ММ» (привлекательнее сырого ISO). */
+const fmtDateTime = (s?: string | null): string => {
+  if (!s) return "—";
+  const dt = new Date(s);
+  if (Number.isNaN(dt.getTime())) return String(s);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${p(dt.getDate())}.${p(dt.getMonth() + 1)}.${dt.getFullYear()}, ${p(dt.getHours())}:${p(dt.getMinutes())}`;
 };
 
 /** Relative "time ago" from an ISO timestamp. */
@@ -765,7 +923,7 @@ function navStateFromPath(path: string): Partial<StormState> {
   const head = parts[0];
   if (!head) return { view: "list", nav: "projects" };
   if (head === "projects") {
-    if (parts.length === 1) return { view: "list", nav: "projects", openProjectId: null, openVulnId: null, openNoteId: null, openHostId: null, openIp: null };
+    if (parts.length === 1) return { view: "list", nav: "projects", openProjectId: null, openVulnId: null, openNoteId: null, openHostId: null, openIp: null, openJsFileId: null, openJsHost: null };
     const id = Number(parts[1]);
     const seg = parts[2];
     const base: Partial<StormState> = {
@@ -776,6 +934,8 @@ function navStateFromPath(path: string): Partial<StormState> {
       openNoteId: null,
       openHostId: null,
       openIp: null,
+      openJsFileId: null,
+      openJsHost: null,
     };
     /** `/…/vulns/7` → 7; a missing or non-numeric segment → null. */
     const entityId = () => {
@@ -822,6 +982,8 @@ interface ApiProjectRow {
   openFindings: number;
   totalFindings: number;
   hostsCount: number;
+  /** AppSec-тикет проекта — чтобы в разделе Tasks показать ссылку на проект. */
+  appsec_ticket_key: string | null;
 }
 
 function initialsOf(name: string): string {
@@ -1149,6 +1311,7 @@ const ACT_SEV: Record<Severity, string> = {
   medium: "var(--st-warn)",
   low: "var(--st-accent)",
   info: "var(--st-text-3)",
+  unrealized: "var(--st-text-faint)",
 };
 
 /** Beyond this many lines a card collapses and offers "Show more". */
@@ -1438,6 +1601,16 @@ export function StormApp() {
 
   // ================= projects: load from backend =================
   const reloadProjects = () => setStateRaw((s) => ({ ...s, reloadTick: s.reloadTick + 1 }));
+  // Доступен ли экспорт в AppSec (Works). Грузим один раз; если выключено —
+  // AppSec-поля проекта и кнопка экспорта в находке не показываются.
+  useEffect(() => {
+    let active = true;
+    apiGetWorksConfig()
+      .then((cfg) => { if (active) setState({ worksEnabled: cfg.enabled }); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -1464,6 +1637,7 @@ export function StormApp() {
             openFindings: st?.open_findings ?? 0,
             totalFindings: st?.total_findings ?? 0,
             hostsCount: st?.hosts_count ?? 0,
+            appsec_ticket_key: p.appsec_ticket_key ?? null,
           };
         });
         if (!cancelled) setStateRaw((s) => ({ ...s, apiProjects: rows, projectsLoading: false }));
@@ -1586,17 +1760,12 @@ export function StormApp() {
     void (async () => {
       setStateRaw((s) => ({ ...s, hostsLoading: true }));
       try {
+        // Эндпоинты теперь приезжают прямо в списке хостов (бэкенд батч-грузит их
+        // одним selectinload-запросом), поэтому деталь на каждый хост больше НЕ дёргаем
+        // — это убирает N+1 (раньше — отдельный запрос на каждый из сотен хостов).
         const res = await apiGetHosts(pid);
-        const rows = await Promise.all(
-          res.items.map(async (h) => {
-            try {
-              const det = await apiGetHost(pid, h.id);
-              return toStormHost(h, det.endpoints.map((e) => ({ id: e.id, m: toStormMethod(e.method), p: e.path })));
-            } catch {
-              // Best-effort: a host whose detail fails still belongs in the list.
-              return toStormHost(h);
-            }
-          })
+        const rows = res.items.map((h) =>
+          toStormHost(h, (h.endpoints ?? []).map((e) => ({ id: e.id, m: toStormMethod(e.method), p: e.path }))),
         );
         if (!cancelled) setStateRaw((s) => ({ ...s, apiHosts: rows, hostsLoading: false }));
       } catch (e) {
@@ -1614,6 +1783,13 @@ export function StormApp() {
 
   // ================= JS files: backend-loaded, refreshed by jsTick =================
   const reloadJsFiles = () => setStateRaw((s) => ({ ...s, jsTick: s.jsTick + 1 }));
+  const lastJsReloadRef = useRef(0);
+  const reloadJsFilesThrottled = () => {
+    const now = Date.now();
+    if (now - lastJsReloadRef.current < 4000) return;
+    lastJsReloadRef.current = now;
+    reloadJsFiles();
+  };
   useEffect(() => {
     const pid = state.openProjectId;
     if (pid == null) {
@@ -1621,12 +1797,30 @@ export function StormApp() {
       return;
     }
     let cancelled = false;
+    // Стримим JS-файлы страницами и склеиваем накопитель: список появляется
+    // сразу после первой страницы и доливается, вместо одного ответа на тысячи
+    // файлов (каждый со своими secrets/endpoints). Каждая страница ЗАМЕНЯЕТ
+    // apiJsFiles накопленным срезом — идемпотентно даже при рефетче по jsTick.
     void (async () => {
-      try {
-        const files = await apiGetJsFiles(pid);
-        if (!cancelled) setStateRaw((s) => ({ ...s, apiJsFiles: files }));
-      } catch {
-        if (!cancelled) setStateRaw((s) => ({ ...s, apiJsFiles: [] }));
+      const PAGE = 200;
+      const acc: ApiJsFile[] = [];
+      let page = 1;
+      let first = true;
+      for (;;) {
+        let res;
+        try {
+          res = await apiGetJsFilesPage(pid, page, PAGE);
+        } catch {
+          if (first && !cancelled) setStateRaw((s) => ({ ...s, apiJsFiles: [] }));
+          return;
+        }
+        if (cancelled) return;
+        acc.push(...res.items);
+        const snapshot = acc.slice();
+        setStateRaw((s) => (s.openProjectId === pid ? { ...s, apiJsFiles: snapshot } : s));
+        first = false;
+        if (res.items.length < PAGE || page >= (res.pages || 1)) break;
+        page++;
       }
     })();
     return () => {
@@ -1732,11 +1926,12 @@ export function StormApp() {
       try {
         const next = await apiGetJsScanJob(pid, job.id);
         if (cancelled) return;
-        // The scan commits per file, so found files stream in as it runs.
-        reloadJsFiles();
+        // The scan commits per file, so found files stream in as it runs (throttled).
+        reloadJsFilesThrottled();
         if (isFarmJobInFlight(next.status)) {
           setStateRaw((s) => (s.jsFarmJob && s.jsFarmJob.id === next.id ? { ...s, jsFarmJob: next } : s));
         } else {
+          reloadJsFiles(); // финальное состояние — без дросселя
           setStateRaw((s) => (s.jsFarmJob && s.jsFarmJob.id === next.id ? { ...s, jsFarmJob: null } : s));
           if (next.status === "done" && next.result) {
             pushToast(`${t("Scan done")} — ${next.result.files_scanned} JS, ${next.result.secrets_found} ${t("secrets")}, ${next.result.endpoints_found} ${t("paths")}`, "success");
@@ -1991,8 +2186,8 @@ export function StormApp() {
      "Add hosts") — otherwise coming back would drop the user into a stale form
      instead of the list they asked for. */
   const setSection = (s: SectionId) =>
-    setState({ section: s, ...(s === "hosts" ? {} : { reconView: "hosts" as ReconView }), reconMenuOpen: false, openVulnId: null, openNoteId: null, noteEditorOpen: false, exportPageOpen: false, hostImportOpen: false, ipImportOpen: false, epImportOpen: false, jsScanSetupOpen: false });
-  const selRecon = (v: ReconView) => setState({ section: "hosts", reconView: v, reconMenuOpen: false, openHostId: null, openIp: null, exportPageOpen: false, hostImportOpen: false, ipImportOpen: false, epImportOpen: false, jsScanSetupOpen: false });
+    setState({ section: s, ...(s === "hosts" ? {} : { reconView: "hosts" as ReconView }), reconMenuOpen: false, openVulnId: null, openNoteId: null, noteEditorOpen: false, openJsFileId: null, openJsHost: null, exportPageOpen: false, hostImportOpen: false, ipImportOpen: false, epImportOpen: false, jsScanSetupOpen: false });
+  const selRecon = (v: ReconView) => setState({ section: "hosts", reconView: v, reconMenuOpen: false, openHostId: null, openIp: null, openJsFileId: null, openJsHost: null, exportPageOpen: false, hostImportOpen: false, ipImportOpen: false, epImportOpen: false, jsScanSetupOpen: false });
 
   /* ---- URL ↔ navigation-state sync (deep links to sections / projects) ----
      Two effects mirror each other: URL → state, and state → URL. They must never
@@ -2059,7 +2254,7 @@ export function StormApp() {
         const res = await apiGetTasks({});
         setStateRaw((s) => ({ ...s, tasksRows: res.items, tasksLoading: false }));
       } catch (e) {
-        setStateRaw((s) => ({ ...s, tasksRows: [], tasksLoading: false, tasksError: getApiErrorMessage(e, "Couldn't load tasks from Jira") }));
+        setStateRaw((s) => ({ ...s, tasksRows: [], tasksLoading: false, tasksError: getApiErrorMessage(e, "Couldn't load tasks from Task Tracker") }));
       }
     })();
   };
@@ -2106,8 +2301,37 @@ export function StormApp() {
     const v = state.apiVulns.find((x) => x.id === state.openVulnId);
     if (!v) return;
     setStateRaw((s) => (s.vulnDetailForm.title === v.title ? s : { ...s, vulnDetailForm: vulnFormFrom(v) }));
-     
+
   }, [state.openVulnId, state.apiVulns]);
+
+  // Вложения открытой уязвимости: грузим при открытии карточки, чистим при закрытии.
+  useEffect(() => {
+    const pid = state.openProjectId;
+    const vid = state.openVulnId;
+    if (pid == null || vid == null) {
+      setStateRaw((s) => (s.vulnFiles.length === 0 && !s.vulnWorksLink ? s : { ...s, vulnFiles: [], vulnWorksLink: null }));
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const files = await apiListVulnFiles(pid, vid);
+        if (!cancelled) setStateRaw((s) => ({ ...s, vulnFiles: files }));
+      } catch {
+        if (!cancelled) setStateRaw((s) => ({ ...s, vulnFiles: [] }));
+      }
+      // Связь с тикетом Works (если есть) — для «уже экспортировано» и статуса.
+      try {
+        const link = await apiGetVulnWorksLink(pid, vid);
+        if (!cancelled) setStateRaw((s) => ({ ...s, vulnWorksLink: link }));
+      } catch {
+        if (!cancelled) setStateRaw((s) => ({ ...s, vulnWorksLink: null }));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [state.openVulnId, state.openProjectId]);
 
   /* Esc dismisses the frontmost open overlay, mirroring a backdrop click. Modals
      and the notifications panel each carry their own onClose on `.modalback` /
@@ -2143,7 +2367,9 @@ export function StormApp() {
   const createProject = async () => {
     const name = state.newName.trim();
     if (!name) {
-      setState({ modalOpen: false });
+      // Не закрываем модалку — подсвечиваем обязательное поле красным.
+      setState({ newNameError: true });
+      pushToast(t("Please fill in the required fields"), "error");
       return;
     }
     if (datesInvalid(state.newStart, state.newEnd)) {
@@ -2151,13 +2377,20 @@ export function StormApp() {
       return;
     }
     try {
-      await apiCreateProject({
+      const created = await apiCreateProject({
         name,
         description: state.newDesc.trim() || undefined,
         start_date: state.newStart || undefined,
         end_date: state.newEnd || undefined,
+        ...state.newAppsec,
       });
-      setState({ modalOpen: false, newName: "", newDesc: "", newStart: "", newEnd: "", tab: "active" });
+      // Сброс формы + редирект на страницу созданного проекта.
+      setState({
+        modalOpen: false, newName: "", newDesc: "", newStart: "", newEnd: "", newNameError: false,
+        newAppsec: { appsec_component_code: null, appsec_component_name: null, appsec_version_code: null, appsec_version_name: null, appsec_assignee: null, appsec_ticket_url: null, appsec_ticket_key: null },
+        tab: "active", nav: "projects", view: "detail", openProjectId: created.id, section: "overview",
+        expanded: [], openVulnId: null, openNoteId: null, accessDenied: false,
+      });
       reloadProjects();
     } catch (e) {
       pushToast(getApiErrorMessage(e, "Couldn't create project"), "error");
@@ -2166,7 +2399,28 @@ export function StormApp() {
 
   // ================= edit project =================
   // Opened from a list row → targets a real backend project (projEditId set).
-  const openProjEditRow = (row: ApiProjectRow) =>
+  // AppSec-поля (компонент/версия/исполнитель) не входят в список-строку — при
+  // открытии редактора догружаем их из проекта, если включён Works.
+  const loadProjAppsec = (id: number | null) => {
+    if (!id) return;
+    void apiGetProject(id)
+      .then((p) =>
+        setState({
+          projEditAppsec: {
+            appsec_component_code: p.appsec_component_code,
+            appsec_component_name: p.appsec_component_name,
+            appsec_version_code: p.appsec_version_code,
+            appsec_version_name: p.appsec_version_name,
+            appsec_assignee: p.appsec_assignee,
+            appsec_ticket_url: p.appsec_ticket_url,
+            appsec_ticket_key: p.appsec_ticket_key,
+          },
+        })
+      )
+      .catch(() => {});
+  };
+  const EMPTY_APPSEC: AppSecFieldsValue = { appsec_component_code: null, appsec_component_name: null, appsec_version_code: null, appsec_version_name: null, appsec_assignee: null, appsec_ticket_url: null, appsec_ticket_key: null };
+  const openProjEditRow = (row: ApiProjectRow) => {
     setState({
       projEditOpen: true,
       projEditId: row.id,
@@ -2175,9 +2429,12 @@ export function StormApp() {
       projEditStart: row.startISO,
       projEditEnd: row.endISO,
       projEditStatus: row.status,
+      projEditAppsec: EMPTY_APPSEC,
     });
+    loadProjAppsec(row.id);
+  };
   // Opened from the project detail — targets the open project.
-  const openProjEdit = () =>
+  const openProjEdit = () => {
     setState({
       projEditOpen: true,
       projEditId: state.openProjectId,
@@ -2186,7 +2443,10 @@ export function StormApp() {
       projEditStart: projRow?.startISO ?? "",
       projEditEnd: projRow?.endISO ?? "",
       projEditStatus: projRow?.status ?? "active",
+      projEditAppsec: EMPTY_APPSEC,
     });
+    loadProjAppsec(state.openProjectId);
+  };
   const closeProjEdit = () => setState({ projEditOpen: false });
   const saveProjEdit = async () => {
     const name = state.projEditName.trim();
@@ -2205,6 +2465,7 @@ export function StormApp() {
         start_date: state.projEditStart || undefined,
         end_date: state.projEditEnd || undefined,
         status: state.projEditStatus,
+        ...state.projEditAppsec,
       });
       setState({ projEditOpen: false });
       reloadProjects();
@@ -2246,6 +2507,25 @@ export function StormApp() {
      known ports still contributes its bare name — otherwise it would vanish from
      an export that is supposed to list it. */
   const exportLinesFor = (scope: ExportScope): string[] => {
+    if (scope === "js-endpoints" || scope === "js-secrets") {
+      // Источник: открытая карточка файла → страница «все файлы хоста» → весь
+      // отфильтрованный список. Так «Экспорт» на странице файла даёт ровно его
+      // находки, а та же кнопка в списке — находки всего раздела.
+      const src = _jsd ? [_jsd] : _jsHost ? jsFiles.filter((f) => f.host === _jsHost) : jsFilesFiltered;
+      const out: string[] = [];
+      const uniq = new Set<string>();
+      for (const f of src) {
+        // Вид и значение — табом: секрет может содержать что угодно, таб переживает grep и вставку в таблицу.
+        const lines = scope === "js-endpoints" ? f.endpoints : f.secrets.map((sec) => `${sec.kind}\t${sec.match}`);
+        for (const line of lines) {
+          const v = line.trim();
+          if (!v || uniq.has(v)) continue;
+          uniq.add(v);
+          out.push(v);
+        }
+      }
+      return out;
+    }
     if (scope === "ips") {
       // The row already carries the ports of every host sharing this address.
       return ipsRows.flatMap((r) => (r.ports.length ? r.ports.map((p) => `${r.ip}:${p.n}`) : [r.ip]));
@@ -2311,7 +2591,12 @@ export function StormApp() {
     if (state.exportScope === "endpoints" && state.exportFormat === "openapi") {
       downloadText(endpointLinesToOpenApi(lines), `${name}_endpoints.json`, "application/json");
     } else {
-      const file = state.exportScope === "hosts" ? "hosts" : state.exportScope === "ips" ? "ips" : "endpoints";
+      const file =
+        state.exportScope === "hosts" ? "hosts"
+        : state.exportScope === "ips" ? "ips"
+        : state.exportScope === "js-endpoints" ? "js_paths"
+        : state.exportScope === "js-secrets" ? "js_secrets"
+        : "endpoints";
       downloadText(lines.join("\n"), `${name}_${file}.txt`);
     }
     closeReconExport();
@@ -2343,6 +2628,23 @@ export function StormApp() {
   };
 
   // ================= Jira export =================
+  // Экспорт находки в AppSec (Works): создаёт тикет bug_appsec в STS. Исполнитель,
+  // компонент и версия берутся из настроек проекта; статус потом подтянется (Stage 4).
+  const exportToWorks = async () => {
+    const pid = state.openProjectId;
+    const vid = state.openVulnId;
+    if (pid == null || vid == null || state.worksExportBusy) return;
+    setState({ worksExportBusy: true });
+    try {
+      const link = await apiExportVulnToWorks(pid, vid);
+      setState({ worksExportBusy: false, vulnWorksLink: link });
+      pushToast(`${t("Exported to AppSec")}: ${link.works_key}`, "success");
+    } catch (e) {
+      setState({ worksExportBusy: false });
+      pushToast(getApiErrorMessage(e, "Couldn't export to AppSec"), "error");
+    }
+  };
+
   const openJiraExport = (vulnId: number) => {
     const pid = state.openProjectId;
     if (pid == null) return;
@@ -2368,9 +2670,9 @@ export function StormApp() {
     try {
       const link = await apiExportVulnerabilityToJira(pid, vid);
       setState({ jiraExportBusy: false, jiraExportLink: link });
-      pushToast(`Exported to Jira: ${link.jira_issue_key || "issue created"}`, "success");
+      pushToast(`Exported to Task Tracker: ${link.jira_issue_key || "issue created"}`, "success");
     } catch (e) {
-      const msg = getApiErrorMessage(e, "Couldn't export to Jira");
+      const msg = getApiErrorMessage(e, "Couldn't export to Task Tracker");
       setState({ jiraExportBusy: false, jiraExportError: msg });
       pushToast(msg, "error");
     }
@@ -2429,7 +2731,7 @@ export function StormApp() {
     setState({ jiraBulkProjectUrl: projectUrl });
     setState({ jiraBulkRunning: false, jiraBulkFinished: true });
     reloadVulns();
-    pushToast(`Jira export finished — ${created} created, ${skipped} already linked, ${failed} failed`, failed ? "warning" : "success");
+    pushToast(`Task Tracker export finished — ${created} created, ${skipped} already linked, ${failed} failed`, failed ? "warning" : "success");
   };
 
   // ================= detail: hosts / recon =================
@@ -2443,11 +2745,38 @@ export function StormApp() {
 
   const toggleEpGroup = (host: string) =>
     setState((s) => ({ epExpanded: s.epExpanded.includes(host) ? s.epExpanded.filter((x) => x !== host) : [...s.epExpanded, host] }));
-  // JS files share the epExpanded set, namespaced "js:<host>" so a host and its
-  // JS group don't collide.
-  const toggleJsFile = (url: string) => {
-    const key = `js:file:${url}`;
+  // JS groups share the epExpanded set, namespaced "js:host:<host>" so a host and
+  // its JS group don't collide. Files no longer expand in place — a click opens
+  // the file's own card, like hosts and IPs.
+  const toggleJsGroup = (host: string) => {
+    const key = `js:host:${host}`;
     setState((s) => ({ epExpanded: s.epExpanded.includes(key) ? s.epExpanded.filter((x) => x !== key) : [...s.epExpanded, key] }));
+  };
+  /** Deletes every JS finding of one host, after confirmation. */
+  const deleteJsHost = async (hostId: number | undefined, label: string) => {
+    const pid = state.openProjectId;
+    if (pid == null || hostId == null) return;
+    if (!window.confirm(`${t("Delete all JS findings for")} ${label}?`)) return;
+    try {
+      await apiDeleteJsFilesForHost(pid, hostId);
+      reloadJsFiles();
+      pushToast(t("JS findings deleted"), "success");
+    } catch (e) {
+      pushToast(getApiErrorMessage(e, t("Delete failed")), "error");
+    }
+  };
+  /** Bulk-deletes every JS file currently shown (after the section's filters). */
+  const bulkDeleteJsVisible = async (ids: number[]) => {
+    const pid = state.openProjectId;
+    if (pid == null || ids.length === 0) return;
+    if (!window.confirm(`${t("Delete")} ${ids.length} ${t("JS files")}?`)) return;
+    try {
+      const n = await apiBulkDeleteJsFiles(pid, ids);
+      reloadJsFiles();
+      pushToast(`${t("JS findings deleted")} (${n})`, "success");
+    } catch (e) {
+      pushToast(getApiErrorMessage(e, t("Delete failed")), "error");
+    }
   };
   /* Starts the scan on exactly the domains left in the setup page's list — the
      backend takes that list verbatim (empty would fall back to every project
@@ -3119,6 +3448,8 @@ export function StormApp() {
     });
   };
   const closeNoteEditor = () => setState({ noteEditorOpen: false });
+  // «All notes» / Cancel — всегда возврат к списку заметок (не к вьюеру).
+  const backToNotesList = () => setState({ openNoteId: null, noteEditorOpen: false });
   /* Opening a note always shows it rendered — including your own. Editing is a
      deliberate act (the pencil / the viewer's Edit button), not what a click on
      the note means. `id` is the backend id: it goes into the URL. */
@@ -3137,7 +3468,7 @@ export function StormApp() {
         if (!target) return;
         await apiUpdateProjectNote(pid, target.id, payload);
       }
-      setState({ noteEditorOpen: false });
+      setState({ noteEditorOpen: false, openNoteId: null });
       reloadNotes();
     } catch (e) {
       pushToast(getApiErrorMessage(e, mode === "add" ? "Couldn't create note" : "Couldn't save note"), "error");
@@ -3170,6 +3501,36 @@ export function StormApp() {
     setState({ section: "vulns", openVulnId: id, vulnDetailForm: v ? vulnFormFrom(v) : {} });
   };
   const closeVulnDetail = () => setState({ openVulnId: null });
+  // Вложения уязвимости: загрузка (drag-drop / выбор файлов) и удаление. Файлы
+  // привязаны к открытой уязвимости (openVulnId) — доказательная база в MinIO.
+  const uploadVulnFilesFor = async (files: File[]) => {
+    const pid = state.openProjectId;
+    const vid = state.openVulnId;
+    if (pid == null || vid == null || files.length === 0) return;
+    setState({ vulnFilesBusy: true });
+    try {
+      for (const f of files) {
+        await apiUploadVulnFile(pid, vid, f);
+      }
+      const fresh = await apiListVulnFiles(pid, vid);
+      setState({ vulnFiles: fresh, vulnFilesBusy: false });
+      pushToast(files.length === 1 ? t("File attached") : `${files.length} ${t("files attached")}`, "success");
+    } catch (e) {
+      setState({ vulnFilesBusy: false });
+      pushToast(getApiErrorMessage(e, t("Couldn't upload the file")), "error");
+    }
+  };
+  const removeVulnFile = async (fileId: number) => {
+    const pid = state.openProjectId;
+    const vid = state.openVulnId;
+    if (pid == null || vid == null) return;
+    try {
+      await apiDeleteVulnFile(pid, vid, fileId);
+      setState((s) => ({ vulnFiles: s.vulnFiles.filter((f) => f.id !== fileId) }));
+    } catch (e) {
+      pushToast(getApiErrorMessage(e, t("Couldn't delete the file")), "error");
+    }
+  };
   const updateVulnDetailForm = <K extends keyof VulnDetailForm>(k: K, v: VulnDetailForm[K]) =>
     setState((s) => ({ vulnDetailForm: { ...s.vulnDetailForm, [k]: v } }));
   const addVdStep = () => setState((s) => ({ vulnDetailForm: { ...s.vulnDetailForm, stepsList: [...(s.vulnDetailForm.stepsList ?? []), ""] } }));
@@ -3190,22 +3551,18 @@ export function StormApp() {
       list[i] = val;
       return { vulnDetailForm: { ...s.vulnDetailForm, stepsList: list } };
     });
-  const pasteVdStepImage = (i: number, e: ReactClipboardEvent<HTMLInputElement>) => {
-    const items = e.clipboardData?.items ?? [];
-    for (const it of Array.from(items)) {
-      if (it.type && it.type.indexOf("image") === 0) {
-        e.preventDefault();
-        const file = it.getAsFile();
-        if (!file) continue;
-        const reader = new FileReader();
-        reader.onload = (ev) =>
-          setState((s) => {
-            const imgs = { ...(s.vulnDetailForm.stepImages ?? {}) };
-            imgs[i] = [...(imgs[i] ?? []), String(ev.target?.result ?? "")];
-            return { vulnDetailForm: { ...s.vulnDetailForm, stepImages: imgs } };
-          });
-        reader.readAsDataURL(file);
-      }
+  /** Read image files (from a paste in the step editor) and append them to step i. */
+  const attachVdStepImages = (i: number, files: File[]) => {
+    for (const file of files) {
+      if (!file.type.startsWith("image/")) continue;
+      const reader = new FileReader();
+      reader.onload = (ev) =>
+        setState((s) => {
+          const imgs = { ...(s.vulnDetailForm.stepImages ?? {}) };
+          imgs[i] = [...(imgs[i] ?? []), String(ev.target?.result ?? "")];
+          return { vulnDetailForm: { ...s.vulnDetailForm, stepImages: imgs } };
+        });
+      reader.readAsDataURL(file);
     }
   };
   const removeVdStepImage = (i: number, imgIdx: number) =>
@@ -3360,8 +3717,13 @@ export function StormApp() {
     try {
       if (adding) {
         const res = await apiCreateInvitation({ email, role, project_role: projectRole });
-        const preview = res.mail_preview_url ? ` (email preview: ${res.mail_preview_url})` : "";
-        pushToast(`Invitation sent to ${res.email_sent_to}${preview}`, "success");
+        if (res.activation_url) {
+          try { await navigator.clipboard.writeText(res.activation_url); } catch { /* clipboard may be blocked */ }
+          pushToast(`Invitation created for ${res.email_sent_to} — activation link copied: ${res.activation_url}`, "success");
+        } else {
+          const preview = res.mail_preview_url ? ` (email preview: ${res.mail_preview_url})` : "";
+          pushToast(`Invitation sent to ${res.email_sent_to}${preview}`, "success");
+        }
       } else {
         const u = state.workspaceUsers[state.wsUserIndex];
         if (!u) return;
@@ -3400,8 +3762,13 @@ export function StormApp() {
   const resendInvite = async (id: number) => {
     try {
       const res = await apiResendInvitation(id);
-      const preview = res.mail_preview_url ? ` (email preview: ${res.mail_preview_url})` : "";
-      pushToast(`Invitation re-sent to ${res.email_sent_to}${preview}`, "success");
+      if (res.activation_url) {
+        try { await navigator.clipboard.writeText(res.activation_url); } catch { /* clipboard may be blocked */ }
+        pushToast(`Activation link copied: ${res.activation_url}`, "success");
+      } else {
+        const preview = res.mail_preview_url ? ` (email preview: ${res.mail_preview_url})` : "";
+        pushToast(`Invitation re-sent to ${res.email_sent_to}${preview}`, "success");
+      }
       reloadUsers();
     } catch (e) {
       pushToast(getApiErrorMessage(e, "Couldn't resend invitation"), "error");
@@ -3453,6 +3820,28 @@ export function StormApp() {
     } catch (e) {
       setState({ twoFABusy: false });
       pushToast(getApiErrorMessage(e, "Couldn't disable 2FA"), "error");
+    }
+  };
+
+  // Смена собственного пароля (PATCH /users/me/password). Для SSO-пользователей
+  // форма не показывается (у них нет локального пароля — меняется в IdM).
+  const submitPasswordChange = async () => {
+    if (state.pwdBusy) return;
+    const cur = state.pwdCurrent;
+    const nw = state.pwdNew;
+    if (!cur || !nw) { pushToast(t("Enter your current and new password"), "error"); return; }
+    if (nw.length < 8) { pushToast(t("New password must be at least 8 characters"), "error"); return; }
+    if (nw !== state.pwdConfirm) { pushToast(t("Passwords don't match"), "error"); return; }
+    if (nw === cur) { pushToast(t("New password must differ from the current one"), "error"); return; }
+    setState({ pwdBusy: true });
+    try {
+      await apiChangeMyPassword({ current_password: cur, new_password: nw });
+      await refreshUser();
+      setState({ pwdBusy: false, pwdCurrent: "", pwdNew: "", pwdConfirm: "" });
+      pushToast(t("Password changed"), "success");
+    } catch (e) {
+      setState({ pwdBusy: false });
+      pushToast(getApiErrorMessage(e, "Couldn't change the password"), "error");
     }
   };
 
@@ -3531,7 +3920,9 @@ export function StormApp() {
   const aggHostTimes = (rows: ApiProjectRow[]) => rows.flatMap((r) => state.aggTimes?.[r.id]?.hosts ?? []);
   const aggOpenVulnTimes = (rows: ApiProjectRow[]) => rows.flatMap((r) => state.aggTimes?.[r.id]?.openVulns ?? []);
 
-  const navBg = (id: NavId) => (state.nav === id ? "var(--st-accent-soft)" : "transparent");
+  // Активный пункт — акцентный фон; неактивному фон НЕ задаём (undefined), иначе
+  // inline-стиль перебил бы CSS `.nav:hover` и подсветки при наведении не было бы.
+  const navBg = (id: NavId) => (state.nav === id ? "var(--st-accent-soft)" : undefined);
   const navColor = (id: NavId) => (state.nav === id ? "var(--st-accent)" : "var(--st-text-2)");
 
   const isList = state.view === "list" && state.nav === "projects";
@@ -3656,9 +4047,9 @@ export function StormApp() {
 
   const _hd = state.openHostId != null ? hosts.find((h) => h.id === state.openHostId) : undefined;
 
-  const sevCounts: Record<Severity, number> = { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
+  const sevCounts: Record<Severity, number> = { critical: 0, high: 0, medium: 0, low: 0, info: 0, unrealized: 0 };
   d.vulns.forEach((v) => (sevCounts[v.sev] = (sevCounts[v.sev] || 0) + 1));
-  const sevBars = (["critical", "high", "medium", "low", "info"] as Severity[]).map((k) => ({
+  const sevBars = (["critical", "high", "medium", "low", "info", "unrealized"] as Severity[]).map((k) => ({
     label: cap(k),
     color: SEV[k].color,
     tileBg: SEV[k].bg,
@@ -3674,7 +4065,8 @@ export function StormApp() {
   const vfA = state.vulnFilterAuthor.trim().toLowerCase();
   const vfS = state.vulnFilterStatuses;
   const vfSev = state.vulnFilterSeverities;
-  const vfH = state.vulnFilterHost.trim().toLowerCase();
+  // Единое поле поиска: совпадение по хосту ИЛИ по названию находки.
+  const vfQ = state.vulnFilterHost.trim().toLowerCase();
   // Within a group the selected values are OR-ed; the groups are AND-ed. An empty
   // group filters nothing, which is what makes "All" light up on its own.
   const vulns = d.vulns
@@ -3684,7 +4076,7 @@ export function StormApp() {
         (!vfA || v.author.toLowerCase().includes(vfA)) &&
         (vfS.length === 0 || vfS.includes(v.status)) &&
         (vfSev.length === 0 || vfSev.includes(v.sev)) &&
-        (!vfH || v.host.toLowerCase().includes(vfH))
+        (!vfQ || v.host.toLowerCase().includes(vfQ) || v.title.toLowerCase().includes(vfQ))
     )
     // Newest first: a just-added finding lands at the top, not buried at the end.
     // idx is captured above, so edit/delete still address the right d.vulns entry.
@@ -3859,8 +4251,19 @@ export function StormApp() {
   const jsGroups = [...new Set(jsFilesFiltered.map((f) => f.host))].map((host) => {
     const files = jsFilesFiltered.filter((f) => f.host === host);
     // Every file in a group shares one host, so its id names the archive scope.
-    return { host, hostId: files[0]?.hostId, files, count: files.length };
+    return { host, hostId: files[0]?.hostId, files, count: files.length, paths: files.reduce((n, f) => n + f.endpoints.length, 0) };
   });
+  /** File-name tail of a JS URL, and a compact byte size — shared by the JS views. */
+  const fileBase = (url: string) => url.split("/").pop() || url;
+  const kb = (n: number | null) => (n == null ? "" : n < 1024 ? `${n} B` : `${Math.round(n / 1024)} KB`);
+  /** Open JS file card — found over the whole list, so a list filter can't close it. */
+  const _jsd = state.openJsFileId != null ? jsFiles.find((f) => f.id === state.openJsFileId) : undefined;
+  const openJsFile = (id: number) => setState({ openJsFileId: id });
+  const closeJsFile = () => setState({ openJsFileId: null });
+  /** Open "all files of host" JS page, or null. */
+  const _jsHost = state.openJsHost;
+  const openJsHostDetail = (host: string) => setState({ openJsHost: host, openJsFileId: null });
+  const closeJsHostDetail = () => setState({ openJsHost: null });
 
   /* The domains the JS scan can target: every project domain the host filters
      leave on screen, minus IP-origin rows and IP literals (the farm scans names,
@@ -3928,7 +4331,7 @@ export function StormApp() {
   const sectionLabel =
     sec === "hosts"
       ? ({ hosts: "Hosts", ips: "IPs", endpoints: "Endpoints", js: "JS scan" } as Record<string, string>)[rv] || "Hosts"
-      : ({ overview: "Overview", vulns: "Vulnerabilities", notes: "Notes", creds: "Creds", members: "Members", activity: "Activity" } as Record<string, string>)[sec] || "Overview";
+      : ({ overview: "Overview", vulns: "Issues", notes: "Notes", creds: "Creds", members: "Members", activity: "Activity" } as Record<string, string>)[sec] || "Overview";
   /** The item open inside the section, if any — the last crumb (e.g. the note's title). */
   const crumbLeaf =
     // The recon full-page forms are crumbs of their own: Project / Hosts / Export,
@@ -3943,7 +4346,13 @@ export function StormApp() {
         ? t("Add endpoints")
         : sec === "hosts" && rv === "js" && state.jsScanSetupOpen
         ? t("Choose domains")
-        : sec === "notes" && state.openNoteId != null
+        : sec === "hosts" && rv === "js" && _jsd
+        ? fileBase(_jsd.url)
+        : sec === "hosts" && rv === "js" && _jsHost
+        ? _jsHost
+        : sec === "notes" && state.noteEditorOpen
+          ? (state.noteForm.title.trim() || t("New note"))
+          : sec === "notes" && state.openNoteId != null
           ? d.notes.find((n) => n.id === state.openNoteId)?.title ?? ""
           : sec === "vulns" && state.openVulnId != null
             ? d.vulns.find((v) => v.id === state.openVulnId)?.title ?? ""
@@ -4079,17 +4488,29 @@ export function StormApp() {
 
   // ================================================================= RENDER
 
+  // Футер «+N more» под усечённым большим списком (остальное — за фильтром).
+  const capNote = (total: number, shown: number): ReactNode =>
+    total > shown ? (
+      <div style={{ padding: "16px 20px", textAlign: "center", color: "var(--st-text-faint)", fontSize: 13 }}>
+        +{total - shown} {t("more — narrow the filter to see the rest")}
+      </div>
+    ) : null;
+
   const eyebrow = (crumbs: { label: string; onClick?: () => void; muted?: boolean }[]): ReactNode => (
     <div className="mono" style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, letterSpacing: 1.2, textTransform: "uppercase", color: "var(--st-text-faint)", fontWeight: 700, marginBottom: 10 }}>
       <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--st-accent)" }} />
-      {crumbs.map((c, i) => (
-        <span key={i} style={{ display: "contents" }}>
-          {i > 0 && <span>/</span>}
-          <span className={c.onClick ? "clk" : undefined} onClick={c.onClick} style={{ cursor: c.onClick ? "pointer" : undefined, color: c.muted ? "var(--st-text-3)" : undefined }}>
-            {t(c.label)}
+      {crumbs.map((c, i) => {
+        // Все уровни кроме последнего — синие (как ссылки), последний — серый.
+        const isLast = i === crumbs.length - 1;
+        return (
+          <span key={i} style={{ display: "contents" }}>
+            {i > 0 && <span>/</span>}
+            <span className={c.onClick ? "clk" : undefined} onClick={c.onClick} style={{ cursor: c.onClick ? "pointer" : undefined, color: isLast ? "var(--st-text-3)" : "var(--st-accent-2)" }}>
+              {t(c.label)}
+            </span>
           </span>
-        </span>
-      ))}
+        );
+      })}
     </div>
   );
 
@@ -4103,7 +4524,7 @@ export function StormApp() {
             {isActive ? `${t("Showing active projects")} · ${activeCount} ${t("active")}` : `${t("Showing archived projects")} · ${archivedCount} ${t("archived")}`}
           </div>
         </div>
-        <button className="clk" onClick={() => setState({ modalOpen: true })} style={{ display: "flex", alignItems: "center", gap: 9, height: 46, padding: "0 22px", border: "none", borderRadius: 13, background: "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 14px Inter,sans-serif" }}>
+        <button className="clk" onClick={() => setState({ modalOpen: true, newNameError: false })} style={{ display: "flex", alignItems: "center", gap: 9, height: 46, padding: "0 22px", border: "none", borderRadius: 13, background: "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 14px Inter,sans-serif" }}>
           <Icon name="plus" size={17} sw={2.4} />
           {t("New project")}
         </button>
@@ -4137,12 +4558,12 @@ export function StormApp() {
       {/* controls */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
         <div style={{ display: "flex", gap: 8 }}>
-          <div className="tab" onClick={() => setState({ tab: "active" })} style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 15px", borderRadius: 11, font: "700 13.5px Inter,sans-serif", background: isActive ? "var(--st-surface)" : "transparent", border: `1px solid ${isActive ? "var(--st-border)" : "transparent"}`, color: isActive ? "var(--st-text)" : "var(--st-text-3)" }}>
+          <div className="tab" onClick={() => setState({ tab: "active" })} style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 15px", borderRadius: 11, font: "700 13.5px Inter,sans-serif", background: isActive ? "var(--st-surface)" : undefined, border: `1px solid ${isActive ? "var(--st-border)" : "transparent"}`, color: isActive ? "var(--st-text)" : "var(--st-text-3)" }}>
             <Icon name="trend-up" size={15} sw={2.2} />
             {t("Active")}
             <span className="mono" style={{ minWidth: 20, height: 20, padding: "0 5px", borderRadius: 6, background: isActive ? "var(--st-accent-2)" : "var(--st-accent-soft)", color: isActive ? "var(--st-on-accent)" : "var(--st-accent-2)", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{activeCount}</span>
           </div>
-          <div className="tab" onClick={() => setState({ tab: "archived" })} style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 15px", borderRadius: 11, font: "700 13.5px Inter,sans-serif", background: !isActive ? "var(--st-surface)" : "transparent", border: `1px solid ${!isActive ? "var(--st-border)" : "transparent"}`, color: !isActive ? "var(--st-text)" : "var(--st-text-3)" }}>
+          <div className="tab" onClick={() => setState({ tab: "archived" })} style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 15px", borderRadius: 11, font: "700 13.5px Inter,sans-serif", background: !isActive ? "var(--st-surface)" : undefined, border: `1px solid ${!isActive ? "var(--st-border)" : "transparent"}`, color: !isActive ? "var(--st-text)" : "var(--st-text-3)" }}>
             <Icon name="archive" size={15} />
             {t("Archived")}
             <span className="mono" style={{ minWidth: 20, height: 20, padding: "0 5px", borderRadius: 6, background: !isActive ? "var(--st-accent-2)" : "var(--st-accent-soft)", color: !isActive ? "var(--st-on-accent)" : "var(--st-accent-2)", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{archivedCount}</span>
@@ -4212,24 +4633,40 @@ export function StormApp() {
 
   // ---------- Tasks (Jira-проект STS, read-only) ----------
   // Категория статуса → подпись и цвет точки/чипа (одинаково в списке и карточке).
+  // Категории Task Tracker (Works): ожидание — серый, в работе — синий, завершено — зелёный.
   const TASK_CAT: Record<JiraTaskCategory, { label: string; color: string }> = {
-    todo: { label: "To Do", color: "var(--st-text-3)" },
-    inprogress: { label: "In Progress", color: "var(--st-accent)" },
+    todo: { label: "Waiting", color: "var(--st-text-3)" },
+    inprogress: { label: "In progress", color: "var(--st-accent-2)" },
     done: { label: "Done", color: "var(--st-success)" },
     unknown: { label: "Unknown", color: "var(--st-text-faint)" },
   };
-  const TASK_COLS = "110px minmax(0,2fr) 120px minmax(0,150px) 100px minmax(0,150px) 120px";
+  /* Статус задачи из трекера (напр. "IN PROGRESS", "PROBLEM ANALYSIS") приводим к
+     нашему VStatus, чтобы локализовать и покрасить по тем же правилам, что и находки.
+     Неизвестный статус — показываем как есть с цветом категории. */
+  const taskStatusVs = (raw: string): VStatus | null => {
+    const k = (raw || "").trim().toLowerCase().replace(/\s+/g, "_");
+    return (VSTATUS_ORDER as string[]).includes(k) ? (k as VStatus) : null;
+  };
+  const TASK_COLS = "110px minmax(0,2fr) minmax(0,150px) 100px minmax(0,150px) 120px 64px";
 
   const renderTasks = () => {
     if (state.tasksOpenKey) return renderTaskDetail();
     const rows = state.tasksRows ?? [];
     const q = state.tasksQuery.trim().toLowerCase();
-    const filtered = rows.filter(
-      (r) =>
-        (state.tasksCat === "" || r.status_category === state.tasksCat) &&
-        (q === "" || r.summary.toLowerCase().includes(q) || r.key.toLowerCase().includes(q)),
-    );
+    // «Закрытые» = завершённые статусы + на паузе (по просьбе — paused тоже в Closed).
+    const isDone = (r: JiraTask) => r.status_category === "done" || taskStatusVs(r.status) === "paused";
+    const searched = rows.filter((r) => q === "" || r.summary.toLowerCase().includes(q) || r.key.toLowerCase().includes(q));
+    const activeCount = searched.filter((r) => !isDone(r)).length;
+    const closedCount = searched.filter((r) => isDone(r)).length;
+    const isActive = state.tasksTab === "active";
+    const ts = (r: JiraTask) => Date.parse(r.updated || "") || 0;
+    const filtered = searched
+      .filter((r) => (isActive ? !isDone(r) : isDone(r)))
+      .sort((a, b) => (state.tasksSort === "first" ? ts(a) - ts(b) : ts(b) - ts(a)));
     const firstLoad = state.tasksLoading && state.tasksRows === null;
+    // Создать проект из тикета: открыть модалку с заранее заполненным полем тикета.
+    const createProjectFromTask = (task: JiraTask) =>
+      setState({ modalOpen: true, newAppsec: { ...EMPTY_APPSEC, appsec_ticket_url: task.url ?? null, appsec_ticket_key: task.key } });
     return (
       <div className="route" style={{ padding: "40px 48px 36px", width: "100%" }}>
         {eyebrow([{ label: "Workspace", onClick: selProjects }, { label: "Tasks", muted: true }])}
@@ -4241,24 +4678,33 @@ export function StormApp() {
             className="clk"
             onClick={reloadTasks}
             disabled={state.tasksLoading}
-            style={{ display: "inline-flex", alignItems: "center", gap: 8, height: 40, padding: "0 16px", border: "1px solid var(--st-border-light)", borderRadius: 10, background: "var(--st-surface)", color: "var(--st-text-2)", font: "700 13px Inter,sans-serif", cursor: state.tasksLoading ? "default" : "pointer", opacity: state.tasksLoading ? 0.6 : 1 }}
+            style={{ display: "inline-flex", alignItems: "center", gap: 8, height: 40, padding: "0 18px", border: "none", borderRadius: 10, background: "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13px Inter,sans-serif", cursor: state.tasksLoading ? "default" : "pointer", opacity: state.tasksLoading ? 0.6 : 1 }}
           >
             <Icon name="refresh" size={15} sw={2.2} />{t("Refresh")}
           </button>
         </div>
-        {/* Поиск по имени — слева, фильтр по категории статуса — справа (как у уязвимостей). */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, margin: "24px 0 16px", flexWrap: "wrap" }}>
-          {searchBox(t("Filter tasks by name…"), state.tasksQuery, (v) => setState({ tasksQuery: v }), 320)}
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "flex-end", marginLeft: "auto" }}>
-            <span className="mono" style={{ fontSize: 10.5, letterSpacing: 1, color: "var(--st-text-faint)", fontWeight: 700 }}>{t("STATUS")}</span>
-            {filterPill(t("All"), state.tasksCat === "", () => setState({ tasksCat: "" }))}
-            {(["todo", "inprogress", "done"] as JiraTaskCategory[]).map((c) => filterPill(t(TASK_CAT[c].label), state.tasksCat === c, () => setState({ tasksCat: c })))}
+        {/* Вкладки Active/Closed (closed = завершённые статусы) + поиск + сортировка по дате (как в Projects). */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "24px 0 16px", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 8 }}>
+            <div className="tab" onClick={() => setState({ tasksTab: "active" })} style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 15px", borderRadius: 11, font: "700 13.5px Inter,sans-serif", background: isActive ? "var(--st-surface)" : undefined, border: `1px solid ${isActive ? "var(--st-border)" : "transparent"}`, color: isActive ? "var(--st-text)" : "var(--st-text-3)" }}>
+              <Icon name="trend-up" size={15} sw={2.2} />{t("Active")}
+              <span className="mono" style={{ minWidth: 20, height: 20, padding: "0 5px", borderRadius: 6, background: isActive ? "var(--st-accent-2)" : "var(--st-accent-soft)", color: isActive ? "var(--st-on-accent)" : "var(--st-accent-2)", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{activeCount}</span>
+            </div>
+            <div className="tab" onClick={() => setState({ tasksTab: "closed" })} style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 15px", borderRadius: 11, font: "700 13.5px Inter,sans-serif", background: !isActive ? "var(--st-surface)" : undefined, border: `1px solid ${!isActive ? "var(--st-border)" : "transparent"}`, color: !isActive ? "var(--st-text)" : "var(--st-text-3)" }}>
+              <Icon name="archive" size={15} />{t("Closed")}
+              <span className="mono" style={{ minWidth: 20, height: 20, padding: "0 5px", borderRadius: 6, background: !isActive ? "var(--st-accent-2)" : "var(--st-accent-soft)", color: !isActive ? "var(--st-on-accent)" : "var(--st-accent-2)", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{closedCount}</span>
+            </div>
+          </div>
+          <div style={{ flex: 1 }} />
+          {searchBox(t("Filter tasks by title…"), state.tasksQuery, (v) => setState({ tasksQuery: v }), 280)}
+          <div className="clk iconbtn" onClick={() => setState((s) => ({ tasksSort: s.tasksSort === "first" ? "last" : "first" }))} style={{ display: "flex", alignItems: "center", gap: 9, height: 40, padding: "0 16px", border: "1px solid var(--st-border)", borderRadius: 20, background: "var(--st-surface)", font: "500 13.5px Inter,sans-serif", color: "var(--st-text-2)" }}>
+            <Icon name="sort" size={16} />{state.tasksSort === "first" ? t("First updated") : t("Last updated")}
           </div>
         </div>
         <div style={{ ...CARD, overflow: "hidden" }}>
           {filtered.length > 0 && (
             <div style={{ display: "grid", gridTemplateColumns: TASK_COLS, gap: 10, padding: "13px 20px", borderBottom: "1px solid var(--st-divider)", font: "700 11px Inter,sans-serif", letterSpacing: ".5px", color: "var(--st-text-faint)", textTransform: "uppercase" }}>
-              <div>{t("Key")}</div><div>{t("Summary")}</div><div>{t("Type")}</div><div>{t("Status")}</div><div>{t("Priority")}</div><div>{t("Assignee")}</div><div>{t("Updated")}</div>
+              <div>{t("Key")}</div><div>{t("Summary")}</div><div>{t("Status")}</div><div>{t("Priority")}</div><div>{t("Assignee")}</div><div>{t("Updated")}</div><div style={{ textAlign: "center" }}>{t("Actions")}</div>
             </div>
           )}
           {firstLoad && <div style={{ padding: 52, textAlign: "center", color: "var(--st-text-faint)", fontSize: 14 }}>{t("Loading tasks…")}</div>}
@@ -4267,21 +4713,32 @@ export function StormApp() {
           )}
           {!firstLoad && !state.tasksError && filtered.map((task) => {
             const catc = TASK_CAT[task.status_category] ?? TASK_CAT.unknown;
+            const tvs = taskStatusVs(task.status);
+            const stColor = tvs ? VSTATUS[tvs] : catc.color;
+            const stText = tvs ? t(VSTATUS_LABEL[tvs]) : task.status;
+            // Уже есть проект с этим тикетом? Тогда вместо «+» — ссылка на проект.
+            const linkedProject = allProjects.find((p) => p.appsec_ticket_key === task.key);
             return (
               <div key={task.key} className="prow clk" onClick={() => setState({ tasksOpenKey: task.key })} style={{ display: "grid", gridTemplateColumns: TASK_COLS, alignItems: "center", gap: 10, padding: "14px 20px", borderBottom: "1px solid var(--st-divider)" }}>
-                <div className="mono" style={{ fontSize: 12.5, color: "var(--st-accent-2)", fontWeight: 700 }}>{task.key}</div>
+                <a className="clk mono keylink" href={task.url ?? "#"} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} title={t("Open in Task Tracker")} style={{ fontSize: 12.5, color: "var(--st-accent-2)", fontWeight: 700, textDecoration: "none", justifySelf: "start" }}>{task.key}</a>
                 <div style={{ font: "600 14px Inter,sans-serif", color: "var(--st-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{task.summary}</div>
-                <div className="mono" style={{ fontSize: 12, color: "var(--st-text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{task.issue_type}</div>
-                <div style={{ display: "flex", alignItems: "center", gap: 7, font: "600 12px Inter,sans-serif", color: catc.color, overflow: "hidden" }}><span style={{ width: 6, height: 6, flex: "none", borderRadius: "50%", background: catc.color }} /><span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{task.status}</span></div>
+                <div style={{ display: "flex", alignItems: "center", gap: 7, font: "600 12px Inter,sans-serif", color: stColor, overflow: "hidden" }}><span style={{ width: 6, height: 6, flex: "none", borderRadius: "50%", background: stColor }} /><span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{stText}</span></div>
                 <div style={{ fontSize: 12.5, color: "var(--st-text-2)" }}>{task.priority || "—"}</div>
                 <div style={{ fontSize: 12.5, color: "var(--st-text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{task.assignee || "—"}</div>
                 <div className="mono" style={{ fontSize: 11.5, color: "var(--st-text-faint)" }}>{relTime(task.updated)}</div>
+                <div style={{ display: "flex", justifyContent: "center" }}>
+                  {linkedProject ? (
+                    <div className="actbtn" title={`${t("Open linked project")}: ${linkedProject.name}`} onClick={(e) => { e.stopPropagation(); setState({ nav: "projects", view: "detail", openProjectId: linkedProject.id, section: "overview", expanded: [], openVulnId: null, openNoteId: null, accessDenied: false }); }}><Icon name="folder" size={15} color="var(--st-accent-2)" /></div>
+                  ) : (
+                    <div className="actbtn" title={t("Create project from this ticket")} onClick={(e) => { e.stopPropagation(); createProjectFromTask(task); }}><Icon name="plus" size={15} /></div>
+                  )}
+                </div>
               </div>
             );
           })}
           {!firstLoad && !state.tasksError && filtered.length === 0 && (
             <div style={{ padding: 52, textAlign: "center", color: "var(--st-text-faint)", fontSize: 14 }}>
-              {rows.length === 0 ? t("No tasks in the STS project yet.") : t("No tasks match these filters.")}
+              {rows.length === 0 ? t("No tasks in the AppSec space yet.") : t("No tasks match these filters.")}
             </div>
           )}
         </div>
@@ -4292,56 +4749,59 @@ export function StormApp() {
   const renderTaskDetail = () => {
     const d = state.tasksDetail;
     const catc = d ? TASK_CAT[d.status_category] ?? TASK_CAT.unknown : TASK_CAT.unknown;
-    const metaCell = (label: string, value: string) => (
-      <div>
-        <div className="mono" style={{ fontSize: 10.5, letterSpacing: 1, color: "var(--st-text-faint)", fontWeight: 700, textTransform: "uppercase" }}>{label}</div>
-        <div style={{ fontSize: 13.5, color: "var(--st-text-2)", marginTop: 4, wordBreak: "break-word" }}>{value}</div>
+    const dtvs = d ? taskStatusVs(d.status) : null;
+    const dStColor = dtvs ? VSTATUS[dtvs] : catc.color;
+    const dStText = dtvs ? t(VSTATUS_LABEL[dtvs]) : d?.status ?? "";
+    // Строка «Параметров» в стиле Works: подпись слева, значение справа.
+    const sideRow = (label: string, value: ReactNode) => (
+      <div style={{ display: "grid", gridTemplateColumns: "92px 1fr", gap: 12, padding: "10px 0", borderBottom: "1px solid var(--st-divider)", alignItems: "baseline" }}>
+        <div style={{ fontSize: 12, color: "var(--st-text-faint)", fontWeight: 600 }}>{label}</div>
+        <div style={{ fontSize: 13, color: "var(--st-text)", wordBreak: "break-word", minWidth: 0 }}>{value}</div>
       </div>
     );
+    const backToTasks = () => setState({ tasksOpenKey: null, tasksDetail: null, tasksDetailError: null });
     return (
       <div className="route" style={{ padding: "40px 48px 36px", width: "100%" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 18 }}>
-          <span className="clk" onClick={() => setState({ tasksOpenKey: null, tasksDetail: null, tasksDetailError: null })} style={{ display: "inline-flex", alignItems: "center", gap: 6, font: "600 12.5px Inter,sans-serif", color: "var(--st-text-2)", background: "var(--st-surface)", border: "1px solid var(--st-border-light)", borderRadius: 20, padding: "7px 13px", cursor: "pointer" }}>
-            <Icon name="chevron-left" size={15} />{t("All tasks")}
-          </span>
+        {eyebrow([{ label: "Workspace", onClick: selProjects }, { label: "Tasks", onClick: backToTasks }, { label: d?.key ?? state.tasksOpenKey ?? "", muted: true }])}
+        {/* Шапка — как у карточки уязвимости: заголовок секции + действие на одной линии, «назад» ниже. */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20, marginBottom: 20 }}>
+          <h1 style={{ margin: 0, fontSize: 30, fontWeight: 800, letterSpacing: "-.7px", color: "var(--st-text)" }}>{t("Tasks")}</h1>
           {d && (
-            <a className="clk" href={d.url} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 7, font: "700 12.5px Inter,sans-serif", color: "var(--st-accent)", background: "var(--st-accent-soft)", borderRadius: 20, padding: "7px 14px", textDecoration: "none", cursor: "pointer" }}>
-              <Icon name="link" size={14} />{t("Open in Jira")}
+            <a className="clk" href={d.url} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 8, height: 42, padding: "0 16px", borderRadius: 11, border: "none", background: "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13px Inter,sans-serif", textDecoration: "none" }}>
+              <Icon name="link" size={15} color="var(--st-on-accent)" />{t("Open in Task Tracker")}
             </a>
           )}
+        </div>
+        <div style={{ marginBottom: 18 }}>
+          <span className="clk" onClick={backToTasks} style={{ display: "inline-flex", alignItems: "center", gap: 6, font: "600 12.5px Inter,sans-serif", color: "var(--st-text-2)", background: "var(--st-surface)", border: "1px solid var(--st-border-light)", borderRadius: 20, padding: "7px 13px", cursor: "pointer" }}>
+            <Icon name="chevron-left" size={15} />{t("All tasks")}
+          </span>
         </div>
         {state.tasksDetailLoading && <div style={{ ...CARD, padding: 52, textAlign: "center", color: "var(--st-text-faint)", fontSize: 14 }}>{t("Loading task…")}</div>}
         {!state.tasksDetailLoading && state.tasksDetailError && (
           <div style={{ ...CARD, padding: 52, textAlign: "center", color: "var(--st-text-3)", fontSize: 14 }}>{state.tasksDetailError}</div>
         )}
         {!state.tasksDetailLoading && !state.tasksDetailError && d && (
-          <div style={{ ...CARD, padding: "26px 28px" }}>
-            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 6 }}>
-              <span className="mono" style={{ fontSize: 12.5, fontWeight: 700, color: "var(--st-accent-2)", background: "var(--st-accent-soft)", borderRadius: 7, padding: "3px 9px" }}>{d.key}</span>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, font: "700 11px Inter,sans-serif", textTransform: "uppercase", letterSpacing: ".5px", color: catc.color }}><span style={{ width: 7, height: 7, borderRadius: "50%", background: catc.color }} />{d.status}</span>
-            </div>
-            <h1 style={{ margin: "4px 0 20px", fontSize: 24, fontWeight: 800, letterSpacing: "-.5px", color: "var(--st-text)" }}>{d.summary}</h1>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 16, marginBottom: 22 }}>
-              {metaCell(t("Type"), d.issue_type || "—")}
-              {metaCell(t("Priority"), d.priority || "—")}
-              {metaCell(t("Assignee"), d.assignee || "—")}
-              {metaCell(t("Reporter"), d.reporter || "—")}
-              {metaCell(t("Created"), toDispDate(d.created))}
-              {metaCell(t("Updated"), toDispDate(d.updated))}
-            </div>
-            {d.labels.length > 0 && (
-              <div style={{ marginBottom: 20 }}>
-                <div className="mono" style={{ fontSize: 10.5, letterSpacing: 1, color: "var(--st-text-faint)", fontWeight: 700, textTransform: "uppercase" }}>{t("Labels")}</div>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
-                  {d.labels.map((l) => (
-                    <span key={l} className="mono" style={{ fontSize: 11.5, color: "var(--st-text-2)", background: "var(--st-hover)", borderRadius: 7, padding: "3px 9px" }}>{l}</span>
-                  ))}
-                </div>
+          <div style={{ ...CARD, overflow: "hidden" }}>
+            <div className="task-detail-grid" style={{ display: "grid" }}>
+              {/* Основная колонка: ключ, статус, заголовок, описание (как в Jira — слева). */}
+              <div style={{ padding: "26px 30px", minWidth: 0 }}>
+                <h1 style={{ margin: "0 0 22px", fontSize: 25, fontWeight: 800, letterSpacing: "-.5px", color: "var(--st-text)", lineHeight: 1.2 }}>{d.summary}</h1>
+                <div className="mono" style={{ fontSize: 10.5, letterSpacing: 1, color: "var(--st-text-faint)", fontWeight: 700, textTransform: "uppercase" }}>{t("Description")}</div>
+                <div style={{ marginTop: 10, whiteSpace: "pre-wrap", font: "400 14px/1.7 Inter,sans-serif", color: "var(--st-text-2)", wordBreak: "break-word" }}>{(d.description || "").trim() || t("No description.")}</div>
               </div>
-            )}
-            <div>
-              <div className="mono" style={{ fontSize: 10.5, letterSpacing: 1, color: "var(--st-text-faint)", fontWeight: 700, textTransform: "uppercase" }}>{t("Description")}</div>
-              <div style={{ marginTop: 10, whiteSpace: "pre-wrap", font: "400 13.5px/1.65 Inter,sans-serif", color: "var(--st-text-2)", wordBreak: "break-word" }}>{(d.description || "").trim() || t("No description.")}</div>
+              {/* Сайдбар деталей (как в Jira — справа). */}
+              <div className="task-detail-side" style={{ borderLeft: "1px solid var(--st-divider)", background: "var(--st-elevated)", padding: "24px" }}>
+                <div style={{ font: "800 13px Inter,sans-serif", color: "var(--st-text)", marginBottom: 4 }}>{t("Details")}</div>
+                {sideRow(t("Key"), <a className="clk mono keylink" href={d.url} target="_blank" rel="noreferrer" title={t("Open in Task Tracker")} style={{ fontSize: 12.5, fontWeight: 700, color: "var(--st-accent-2)", textDecoration: "none" }}>{d.key}</a>)}
+                {sideRow(t("Status"), <span style={{ display: "inline-flex", alignItems: "center", gap: 6, font: "700 11px Inter,sans-serif", textTransform: "uppercase", letterSpacing: ".4px", color: dStColor }}><span style={{ width: 7, height: 7, borderRadius: "50%", background: dStColor }} />{dStText}</span>)}
+                {sideRow(t("Type"), d.issue_type || "—")}
+                {sideRow(t("Priority"), d.priority || "—")}
+                {sideRow(t("Assignee"), d.assignee || "—")}
+                {sideRow(t("Reporter"), d.reporter || "—")}
+                {sideRow(t("Created"), fmtDateTime(d.created))}
+                {sideRow(t("Updated"), fmtDateTime(d.updated))}
+              </div>
             </div>
           </div>
         )}
@@ -4383,12 +4843,12 @@ export function StormApp() {
       {/* Одна строка управления: вкладки активные/заблокированные — слева (там,
           где раньше был поиск по пользователям), поиск и фильтры — справа. */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 22, flexWrap: "wrap" }}>
-        <div className="tab" onClick={() => setState({ wsUserTab: "active" })} style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 15px", borderRadius: 11, font: "700 13.5px Inter,sans-serif", background: state.wsUserTab === "active" ? "var(--st-surface)" : "transparent", border: `1px solid ${state.wsUserTab === "active" ? "var(--st-border)" : "transparent"}`, color: state.wsUserTab === "active" ? "var(--st-text)" : "var(--st-text-3)" }}>
+        <div className="tab" onClick={() => setState({ wsUserTab: "active" })} style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 15px", borderRadius: 11, font: "700 13.5px Inter,sans-serif", background: state.wsUserTab === "active" ? "var(--st-surface)" : undefined, border: `1px solid ${state.wsUserTab === "active" ? "var(--st-border)" : "transparent"}`, color: state.wsUserTab === "active" ? "var(--st-text)" : "var(--st-text-3)" }}>
           <Icon name="unlock" size={15} sw={2.2} />
           {lang === "ru" ? "Активные" : "Active"}
           <span className="mono" style={{ minWidth: 20, height: 20, padding: "0 5px", borderRadius: 6, background: state.wsUserTab === "active" ? "var(--st-accent-2)" : "var(--st-accent-soft)", color: state.wsUserTab === "active" ? "var(--st-on-accent)" : "var(--st-accent-2)", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{state.workspaceUsers.filter((u) => !u.locked).length}</span>
         </div>
-        <div className="tab" onClick={() => setState({ wsUserTab: "archived" })} style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 15px", borderRadius: 11, font: "700 13.5px Inter,sans-serif", background: state.wsUserTab === "archived" ? "var(--st-surface)" : "transparent", border: `1px solid ${state.wsUserTab === "archived" ? "var(--st-border)" : "transparent"}`, color: state.wsUserTab === "archived" ? "var(--st-text)" : "var(--st-text-3)" }}>
+        <div className="tab" onClick={() => setState({ wsUserTab: "archived" })} style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 15px", borderRadius: 11, font: "700 13.5px Inter,sans-serif", background: state.wsUserTab === "archived" ? "var(--st-surface)" : undefined, border: `1px solid ${state.wsUserTab === "archived" ? "var(--st-border)" : "transparent"}`, color: state.wsUserTab === "archived" ? "var(--st-text)" : "var(--st-text-3)" }}>
           <Icon name="lock" size={15} sw={2.2} />
           {lang === "ru" ? "Заблокированные" : "Blocked"}
           <span className="mono" style={{ minWidth: 20, height: 20, padding: "0 5px", borderRadius: 6, background: state.wsUserTab === "archived" ? "var(--st-accent-2)" : "var(--st-accent-soft)", color: state.wsUserTab === "archived" ? "var(--st-on-accent)" : "var(--st-accent-2)", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{state.workspaceUsers.filter((u) => u.locked).length}</span>
@@ -4467,7 +4927,7 @@ export function StormApp() {
                 <div>{t("Name")}</div>
                 <div>{t("Email")}</div>
                 <div>{t("Role")}</div>
-                <div />
+                <div style={{ textAlign: "right" }}>{t("Actions")}</div>
               </div>
               {filtered.map(({ u, idx }) => (
             <div key={u.key + idx} className="prow" style={{ display: "grid", gridTemplateColumns: "1.2fr 1.4fr 168px 72px", alignItems: "center", padding: "14px 20px", borderBottom: "1px solid var(--st-divider)" }}>
@@ -4540,7 +5000,7 @@ export function StormApp() {
             })}
           </div>
         </div>
-        {tabItem(t("Vulnerabilities"), "star2", sv, () => setSection("vulns"), { text: String(d.vulns.length), color: sv.badgeColor, bg: sv.badgeBg })}
+        {tabItem(t("Issues"), "star2", sv, () => setSection("vulns"), { text: String(d.vulns.length), color: sv.badgeColor, bg: sv.badgeBg })}
         {tabItem(t("Notes"), "doc", sn, () => setSection("notes"), { text: String(d.notes.length), color: sn.badgeColor, bg: sn.badgeBg })}
         {tabItem(t("Creds"), "lock", scr, () => setSection("creds"), { text: String(d.creds.length), color: scr.badgeColor, bg: scr.badgeBg })}
         {canViewMembers && tabItem(t("Members"), "users", sm, () => setSection("members"), { text: String(d.members.length), color: sm.badgeColor, bg: sm.badgeBg })}
@@ -4557,7 +5017,13 @@ export function StormApp() {
             <>
               <span className="clk" onClick={() => setSection(sec)} style={{ color: "var(--st-accent-2)", cursor: "pointer" }}>{sectionLabel}</span>
               <span>/</span>
-              <span style={{ color: "var(--st-text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{crumbLeaf}</span>
+              {/* Путь находки (Проект / Хост / Finding): все уровни кроме последнего — синие. */}
+              {crumbLeaf.split(" / ").map((part, i, arr) => (
+                <span key={i} style={{ display: "contents" }}>
+                  {i > 0 && <span>/</span>}
+                  <span style={{ color: i === arr.length - 1 ? "var(--st-text-3)" : "var(--st-accent-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{part}</span>
+                </span>
+              ))}
             </>
           ) : (
             <span style={{ color: "var(--st-text-3)" }}>{sectionLabel}</span>
@@ -4602,7 +5068,7 @@ export function StormApp() {
               {sec === "hosts" && rv === "hosts" && !state.hostImportOpen && !_hd && (
                 <>
                   <button className="clk" onClick={() => openReconExport("hosts")} style={{ height: 42, padding: "0 16px", border: "1px solid var(--st-border)", borderRadius: 10, background: "var(--st-surface)", font: "700 13px Inter,sans-serif", color: "var(--st-accent-2)", display: "inline-flex", alignItems: "center", gap: 7 }}>
-                    <Icon name="download" size={16} sw={2.2} color="var(--st-accent-2)" />{t("Export")}
+                    <Icon name="upload" size={16} sw={2.2} color="var(--st-accent-2)" />{t("Export")}
                   </button>
                   <button className="addbtn clk" onClick={openHostImport} style={{ height: 42 }}>
                     <Icon name="plus" size={15} color="var(--st-on-accent)" sw={2.6} />{t("Add hosts")}
@@ -4621,7 +5087,7 @@ export function StormApp() {
               {sec === "hosts" && rv === "ips" && !state.ipImportOpen && !_ipd && (
                 <>
                   <button className="clk" onClick={() => openReconExport("ips")} style={{ height: 42, padding: "0 16px", border: "1px solid var(--st-border)", borderRadius: 10, background: "var(--st-surface)", font: "700 13px Inter,sans-serif", color: "var(--st-accent-2)", display: "inline-flex", alignItems: "center", gap: 7 }}>
-                    <Icon name="download" size={16} sw={2.2} color="var(--st-accent-2)" />{t("Export")}
+                    <Icon name="upload" size={16} sw={2.2} color="var(--st-accent-2)" />{t("Export")}
                   </button>
                   <button className="addbtn clk" onClick={openIpImport} style={{ height: 42 }}>
                     <Icon name="plus" size={15} color="var(--st-on-accent)" sw={2.6} />{t("Add IPs")}
@@ -4637,7 +5103,7 @@ export function StormApp() {
               {sec === "hosts" && rv === "endpoints" && !state.epImportOpen && (
                 <>
                   <button className="clk" onClick={() => openReconExport("endpoints")} style={{ height: 42, padding: "0 16px", border: "1px solid var(--st-border)", borderRadius: 10, background: "var(--st-surface)", font: "700 13px Inter,sans-serif", color: "var(--st-accent-2)", display: "inline-flex", alignItems: "center", gap: 7 }}>
-                    <Icon name="download" size={16} sw={2.2} color="var(--st-accent-2)" />{t("Export")}
+                    <Icon name="upload" size={16} sw={2.2} color="var(--st-accent-2)" />{t("Export")}
                   </button>
                   <button className="addbtn clk" onClick={openEpImport} style={{ height: 42 }}>
                     <Icon name="plus" size={15} color="var(--st-on-accent)" sw={2.6} />{t("Add endpoints")}
@@ -4646,18 +5112,40 @@ export function StormApp() {
               )}
               {/* Opens the domain picker rather than scanning straight away, so the
                   label says what the click does: choose what to scan. */}
-              {sec === "hosts" && rv === "js" && !state.jsScanSetupOpen && (
-                <button className="addbtn clk" onClick={openJsScanSetup} disabled={isFarmJobInFlight(state.jsFarmJob?.status ?? "")} style={{ height: 42, opacity: isFarmJobInFlight(state.jsFarmJob?.status ?? "") ? 0.6 : 1 }}>
-                  <Icon name="search" size={15} color="var(--st-on-accent)" sw={2.6} />{t("Select domains & scan")}
-                </button>
+              {/* Одна кнопка «Экспорт»: пути или секреты выбираются уже на странице экспорта. */}
+              {sec === "hosts" && rv === "js" && !state.jsScanSetupOpen && !state.exportPageOpen && !_jsd && (
+                <>
+                  <button className="clk" onClick={() => openReconExport("js-endpoints")} style={{ height: 42, padding: "0 16px", border: "1px solid var(--st-border)", borderRadius: 10, background: "var(--st-surface)", font: "700 13px Inter,sans-serif", color: "var(--st-accent-2)", display: "inline-flex", alignItems: "center", gap: 7 }}>
+                    <Icon name="upload" size={15} sw={2.2} color="var(--st-accent-2)" />{t("Export")}
+                  </button>
+                  <button className="addbtn clk" onClick={openJsScanSetup} disabled={isFarmJobInFlight(state.jsFarmJob?.status ?? "")} style={{ height: 42, opacity: isFarmJobInFlight(state.jsFarmJob?.status ?? "") ? 0.6 : 1 }}>
+                    <Icon name="search" size={15} color="var(--st-on-accent)" sw={2.6} />{t("Select domains & scan")}
+                  </button>
+                </>
               )}
-              {/* В карточке уязвимости кнопка живёт в строке «All findings» (см. renderVulnDetail). */}
               {sec === "vulns" && state.openVulnId == null && (
                 <>
                   <button className="clk" onClick={openBulkJira} style={{ height: 42, padding: "0 16px", border: "1px solid var(--st-border)", borderRadius: 10, background: "var(--st-surface)", font: "700 13px Inter,sans-serif", color: "var(--st-accent-2)", display: "inline-flex", alignItems: "center", gap: 7 }}>
-                    <Icon name="upload" size={15} sw={2.2} color="var(--st-accent-2)" />{t("Export all to Jira")}
+                    <Icon name="upload" size={15} sw={2.2} color="var(--st-accent-2)" />{t("Export all to Task Tracker")}
                   </button>
                   <button className="addbtn clk" onClick={() => openEditor("vuln", "add", -1)} style={{ height: 42 }}><Icon name="plus" size={15} color="var(--st-on-accent)" sw={2.6} />{t("Add issue")}</button>
+                </>
+              )}
+              {/* В карточке уязвимости кнопка экспорта — на линии заголовка (напротив «Issues»). */}
+              {sec === "vulns" && state.openVulnId != null && (
+                <>
+                  {state.worksEnabled && (state.vulnWorksLink ? (
+                    <a href={state.vulnWorksLink.works_url} target="_blank" rel="noopener noreferrer" title={t("Open in Works")} style={{ display: "inline-flex", alignItems: "center", gap: 7, height: 42, padding: "0 16px", borderRadius: 10, border: "1px solid var(--st-success-soft)", background: "var(--st-success-soft)", color: "var(--st-text)", font: "700 12.5px Inter,sans-serif", textDecoration: "none" }}>
+                      <Icon name="check-circle" size={15} color="var(--st-success)" sw={2.2} />{state.vulnWorksLink.works_key}{state.vulnWorksLink.works_status ? ` · ${state.vulnWorksLink.works_status}` : ""}
+                    </a>
+                  ) : (
+                    <button className="clk" onClick={exportToWorks} disabled={state.worksExportBusy} style={{ display: "inline-flex", alignItems: "center", gap: 7, height: 42, padding: "0 16px", borderRadius: 10, border: "1px solid var(--st-border)", background: "var(--st-surface)", color: "var(--st-accent-2)", font: "700 13px Inter,sans-serif", cursor: state.worksExportBusy ? "default" : "pointer" }}>
+                      <Icon name="upload" size={15} color="var(--st-accent-2)" sw={2.2} />{state.worksExportBusy ? t("Exporting…") : t("Export to AppSec")}
+                    </button>
+                  ))}
+                  <button className="addbtn clk" onClick={() => state.openVulnId != null && openJiraExport(state.openVulnId)} style={{ height: 42 }}>
+                    <Icon name="upload" size={15} color="var(--st-on-accent)" sw={2.4} />{t("Export to Task Tracker")}
+                  </button>
                 </>
               )}
               {sec === "notes" && (
@@ -4775,9 +5263,9 @@ export function StormApp() {
           <div style={{ font: "700 14px Inter,sans-serif", color: "var(--st-text)" }}>{t("Vulnerabilities across the project")}</div>
           <span className="clk" onClick={() => setSection("vulns")} style={{ font: "600 12px Inter,sans-serif", color: "var(--st-accent-2)" }}>{t("View all →")}</span>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(5,minmax(0,1fr))", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(6,minmax(0,1fr))", gap: 12 }}>
           {sevBars.map((b) => (
-            <div key={b.label} className="clk" onClick={b.onClick} style={{ border: "1px solid var(--st-bg)", borderRadius: 13, padding: "15px 16px", background: b.tileBg, cursor: "pointer" }}>
+            <div key={b.label} className="statc clk" onClick={b.onClick} style={{ border: "1px solid var(--st-bg)", borderRadius: 13, padding: "15px 16px", background: b.tileBg, cursor: "pointer" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                 <span style={{ width: 9, height: 9, borderRadius: 3, background: b.color }} />
                 <span style={{ font: "700 10.5px Inter,sans-serif", textTransform: "uppercase", letterSpacing: ".5px", color: b.color }}>{b.label}</span>
@@ -5079,7 +5567,12 @@ export function StormApp() {
      list view renders: narrowing it there narrows what lands here. */
   const renderExport = () => {
     const scope = state.exportScope;
-    const title = scope === "hosts" ? t("Export hosts") : scope === "ips" ? t("Export IP addresses") : t("Export endpoints");
+    const title =
+      scope === "hosts" ? t("Export hosts")
+      : scope === "ips" ? t("Export IP addresses")
+      : scope === "js-endpoints" ? t("Export paths")
+      : scope === "js-secrets" ? t("Export secrets")
+      : t("Export endpoints");
     const kept = new Set(exportTextLines(state.exportText));
     const left = exportLinesFor(scope).filter((l) => kept.has(l));
     const keptCount = exportTextLines(state.exportText).length;
@@ -5087,7 +5580,8 @@ export function StormApp() {
     const paneCol: CSSProperties = { display: "flex", flexDirection: "column", minHeight: 0 };
     return (
       <div className="route">
-        {reconFilterRow(scope === "ips" ? "ips" : scope === "endpoints" ? "endpoints" : "hosts")}
+        {/* JS exports carry no recon filter row — the JS list has its own filters. */}
+        {!scope.startsWith("js-") && reconFilterRow(scope === "ips" ? "ips" : scope === "endpoints" ? "endpoints" : "hosts")}
         {/* Height leaves room for the filter row the card now sits under. */}
         <div style={{ ...CARD, padding: 0, overflow: "hidden", display: "flex", flexDirection: "column", height: "calc(100vh - 318px)" }}>
           <div style={{ flex: "none", display: "flex", alignItems: "center", gap: 10, padding: "16px 22px", borderBottom: "1px solid var(--st-divider)" }}>
@@ -5175,6 +5669,160 @@ export function StormApp() {
     );
   };
 
+  /** "All files of one host" page — aggregates its files, secrets and paths. */
+  const renderJsHostDetail = (host: string) => {
+    const files = jsFiles.filter((f) => f.host === host);
+    const allSecrets = files.flatMap((f) => f.secrets.map((s) => ({ ...s, file: fileBase(f.url) })));
+    const allPaths = [...new Set(files.flatMap((f) => f.endpoints))].sort();
+    const totalBytes = files.reduce((n, f) => n + (f.status === "ok" ? (f.size ?? 0) : 0), 0);
+    const secGrid = "minmax(0,130px) minmax(0,150px) minmax(0,1fr) minmax(0,1.2fr)";
+    return (
+      <div style={{ animation: "storm-fade .2s ease both" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
+          {/* Экспорт для этого хоста делает единственная кнопка «Export» в шапке
+              секции JS scan (она учитывает открытый хост), поэтому отдельной
+              кнопки экспорта в под-шапке нет. */}
+          <span className="clk" onClick={closeJsHostDetail} style={{ display: "inline-flex", alignItems: "center", gap: 6, font: "600 12.5px Inter,sans-serif", color: "var(--st-text-2)", background: "var(--st-surface)", border: "1px solid var(--st-border-light)", borderRadius: 20, padding: "7px 13px", cursor: "pointer" }}>
+            <Icon name="chevron-left" size={15} />{t("All JS files")}
+          </span>
+        </div>
+        <div style={{ ...CARD, padding: "22px 24px", marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <Icon name="globe2" size={17} sw={2.2} color="var(--st-text-2)" style={{ flex: "none" }} />
+            <span className="mono" style={{ font: "800 18px 'JetBrains Mono',monospace", color: "var(--st-text)", wordBreak: "break-all" }}>{host}</span>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 }}>
+            <span className="mono" style={{ fontSize: 11, fontWeight: 600, color: "var(--st-text-2)", background: "var(--st-hover)", border: "1px solid var(--st-border-light)", borderRadius: 6, padding: "3px 9px" }}>{files.length} {t("files")}</span>
+            <span className="mono" style={{ fontSize: 11, fontWeight: 600, color: "var(--st-text-2)", background: "var(--st-hover)", border: "1px solid var(--st-border-light)", borderRadius: 6, padding: "3px 9px" }}>{allPaths.length} {t("paths")}</span>
+            <span className="mono" style={{ fontSize: 11, fontWeight: 600, color: allSecrets.length ? "var(--st-danger)" : "var(--st-text-2)", background: "var(--st-hover)", border: "1px solid var(--st-border-light)", borderRadius: 6, padding: "3px 9px" }}>{allSecrets.length} {t("secrets")}</span>
+            <span className="mono" style={{ fontSize: 11, fontWeight: 600, color: "var(--st-text-2)", background: "var(--st-hover)", border: "1px solid var(--st-border-light)", borderRadius: 6, padding: "3px 9px" }}>{kb(totalBytes)}</span>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <span style={{ font: "700 13px Inter,sans-serif", color: "var(--st-text)" }}>{t("Files")} <span className="mono" style={{ color: "var(--st-text-3)", fontWeight: 600 }}>{files.length}</span></span>
+        </div>
+        <div style={{ ...CARD, overflow: "hidden", marginBottom: 20 }}>
+          {files.map((f) => (
+            <div key={f.id} className="prow clk" onClick={() => openJsFile(f.id)} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 84px 84px 96px", alignItems: "center", gap: 14, padding: "13px 20px", borderBottom: "1px solid var(--st-divider)" }}>
+              <span className="mono hostname" title={f.url} style={{ font: "600 13px 'JetBrains Mono',monospace", color: f.status === "ok" ? "var(--st-text)" : "var(--st-text-faint)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer" }}>{fileBase(f.url)}</span>
+              <span className="mono" style={{ fontSize: 11.5, color: "var(--st-text-3)" }}>{f.endpoints.length} {t("paths")}</span>
+              <span className="mono" style={{ fontSize: 11.5, fontWeight: 700, color: f.secrets.length ? "var(--st-danger)" : "var(--st-text-faint)" }}>{f.secrets.length}</span>
+              <span className="mono" style={{ fontSize: 11, color: "var(--st-text-faint)", textAlign: "right" }}>{f.status === "ok" ? kb(f.size) : f.status}</span>
+            </div>
+          ))}
+          {files.length === 0 && (
+            <div style={{ padding: 40, textAlign: "center", color: "var(--st-text-faint)", fontSize: 13.5 }}>{t("No JS files on this host.")}</div>
+          )}
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <span style={{ font: "700 13px Inter,sans-serif", color: "var(--st-text)" }}>{t("Secrets")} <span className="mono" style={{ color: "var(--st-text-3)", fontWeight: 600 }}>{allSecrets.length}</span></span>
+        </div>
+        <div style={{ ...CARD, overflow: "hidden", marginBottom: 20 }}>
+          {allSecrets.length > 0 && (
+            <div style={{ display: "grid", gridTemplateColumns: secGrid, gap: 14, alignItems: "center", padding: "12px 20px", borderBottom: "1px solid var(--st-divider)", font: "700 11px Inter,sans-serif", letterSpacing: ".5px", color: "var(--st-text-faint)", textTransform: "uppercase" }}>
+              <div>{t("File")}</div><div>{t("Kind")}</div><div>{t("Match")}</div><div>{t("Snippet")}</div>
+            </div>
+          )}
+          {allSecrets.map((sec, i) => {
+            const c = SECRET_SEV[sec.severity] ?? SECRET_SEV.low;
+            return (
+              <div key={i} className="prow" style={{ display: "grid", gridTemplateColumns: secGrid, alignItems: "start", gap: 14, padding: "13px 20px", borderBottom: "1px solid var(--st-divider)" }}>
+                <span className="mono" style={{ fontSize: 11, color: "var(--st-text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={sec.file}>{sec.file}</span>
+                <span className="mono" style={{ justifySelf: "start", fontSize: 10.5, fontWeight: 700, borderRadius: 5, padding: "2px 8px", background: c.bg, color: c.color }}>{sec.kind}</span>
+                <span className="mono" style={{ fontSize: 12, color: "var(--st-text-2)", wordBreak: "break-all" }}>{sec.match}</span>
+                <span className="mono" style={{ fontSize: 11.5, color: "var(--st-text-2)", whiteSpace: "pre-wrap", wordBreak: "break-all", lineHeight: 1.55, userSelect: "text" }}>{sec.snippet}</span>
+              </div>
+            );
+          })}
+          {allSecrets.length === 0 && (
+            <div style={{ padding: 40, textAlign: "center", color: "var(--st-text-faint)", fontSize: 13.5 }}>{t("No secrets on this host.")}</div>
+          )}
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <span style={{ font: "700 13px Inter,sans-serif", color: "var(--st-text)" }}>{t("Paths")} <span className="mono" style={{ color: "var(--st-text-3)", fontWeight: 600 }}>{allPaths.length}</span></span>
+        </div>
+        <div style={{ ...CARD, overflow: "hidden", marginBottom: 20 }}>
+          {allPaths.map((path, i) => (
+            <div key={i} className="prow" style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 20px", borderBottom: "1px solid var(--st-divider)" }}>
+              <span className="mono" style={{ fontSize: 12.5, color: "var(--st-text)", wordBreak: "break-all" }}>{path}</span>
+            </div>
+          ))}
+          {allPaths.length === 0 && (
+            <div style={{ padding: 40, textAlign: "center", color: "var(--st-text-faint)", fontSize: 13.5 }}>{t("No paths on this host.")}</div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  /** One JS file's card — its secrets table and paths list, with Export. */
+  const renderJsFileDetail = (f: JsFileEntry) => {
+    const canExport = f.endpoints.length > 0 || f.secrets.length > 0;
+    const secGrid = "minmax(0,150px) minmax(0,1fr) minmax(0,1.2fr)";
+    return (
+      <div style={{ animation: "storm-fade .2s ease both" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
+          <span className="clk" onClick={closeJsFile} style={{ display: "inline-flex", alignItems: "center", gap: 6, font: "600 12.5px Inter,sans-serif", color: "var(--st-text-2)", background: "var(--st-surface)", border: "1px solid var(--st-border-light)", borderRadius: 20, padding: "7px 13px", cursor: "pointer" }}>
+            <Icon name="chevron-left" size={15} />{t("All JS files")}
+          </span>
+          <div style={{ flex: 1 }} />
+          <button className="clk" onClick={() => openReconExport(f.endpoints.length ? "js-endpoints" : "js-secrets")} disabled={!canExport} style={{ height: 42, padding: "0 16px", border: "1px solid var(--st-border)", borderRadius: 10, background: "var(--st-surface)", font: "700 13px Inter,sans-serif", color: canExport ? "var(--st-accent-2)" : "var(--st-text-faint)", display: "inline-flex", alignItems: "center", gap: 7, cursor: canExport ? "pointer" : "default" }}>
+            <Icon name="upload" size={16} sw={2.2} color={canExport ? "var(--st-accent-2)" : "var(--st-text-faint)"} />{t("Export")}
+          </button>
+        </div>
+        <div style={{ ...CARD, padding: "22px 24px", marginBottom: 16 }}>
+          <div className="mono" style={{ font: "800 17px 'JetBrains Mono',monospace", color: "var(--st-text)", wordBreak: "break-all" }}>{fileBase(f.url)}</div>
+          <a className="mono" href={f.url} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 8, fontSize: 12, color: "var(--st-accent)", wordBreak: "break-all" }}>{f.url}</a>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 }}>
+            <span className="mono" style={{ fontSize: 11, fontWeight: 600, color: "var(--st-text-2)", background: "var(--st-hover)", border: "1px solid var(--st-border-light)", borderRadius: 6, padding: "3px 9px" }}>{f.host}</span>
+            <span className="mono" style={{ fontSize: 11, fontWeight: 600, color: "var(--st-text-2)", background: "var(--st-hover)", border: "1px solid var(--st-border-light)", borderRadius: 6, padding: "3px 9px" }}>{f.status === "ok" ? kb(f.size) : f.status}</span>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <span style={{ font: "700 13px Inter,sans-serif", color: "var(--st-text)" }}>{t("Secrets")} <span className="mono" style={{ color: "var(--st-text-3)", fontWeight: 600 }}>{f.secrets.length}</span></span>
+        </div>
+        <div style={{ ...CARD, overflow: "hidden", marginBottom: 20 }}>
+          {f.secrets.length > 0 && (
+            <div style={{ display: "grid", gridTemplateColumns: secGrid, gap: 14, alignItems: "center", padding: "12px 20px", borderBottom: "1px solid var(--st-divider)", font: "700 11px Inter,sans-serif", letterSpacing: ".5px", color: "var(--st-text-faint)", textTransform: "uppercase" }}>
+              <div>{t("Kind")}</div><div>{t("Match")}</div><div>{t("Snippet")}</div>
+            </div>
+          )}
+          {f.secrets.map((sec, i) => {
+            const c = SECRET_SEV[sec.severity] ?? SECRET_SEV.low;
+            return (
+              <div key={i} className="prow" style={{ display: "grid", gridTemplateColumns: secGrid, alignItems: "start", gap: 14, padding: "13px 20px", borderBottom: "1px solid var(--st-divider)" }}>
+                <span className="mono" style={{ justifySelf: "start", fontSize: 10.5, fontWeight: 700, borderRadius: 5, padding: "2px 8px", background: c.bg, color: c.color }}>{sec.kind}</span>
+                <span className="mono" style={{ fontSize: 12, color: "var(--st-text-2)", wordBreak: "break-all" }}>{sec.match}</span>
+                <span className="mono" style={{ fontSize: 11.5, color: "var(--st-text-2)", whiteSpace: "pre-wrap", wordBreak: "break-all", lineHeight: 1.55, userSelect: "text" }}>{sec.snippet}</span>
+              </div>
+            );
+          })}
+          {f.secrets.length === 0 && (
+            <div style={{ padding: 40, textAlign: "center", color: "var(--st-text-faint)", fontSize: 13.5 }}>{f.status === "ok" ? t("Nothing found in this file.") : t("File could not be scanned.")}</div>
+          )}
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <span style={{ font: "700 13px Inter,sans-serif", color: "var(--st-text)" }}>{t("Paths")} <span className="mono" style={{ color: "var(--st-text-3)", fontWeight: 600 }}>{f.endpoints.length}</span></span>
+        </div>
+        <div style={{ ...CARD, overflow: "hidden", marginBottom: 20 }}>
+          {f.endpoints.map((path, i) => (
+            <div key={i} className="prow" style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 20px", borderBottom: "1px solid var(--st-divider)" }}>
+              <span className="mono" style={{ fontSize: 12.5, color: "var(--st-text)", wordBreak: "break-all" }}>{path}</span>
+            </div>
+          ))}
+          {f.endpoints.length === 0 && (
+            <div style={{ padding: 40, textAlign: "center", color: "var(--st-text-faint)", fontSize: 13.5 }}>{t("No paths in this file.")}</div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const renderRecon = () => {
     if (state.exportPageOpen) return renderExport();
     if (rv === "js" && state.jsScanSetupOpen) return renderJsScanSetup();
@@ -5198,10 +5846,10 @@ export function StormApp() {
             {/* No column headers over an empty table (same as the hosts table). */}
             {ipsRows.length > 0 && (
               <div style={{ display: "grid", gridTemplateColumns: ipGrid, gap: 14, padding: "13px 20px", borderBottom: "1px solid var(--st-divider)", font: "700 11px Inter,sans-serif", letterSpacing: ".6px", color: "var(--st-text-faint)", textTransform: "uppercase" }}>
-                <div>{t("IP address")}</div><div>{t("Hostname")}</div><div>{t("Ports")}</div><div>{t("Cloudflare")}</div><div />
+                <div>{t("IP address")}</div><div>{t("Hostname")}</div><div>{t("Ports")}</div><div>{t("Cloudflare")}</div><div style={{ textAlign: "right" }}>{t("Actions")}</div>
               </div>
             )}
-            {ipsRows.map((i, idx) => (
+            {ipsRows.slice(0, LIST_CAP).map((i, idx) => (
               <div key={idx} className="prow clk" onClick={() => openIpDetail(i.ip)} style={{ display: "grid", gridTemplateColumns: ipGrid, gap: 14, alignItems: "center", padding: "14px 20px", borderBottom: "1px solid var(--st-divider)" }}>
                 <div style={{ minWidth: 0 }}>
                   <span className="mono hostname" style={{ font: "700 13.5px 'JetBrains Mono',monospace", color: "var(--st-text)", cursor: "pointer" }}>{i.ip}</span>
@@ -5217,6 +5865,7 @@ export function StormApp() {
                 </div>
               </div>
             ))}
+            {capNote(ipsRows.length, Math.min(ipsRows.length, LIST_CAP))}
             {ipsRows.length === 0 && <div style={{ padding: 52, textAlign: "center", color: "var(--st-text-faint)", fontSize: 14 }}>{t("No IPs found.")}</div>}
           </div>
         </div>
@@ -5228,7 +5877,7 @@ export function StormApp() {
         <div className="route">
           {reconFilterRow("endpoints")}
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {endpointGroups.map((g) => (
+            {endpointGroups.slice(0, LIST_CAP).map((g) => (
               <div key={g.host} style={{ background: "var(--st-surface)", border: "1px solid var(--st-border-light)", borderRadius: 14, overflow: "hidden" }}>
                 <div className="prow clk" onClick={() => toggleEpGroup(g.host)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px" }}>
                   <Icon name="chevron-right" size={15} color="var(--st-text-faint)" sw={2.4} style={{ transform: g.expanded ? "rotate(90deg)" : "none", transition: "transform .2s" }} />
@@ -5236,12 +5885,12 @@ export function StormApp() {
                   <span className="mono" style={{ font: "700 14px 'JetBrains Mono',monospace", color: "var(--st-text)", flex: 1 }}>{g.host}</span>
                   <span className="mono" style={{ fontSize: 11.5, fontWeight: 700, color: "var(--st-text-2)", background: "var(--st-hover)", borderRadius: 7, padding: "3px 9px" }}>{g.count}</span>
                 </div>
-                {g.expanded && (
-                  <div style={{ borderTop: "1px solid var(--st-divider)", animation: "storm-fade .2s ease both" }}>
+                <Collapse open={g.expanded}>
+                  <div style={{ borderTop: "1px solid var(--st-divider)" }}>
                     <div style={{ display: "grid", gridTemplateColumns: "72px minmax(0,1fr) 96px", gap: 10, padding: "11px 20px 11px 50px", borderBottom: "1px solid var(--st-divider)", font: "700 10.5px Inter,sans-serif", letterSpacing: ".5px", color: "var(--st-text-faint)", textTransform: "uppercase" }}>
-                      <div>{t("Method")}</div><div>{t("Path")}</div><div />
+                      <div>{t("Method")}</div><div>{t("Path")}</div><div style={{ textAlign: "right" }}>{t("Actions")}</div>
                     </div>
-                    {g.endpoints.map((e: Endpoint, i: number) => {
+                    {g.endpoints.slice(0, EP_GROUP_CAP).map((e: Endpoint, i: number) => {
                       const m = METHOD[e.m] ?? PORT.closed;
                       return (
                         <div key={i} className="prow clk" onClick={() => openEndpoint({ method: e.m, path: e.p, host: g.host, hostId: g.hostId, endpointId: e.id })} style={{ display: "grid", gridTemplateColumns: "72px minmax(0,1fr) 96px", alignItems: "center", gap: 10, padding: "11px 20px 11px 50px", borderBottom: "1px solid var(--st-elevated)" }}>
@@ -5254,19 +5903,29 @@ export function StormApp() {
                         </div>
                       );
                     })}
+                    {g.endpoints.length > EP_GROUP_CAP && (
+                      <div style={{ padding: "8px 20px 8px 50px", color: "var(--st-text-faint)", fontSize: 12.5 }}>+{g.endpoints.length - EP_GROUP_CAP} {t("more — narrow the filter to see the rest")}</div>
+                    )}
                   </div>
-                )}
+                </Collapse>
               </div>
             ))}
+            {capNote(endpointGroups.length, Math.min(endpointGroups.length, LIST_CAP))}
             {endpointTotal === 0 && <div style={{ padding: 52, textAlign: "center", color: "var(--st-text-faint)", fontSize: 14, background: "var(--st-surface)", border: "1px solid var(--st-border-light)", borderRadius: 14 }}>{t("No endpoints discovered.")}</div>}
           </div>
         </div>
       );
     }
     if (rv === "js") {
+      // Открытая карточка файла имеет приоритет над страницей хоста: клик по файлу
+      // со страницы хоста показывает файл, а «назад» возвращает на страницу хоста.
+      if (_jsd) return renderJsFileDetail(_jsd);
+      if (_jsHost) return renderJsHostDetail(_jsHost);
       const jsRunning = isFarmJobInFlight(state.jsFarmJob?.status ?? "");
-      const fileBase = (url: string) => url.split("/").pop() || url;
-      const kb = (n: number | null) => (n == null ? "" : n < 1024 ? `${n} B` : `${Math.round(n / 1024)} KB`);
+      // Та же сетка, что у таблицы хостов: домен — раскрывающаяся строка, файлы под
+      // ним — вложенные. Столбцы: chevron, хост, пути, секреты, действия.
+      const jsGrid = "24px minmax(0,1.6fr) 84px 84px 96px";
+      const allVisibleIds = jsFilesFiltered.map((f) => f.id);
       return (
         <div className="route">
           {reconFilterRow("js")}
@@ -5277,72 +5936,64 @@ export function StormApp() {
               {t("Scanning")} {state.jsFarmJob?.targets_total ?? ""} {t("domains — secrets and paths appear as files are scanned.")}
             </div>
           )}
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {jsGroups.map((g) => (
-              <div key={g.host} style={{ background: "var(--st-surface)", border: "1px solid var(--st-border-light)", borderRadius: 14, overflow: "hidden" }}>
-                <div className="prow" style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px" }}>
-                  <Icon name="globe2" size={16} color="var(--st-text-3)" />
-                  <span className="mono" style={{ font: "700 14px 'JetBrains Mono',monospace", color: "var(--st-text)", flex: 1 }}>{g.host}</span>
-                  <span className="mono" style={{ fontSize: 11.5, fontWeight: 700, color: "var(--st-text-2)", background: "var(--st-hover)", borderRadius: 7, padding: "3px 9px" }}>{g.count}</span>
-                  {/* Re-downloads this host's .js into a zip (files aren't stored). */}
-                  <button className="clk" title={t("Download JS archive")} onClick={() => downloadJsArchive(g.hostId, g.host)} style={{ display: "inline-flex", alignItems: "center", gap: 6, height: 30, padding: "0 12px", border: "1px solid var(--st-border)", borderRadius: 9, background: "var(--st-surface)", font: "700 12px Inter,sans-serif", color: "var(--st-accent-2)" }}>
-                    <Icon name="download" size={14} sw={2.2} color="var(--st-accent-2)" />{t("Archive")}
-                  </button>
-                </div>
-                <div style={{ borderTop: "1px solid var(--st-divider)" }}>
-                  {g.files.map((file) => {
-                    const open = state.epExpanded.includes(`js:file:${file.url}`);
-                    return (
-                      <div key={file.id} style={{ borderBottom: "1px solid var(--st-elevated)" }}>
-                        <div className="prow clk" onClick={() => toggleJsFile(file.url)} style={{ display: "grid", gridTemplateColumns: "18px minmax(0,1fr) 72px 72px 68px", alignItems: "center", gap: 12, padding: "12px 20px 12px 22px" }}>
-                          <Icon name="chevron-right" size={14} color="var(--st-text-faint)" sw={2.4} style={{ transform: open ? "rotate(90deg)" : "none", transition: "transform .2s" }} />
-                          <span className="mono" title={file.url} style={{ fontSize: 12.5, color: file.status === "ok" ? "var(--st-text)" : "var(--st-text-faint)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fileBase(file.url)}</span>
-                          {/* Secret count is the headline signal, so it is colour-flagged. */}
-                          <span className="mono" style={{ fontSize: 11.5, fontWeight: 700, color: file.secrets.length ? "var(--st-danger)" : "var(--st-text-faint)" }}>{file.secrets.length} {t("secrets")}</span>
-                          <span className="mono" style={{ fontSize: 11.5, color: "var(--st-text-3)" }}>{file.endpoints.length} {t("paths")}</span>
-                          <span className="mono" style={{ fontSize: 11, color: "var(--st-text-faint)", textAlign: "right" }}>{file.status === "ok" ? kb(file.size) : file.status}</span>
-                        </div>
-                        {open && (
-                          <div style={{ padding: "4px 20px 16px 40px", animation: "storm-fade .2s ease both" }}>
-                            {file.secrets.length > 0 && (
-                              <div style={{ marginBottom: file.endpoints.length ? 14 : 0 }}>
-                                <div style={{ font: "700 10.5px Inter,sans-serif", letterSpacing: ".5px", textTransform: "uppercase", color: "var(--st-text-faint)", marginBottom: 7 }}>{t("Secrets")}</div>
-                                {file.secrets.map((sec, i) => {
-                                  const c = SECRET_SEV[sec.severity] ?? SECRET_SEV.low;
-                                  return (
-                                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 5, minWidth: 0 }}>
-                                      <span className="mono" style={{ flex: "none", fontSize: 10.5, fontWeight: 700, borderRadius: 5, padding: "2px 8px", background: c.bg, color: c.color }}>{sec.kind}</span>
-                                      <span className="mono" style={{ flex: "none", fontSize: 12, color: "var(--st-text-2)" }}>{sec.match}</span>
-                                      {sec.snippet && <span className="mono" title={sec.snippet} style={{ fontSize: 11.5, color: "var(--st-text-faint)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sec.snippet}</span>}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
-                            {file.endpoints.length > 0 && (
-                              <div>
-                                <div style={{ font: "700 10.5px Inter,sans-serif", letterSpacing: ".5px", textTransform: "uppercase", color: "var(--st-text-faint)", marginBottom: 7 }}>{t("Paths")}</div>
-                                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                                  {file.endpoints.map((p, i) => (
-                                    <span key={i} className="mono" style={{ fontSize: 11.5, borderRadius: 6, padding: "2px 8px", background: "var(--st-elevated)", color: "var(--st-text-2)" }}>{p}</span>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                            {file.secrets.length === 0 && file.endpoints.length === 0 && (
-                              <div style={{ font: "500 12.5px Inter,sans-serif", color: "var(--st-text-faint)" }}>{file.status === "ok" ? t("Nothing found in this file.") : t("File could not be scanned.")}</div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+          <div style={{ ...CARD, overflow: "hidden" }}>
+            {jsGroups.length > 0 && (
+              <div style={{ display: "grid", alignItems: "center", gridTemplateColumns: jsGrid, gap: 14, padding: "12px 20px", borderBottom: "1px solid var(--st-divider)", font: "700 11px Inter,sans-serif", letterSpacing: ".5px", color: "var(--st-text-faint)", textTransform: "uppercase" }}>
+                <div /><div>{t("Host")}</div><div>{t("Paths")}</div><div>{t("Secrets")}</div>
+                <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8 }}>
+                  <span>{t("Actions")}</span>
+                  {canEditProject && allVisibleIds.length > 0 && (
+                    <button className="clk" title={t("Delete objects")} aria-label={t("Delete objects")} onClick={() => bulkDeleteJsVisible(allVisibleIds)} style={{ width: 27, height: 27, flex: "none", padding: 0, border: "1px solid var(--st-border)", borderRadius: 8, background: "var(--st-surface)", color: "var(--st-danger)", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                      <Icon name="trash" size={15} sw={2.2} color="var(--st-danger)" />
+                    </button>
+                  )}
                 </div>
               </div>
-            ))}
-            {state.apiJsFiles === null && <div style={{ padding: 52, textAlign: "center", color: "var(--st-text-faint)", fontSize: 14, background: "var(--st-surface)", border: "1px solid var(--st-border-light)", borderRadius: 14 }}>{t("Loading JS files…")}</div>}
+            )}
+            {jsGroups.slice(0, LIST_CAP).map((g) => {
+              const exp = state.epExpanded.includes(`js:host:${g.host}`);
+              const groupSecrets = g.files.reduce((n, f) => n + f.secrets.length, 0);
+              return (
+                <div key={g.host} style={{ borderBottom: "1px solid var(--st-divider)" }}>
+                  <div className="prow clk" onClick={() => toggleJsGroup(g.host)} style={{ display: "grid", gridTemplateColumns: jsGrid, alignItems: "center", gap: 14, padding: "15px 20px" }}>
+                    <Icon name="chevron-right" size={15} color="var(--st-text-faint)" sw={2.4} style={{ transform: exp ? "rotate(90deg)" : "none", transition: "transform .2s" }} />
+                    {/* Клик по имени хоста открывает страницу «все файлы хоста»; клик по
+                        остальной строке — раскрывает список файлов под ней. */}
+                    <span className="mono hostname clk" onClick={(ev) => { ev.stopPropagation(); openJsHostDetail(g.host); }} title={t("Open all files of this host")} style={{ font: "700 14px 'JetBrains Mono',monospace", color: "var(--st-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer" }}>{g.host}</span>
+                    <span className="mono" style={{ fontSize: 12, color: g.paths ? "var(--st-text-2)" : "var(--st-text-faint)" }}>{g.paths} {t("paths")}</span>
+                    <span className="mono" style={{ fontSize: 12, fontWeight: 700, color: groupSecrets ? "var(--st-danger)" : "var(--st-text-faint)" }}>{groupSecrets} {t("secrets")}</span>
+                    <div style={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
+                      {/* Re-downloads this host's .js into a zip (files aren't stored). */}
+                      <Tip label={t("Download JS archive")}><div className="actbtn" onClick={(ev) => { ev.stopPropagation(); downloadJsArchive(g.hostId, g.host); }}><Icon name="download" size={15} /></div></Tip>
+                      {canEditProject && <Tip label={t("Delete host JS")}><div className="actbtn del" onClick={(ev) => { ev.stopPropagation(); deleteJsHost(g.hostId, g.host); }}><Icon name="trash" size={15} /></div></Tip>}
+                    </div>
+                  </div>
+                  <Collapse open={exp}>
+                    <div style={{ background: "var(--st-elevated)" }}>
+                      {g.files.slice(0, EP_GROUP_CAP).map((file) => (
+                        <div key={file.id} className="prow clk" onClick={() => openJsFile(file.id)} style={{ display: "grid", gridTemplateColumns: jsGrid, alignItems: "center", gap: 14, padding: "13px 20px 13px 44px", borderTop: "1px solid var(--st-divider)" }}>
+                          <span />
+                          <span className="mono hostname" title={file.url} style={{ font: "600 13px 'JetBrains Mono',monospace", color: file.status === "ok" ? "var(--st-text)" : "var(--st-text-faint)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer" }}>{fileBase(file.url)}</span>
+                          <span className="mono" style={{ fontSize: 11.5, color: "var(--st-text-3)" }}>{file.endpoints.length} {t("paths")}</span>
+                          <span className="mono" style={{ fontSize: 11.5, fontWeight: 700, color: file.secrets.length ? "var(--st-danger)" : "var(--st-text-faint)" }}>{file.secrets.length} {t("secrets")}</span>
+                          <span className="mono" style={{ fontSize: 11, color: "var(--st-text-faint)", textAlign: "right" }}>{file.status === "ok" ? kb(file.size) : file.status}</span>
+                        </div>
+                      ))}
+                      {g.files.length > EP_GROUP_CAP && (
+                        <div style={{ padding: "10px 20px 10px 44px", borderTop: "1px solid var(--st-divider)", color: "var(--st-text-faint)", fontSize: 12.5 }}>+{g.files.length - EP_GROUP_CAP} {t("more — narrow the filter to see the rest")}</div>
+                      )}
+                      {g.files.length === 0 && (
+                        <div style={{ padding: "13px 20px 13px 44px", borderTop: "1px solid var(--st-divider)", font: "500 12.5px Inter,sans-serif", color: "var(--st-text-faint)" }}>{t("No JS files on this host.")}</div>
+                      )}
+                    </div>
+                  </Collapse>
+                </div>
+              );
+            })}
+            {capNote(jsGroups.length, Math.min(jsGroups.length, LIST_CAP))}
+            {state.apiJsFiles === null && <div style={{ padding: 52, textAlign: "center", color: "var(--st-text-faint)", fontSize: 14 }}>{t("Loading JS files…")}</div>}
             {state.apiJsFiles !== null && jsGroups.length === 0 && (
-              <div style={{ padding: 52, textAlign: "center", color: "var(--st-text-faint)", fontSize: 14, background: "var(--st-surface)", border: "1px solid var(--st-border-light)", borderRadius: 14 }}>{t("No JS files yet — pick domains and scan.")}</div>
+              <div style={{ padding: 52, textAlign: "center", color: "var(--st-text-faint)", fontSize: 14 }}>{t("No JS files yet — pick domains and scan.")}</div>
             )}
           </div>
         </div>
@@ -5368,10 +6019,10 @@ export function StormApp() {
           {/* No column headers over an empty table — only show them with rows. */}
           {hostsList.length > 0 && (
             <div style={{ display: "grid", gridTemplateColumns: hostGrid, gap: 14, padding: "12px 20px", borderBottom: "1px solid var(--st-divider)", font: "700 11px Inter,sans-serif", letterSpacing: ".5px", color: "var(--st-text-faint)", textTransform: "uppercase" }}>
-              <div /><div>{t("Host")}</div><div>{t("Ports")}</div><div>{t("Cloudflare")}</div><div />
+              <div /><div>{t("Host")}</div><div>{t("Ports")}</div><div>{t("Cloudflare")}</div><div style={{ textAlign: "right" }}>{t("Actions")}</div>
             </div>
           )}
-          {hostsList.map(({ h, idx }) => {
+          {hostsList.slice(0, LIST_CAP).map(({ h, idx }) => {
             const exp = state.expanded.includes(h.id);
             return (
               <div key={h.id} style={{ borderBottom: "1px solid var(--st-divider)" }}>
@@ -5394,8 +6045,8 @@ export function StormApp() {
                   </div>
                 </div>
                 {/* Expanding a host lists its subdomains — the addresses live in the IPs view. */}
-                {exp && (
-                  <div style={{ background: "var(--st-elevated)", animation: "storm-fade .2s ease both" }}>
+                <Collapse open={exp}>
+                  <div style={{ background: "var(--st-elevated)" }}>
                     {visibleSubdomainsOf(h).map((sub) => (
                       <div key={sub.id} className="prow clk" onClick={(ev) => { ev.stopPropagation(); openHostDetail(sub.id); }} style={{ display: "grid", gridTemplateColumns: hostGrid, alignItems: "start", gap: 14, padding: "13px 20px 13px 44px", borderTop: "1px solid var(--st-divider)" }}>
                         <span style={{ width: 6, height: 6, borderRadius: "50%", background: STDOT[sub.status] ?? STDOT.unknown, marginTop: 8, justifySelf: "end" }} />
@@ -5414,11 +6065,12 @@ export function StormApp() {
                       <div style={{ padding: "13px 20px 13px 44px", borderTop: "1px solid var(--st-divider)", font: "500 12.5px Inter,sans-serif", color: "var(--st-text-faint)" }}>{t("No subdomains discovered.")}</div>
                     )}
                   </div>
-                )}
+                </Collapse>
               </div>
             );
           })}
           {state.apiHosts === null && <div style={{ padding: 52, textAlign: "center", color: "var(--st-text-faint)", fontSize: 14 }}>{t("Loading hosts…")}</div>}
+          {capNote(hostsList.length, Math.min(hostsList.length, LIST_CAP))}
           {state.apiHosts !== null && hostsList.length === 0 && <div style={{ padding: 52, textAlign: "center", color: "var(--st-text-faint)", fontSize: 14 }}>{t("No hosts found.")}</div>}
         </div>
       </div>
@@ -5480,7 +6132,7 @@ export function StormApp() {
           <span style={{ font: "700 13px Inter,sans-serif", color: "var(--st-text)" }}>{t("Endpoints")} <span className="mono" style={{ color: "var(--st-text-3)", fontWeight: 600 }}>{h.endpoints.length}</span></span>
         </div>
         <div style={{ ...CARD, overflow: "hidden" }}>
-          {h.endpoints.map((e, ei) => {
+          {h.endpoints.slice(0, EP_GROUP_CAP).map((e, ei) => {
             const m = METHOD[e.m] ?? PORT.closed;
             return (
               <div key={ei} className="prow clk" onClick={() => openEndpoint({ method: e.m, path: e.p, host: h.host, hostId: h.id, endpointId: e.id })} style={{ display: "grid", gridTemplateColumns: "72px minmax(0,1fr) 96px", alignItems: "center", gap: 12, padding: "13px 20px", borderBottom: "1px solid var(--st-divider)" }}>
@@ -5493,6 +6145,7 @@ export function StormApp() {
               </div>
             );
           })}
+          {h.endpoints.length > EP_GROUP_CAP && <div style={{ padding: "8px 20px", color: "var(--st-text-faint)", fontSize: 12.5 }}>+{h.endpoints.length - EP_GROUP_CAP} {t("more — narrow the filter to see the rest")}</div>}
           {h.endpoints.length === 0 && <div style={{ padding: 40, textAlign: "center", color: "var(--st-text-faint)", fontSize: 13.5 }}>{t("No endpoints yet.")}</div>}
         </div>
       </div>
@@ -5564,34 +6217,42 @@ export function StormApp() {
     if (state.openVulnId != null) return renderVulnDetail();
     return (
       <div className="route">
-        {/* Панель фильтров: поиск по хосту и автору — слева (как в разделе
-            «Эндпоинты»), пилюли статуса и критичности — справа, отодвинуты
-            flex-распоркой. Счётчик уязвимостей переехал к заголовку секции. */}
-        <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 16, flexWrap: "wrap", rowGap: 10 }}>
-          {searchBox(t("Filter by host…"), state.vulnFilterHost, (v) => setState({ vulnFilterHost: v }), 190)}
-          {searchBox(t("Filter by author…"), state.vulnFilterAuthor, (v) => setState({ vulnFilterAuthor: v }), 190)}
-          <div style={{ flex: "1 1 auto" }} />
-          {/* Status / severity are multi-select: pills toggle, several can be held at
-              once, and clearing the last one falls back to "All". Driven by the token
-              lists so they cannot drift from the backend's vocabularies. */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <span className="mono" style={{ fontSize: 10.5, letterSpacing: 1, color: "var(--st-text-faint)", fontWeight: 700 }}>{t("STATUS")}</span>
-            {filterPill(t("All"), vfS.length === 0, () => setState({ vulnFilterStatuses: [] }))}
-            {VSTATUS_ORDER.map((s) => filterPill(t(VSTATUS_LABEL[s]), vfS.includes(s), () => setState((st) => ({ vulnFilterStatuses: toggleIn(st.vulnFilterStatuses, s) }))))}
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <span className="mono" style={{ fontSize: 10.5, letterSpacing: 1, color: "var(--st-text-faint)", fontWeight: 700 }}>{t("SEVERITY")}</span>
-            {filterPill(t("All"), vfSev.length === 0, () => setState({ vulnFilterSeverities: [] }))}
-            {(["critical", "high", "medium", "low", "info"] as Severity[]).map((s) => filterPill(cap(s), vfSev.includes(s), () => setState((st) => ({ vulnFilterSeverities: toggleIn(st.vulnFilterSeverities, s) }))))}
+        {/* Панель фильтров (4 группы: поиск хост/название, поиск автор, STATUS,
+            SEVERITY). Поведение задаётся классами + container-query в storm.css:
+            — хватает ширины → всё в одну линию (поиски слева, кнопки справа);
+            — не хватает → два столбца: поиски друг под другом, группы кнопок
+              друг под другом. Порог — по реальной доступной ширине (container),
+              а не по viewport, поэтому работает и со свёрнутым сайдбаром. */}
+        <div className="issues-filterwrap">
+          <div className="issues-filters">
+            <div className="if-searches">
+              {searchBox(t("Filter by host or title…"), state.vulnFilterHost, (v) => setState({ vulnFilterHost: v }), 260)}
+              {searchBox(t("Filter by author…"), state.vulnFilterAuthor, (v) => setState({ vulnFilterAuthor: v }), 260)}
+            </div>
+            {/* Status / severity are multi-select: pills toggle, several can be held at
+                once, and clearing the last one falls back to "All". Driven by the token
+                lists so they cannot drift from the backend's vocabularies. */}
+            <div className="if-pills">
+              <div className="if-group">
+                <span className="mono" style={{ fontSize: 10.5, letterSpacing: 1, color: "var(--st-text-faint)", fontWeight: 700 }}>{t("STATUS")}</span>
+                {filterPill(t("All"), vfS.length === 0, () => setState({ vulnFilterStatuses: [] }))}
+                {VSTATUS_FILTER.map((s) => filterPill(t(VSTATUS_LABEL[s]), vfS.includes(s), () => setState((st) => ({ vulnFilterStatuses: toggleIn(st.vulnFilterStatuses, s) }))))}
+              </div>
+              <div className="if-group">
+                <span className="mono" style={{ fontSize: 10.5, letterSpacing: 1, color: "var(--st-text-faint)", fontWeight: 700 }}>{t("SEVERITY")}</span>
+                {filterPill(t("All"), vfSev.length === 0, () => setState({ vulnFilterSeverities: [] }))}
+                {(["critical", "high", "medium", "low", "info", "unrealized"] as Severity[]).map((s) => filterPill(cap(s), vfSev.includes(s), () => setState((st) => ({ vulnFilterSeverities: toggleIn(st.vulnFilterSeverities, s) }))))}
+              </div>
+            </div>
           </div>
         </div>
         <div style={{ ...CARD, overflow: "hidden" }}>
           {vulns.length > 0 && (
             <div style={{ display: "grid", gridTemplateColumns: "48px minmax(0,1.8fr) minmax(0,1fr) 140px 110px 130px 120px 64px", gap: 10, padding: "13px 20px", borderBottom: "1px solid var(--st-divider)", font: "700 11px Inter,sans-serif", letterSpacing: ".5px", color: "var(--st-text-faint)", textTransform: "uppercase" }}>
-              <div>#</div><div>{t("Title")}</div><div>{t("Asset")}</div><div>{t("Status")}</div><div>{t("Severity")}</div><div>{t("Author")}</div><div>{t("Updated")}</div><div />
+              <div>#</div><div>{t("Title")}</div><div>{t("Host")}</div><div>{t("Status")}</div><div>{t("Severity")}</div><div>{t("Author")}</div><div>{t("Updated")}</div><div style={{ textAlign: "center" }}>{t("Actions")}</div>
             </div>
           )}
-          {vulns.map((v) => (
+          {vulns.slice(0, LIST_CAP).map((v) => (
             <div key={v.num} className="prow clk" onClick={v.onOpen} style={{ display: "grid", gridTemplateColumns: "48px minmax(0,1.8fr) minmax(0,1fr) 140px 110px 130px 120px 64px", alignItems: "center", gap: 10, padding: "14px 20px", borderBottom: "1px solid var(--st-divider)" }}>
               <div className="mono" style={{ fontSize: 13, color: "var(--st-text-faint)", fontWeight: 600 }}>{String(v.num).padStart(2, "0")}</div>
               <div style={{ font: "600 14px Inter,sans-serif", color: "var(--st-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.title}</div>
@@ -5600,13 +6261,13 @@ export function StormApp() {
               <span style={{ justifySelf: "start", font: "700 10.5px Inter,sans-serif", textTransform: "uppercase", letterSpacing: ".5px", borderRadius: 7, padding: "4px 9px", background: SEV[v.sev].bg, color: SEV[v.sev].color }}>{v.sev}</span>
               <div className="mono" style={{ fontSize: 12, color: "var(--st-text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.author}</div>
               <div className="mono" style={{ fontSize: 11.5, color: "var(--st-text-faint)" }}>{v.updated}</div>
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
-                <div className="actbtn" title={t("Export to Jira")} onClick={(e) => { e.stopPropagation(); openJiraExport(v.id); }}><Icon name="upload" size={15} /></div>
-                <div className="actbtn" onClick={v.onEdit}><Icon name="edit" size={15} /></div>
+              <div style={{ display: "flex", justifyContent: "center", gap: 2 }}>
+                <div className="actbtn" title={t("Export to Task Tracker")} onClick={(e) => { e.stopPropagation(); openJiraExport(v.id); }}><Icon name="upload" size={15} /></div>
                 <div className="actbtn del" onClick={v.onDelete}><Icon name="trash" size={15} /></div>
               </div>
             </div>
           ))}
+          {capNote(vulns.length, Math.min(vulns.length, LIST_CAP))}
           {vulns.length === 0 && <div style={{ padding: 52, textAlign: "center", color: "var(--st-text-faint)", fontSize: 14 }}>{t("No findings match these filters.")}</div>}
         </div>
       </div>
@@ -5635,13 +6296,10 @@ export function StormApp() {
       setState((s) => ({ vulnDetailForm: { ...s.vulnDetailForm, host: v }, vdHostComboOpen: false, vdHostComboHi: 0 }));
     return (
       <div style={{ width: "100%" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 18 }}>
+        <div style={{ marginBottom: 18 }}>
           <span className="clk" onClick={closeVulnDetail} style={{ display: "inline-flex", alignItems: "center", gap: 6, font: "600 12.5px Inter,sans-serif", color: "var(--st-text-2)", background: "var(--st-surface)", border: "1px solid var(--st-border-light)", borderRadius: 20, padding: "7px 13px", cursor: "pointer" }}>
             <Icon name="chevron-left" size={15} />{t("All findings")}
           </span>
-          <button className="addbtn clk" onClick={() => state.openVulnId != null && openJiraExport(state.openVulnId)} style={{ height: 38, flex: "none" }}>
-            <Icon name="upload" size={15} color="var(--st-on-accent)" sw={2.4} />{t("Export to Jira")}
-          </button>
         </div>
         <div style={{ ...CARD, padding: "26px 28px" }}>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 20 }}>
@@ -5680,10 +6338,10 @@ export function StormApp() {
                     {vdHostSuggestions.map((hn, i) => (
                       <div
                         key={hn}
-                        className="clk"
+                        className="nav clk"
                         /* mousedown, а не click: click после blur-а инпута уже не долетит (список размонтируется). */
                         onMouseDown={(e) => { e.preventDefault(); vdHostPick(hn); }}
-                        style={{ display: "flex", flexDirection: "column", gap: 1, padding: "8px 10px", borderRadius: 9, background: i === vdHostHi ? "var(--st-accent-soft)" : "transparent" }}
+                        style={{ display: "flex", flexDirection: "column", gap: 1, padding: "8px 10px", borderRadius: 9, background: i === vdHostHi ? "var(--st-accent-soft)" : undefined }}
                       >
                         <span style={{ font: "600 13.5px Inter,sans-serif", color: i === vdHostHi ? "var(--st-accent)" : "var(--st-text)" }}>{hn}</span>
                       </div>
@@ -5709,9 +6367,11 @@ export function StormApp() {
               </div>
               <div style={{ flex: "none", width: 170 }}>
                 <label className="flabel">{t("Status")}</label>
-                <select className="finp" value={vd.status || "open"} onChange={(e) => updateVulnDetailForm("status", e.target.value as VStatus)}>
-                  {VSTATUS_ORDER.map((s) => <option key={s} value={s}>{t(VSTATUS_LABEL[s])}</option>)}
-                </select>
+                <StormSelect
+                  value={vd.status || "open"}
+                  onChange={(v) => updateVulnDetailForm("status", v as VStatus)}
+                  options={VSTATUS_ORDER.map((s) => ({ value: s, label: t(VSTATUS_LABEL[s]), dot: VSTATUS[s] }))}
+                />
               </div>
             </div>
           </div>
@@ -5722,10 +6382,23 @@ export function StormApp() {
                 const imgs = (vd.stepImages ?? {})[i] ?? [];
                 return (
                   <div key={i} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <span className="mono" style={{ flex: "none", width: 26, height: 26, borderRadius: 8, background: "var(--st-accent-soft)", color: "var(--st-accent)", fontWeight: 700, fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>{i + 1}</span>
-                      <input className="finp" placeholder={t("Describe this step… (paste a screenshot to attach)")} value={s} onChange={(e) => updateVdStep(i, e.target.value)} onPaste={(e) => pasteVdStepImage(i, e)} style={{ flex: 1, fontFamily: "ui-monospace,Menlo,monospace", fontSize: 12.5 }} />
-                      <div className="actbtn del" onClick={() => removeVdStep(i)}><Icon name="trash" size={15} /></div>
+                    {/* Номер и корзина центрируются по ПЕРВОЙ строке шага: обёртки
+                        высотой 49px (высота однострочного редактора при minHeight 44 +
+                        паддинги/бордер) с align-items:center, а строка выровнена по
+                        верху (flex-start). Поэтому при многострочном тексте редактор
+                        растёт вниз, а номер и корзина остаются напротив первой строки. */}
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                      <div style={{ flex: "none", height: 49, display: "flex", alignItems: "center" }}>
+                        <span className="mono" style={{ width: 26, height: 26, borderRadius: 8, background: "var(--st-accent-soft)", color: "var(--st-accent)", fontWeight: 700, fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>{i + 1}</span>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <Suspense fallback={<div className="stormmd" style={{ minHeight: 44, color: "var(--st-text-faint)", font: "500 14px Inter,sans-serif" }}>{t("Loading editor…")}</div>}>
+                          <StormMarkdownEditor value={s} onChange={(md) => updateVdStep(i, md)} onImagePaste={(files) => attachVdStepImages(i, files)} placeholder={t("Describe this step… (paste a screenshot to attach)")} minHeight={44} />
+                        </Suspense>
+                      </div>
+                      <div style={{ flex: "none", height: 49, display: "flex", alignItems: "center" }}>
+                        <div className="actbtn del" onClick={() => removeVdStep(i)}><Icon name="trash" size={15} /></div>
+                      </div>
                     </div>
                     {imgs.length > 0 && (
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginLeft: 36 }}>
@@ -5745,8 +6418,46 @@ export function StormApp() {
               <Icon name="plus" size={13} sw={2.4} />{t("Add step")}
             </button>
           </div>
-          <div style={{ marginBottom: 18 }}><label className="flabel">{t("Impact")}</label><textarea className="finp" rows={2} placeholder={t("Business/security impact if exploited…")} value={vd.impact || ""} onChange={(e) => updateVulnDetailForm("impact", e.target.value)} /></div>
-          <div><label className="flabel">{t("Remediation")}</label><textarea className="finp" rows={3} placeholder={t("How to fix or mitigate this vulnerability…")} value={vd.remediation || ""} onChange={(e) => updateVulnDetailForm("remediation", e.target.value)} /></div>
+          {/* Вложения: дропзона (клик открывает проводник / drag-drop) + список файлов. */}
+          <div style={{ marginBottom: 18 }}>
+            <label className="flabel">{t("Attachments")}</label>
+            <label
+              onDragOver={(e) => { e.preventDefault(); if (!state.vulnFileDrag) setState({ vulnFileDrag: true }); }}
+              onDragLeave={() => setState({ vulnFileDrag: false })}
+              onDrop={(e) => { e.preventDefault(); setState({ vulnFileDrag: false }); void uploadVulnFilesFor(Array.from(e.dataTransfer.files)); }}
+              style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 6, padding: "22px 16px", border: `1.5px dashed ${state.vulnFileDrag ? "var(--st-accent)" : "var(--st-border)"}`, borderRadius: 12, background: state.vulnFileDrag ? "var(--st-accent-soft)" : "var(--st-surface)", cursor: "pointer", textAlign: "center" }}
+            >
+              <Icon name="upload" size={20} color="var(--st-text-faint)" sw={2} />
+              <div style={{ fontSize: 13, color: "var(--st-text-2)", fontWeight: 600 }}>{state.vulnFilesBusy ? t("Uploading…") : t("Drag & drop files here, or click to browse")}</div>
+              <div style={{ fontSize: 11.5, color: "var(--st-text-faint)" }}>{t("Up to 50 MB each")}</div>
+              <input type="file" multiple hidden onChange={(e) => { const fs = e.target.files ? Array.from(e.target.files) : []; e.currentTarget.value = ""; void uploadVulnFilesFor(fs); }} />
+            </label>
+            {state.vulnFiles.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10 }}>
+                {state.vulnFiles.map((f) => (
+                  <div key={f.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", border: "1px solid var(--st-divider)", borderRadius: 10, background: "var(--st-surface)" }}>
+                    <Icon name="doc" size={15} color="var(--st-text-3)" />
+                    <span className="mono clk" title={t("Click to preview")} onClick={() => setState({ filePreview: f })} style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: "var(--st-accent-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer" }}>{f.original_name}</span>
+                    <span className="mono" style={{ flex: "none", fontSize: 11, color: "var(--st-text-faint)" }}>{kb(f.size_bytes)}</span>
+                    <a href={`/api/v1/files/${f.id}/download`} download={f.original_name} className="actbtn clk" title={t("Download")} style={{ cursor: "pointer", textDecoration: "none" }} onClick={(e) => e.stopPropagation()}><Icon name="download" size={14} color="var(--st-text-3)" /></a>
+                    <div className="actbtn del clk" title={t("Delete file")} onClick={() => void removeVulnFile(f.id)} style={{ cursor: "pointer" }}><Icon name="trash" size={14} color="var(--st-danger)" /></div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div style={{ marginBottom: 18 }}>
+            <label className="flabel">{t("Impact")}</label>
+            <Suspense fallback={<div className="stormmd" style={{ minHeight: 90, color: "var(--st-text-faint)", font: "500 14px Inter,sans-serif" }}>{t("Loading editor…")}</div>}>
+              <StormMarkdownEditor value={vd.impact || ""} onChange={(md) => updateVulnDetailForm("impact", md)} placeholder={t("Business/security impact if exploited…")} minHeight={90} />
+            </Suspense>
+          </div>
+          <div>
+            <label className="flabel">{t("Remediation")}</label>
+            <Suspense fallback={<div className="stormmd" style={{ minHeight: 120, color: "var(--st-text-faint)", font: "500 14px Inter,sans-serif" }}>{t("Loading editor…")}</div>}>
+              <StormMarkdownEditor value={vd.remediation || ""} onChange={(md) => updateVulnDetailForm("remediation", md)} placeholder={t("How to fix or mitigate this vulnerability…")} minHeight={120} />
+            </Suspense>
+          </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 22, fontSize: 12, color: "var(--st-text-faint)" }}>
             <span>{t("Reported by")} <b style={{ color: "var(--st-text-3)" }}>{original?.author}</b> · {original?.updated}</span>
             <div style={{ display: "flex", gap: 10 }}>
@@ -5797,7 +6508,7 @@ export function StormApp() {
             <div>{t("Username")}</div>
             <div>{t("Password")}</div>
             <div>{t("Host")}</div>
-            <div />
+            <div style={{ textAlign: "right" }}>{t("Actions")}</div>
           </div>
         )}
         {d.creds.map((c, idx) => {
@@ -5845,16 +6556,14 @@ export function StormApp() {
       {d.notes.map((n, idx) => {
         const mine = n.author === me;
         return (
-          // Clicking a note always opens it rendered — your own notes included.
-          <div key={n.id} className="statc clk" onClick={() => openNoteViewer(n.id)} style={{ ...CARD, padding: "18px 20px" }}>
+          // Клик по своей заметке открывает её сразу в редакторе (как карточка уязвимости);
+          // чужую — только на просмотр (read-only).
+          <div key={n.id} className="statc clk" onClick={() => (mine ? openNoteEditor("edit", idx) : openNoteViewer(n.id))} style={{ ...CARD, padding: "18px 20px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
               <div style={{ font: "700 15px Inter,sans-serif", color: "var(--st-text)" }}>{n.title}</div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, flex: "none" }}>
                 {mine && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                    <div className="actbtn" onClick={(e) => { e.stopPropagation(); openNoteEditor("edit", idx); }}><Icon name="edit" size={15} /></div>
-                    <div className="actbtn del" onClick={(e) => { e.stopPropagation(); askDelete("note", idx, n.title); }}><Icon name="trash" size={15} /></div>
-                  </div>
+                  <div className="actbtn del" onClick={(e) => { e.stopPropagation(); askDelete("note", idx, n.title); }}><Icon name="trash" size={15} /></div>
                 )}
                 <span className="mono" style={{ fontSize: 11.5, color: "var(--st-text-faint)" }}>{n.when}</span>
               </div>
@@ -5878,62 +6587,84 @@ export function StormApp() {
       return renderNoAccess("Note not found.");
     }
     const mine = n.author === me;
+    // Read-only заметка показывается в том же лейауте, что и редактор (All notes +
+    // Title + Content), только поля не редактируются и нет Save.
     return (
-      <div className="route" style={{ ...CARD, padding: 0, overflow: "hidden" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "16px 22px", borderBottom: "1px solid var(--st-divider)" }}>
-          <span className="clk" onClick={closeNoteViewer} style={{ display: "flex", color: "var(--st-text-3)", cursor: "pointer" }}><Icon name="chevron-left" size={20} /></span>
-          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "var(--st-text)" }}>{n.title}</h2>
-          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
-            {mine ? (
-              <button className="addbtn clk" onClick={() => openNoteEditor("edit", idx)} style={{ height: 36 }}>
-                <Icon name="edit" size={15} color="var(--st-on-accent)" sw={2.4} />{t("Edit note")}
-              </button>
-            ) : (
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, font: "600 11px Inter,sans-serif", color: "var(--st-text-3)", background: "var(--st-divider)", borderRadius: 20, padding: "5px 11px" }}>
-                <Icon name="eye" size={12} />{t("Read only")}
-              </span>
-            )}
-          </div>
+      <div className="route" style={{ width: "100%" }}>
+        <div style={{ marginBottom: 18, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+          <span className="clk" onClick={backToNotesList} style={{ display: "inline-flex", alignItems: "center", gap: 6, font: "600 12.5px Inter,sans-serif", color: "var(--st-text-2)", background: "var(--st-surface)", border: "1px solid var(--st-border-light)", borderRadius: 20, padding: "7px 13px", cursor: "pointer" }}>
+            <Icon name="chevron-left" size={15} />{t("All notes")}
+          </span>
+          {mine ? (
+            <button className="addbtn clk" onClick={() => openNoteEditor("edit", idx)} style={{ height: 40 }}>
+              <Icon name="edit" size={15} color="var(--st-on-accent)" sw={2.4} />{t("Edit note")}
+            </button>
+          ) : (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, font: "600 11.5px Inter,sans-serif", color: "var(--st-text-3)", background: "var(--st-divider)", borderRadius: 20, padding: "6px 12px" }}>
+              <Icon name="eye" size={13} />{t("Read only")}
+            </span>
+          )}
         </div>
-        <div style={{ padding: "24px 22px" }}>
-          <div style={{ maxWidth: 720 }}>{renderMarkdown(n.excerpt)}</div>
-          <div className="mono" style={{ fontSize: 11.5, color: "var(--st-text-faint)", marginTop: 24, paddingTop: 16, borderTop: "1px solid var(--st-elevated)" }}>{n.author} · {n.when}</div>
+        <div style={{ ...CARD, padding: 0, overflow: "hidden" }}>
+          <div style={{ padding: "22px 22px 8px" }}>
+            <label className="flabel">{t("Title")}</label>
+            <input className="finp" value={n.title} readOnly style={{ font: "700 16px Inter,sans-serif", height: 48, background: "var(--st-elevated)", cursor: "default" }} />
+          </div>
+          <div style={{ padding: "14px 22px 24px" }}>
+            <label className="flabel">{t("Content")}</label>
+            {/* Та же «коробка», что у редактора (класс .stormmd), только не редактируется. */}
+            <div className="stormmd" style={{ cursor: "default", marginTop: 8 }}>{renderMarkdown(n.excerpt)}</div>
+          </div>
+          <div style={{ padding: "14px 22px" }}>
+            <span className="mono" style={{ fontSize: 11.5, color: "var(--st-text-faint)" }}>{n.author} · {n.when}</span>
+          </div>
         </div>
       </div>
     );
   };
 
-  const renderNoteEditor = () => (
-    <div className="route" style={{ ...CARD, padding: 0, overflow: "hidden" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "16px 22px", borderBottom: "1px solid var(--st-divider)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span className="clk" onClick={closeNoteEditor} style={{ display: "flex", color: "var(--st-text-3)", cursor: "pointer" }}><Icon name="chevron-left" size={20} /></span>
-          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "var(--st-text)" }}>{state.noteEditorMode === "add" ? "New note" : "Edit note"}</h2>
-        </div>
-        <div style={{ display: "flex", gap: 10 }}>
-          <button className="clk" onClick={closeNoteEditor} style={{ height: 38, padding: "0 16px", border: "1px solid var(--st-border)", borderRadius: 10, background: "var(--st-surface)", font: "700 13px Inter,sans-serif", color: "var(--st-text-2)", cursor: "pointer" }}>{t("Cancel")}</button>
-          <button className="clk" onClick={saveNote} style={{ height: 38, padding: "0 18px", border: "none", borderRadius: 10, background: "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13px Inter,sans-serif", cursor: "pointer" }}>{t("Save note")}</button>
-        </div>
+  // Редактор заметки — как карточка уязвимости: «All notes» сверху, поля инлайн,
+  // Save/Cancel снизу. Сохраняется по кнопке, затем возврат к списку.
+  const renderNoteEditor = () => {
+    const editing = state.noteEditorMode === "edit" ? d.notes[state.noteEditorIndex] : undefined;
+    const footAuthor = editing?.author ?? me;
+    const footWhen = editing?.when ?? "";
+    return (
+    <div className="route" style={{ width: "100%" }}>
+      <div style={{ marginBottom: 18 }}>
+        <span className="clk" onClick={backToNotesList} style={{ display: "inline-flex", alignItems: "center", gap: 6, font: "600 12.5px Inter,sans-serif", color: "var(--st-text-2)", background: "var(--st-surface)", border: "1px solid var(--st-border-light)", borderRadius: 20, padding: "7px 13px", cursor: "pointer" }}>
+          <Icon name="chevron-left" size={15} />{t("All notes")}
+        </span>
       </div>
-      <div style={{ padding: "22px 22px 8px" }}>
-        <label className="flabel">{t("Title")}</label>
-        <input className="finp" placeholder={t("Give this note a title…")} value={state.noteForm.title} onChange={(e) => updateNoteForm("title", e.target.value)} style={{ font: "700 16px Inter,sans-serif", height: 48, background: "var(--st-elevated)" }} />
-      </div>
-      {/* Markdown renders as you type (### + space → heading, right in the line) —
-          the note is still stored as Markdown, so the viewer and the reports read
-          exactly what was typed. */}
-      <div style={{ padding: "14px 22px 24px" }}>
-        <label className="flabel">{t("Content")}</label>
-        <Suspense fallback={<div className="stormmd" style={{ minHeight: 260, color: "var(--st-text-faint)", font: "500 14px Inter,sans-serif" }}>{t("Loading editor…")}</div>}>
-          <StormMarkdownEditor
-            value={state.noteForm.excerpt}
-            onChange={(md) => updateNoteForm("excerpt", md)}
-            placeholder={t("Write your note… «### » makes a heading, «- » a list")}
-          />
-        </Suspense>
+      <div style={{ ...CARD, padding: 0, overflow: "hidden" }}>
+        <div style={{ padding: "22px 22px 8px" }}>
+          <label className="flabel">{t("Title")}</label>
+          <input className="finp" placeholder={t("Give this note a title…")} value={state.noteForm.title} onChange={(e) => updateNoteForm("title", e.target.value)} style={{ font: "700 16px Inter,sans-serif", height: 48, background: "var(--st-elevated)" }} />
+        </div>
+        {/* Markdown renders as you type (### + space → heading, right in the line) —
+            the note is still stored as Markdown, so the viewer and the reports read
+            exactly what was typed. */}
+        <div style={{ padding: "14px 22px 20px" }}>
+          <label className="flabel">{t("Content")}</label>
+          <Suspense fallback={<div className="stormmd" style={{ minHeight: 260, color: "var(--st-text-faint)", font: "500 14px Inter,sans-serif" }}>{t("Loading editor…")}</div>}>
+            <StormMarkdownEditor
+              value={state.noteForm.excerpt}
+              onChange={(md) => updateNoteForm("excerpt", md)}
+              placeholder={t("Write your note… «### » makes a heading, «- » a list")}
+            />
+          </Suspense>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "16px 22px" }}>
+          <span className="mono" style={{ fontSize: 11.5, color: "var(--st-text-faint)" }}>{footAuthor}{footWhen ? ` · ${footWhen}` : ""}</span>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button className="clk" onClick={backToNotesList} style={{ height: 40, padding: "0 18px", border: "1px solid var(--st-border)", borderRadius: 10, background: "var(--st-surface)", font: "700 13px Inter,sans-serif", color: "var(--st-text-2)" }}>{t("Cancel")}</button>
+            <button className="clk" onClick={saveNote} style={{ height: 40, padding: "0 20px", border: "none", borderRadius: 10, background: "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13px Inter,sans-serif" }}>{t("Save changes")}</button>
+          </div>
+        </div>
       </div>
     </div>
-  );
+    );
+  };
 
   const renderMembers = () => {
     const mq = state.memberQuery.trim().toLowerCase();
@@ -6232,6 +6963,7 @@ export function StormApp() {
   };
 
   const renderProfileSecurity = () => (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
     <div style={{ ...CARD, padding: "22px 24px" }}>
       {cardHeader("lock", "Two-factor authentication", "Protect sign-in with a Google Authenticator code")}
       {twoFAEnabled ? (
@@ -6277,6 +7009,29 @@ export function StormApp() {
           <button className="clk" onClick={startTwoFA} disabled={state.twoFABusy} style={{ height: 38, padding: "0 16px", border: "none", borderRadius: 10, background: state.twoFABusy ? "var(--st-accent-muted)" : "var(--st-accent)", color: "var(--st-on-accent)", font: "700 12.5px Inter,sans-serif", cursor: state.twoFABusy ? "not-allowed" : "pointer" }}>{state.twoFABusy ? "Preparing…" : "Enable 2FA"}</button>
         </div>
       )}
+    </div>
+    {!authUser?.is_sso && (
+      <div style={{ ...CARD, padding: "22px 24px" }}>
+        {cardHeader("lock", "Change password", "Update the password you sign in with")}
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 420 }}>
+          <div>
+            <label className="flabel">{t("Current password")}</label>
+            <PasswordInput autoComplete="current-password" placeholder="••••••••" value={state.pwdCurrent} onChange={(v) => setState({ pwdCurrent: v })} />
+          </div>
+          <div>
+            <label className="flabel">{t("New password")}</label>
+            <PasswordInput autoComplete="new-password" placeholder={t("At least 8 characters")} value={state.pwdNew} onChange={(v) => setState({ pwdNew: v })} />
+          </div>
+          <div>
+            <label className="flabel">{t("Confirm new password")}</label>
+            <PasswordInput autoComplete="new-password" placeholder="••••••••" value={state.pwdConfirm} onChange={(v) => setState({ pwdConfirm: v })} />
+          </div>
+          <div>
+            <button className="clk" onClick={submitPasswordChange} disabled={state.pwdBusy} style={{ height: 44, padding: "0 20px", border: "none", borderRadius: 11, background: state.pwdBusy ? "var(--st-accent-muted)" : "var(--st-accent)", color: "var(--st-on-accent)", font: "700 13px Inter,sans-serif", cursor: state.pwdBusy ? "not-allowed" : "pointer" }}>{state.pwdBusy ? t("Saving…") : t("Change password")}</button>
+          </div>
+        </div>
+      </div>
+    )}
     </div>
   );
 
@@ -6392,27 +7147,32 @@ export function StormApp() {
 
         {/* main column */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, overflow: "hidden" }}>
-          <main style={{ flex: 1, overflow: "auto" }}>
-            {isList && renderProjects()}
-            {isDocs && (
-              <Suspense fallback={<div className="route" style={{ padding: "40px 48px", color: "var(--st-text-faint)", font: "500 14px Inter,sans-serif" }}>{t("Loading docs…")}</div>}>
-                <StormDocs isAdmin={isAdmin} onNavigateWorkspace={selProjects} />
-              </Suspense>
-            )}
-            {isTasks && renderTasks()}
-            {isStub && renderStub()}
-            {/* /members is admin-only (GET /users is too) — say so rather than
-                quietly showing the projects list instead. */}
-            {state.view === "workspaceMembers" &&
-              (isAdmin
-                ? renderWorkspaceMembers()
-                : renderNoAccessPage("The Members section is admin-only — this is where users are created and roles assigned."))}
-            {state.view === "detail" && (state.accessDenied ? renderNoAccessPage() : renderDetail())}
-            {state.view === "profile" && renderProfile()}
+          {/* Скролл-контейнер — колонка: контент растёт и прижимает футер к низу,
+              поэтому футер виден только когда страница прокручена в самый низ
+              (а не висит постоянной полосой под областью прокрутки). */}
+          <main style={{ flex: 1, overflow: "auto", display: "flex", flexDirection: "column" }}>
+            <div style={{ flex: "1 0 auto" }}>
+              {isList && renderProjects()}
+              {isDocs && (
+                <Suspense fallback={<div className="route" style={{ padding: "40px 48px", color: "var(--st-text-faint)", font: "500 14px Inter,sans-serif" }}>{t("Loading docs…")}</div>}>
+                  <StormDocs isAdmin={isAdmin} onNavigateWorkspace={selProjects} />
+                </Suspense>
+              )}
+              {isTasks && renderTasks()}
+              {isStub && renderStub()}
+              {/* /members is admin-only (GET /users is too) — say so rather than
+                  quietly showing the projects list instead. */}
+              {state.view === "workspaceMembers" &&
+                (isAdmin
+                  ? renderWorkspaceMembers()
+                  : renderNoAccessPage("The Members section is admin-only — this is where users are created and roles assigned."))}
+              {state.view === "detail" && (state.accessDenied ? renderNoAccessPage() : renderDetail())}
+              {state.view === "profile" && renderProfile()}
+            </div>
+            <footer style={{ flex: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: 16, background: "transparent", fontSize: 12.5, color: "var(--st-text-faint)", flexWrap: "wrap" }}>
+              <span style={{ fontWeight: 700, color: "var(--st-text-3)" }}>{t("STORM")}</span><span>·</span><span>{t("Licensed to SberTech · Copyright © 2026. All rights reserved.")}</span>
+            </footer>
           </main>
-          <footer style={{ flex: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: 16, background: "transparent", fontSize: 12.5, color: "var(--st-text-faint)", flexWrap: "wrap" }}>
-            <span style={{ fontWeight: 700, color: "var(--st-text-3)" }}>{t("STORM")}</span><span>·</span><span>{t("Licensed to SberTech · Copyright © 2026. All rights reserved.")}</span>
-          </footer>
         </div>
       </div>
 
@@ -6479,7 +7239,7 @@ export function StormApp() {
               {API_SCOPES.map((s) => {
                 const checked = !!state.apiKeyScopes[s];
                 return (
-                  <div key={s} className="clk" onClick={() => toggleApiScope(s)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 14px", borderTop: "1px solid var(--st-divider)", cursor: "pointer" }}>
+                  <div key={s} className="prow clk" onClick={() => toggleApiScope(s)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 14px", borderTop: "1px solid var(--st-divider)", cursor: "pointer" }}>
                     <span style={{ width: 18, height: 18, flex: "none", borderRadius: 5, border: `1.5px solid ${checked ? "var(--st-accent)" : "var(--st-border)"}`, background: checked ? "var(--st-accent)" : "var(--st-surface)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       {checked && <Icon name="check" size={12} color="var(--st-on-accent)" sw={3} />}
                     </span>
@@ -6501,7 +7261,7 @@ export function StormApp() {
                 {(state.apiProjects ?? []).map((p) => {
                   const checked = state.apiKeyProjectIds.includes(p.id);
                   return (
-                    <div key={p.id} className="clk" onClick={() => toggleApiProject(p.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderTop: "1px solid var(--st-divider)", cursor: "pointer" }}>
+                    <div key={p.id} className="prow clk" onClick={() => toggleApiProject(p.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderTop: "1px solid var(--st-divider)", cursor: "pointer" }}>
                       <span style={{ width: 18, height: 18, flex: "none", borderRadius: 5, border: `1.5px solid ${checked ? "var(--st-accent)" : "var(--st-border)"}`, background: checked ? "var(--st-accent)" : "var(--st-surface)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         {checked && <Icon name="check" size={12} color="var(--st-on-accent)" sw={3} />}
                       </span>
@@ -6524,14 +7284,21 @@ export function StormApp() {
       {/* new project */}
       {modalShell(
         state.modalOpen,
-        () => setState({ modalOpen: false, newName: "", newDesc: "", newStart: "", newEnd: "" }),
+        () => setState({ modalOpen: false, newName: "", newDesc: "", newStart: "", newEnd: "", newNameError: false }),
         60,
         480,
         <>
           <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "var(--st-text)", letterSpacing: "-.4px" }}>{t("New project")}</h2>
           <div style={{ fontSize: 13.5, color: "var(--st-text-3)", marginTop: 6 }}>{t("Create a project workspace for a new engagement.")}</div>
-          <div style={{ marginTop: 22 }}><label className="flabel">{t("Project name")}</label><input className="finp" placeholder={t("e.g. Acme Corp — External Perimeter")} value={state.newName} onChange={(e) => setState({ newName: e.target.value })} /></div>
+          <div style={{ marginTop: 22 }}>
+            <label className="flabel">{t("Project name")}</label>
+            <input className="finp" style={state.newNameError && !state.newName.trim() ? { borderColor: "var(--st-danger)", boxShadow: "0 0 0 3px var(--st-danger-soft)" } : undefined} placeholder={t("e.g. Acme Corp — External Perimeter")} value={state.newName} onChange={(e) => setState({ newName: e.target.value, newNameError: false })} />
+            {state.newNameError && !state.newName.trim() && <div style={{ marginTop: 6, font: "600 12px Inter,sans-serif", color: "var(--st-danger)" }}>{t("Project name is required")}</div>}
+          </div>
           <div style={{ marginTop: 16 }}><label className="flabel">{t("Description")}</label><textarea className="finp" rows={3} placeholder={t("Short summary of the engagement scope…")} value={state.newDesc} onChange={(e) => setState({ newDesc: e.target.value })} /></div>
+          <div style={{ marginTop: 16 }}>
+            <StormAppSecFields value={state.newAppsec} onChange={(p) => setState({ newAppsec: { ...state.newAppsec, ...p } })} works={state.worksEnabled} t={t} />
+          </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 16 }}>
             {/* min/max keep the pickers themselves from offering an inverted range. */}
             <div><label className="flabel">{t("Start date")}</label><StormDatePicker value={state.newStart} onChange={(v) => setState({ newStart: v })} max={state.newEnd || undefined} /></div>
@@ -6540,7 +7307,7 @@ export function StormApp() {
           {datesInvalid(state.newStart, state.newEnd) && (
             <div style={{ marginTop: 8, font: "600 12px Inter,sans-serif", color: "var(--st-danger)" }}>{DATES_ERROR}</div>
           )}
-          {modalFooter(() => setState({ modalOpen: false, newName: "", newDesc: "", newStart: "", newEnd: "" }), createProject, "Create project")}
+          {modalFooter(() => setState({ modalOpen: false, newName: "", newDesc: "", newStart: "", newEnd: "", newNameError: false }), createProject, "Create project")}
         </>
       )}
 
@@ -6556,9 +7323,14 @@ export function StormApp() {
           <div style={{ marginTop: 16 }}><label className="flabel">{t("Description")}</label><textarea className="finp" rows={3} value={state.projEditDesc} onChange={(e) => setState({ projEditDesc: e.target.value })} /></div>
           <div style={{ marginTop: 16 }}>
             <label className="flabel">{t("Status")}</label>
-            <select className="finp" value={state.projEditStatus} onChange={(e) => setState({ projEditStatus: e.target.value as ProjectStatus })}>
-              {PROJECT_STATUS_ORDER.map((s) => <option key={s} value={s}>{t(PROJ_STATUS[s]?.label ?? s)}</option>)}
-            </select>
+            <StormSelect
+              value={state.projEditStatus}
+              onChange={(v) => setState({ projEditStatus: v as ProjectStatus })}
+              options={PROJECT_STATUS_ORDER.map((s) => ({ value: s, label: t(PROJ_STATUS[s]?.label ?? s), dot: PROJ_STATUS[s]?.dot }))}
+            />
+          </div>
+          <div style={{ marginTop: 16 }}>
+            <StormAppSecFields value={state.projEditAppsec} onChange={(p) => setState({ projEditAppsec: { ...state.projEditAppsec, ...p } })} works={state.worksEnabled} t={t} />
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 16 }}>
             <div><label className="flabel">{t("Start date")}</label><StormDatePicker value={state.projEditStart} onChange={(v) => setState({ projEditStart: v })} max={state.projEditEnd || undefined} /></div>
@@ -6646,7 +7418,7 @@ export function StormApp() {
           const exportDisabled = state.jiraExportBusy || state.jiraExportChecking;
           return (
             <>
-              <h2 style={{ margin: 0, fontSize: 21, fontWeight: 800, color: "var(--st-text)", letterSpacing: "-.4px" }}>{t("Export to Jira")}</h2>
+              <h2 style={{ margin: 0, fontSize: 21, fontWeight: 800, color: "var(--st-text)", letterSpacing: "-.4px" }}>{t("Export to Task Tracker")}</h2>
 
               {v && (
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 16, padding: "12px 14px", border: "1px solid var(--st-divider)", borderRadius: 12 }}>
@@ -6671,7 +7443,6 @@ export function StormApp() {
                   </div>
                 ) : (
                   <div style={{ font: "600 13px Inter,sans-serif", color: "var(--st-text-2)", lineHeight: 1.5 }}>
-                    {t("A Jira issue (")}<span className="mono" style={{ color: "var(--st-text)" }}>{t("STORM-")}{state.jiraExportVulnId}</span>{t(") will be created in To Do with the finding details, a start date of today and a due date in 2 weeks.")}
                     {state.jiraExportError && (
                       <div style={{ marginTop: 10, color: "var(--st-danger)", font: "600 12.5px Inter,sans-serif" }}>{state.jiraExportError}</div>
                     )}
@@ -6682,7 +7453,7 @@ export function StormApp() {
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 22 }}>
                 {isLinked ? (
                   <>
-                    <a className="clk" href={link!.jira_issue_url} target="_blank" rel="noreferrer" style={{ height: 42, padding: "0 20px", borderRadius: 11, background: "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13.5px Inter,sans-serif", display: "inline-flex", alignItems: "center", textDecoration: "none" }}>{t("Open in Jira")}</a>
+                    <a className="clk" href={link!.jira_issue_url} target="_blank" rel="noreferrer" style={{ height: 42, padding: "0 20px", borderRadius: 11, background: "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13.5px Inter,sans-serif", display: "inline-flex", alignItems: "center", textDecoration: "none" }}>{t("Open in Task Tracker")}</a>
                     <button className="clk" onClick={closeJiraExport} style={{ height: 42, padding: "0 20px", border: "1px solid var(--st-border)", borderRadius: 11, background: "var(--st-surface)", font: "700 13.5px Inter,sans-serif", color: "var(--st-text-2)" }}>{t("Done")}</button>
                   </>
                 ) : (
@@ -6710,7 +7481,7 @@ export function StormApp() {
           const pct = state.jiraBulkTotal > 0 ? Math.round((state.jiraBulkDone / state.jiraBulkTotal) * 100) : 0;
           return (
             <>
-              <h2 style={{ margin: 0, fontSize: 21, fontWeight: 800, color: "var(--st-text)", letterSpacing: "-.4px" }}>{t("Export all to Jira")}</h2>
+              <h2 style={{ margin: 0, fontSize: 21, fontWeight: 800, color: "var(--st-text)", letterSpacing: "-.4px" }}>{t("Export all to Task Tracker")}</h2>
 
               <div style={{ marginTop: 16 }}>
                 {state.jiraBulkFinished ? (
@@ -6731,7 +7502,7 @@ export function StormApp() {
                   </div>
                 ) : (
                   <div style={{ font: "600 13px Inter,sans-serif", color: "var(--st-text-2)", lineHeight: 1.5 }}>
-                    {t("This will create a Jira issue (in To Do) for each of the")} <b style={{ color: "var(--st-text)" }}>{total}</b> {t("listed")} {total === 1 ? "vulnerability" : "vulnerabilities"} {t("(page filters apply). Already-linked findings are skipped.")}
+                    {t("This will create a Task Tracker issue (in To Do) for each of the")} <b style={{ color: "var(--st-text)" }}>{total}</b> {t("listed")} {total === 1 ? "vulnerability" : "vulnerabilities"} {t("(page filters apply). Already-linked findings are skipped.")}
                   </div>
                 )}
               </div>
@@ -6740,7 +7511,7 @@ export function StormApp() {
                 {state.jiraBulkFinished ? (
                   <>
                     {state.jiraBulkProjectUrl && (
-                      <a className="clk" href={state.jiraBulkProjectUrl} target="_blank" rel="noreferrer" style={{ height: 42, padding: "0 20px", borderRadius: 11, background: "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13.5px Inter,sans-serif", display: "inline-flex", alignItems: "center", textDecoration: "none" }}>{t("Open Jira")}</a>
+                      <a className="clk" href={state.jiraBulkProjectUrl} target="_blank" rel="noreferrer" style={{ height: 42, padding: "0 20px", borderRadius: 11, background: "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13.5px Inter,sans-serif", display: "inline-flex", alignItems: "center", textDecoration: "none" }}>{t("Open Task Tracker")}</a>
                     )}
                     <button className="clk" onClick={closeBulkJira} style={{ height: 42, padding: "0 20px", border: "1px solid var(--st-border)", borderRadius: 11, background: "var(--st-surface)", font: "700 13.5px Inter,sans-serif", color: "var(--st-text-2)" }}>{t("Done")}</button>
                   </>
@@ -6773,10 +7544,12 @@ export function StormApp() {
                 {f.isText && <input className="finp" placeholder={t(f.placeholder)} value={f.value} onChange={f.onInput} />}
                 {f.isTextarea && <textarea className="finp" rows={3} placeholder={t(f.placeholder)} value={f.value} onChange={f.onInput} />}
                 {f.isSelect && (
-                  <select className="esel" value={f.value} onChange={f.onInput}>
-                    {f.value === "" && <option value="" disabled>{t("Select…")}</option>}
-                    {f.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </select>
+                  <StormSelect
+                    value={f.value}
+                    onChange={(v) => f.onInput({ target: { value: v } } as unknown as ChangeEvent<HTMLSelectElement>)}
+                    options={f.options.map((o) => ({ value: o.value, label: o.label }))}
+                    placeholder={t("Select…")}
+                  />
                 )}
                 {/* Type-to-search over a long option list (hosts, workspace users).
                     A native datalist renders as an unstyleable OS popup, so the
@@ -6799,14 +7572,14 @@ export function StormApp() {
                         {f.suggestions.map((o) => (
                           <div
                             key={o.value}
-                            className="clk"
+                            className="nav clk"
                             /* mousedown would blur the input and unmount the list
                                before the click lands, so pick on mousedown. */
                             onMouseDown={(e) => {
                               e.preventDefault();
                               o.onPick();
                             }}
-                            style={{ display: "flex", flexDirection: "column", gap: 1, padding: "8px 10px", borderRadius: 9, background: o.active ? "var(--st-accent-soft)" : "transparent" }}
+                            style={{ display: "flex", flexDirection: "column", gap: 1, padding: "8px 10px", borderRadius: 9, background: o.active ? "var(--st-accent-soft)" : undefined }}
                           >
                             <span style={{ font: "600 13.5px Inter,sans-serif", color: o.active ? "var(--st-accent)" : "var(--st-text)" }}>{o.label}</span>
                             {o.sub && <span className="mono" style={{ fontSize: 11.5, color: "var(--st-text-3)" }}>{o.sub}</span>}
@@ -6946,6 +7719,7 @@ export function StormApp() {
           </div>
         </div>
       )}
+      {state.filePreview && <FilePreview file={state.filePreview} onClose={() => setState({ filePreview: null })} />}
     </div>
   );
 }

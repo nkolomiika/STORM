@@ -3,6 +3,7 @@ import type {
   JiraTaskDetail,
   JiraTaskList,
   AuthLoginResponse,
+  SsoConfig,
   TwoFASetupResponse,
   VulnerabilityComment,
   VulnerabilityDetails,
@@ -42,6 +43,9 @@ import type {
   VulnerabilityAsset,
   AgentApiToken,
   JiraIssueLink,
+  WorksConfig,
+  WorksRef,
+  WorksIssueLink,
   ProjectJiraLink,
   JiraConfig,
 } from "./types";
@@ -171,6 +175,12 @@ export async function login(username: string, password: string): Promise<AuthLog
   return data;
 }
 
+/** Публичная конфигурация SSO: показывать ли кнопку входа и её надпись. */
+export async function getSsoConfig(): Promise<SsoConfig> {
+  const { data } = await api.get<SsoConfig>("/auth/sso/config");
+  return data;
+}
+
 export async function verifyTwoFactor(code: string): Promise<AuthLoginResponse> {
   assertRequired(code, "Verification code");
   const { data } = await api.post<AuthLoginResponse>("/auth/2fa/verify", { code: code.trim() });
@@ -230,6 +240,18 @@ export async function getMe(): Promise<User> {
 
 export async function getUsers(page = 1, size = 200): Promise<PaginatedResponse<User>> {
   const { data } = await api.get<PaginatedResponse<User>>("/users", { params: { page, size } });
+  return data;
+}
+
+/** Люди для тайпхеда исполнителя: поиск по username ИЛИ ФИО (full_name).
+ *  Сервер ищет среди STORM-юзеров + (если IAM настроен) подмешивает IAM. */
+export interface UserSearchResult {
+  username: string;
+  full_name: string | null;
+  is_sso: boolean;
+}
+export async function searchUsers(q: string, limit = 10): Promise<UserSearchResult[]> {
+  const { data } = await api.get<UserSearchResult[]>("/users/search", { params: { q: q.trim(), limit } });
   return data;
 }
 
@@ -422,6 +444,13 @@ export async function createProject(payload: {
   description?: string;
   start_date?: string;
   end_date?: string;
+  appsec_component_code?: string | null;
+  appsec_component_name?: string | null;
+  appsec_version_code?: string | null;
+  appsec_version_name?: string | null;
+  appsec_assignee?: string | null;
+  appsec_ticket_url?: string | null;
+  appsec_ticket_key?: string | null;
 }): Promise<Project> {
   assertRequired(payload.name, "Project name");
   const { data } = await api.post<Project>("/projects", payload);
@@ -442,6 +471,13 @@ export async function updateProject(
     start_date?: string;
     end_date?: string;
     status?: Project["status"];
+    appsec_component_code?: string | null;
+    appsec_component_name?: string | null;
+    appsec_version_code?: string | null;
+    appsec_version_name?: string | null;
+    appsec_assignee?: string | null;
+    appsec_ticket_url?: string | null;
+    appsec_ticket_key?: string | null;
   }
 ): Promise<Project> {
   const { data } = await api.put<Project>(`/projects/${projectId}`, payload);
@@ -616,10 +652,22 @@ export async function deleteProject(projectId: number): Promise<void> {
 export async function getHosts(projectId: number): Promise<PaginatedResponse<Host>> {
   // origin=all — один запрос кормит и таблицу хостов, и таблицу IP: строки
   // origin='ip' отфильтровываются на клиенте (см. hostsList в StormApp).
-  const { data } = await api.get<PaginatedResponse<Host>>(`/projects/${projectId}/hosts`, {
-    params: { page: 1, size: 100, origin: "all" },
+  // Тянем ВСЕ хосты постранично (бэкенд ограничивает size<=200), чтобы большие
+  // проекты не обрезались; на обычных проектах это ровно один запрос.
+  const size = 200;
+  const first = await api.get<PaginatedResponse<Host>>(`/projects/${projectId}/hosts`, {
+    params: { page: 1, size, origin: "all" },
   });
-  return data;
+  const items = [...first.data.items];
+  const total = first.data.total ?? items.length;
+  for (let page = 2; items.length < total; page += 1) {
+    const { data } = await api.get<PaginatedResponse<Host>>(`/projects/${projectId}/hosts`, {
+      params: { page, size, origin: "all" },
+    });
+    if (!data.items.length) break;
+    items.push(...data.items);
+  }
+  return { ...first.data, items, size: items.length };
 }
 
 export async function createHost(
@@ -722,10 +770,29 @@ export async function getJsScanJob(projectId: number, jobId: number): Promise<Js
   return data;
 }
 
-/** JS-файлы проекта с находками — раздел JS группирует их по хосту. */
-export async function getJsFiles(projectId: number): Promise<JsFile[]> {
-  const { data } = await api.get<JsFile[]>(`/projects/${projectId}/js-files`);
+/** JS-файлы проекта с находками — раздел JS группирует их по хосту.
+ *  Постранично: раздел стримит страницы и склеивает их на клиенте, чтобы
+ *  проекты с тысячами файлов не упирались в один огромный ответ. */
+export async function getJsFilesPage(
+  projectId: number,
+  page: number,
+  size: number,
+): Promise<PaginatedResponse<JsFile>> {
+  const { data } = await api.get<PaginatedResponse<JsFile>>(`/projects/${projectId}/js-files`, {
+    params: { page, size },
+  });
   return data;
+}
+
+/** Массово удаляет JS-файлы по id. Возвращает `deleted`. */
+export async function bulkDeleteJsFiles(projectId: number, ids: number[]): Promise<number> {
+  const { data } = await api.post<{ deleted: number }>(`/projects/${projectId}/js-files/bulk-delete`, { ids });
+  return data.deleted;
+}
+
+/** Удалить все JS-находки указанного хоста в проекте. */
+export async function deleteJsFilesForHost(projectId: number, hostId: number): Promise<void> {
+  await api.delete(`/projects/${projectId}/js-files/hosts/${hostId}`);
 }
 
 /** Zip найденных .js. `hostId` сужает архив до одного хоста; без него — весь проект.
@@ -882,12 +949,12 @@ export async function createVulnerability(
     title: string;
     description?: string | null;
     // Необязательно: бэкенд по умолчанию ставит "unknown" (критичность не определена).
-    severity?: "critical" | "high" | "medium" | "low" | "info";
+    severity?: "critical" | "high" | "medium" | "low" | "info" | "unrealized";
     cvss_version?: "4.0" | null;
     cvss_score?: number | null;
     cvss_vector?: string | null;
     cwe_id?: string | null;
-    status?: "open" | "in_progress" | "fixed" | "wont_fix" | "accepted_risk";
+    status?: "open" | "in_progress" | "problem_analysis" | "need_info" | "paused" | "resolved" | "closed" | "cancelled" | "sent_by_mistake";
     workflow_steps?: Array<{
       id: string;
       description?: string | null;
@@ -914,12 +981,12 @@ export async function updateVulnerability(
   payload: {
     title?: string;
     description?: string | null;
-    severity?: "critical" | "high" | "medium" | "low" | "info";
+    severity?: "critical" | "high" | "medium" | "low" | "info" | "unrealized";
     cvss_version?: "4.0" | null;
     cvss_score?: number | null;
     cvss_vector?: string | null;
     cwe_id?: string | null;
-    status?: "open" | "in_progress" | "fixed" | "wont_fix" | "accepted_risk";
+    status?: "open" | "in_progress" | "problem_analysis" | "need_info" | "paused" | "resolved" | "closed" | "cancelled" | "sent_by_mistake";
     workflow_steps?: Array<{
       id: string;
       description?: string | null;
@@ -950,6 +1017,45 @@ export async function getVulnerabilityJiraLink(projectId: number, vulnerabilityI
 
 export async function exportVulnerabilityToJira(projectId: number, vulnerabilityId: number): Promise<JiraIssueLink> {
   const { data } = await api.post<JiraIssueLink>(`/projects/${projectId}/vulnerabilities/${vulnerabilityId}/jira/export`);
+  return data;
+}
+
+// ---- Works (sbertrack) AppSec export ----
+
+/** Доступен ли экспорт в AppSec (настроена ли интеграция Works). */
+export async function getWorksConfig(): Promise<WorksConfig> {
+  const { data } = await api.get<WorksConfig>("/works/config");
+  return data;
+}
+
+/** Typeahead по компонентам Works (имя→UUID). */
+export async function findWorksComponents(q: string): Promise<WorksRef[]> {
+  const { data } = await api.get<WorksRef[]>("/works/components", { params: { q } });
+  return data;
+}
+
+/** Typeahead по версиям Works (имя→UUID). */
+export async function findWorksVersions(q: string): Promise<WorksRef[]> {
+  const { data } = await api.get<WorksRef[]>("/works/versions", { params: { q } });
+  return data;
+}
+
+/** Текущая связь уязвимости с тикетом Works (или null). */
+export async function getVulnerabilityWorksLink(projectId: number, vulnerabilityId: number): Promise<WorksIssueLink | null> {
+  const { data } = await api.get<WorksIssueLink | null>(`/projects/${projectId}/vulnerabilities/${vulnerabilityId}/works`);
+  return data;
+}
+
+/** Экспорт уязвимости в AppSec (создание тикета bug_appsec в STS). */
+export async function exportVulnerabilityToWorks(
+  projectId: number,
+  vulnerabilityId: number,
+  assignee?: string | null
+): Promise<WorksIssueLink> {
+  const { data } = await api.post<WorksIssueLink>(
+    `/projects/${projectId}/vulnerabilities/${vulnerabilityId}/works/export`,
+    { assignee: assignee ?? null }
+  );
   return data;
 }
 

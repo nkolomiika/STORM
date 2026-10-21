@@ -1,5 +1,5 @@
 /* STORM — Offensive Security Research & Management Console
-   Global styles ported from the design prototype (PCF.dc.html).
+   Global styles ported from the design prototype (STORM.dc.html).
    Colours reference the design tokens in theme.css — never a raw hex — so the
    whole UI re-themes (light/dark) by flipping <html data-theme>. */
 
@@ -25,6 +25,36 @@ html, body, #root {
 
 @keyframes storm-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .storm .route { animation: storm-fade .22s ease both; }
+/* Плавное раскрытие списков (реконовские группы): grid-template-rows 0fr -> 1fr
+   анимирует высоту без фиксированных значений. Внутренний слой прячет overflow и
+   получает min-height:0, иначе содержимое не схлопывается. */
+.storm .collapse { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .26s cubic-bezier(.4,0,.2,1); }
+.storm .collapse.open { grid-template-rows: 1fr; }
+.storm .collapse > .collapse-inner { overflow: hidden; min-height: 0; }
+
+/* Панель фильтров Issues. По умолчанию (узко) — два столбца: два поиска друг
+   под другом и две группы кнопок (STATUS/SEVERITY) друг под другом, столбцы
+   рядом. Хватает ширины — container-query разворачивает всё в одну линию
+   (поиски слева, кнопки прижаты вправо). Порог меряется по доступной ширине
+   самой панели (container-type: inline-size), а не по окну, поэтому реагирует и
+   на сворачивание сайдбара. Группы кнопок внутри всегда могут переноситься
+   (flex-wrap), так что переход через порог не даёт горизонтального переполнения. */
+.storm .issues-filterwrap { container-type: inline-size; margin-bottom: 16px; }
+.storm .issues-filters { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 14px 22px; }
+.storm .if-searches { display: flex; flex-direction: column; gap: 9px; }
+/* margin-left:auto прижимает группы кнопок к правому краю в обоих режимах:
+   и когда они столбцом рядом с поисками (узко), и когда в одну линию (широко). */
+.storm .if-pills { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; margin-left: auto; }
+/* Узкий режим (столбцом): содержимое групп прижато к правому краю, поэтому
+   короткая строка (SEVERITY) упирается в тот же правый край, что и длинная
+   (STATUS) — без пустого места справа. */
+.storm .if-group { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+@container (min-width: 1640px) {
+  .storm .issues-filters { flex-wrap: nowrap; align-items: center; }
+  .storm .if-searches { flex-direction: row; gap: 9px; }
+  .storm .if-pills { flex-direction: row; align-items: center; gap: 14px; }
+  .storm .if-group { justify-content: flex-start; }
+}
 @keyframes storm-spin { to { transform: rotate(360deg); } }
 .storm .storm-spin { animation: storm-spin .7s linear infinite; }
 
@@ -87,6 +117,10 @@ html, body, #root {
 .storm .sb.collapsed .sbhead { justify-content: center; padding-left: 14px; }
 
 .storm .tab { transition: background .12s, border-color .12s, color .12s; cursor: pointer; }
+/* Неактивный таб (Active/Archived и т.п.) фон inline не задаёт (undefined),
+   поэтому наведение подсвечивает его через этот hover; активный таб со своим
+   inline-фоном hover перекрывает — ему подсветка не нужна. */
+.storm .tab:hover { background: var(--st-hover); }
 
 /* Section tabs (Overview / Recon / Vulnerabilities / …). The selected tab is
    marked by the blue underline plus accent text; hovering a tab previews that
@@ -139,3 +173,13 @@ html, body, #root {
 .storm .stormmd-input img { max-width: 100%; height: auto; border-radius: 8px; }
 /* Placeholder for the empty document (TipTap's Placeholder extension). */
 .storm .stormmd-input p.is-editor-empty:first-child::before { content: attr(data-placeholder); color: var(--st-text-faint); float: left; height: 0; pointer-events: none; }
+
+/* Карточка тикета (Tasks): основная колонка + сайдбар деталей (как в Jira). */
+.task-detail-grid { grid-template-columns: minmax(0, 1fr) 280px; }
+@media (max-width: 820px) {
+  .task-detail-grid { grid-template-columns: 1fr; }
+  .task-detail-grid .task-detail-side { border-left: none; border-top: 1px solid var(--st-divider); }
+}
+
+/* Ссылка-ключ тикета: подчёркивание при наведении (чтобы было видно, что это ссылка). */
+.storm a.keylink:hover { text-decoration: underline; }

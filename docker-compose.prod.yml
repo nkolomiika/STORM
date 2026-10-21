@@ -36,9 +36,6 @@ services:
   rabbitmq:
     restart: unless-stopped
 
-  mailpit:
-    restart: unless-stopped
-
   nginx:
     restart: unless-stopped
     # Адрес для SAN сертификата (deploy.sh экспортирует из .env.prod).

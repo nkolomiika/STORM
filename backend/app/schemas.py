@@ -59,6 +59,15 @@ class TwoFAVerifyRequest(InputBaseModel):
     code: str = Field(min_length=6, max_length=10)
 
 
+class SsoConfigOut(BaseModel):
+    """Публичная конфигурация SSO для экрана входа фронтенда."""
+
+    enabled: bool = False
+    # Надпись на кнопке и адрес старта потока (навигация браузера, не XHR).
+    button_label: str = "Войти через SSO"
+    start_url: str = "/api/v1/auth/sso/login"
+
+
 class TwoFASetupResponse(BaseModel):
     secret: str
     otpauth_uri: str
@@ -147,6 +156,9 @@ class PasswordResetOut(BaseModel):
 
 # Юзернейм задаёт сам приглашённый: буквы/цифры/точка/подчёркивание/дефис, 3–100.
 USERNAME_PATTERN = r"^[A-Za-z0-9._-]{3,100}$"
+# Для локальных (не-IAM) пользователей username = ФИО, поэтому разрешаем кириллицу
+# и пробелы (напр. «Коломиец Никита Сергеевич»), плюс точку/дефис/подчёркивание.
+FULLNAME_USERNAME_PATTERN = r"^[A-Za-zА-Яа-яЁё0-9 ._-]{3,100}$"
 
 
 class InvitationCreate(InputBaseModel):
@@ -175,6 +187,10 @@ class InvitationSentOut(BaseModel):
     invitation: InvitationOut
     email_sent_to: EmailStr
     mail_preview_url: str | None = None
+    # Прямая ссылка активации — отдаётся админу ТОЛЬКО когда почта выключена
+    # (MAIL_ENABLED=false), чтобы можно было пригласить без SMTP. При включённой
+    # почте ссылка уходит письмом и в ответе не светится.
+    activation_url: str | None = None
 
 
 class InvitationInfoOut(BaseModel):
@@ -192,7 +208,8 @@ class UsernameAvailabilityOut(BaseModel):
 
 
 class InvitationAcceptRequest(InputBaseModel):
-    username: str = Field(min_length=3, max_length=100, pattern=USERNAME_PATTERN)
+    # username = ФИО (кириллица + пробелы разрешены), либо короткий логин.
+    username: str = Field(min_length=3, max_length=100, pattern=FULLNAME_USERNAME_PATTERN)
     password: str = Field(min_length=8, max_length=128)
 
 
@@ -256,8 +273,18 @@ class UserOut(ORMBase):
     # доп. возможности в проектах, где пользователь участник.
     project_role: ProjectRole = ProjectRole.PENTESTER
     totp_enabled: bool = False
+    # Пользователь из SSO (локального пароля нет → фронт прячет смену пароля).
+    is_sso: bool = False
     password_changed_at: datetime | None = None
     created_at: datetime
+
+
+class UserSearchOut(ORMBase):
+    """Лёгкая выдача для тайпхеда исполнителя: поиск по username или ФИО (full_name)."""
+
+    username: str
+    full_name: str | None = None
+    is_sso: bool = False
 
 
 class ProjectCreate(InputBaseModel):
@@ -266,6 +293,13 @@ class ProjectCreate(InputBaseModel):
     description: str | None = None
     start_date: date | None = None
     end_date: date | None = None
+    appsec_component_code: str | None = Field(default=None, max_length=64)
+    appsec_component_name: str | None = Field(default=None, max_length=255)
+    appsec_version_code: str | None = Field(default=None, max_length=64)
+    appsec_version_name: str | None = Field(default=None, max_length=255)
+    appsec_assignee: str | None = Field(default=None, max_length=255)
+    appsec_ticket_url: str | None = Field(default=None, max_length=1024)
+    appsec_ticket_key: str | None = Field(default=None, max_length=64)
 
     @model_validator(mode="after")
     def validate_dates(self) -> "ProjectCreate":
@@ -281,6 +315,13 @@ class ProjectUpdate(InputBaseModel):
     start_date: date | None = None
     end_date: date | None = None
     status: ProjectStatus | None = None
+    appsec_component_code: str | None = Field(default=None, max_length=64)
+    appsec_component_name: str | None = Field(default=None, max_length=255)
+    appsec_version_code: str | None = Field(default=None, max_length=64)
+    appsec_version_name: str | None = Field(default=None, max_length=255)
+    appsec_assignee: str | None = Field(default=None, max_length=255)
+    appsec_ticket_url: str | None = Field(default=None, max_length=1024)
+    appsec_ticket_key: str | None = Field(default=None, max_length=64)
 
     @model_validator(mode="after")
     def validate_dates(self) -> "ProjectUpdate":
@@ -299,6 +340,13 @@ class ProjectOut(ORMBase):
     timeline_frozen_at: datetime | None
     status: ProjectStatus
     created_by: int
+    appsec_component_code: str | None = None
+    appsec_component_name: str | None = None
+    appsec_version_code: str | None = None
+    appsec_version_name: str | None = None
+    appsec_assignee: str | None = None
+    appsec_ticket_url: str | None = None
+    appsec_ticket_key: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -381,6 +429,34 @@ class JiraIssueLinkOut(ORMBase):
     updated_at: datetime
 
 
+class WorksConfigOut(BaseModel):
+    """Публичная конфигурация Works: доступен ли экспорт в AppSec."""
+
+    enabled: bool = False
+
+
+class WorksRefOut(BaseModel):
+    """Справочный элемент Works (компонент/версия): UUID + имя."""
+
+    code: str
+    name: str
+
+
+class WorksIssueLinkOut(ORMBase):
+    """Связь находки с тикетом Works."""
+
+    works_key: str
+    works_url: str
+    works_status: str | None = None
+
+
+class WorksExportRequest(InputBaseModel):
+    """Тело запроса экспорта находки в Works (исполнитель опционален —
+    по умолчанию берётся appsec_assignee проекта)."""
+
+    assignee: str | None = Field(default=None, max_length=255)
+
+
 # ── Раздел «Tasks»: read-only проекция задач Jira-проекта (по умолчанию STS) ──
 # status_category сворачивает Jira statusCategory в одно из «вёдер»
 # todo / inprogress / done / unknown — универсально для любого воркфлоу.
@@ -394,6 +470,8 @@ class JiraTaskOut(BaseModel):
     assignee: str | None = None
     updated: str
     created: str
+    # Ссылка на задачу в Jira/Works (для связывания тикета с проектом и отчёта).
+    url: str | None = None
 
 
 class JiraTaskDetailOut(JiraTaskOut):
@@ -562,6 +640,10 @@ class HostOut(ORMBase):
     ip_address: str | None
     """Primary IP — синоним для is_primary=true записи в ip_addresses."""
     ip_addresses: list[HostIpAddressOut] = Field(default_factory=list)
+    # Эндпоинты хоста едут прямо в списке (батч-загрузка selectinload), чтобы фронт
+    # не дёргал деталь на каждый хост. Пусто, если хост без эндпоинтов.
+    # Forward-ref: EndpointOut объявлен ниже, резолвим через model_rebuild() после него.
+    endpoints: list["EndpointOut"] = Field(default_factory=list)
     hostname: str | None
     status: HostStatus
     os_type: OsType = OsType.UNKNOWN
@@ -693,6 +775,10 @@ class EndpointOut(ORMBase):
     @classmethod
     def _coerce_optional_list(cls, value: object) -> object:
         return value if value is not None else []
+
+
+# EndpointOut объявлен — резолвим forward-ref HostOut.endpoints.
+HostOut.model_rebuild()
 
 
 class VulnerabilityWorkflowStep(InputBaseModel):
@@ -1005,6 +1091,11 @@ class JsFarmRequest(InputBaseModel):
     raw: str = Field(default="", max_length=262144)
 
 
+class JsBulkDeleteRequest(InputBaseModel):
+    # id JS-файлов проекта на удаление; чужие/несуществующие игнорируются в SQL.
+    ids: list[int] = Field(default_factory=list)
+
+
 class JsSecretOut(ORMBase):
     kind: str
     match_preview: str
@@ -1163,20 +1254,20 @@ class ReverseFarmJobOut(ORMBase):
     created_at: datetime
 
 
-class PcfImportService(InputBaseModel):
+class StormImportService(InputBaseModel):
     name: str = Field(min_length=1, max_length=255)
     version: str | None = Field(default=None, max_length=100)
     banner: str | None = None
 
 
-class PcfImportPort(InputBaseModel):
+class StormImportPort(InputBaseModel):
     port_number: int = Field(ge=1, le=65535)
     protocol: Protocol = Protocol.TCP
     state: PortState = PortState.OPEN
-    services: list[PcfImportService] = Field(default_factory=list)
+    services: list[StormImportService] = Field(default_factory=list)
 
 
-class PcfImportEndpoint(InputBaseModel):
+class StormImportEndpoint(InputBaseModel):
     path: str | None = Field(default=None, min_length=1)
     method: HttpMethod | None = None
     description: str | None = None
@@ -1187,29 +1278,29 @@ class PcfImportEndpoint(InputBaseModel):
     request_headers: list[EndpointRequestHeader] = Field(default_factory=list)
 
     @model_validator(mode="after")
-    def validate_target_defined(self) -> "PcfImportEndpoint":
+    def validate_target_defined(self) -> "StormImportEndpoint":
         if not self.path and not self.request_raw:
             raise ValueError("Каждый endpoint должен содержать path или request_raw")
         return self
 
 
-class PcfImportHost(InputBaseModel):
+class StormImportHost(InputBaseModel):
     ip_address: str | None = Field(default=None, max_length=45)
     hostname: str | None = Field(default=None, max_length=255)
     status: HostStatus = HostStatus.UNKNOWN
     notes: str | None = None
-    ports: list[PcfImportPort] = Field(default_factory=list)
-    endpoints: list[PcfImportEndpoint] = Field(default_factory=list)
+    ports: list[StormImportPort] = Field(default_factory=list)
+    endpoints: list[StormImportEndpoint] = Field(default_factory=list)
 
     @model_validator(mode="after")
-    def validate_target_defined(self) -> "PcfImportHost":
+    def validate_target_defined(self) -> "StormImportHost":
         if not self.ip_address and not self.hostname:
             raise ValueError("Каждая запись host должна содержать ip_address или hostname")
         return self
 
 
-class PcfImportPayload(InputBaseModel):
-    hosts: list[PcfImportHost] = Field(default_factory=list)
+class StormImportPayload(InputBaseModel):
+    hosts: list[StormImportHost] = Field(default_factory=list)
 
 
 class AuditLogOut(ORMBase):

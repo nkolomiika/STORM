@@ -202,7 +202,7 @@
 
 | Метод | Путь | Назначение | Роли |
 |-------|------|------------|------|
-| POST | `/projects/{id}/import` | Импорт PCF JSON-дампа | participant |
+| POST | `/projects/{id}/import` | Импорт STORM JSON-дампа | participant |
 | POST | `/projects/{id}/reports/pp` | Генерация Word-отчёта «План пентеста» | participant |
 | POST | `/projects/{id}/reports/szi` | Генерация Word-отчёта «СЗИ» | participant |
 
@@ -296,7 +296,7 @@
 |---------:|------------|
 | 200 / 201 | Успех |
 | 204 | Успех без тела |
-| 400 | Бизнес-ошибка (`PCFError`) |
+| 400 | Бизнес-ошибка (`STORMError`) |
 | 401 | Не аутентифицирован / истёкший / отозванный токен |
 | 403 | Недостаточно прав / CSRF |
 | 404 | Сущность не найдена |
@@ -337,7 +337,7 @@ sequenceDiagram
     participant WS as ws_manager
 
     U->>F: Открывает /login, вводит креды
-    F->>B: POST /api/v1/auth/login\nOrigin: pcf.example.com
+    F->>B: POST /api/v1/auth/login\nOrigin: storm.example.com
     B->>B: enforce_csrf (Origin)
     B->>DB: SELECT user WHERE username
     DB-->>B: user
@@ -392,7 +392,7 @@ sequenceDiagram
 
 **Особенности.**
 - Если RabbitMQ недоступен, `mail_jobs.status='pending'` остаётся; `relay_pending_jobs` периодически перепубликует задания.
-- Mailpit (dev) показывает `mail_preview_url` в ответе.
+- При выключенной почте `mail_preview_url` возвращается в ответе.
 
 ### Процесс 3. Управление проектами
 
@@ -463,7 +463,7 @@ flowchart TD
     A([Открыта карточка проекта]) --> B[Добавить хост]
     B --> C{Способ}
     C -- "Ручной ввод" --> CR[POST /projects/id/hosts]
-    C -- "Импорт PCF JSON" --> CI[POST /projects/id/import]
+    C -- "Импорт STORM JSON" --> CI[POST /projects/id/import]
     C -- "Импорт OpenAPI для хоста" --> CO[POST /hosts/hid/import-openapi]
     CR --> D[Опционально: добавить порты]
     D --> E[Опционально: добавить сервисы на порты]
@@ -662,9 +662,9 @@ flowchart TD
 - Уникальность `(project_id, parent_id, title)` — `409` при конфликте.
 - Удаление родителя удаляет дочерние страницы каскадно.
 
-### Процесс 11. Импорт PCF JSON-дампа
+### Процесс 11. Импорт STORM JSON-дампа
 
-**Назначение.** Залить массив активов и уязвимостей в проект из внешнего формата PCF.
+**Назначение.** Залить массив активов и уязвимостей в проект из внешнего формата STORM.
 
 **Используемые endpoints.** `POST /api/v1/projects/{id}/import`.
 
@@ -677,7 +677,7 @@ sequenceDiagram
 
     U->>B: POST /projects/{id}/import (JSON-файл)
     B->>B: require_project_access
-    B->>B: Pydantic.parse PcfImportPayload
+    B->>B: Pydantic.parse StormImportPayload
     B->>DB: BEGIN
     loop hosts
         B->>DB: SELECT host (по hostname/ip)

@@ -111,10 +111,14 @@ export function StormDocs({ isAdmin, onNavigateWorkspace }: Props) {
         .stdoc-card { transition: border-color .14s ease, box-shadow .14s ease, transform .14s ease; }
         .stdoc-card:hover { border-color: var(--st-border-strong); box-shadow: 0 6px 18px var(--st-shadow); transform: translateY(-1px); }
         .stdoc-search:focus-within { border-color: var(--st-focus-border); box-shadow: 0 0 0 3px var(--st-focus-ring); background: var(--st-surface); }
-        .stdoc-crumb { transition: color .12s ease; }
+        .stdoc-crumb { color: var(--st-accent-2); cursor: pointer; transition: color .12s ease; }
         .stdoc-crumb:hover { color: var(--st-accent); }
         .stdoc-chev { transition: background .12s ease; }
         .stdoc-chev:hover { background: var(--st-hover); }
+        .stdoc-apilink { display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; border-radius: 9px;
+          border: 1px solid var(--st-divider); background: var(--st-elevated); color: var(--st-accent-2);
+          font: 600 13px Inter,sans-serif; text-decoration: none; transition: border-color .12s ease, color .12s ease; }
+        .stdoc-apilink:hover { border-color: var(--st-border-strong); color: var(--st-accent); }
       `}</style>
 
       {/* ------- сайдбар ------- */}
@@ -179,7 +183,7 @@ export function StormDocs({ isAdmin, onNavigateWorkspace }: Props) {
                           key={c.id}
                           className={on ? "clk" : "stdoc-nav clk"}
                           onClick={() => setActiveId(c.id)}
-                          style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 9px", borderRadius: 8, cursor: "pointer", font: `${on ? 600 : 500} 13px Inter,sans-serif`, color: on ? ACCENT : "var(--st-text-2)", background: on ? "var(--st-accent-soft)" : "transparent" }}
+                          style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 9px", borderRadius: 8, cursor: "pointer", font: `${on ? 600 : 500} 13px Inter,sans-serif`, color: on ? ACCENT : "var(--st-text-2)", background: on ? "var(--st-accent-soft)" : undefined }}
                         >
                           <Icon name="doc" size={14} color={on ? ACCENT : "var(--st-text-faint)"} sw={2} style={{ flex: "none" }} />
                           <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.title}</span>
@@ -261,7 +265,29 @@ export function StormDocs({ isAdmin, onNavigateWorkspace }: Props) {
               <span>/</span>
               <span style={{ color: "var(--st-text-3)" }}>Docs</span>
             </div>
-            <div style={{ marginTop: 22, display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: 16, maxWidth: 760 }}>
+            {/* Справочник API (Swagger) — визуально отделён от проектной документации
+                ниже, чтобы не путать фронтовый раздел /docs с интерактивной докой API.
+                Ссылки относительные (/api/...) — тот же origin приложения, сессия
+                подставляется автоматически; открываются в новой вкладке. */}
+            <div style={{ marginTop: 22, maxWidth: 760, background: "var(--st-surface)", border: "1px solid var(--st-border-strong)", borderRadius: 14, padding: "16px 18px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 40, height: 40, borderRadius: 10, background: "var(--st-elevated)", flex: "none" }}>
+                  <Icon name="server" size={20} color={ACCENT} sw={2} />
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ font: "700 15px Inter,sans-serif", color: "var(--st-text)", letterSpacing: "-.2px" }}>Справочник API (Swagger)</div>
+                  <div style={{ fontSize: 12.5, color: "var(--st-text-3)", marginTop: 4 }}>
+                    Интерактивная документация эндпоинтов — отдельно от этой проектной документации. Две самостоятельные схемы: API приложения и агентский API. Нужна активная сессия Storm.
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
+                <a className="stdoc-apilink" href="/api/v1/docs" target="_blank" rel="noopener noreferrer">API приложения ↗</a>
+                <a className="stdoc-apilink" href="/api/v2/docs" target="_blank" rel="noopener noreferrer">Агентский API ↗</a>
+              </div>
+            </div>
+            <div style={{ fontSize: 12, color: "var(--st-text-faint)", fontWeight: 600, letterSpacing: .3, textTransform: "uppercase", marginTop: 26, marginBottom: 2 }}>Документация проекта</div>
+            <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: 16, maxWidth: 760 }}>
               {groups.map((g) => (
                 <div key={g.audience} className="stdoc-card clk" onClick={() => openCategory(g.audience)} style={{ background: "var(--st-surface)", border: "1px solid var(--st-divider)", borderRadius: 14, padding: "20px 20px 18px", cursor: "pointer" }}>
                   <Icon name="folder" size={24} color={ACCENT} sw={2} />

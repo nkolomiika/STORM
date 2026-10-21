@@ -32,8 +32,9 @@ from sqlalchemy.orm import selectinload
 from app.config import get_settings
 from app.enums import ReconJobKind, ReconJobStatus
 from app.exceptions import NotFoundError, ValidationError
-from app.farm import jsscan
+from app.farm import jsmine, jsscan
 from app.farm.core import build_transport
+from app.farm.jsmine import JsMineConfig
 from app.farm.resolver import is_ip_literal, resolve_forward
 from app.models import Host, HostFarmJob, JsFile, JsSecret
 from app.schemas import JsFarmFileResult, JsFarmResult
@@ -64,6 +65,14 @@ class JsFarmService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
         self.audit = AuditService(db)
+        # Конфиг внешнего майнинга снимается из настроек один раз на сервис.
+        self._mine_cfg = JsMineConfig(
+            enabled=settings.js_farm_mine_enabled,
+            jsluice_bin=settings.js_farm_jsluice_bin,
+            trufflehog_bin=settings.js_farm_trufflehog_bin,
+            trufflehog_config=settings.js_farm_trufflehog_config,
+            timeout=settings.js_farm_mine_timeout_seconds,
+        )
 
     # -------------------------------------------------------------- domains
 
@@ -172,6 +181,8 @@ class JsFarmService:
                 if status != "ok" or body is None:
                     return ScannedFile(url=url, hostname=domain, status=status, error=error, content_type=ctype)
                 text = body.decode("utf-8", "replace")
+                # regex ВСЕГДА + trufflehog/jsluice, когда доступны (см. jsmine).
+                secrets, endpoints = await jsmine.mine_js(text, self._mine_cfg)
                 return ScannedFile(
                     url=url,
                     hostname=domain,
@@ -179,8 +190,8 @@ class JsFarmService:
                     sha256=hashlib.sha256(body).hexdigest(),
                     size_bytes=len(body),
                     content_type=ctype,
-                    secrets=jsscan.find_secrets(text),
-                    endpoints=jsscan.find_paths(text),
+                    secrets=secrets,
+                    endpoints=endpoints,
                 )
 
             scanned = await asyncio.gather(*(scan(d, u) for d, u in jobs)) if jobs else []

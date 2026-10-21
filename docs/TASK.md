@@ -28,7 +28,7 @@
 - [x] `PATCH /api/v1/users/me/password` (требует current_password)
 - [x] Загрузка/скачивание аватара пользователя (MinIO; URL версионируется)
 - [x] Сброс пароля админом с генерацией временного и письмом по email
-- [x] In-app превью писем через Mailpit (`mail_preview_url` в ответе)
+- [x] In-app превью писем (`mail_preview_url` в ответе при выключенной почте)
 - [x] Теги (`tags: list[str]`) на уровне пользователя
 - [ ] Self-service запрос «забыли пароль» (без admin)
 - [ ] Soft-delete пользователей и история ролей
@@ -112,7 +112,7 @@
 
 ## Эпик 9. Импорт данных
 
-- [x] Импорт PCF JSON-дампа в проект (`POST .../projects/{id}/import`)
+- [x] Импорт STORM JSON-дампа в проект (`POST .../projects/{id}/import`)
 - [x] Импорт OpenAPI/Swagger в endpoints хоста (`POST .../hosts/{hid}/import-openapi`)
 - [x] Возврат `ImportResult` со счётчиками и предупреждениями
 - [ ] Импорт Burp Suite XML
@@ -181,7 +181,7 @@
 - [x] `mail_jobs` — очередь писем (`pending` → `sent` / `failed`)
 - [x] Публикация задания в RabbitMQ при сбросе пароля
 - [x] SMTP-воркер `mail_worker` с retry и `last_error`
-- [x] Поддержка Mailpit для локальной разработки
+- [x] Отправка писем через внешний SMTP (по умолчанию выключено)
 - [x] Шаблон `password_reset`
 - [ ] Шаблон уведомления об упоминании
 - [ ] Дайджест по проекту раз в день

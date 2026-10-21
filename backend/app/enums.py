@@ -73,9 +73,11 @@ class Severity(str, enum.Enum):
     HIGH = "high"
     MEDIUM = "medium"
     LOW = "low"
-    # Значение по умолчанию для только что созданной находки, пока не проставлен
-    # CVSS-вектор/уровень (отдельного «не определено» больше нет).
+    # Информационная находка с проставленным (нулевым/минимальным) CVSS.
     INFO = "info"
+    # «Проверка»: CVSS не задан → уязвимость считается НЕреализуемой. Отдельный
+    # уровень, чтобы чётко отличать реализуемое (critical..info) от проверок.
+    UNREALIZED = "unrealized"
 
 
 class CvssVersion(str, enum.Enum):
@@ -84,11 +86,22 @@ class CvssVersion(str, enum.Enum):
 
 
 class VulnerabilityStatus(str, enum.Enum):
+    """Статусы тикета, согласованные с workflow Works «BUG APPSEC».
+
+    Категории: не завершённые (OPEN/IN_PROGRESS/PROBLEM_ANALYSIS/NEED_INFO/PAUSED)
+    считаются «открытыми» находками; завершённые (RESOLVED/CLOSED/CANCELLED/
+    SENT_BY_MISTAKE) — закрытыми.
+    """
+
     OPEN = "open"
     IN_PROGRESS = "in_progress"
-    FIXED = "fixed"
-    WONT_FIX = "wont_fix"
-    ACCEPTED_RISK = "accepted_risk"
+    PROBLEM_ANALYSIS = "problem_analysis"
+    NEED_INFO = "need_info"
+    PAUSED = "paused"
+    RESOLVED = "resolved"
+    CLOSED = "closed"
+    CANCELLED = "cancelled"
+    SENT_BY_MISTAKE = "sent_by_mistake"
 
 
 class AssetType(str, enum.Enum):

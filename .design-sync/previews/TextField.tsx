@@ -1,4 +1,4 @@
-import { TextField, Stack, MenuItem } from "sberpcf-design-kit";
+import { TextField, Stack, MenuItem } from "storm-design-kit";
 
 /** The default outlined text field (the theme defaults to outlined + fullWidth). */
 export function Basic() {

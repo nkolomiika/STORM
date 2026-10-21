@@ -61,7 +61,6 @@ flowchart TB
             Postgres[("db<br/>PostgreSQL 16<br/>:5433→5432")]
             MinIO[("minio<br/>S3-compatible<br/>:9000 + :9001")]
             Rabbit[("rabbitmq<br/>3-management<br/>:5672 + :15672")]
-            Mailpit[("mailpit<br/>dev SMTP catcher<br/>:1025 + :8025")]
         end
     end
 
@@ -77,7 +76,6 @@ flowchart TB
 
     MailWorker -->|aio-pika consume| Rabbit
     MailWorker -->|asyncpg<br/>read MailJob| Postgres
-    MailWorker -->|aiosmtplib<br/>dev| Mailpit
     MailWorker -.->|aiosmtplib<br/>prod| ExternalSMTP
 ```
 
@@ -335,9 +333,9 @@ sequenceDiagram
     autonumber
     participant API as Backend (роут)
     participant DB as PostgreSQL
-    participant MQ as RabbitMQ pcf.mail
+    participant MQ as RabbitMQ storm.mail
     participant W as mail-worker
-    participant SMTP as SMTP сервер<br/>(mailpit / Gmail / sbertech)
+    participant SMTP as SMTP сервер<br/>(внешний: Gmail / sbertech)
 
     API->>DB: INSERT MailJob (status="pending")
     DB-->>API: job.id
@@ -528,7 +526,7 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-    Request["HTTP /api/v2/...<br/>Authorization: Bearer pcf_v2_..."]
+    Request["HTTP /api/v2/...<br/>Authorization: Bearer storm_..."]
     Request --> Hash["hash_agent_token(raw)<br/>= SHA-256"]
     Hash --> Lookup["SELECT agent_api_tokens<br/>WHERE token_hash = ?<br/>AND revoked_at IS NULL<br/>AND (expires_at IS NULL OR expires_at > now())"]
     Lookup -->|нет строки| Deny["401"]
@@ -672,14 +670,14 @@ sequenceDiagram
 
 ---
 
-## 18. PCF JSON импорт — атомарный
+## 18. STORM JSON импорт — атомарный
 
 Полный rollback при любой ошибке. Идемпотентность по идентифицирующим полям.
 
 ```mermaid
 flowchart TB
     Start["POST /projects/{id}/import"]
-    Start --> Parse["PcfImportPayload validate"]
+    Start --> Parse["StormImportPayload validate"]
     Parse -->|invalid| Reject["422"]
     Parse --> Begin["BEGIN транзакция"]
     Begin --> Hosts["для каждого host:<br/>upsert by (hostname, primary IP)"]

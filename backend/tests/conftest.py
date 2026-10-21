@@ -12,12 +12,12 @@ import types
 
 
 REQUIRED_TEST_ENV = {
-    "DATABASE_URL": "postgresql+asyncpg://user:password@localhost:5432/pcf_test",
+    "DATABASE_URL": "postgresql+asyncpg://user:password@localhost:5432/storm_test",
     "JWT_SECRET_KEY": "test_secret_key_that_has_minimum_length_32_chars",
     "MINIO_ENDPOINT": "localhost:9000",
     "MINIO_ACCESS_KEY": "minioadmin",
     "MINIO_SECRET_KEY": "minioadmin",
-    "MINIO_BUCKET_NAME": "pcf-files-test",
+    "MINIO_BUCKET_NAME": "storm-files-test",
     "CSRF_ALLOWED_ORIGINS": "http://localhost:3000,http://frontend.local",
 }
 

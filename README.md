@@ -9,13 +9,13 @@
 - **Роли**: аккаунтная `admin / pentester` и проектная `lead / pentester` — **обе глобальные**, настраиваются только на странице `/members`. `lead` сам по себе доступа к проекту не даёт: он открывает дополнительные возможности (управление составом команды) в тех проектах, где пользователь уже участник.
 - **Доступ по участию**: не-админ видит только те проекты, где он участник — вышел из проекта, и проект пропал из списка. Админ видит все проекты, даже те, где он не состоит. При обращении к чужому проекту или закрытому разделу показывается экран «Доступа нет».
 - **Инвентарь**: хосты, несколько IP на хост, порты с сервисами, HTTP endpoints (включая метод `QUERY`); импорт OpenAPI/Swagger; экспорт хостов/IP списком, эндпоинтов — списком или как OpenAPI 3.
-- **Уязвимости**: CVSS 4.0 с расчётом по спецификации (бэкенд — источник истины, severity выводится из вектора), шаги воспроизведения, статусы `open / in progress / fixed / won't fix / accepted risk`.
+- **Уязвимости**: CVSS 4.0 с расчётом по спецификации (бэкенд — источник истины, severity выводится из вектора), шаги воспроизведения. Статусы совпадают с воркфлоу Task Tracker (Works «BUG APPSEC»): `open / in progress / problem analysis / need info / paused / resolved / closed / cancelled / sent by mistake` (3 категории: ожидание / в работе / завершено). Severity: `critical / high / medium / low / info / unrealized`.
 - **Активность проекта**: лента событий по проекту, видна всем его участникам (в отличие от админского `/audit-logs`).
 - **Заметки**: live-markdown редактор — `### ` + пробел прямо в строке превращается в заголовок; хранятся как Markdown.
 - **Уведомления** — ровно четыре повода: упоминание `@username`, добавление в проект, смена статуса своей находки, смена статуса проекта. Инициатора события никогда не уведомляем. Real-time push через WebSocket.
 - **Доказательная база**: evidence-файлы в MinIO (до 50 МБ, whitelist MIME).
 - **Word-отчёты** (кнопка «Generate report» на странице проекта): «Отчёт для сертификации» (СЗИ, `POST /projects/{id}/reports/szi`) и «Отчёт внутренней приёмки» (ПП, landscape, `POST /projects/{id}/reports/pp`). PDF не поддерживается — в образе нет конвертера.
-- **Jira-интеграция**: экспорт уязвимости в issue (SSRF + DNS-rebind защита).
+- **Task Tracker (Works) интеграция**: раздел «Tasks» (read-only витрина задач пространства STS), экспорт уязвимости в тикет `BUG_APPSEC` Works с резолвом компонента/версии и исполнителя; плюс поле «AppSec-тикет» проекта. Авторизация Bearer + cookie + Origin; SSRF + DNS-rebind защита. Ссылки на тикеты — в формате Works (`/swtr/units/current/unit/{key}?space=STS&tenant=default`).
 - **Audit-журнал** в PostgreSQL с фильтрами и full-text поиском.
 - **Machine API `/v2`** для AI-агентов: bearer-токены, скоупы, white-list проектов.
 - **Mail outbox**: RabbitMQ + воркер `aiosmtplib` (Gmail / корпоративный SMTP через `.env`).
@@ -27,24 +27,29 @@ Storage: PostgreSQL 16, MinIO, RabbitMQ.
 Frontend: React 18 + TypeScript + Vite 6, Zustand, TipTap (редактор заметок), axios.
 
 > Интерфейс STORM (`frontend/src/storm/`) — это то, что видит пользователь: он собран на
-> обычном DOM и `storm.css`, без MUI. Страницы в `frontend/src/pages/` — прежний интерфейс
-> на MUI, в приложении не используются.
+> обычном DOM и `storm.css`, без MUI (прежний MUI-интерфейс удалён).
 
 ## Быстрый старт
 
 ```bash
 cp .env.example .env
-# при необходимости поправьте SMTP-секцию (mailpit / Gmail / корпоративный)
+# почта по умолчанию ВЫКЛЮЧЕНА; для реальных писем-приглашений задайте
+# MAIL_ENABLED=true + SMTP_* в .env (локальный mailpit из проекта убран)
 docker compose up --build
 ```
+
+Свежая БД (пустой том `pgdata`) на старте сама создаёт администратора
+(`INITIAL_ADMIN_USERNAME` / `INITIAL_ADMIN_PASSWORD`, по умолчанию `admin` / `admin`) —
+так и получается **чистый инстанс с одним админом**, без демо-данных. Полный сброс:
+`docker compose down -v && docker compose up --build`. Скрипт `reset_and_seed.py`
+наполняет БД **демо-данными** и для боевого стенда НЕ нужен.
 
 - Frontend: `https://localhost` или `https://localhost:3000`
   (перед приложением стоит nginx с самоподписанным сертификатом — браузер один раз спросит подтверждение)
 - **HTTP автоматически редиректится на HTTPS**: `http://localhost` → `https://localhost`,
   `http://localhost:3000` → `https://localhost:3000`
-- Backend Swagger: `http://localhost:8000/docs` (`/api/v1`), `http://localhost:8000/v2/docs` (агентский `/v2`)
+- Swagger (только для авторизованных): симметричные **v1 и v2** — **API приложения** `/api/v1/docs` и **агентский API** `/api/v2/docs`. Открывается на origin приложения (`https://localhost:3000/api/v1/docs`) или напрямую на бэкенде (`http://localhost:8000/api/v1/docs`). Ссылки есть в разделе **Docs**. Фронтовый `/docs` — это встроенная документация проекта, не Swagger.
 - MinIO console: `http://localhost:9001` (`minioadmin` / `minioadmin`)
-- Mailpit (dev SMTP): `http://localhost:8025`
 - RabbitMQ management: `http://localhost:15672` (`guest` / `guest`)
 
 ## Dev и прод из одного кода
@@ -85,7 +90,7 @@ cp .env.prod.example .env.prod   # заполнить: адрес, секрет�
 
 > **Фаервол на сервере.** Наружу должен смотреть только nginx — порты `80`, `443`
 > (и `22` для SSH). Внутренние порты `8000` (backend), `9000/9001` (MinIO),
-> `5433` (Postgres), `1025/8025` (mailpit) закройте облачным фаерволом провайдера.
+> `5433` (Postgres) закройте облачным фаерволом провайдера.
 >
 > `.env.prod` содержит реальные секреты и в git не коммитится (см. `.gitignore`);
 > в репозитории — только шаблон `.env.prod.example`.

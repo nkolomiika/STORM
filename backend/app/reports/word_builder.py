@@ -41,6 +41,7 @@ SEVERITY_RU: dict[Severity, str] = {
     Severity.MEDIUM: "Средний",
     Severity.LOW: "Низкий",
     Severity.INFO: "Слабость/недостаток",
+    Severity.UNREALIZED: "Не реализуема",
 }
 
 # Цвета шрифта для уровня риска и значения CVSS в карточках уязвимостей.
@@ -79,7 +80,11 @@ def _heading_size_pt_for_level(level: int | None) -> float | None:
         return HEADING_FONT_SIZE_PT[max(HEADING_FONT_SIZE_PT)]
     return None
 
-WEAKNESS_SEVERITIES: set[Severity] = {Severity.INFO}
+# Что НЕ попадает в детальный раздел «Информация по выявленным уязвимостям»:
+# info-находки и «проверки» (unrealized, нереализуемые). Они идут в раздел
+# слабостей, а в раздел «Тесты» (4.4) попадают ВСЕ находки целиком. Таким образом
+# детальный раздел уязвимостей содержит только реализуемое (critical/high/medium/low).
+WEAKNESS_SEVERITIES: set[Severity] = {Severity.INFO, Severity.UNREALIZED}
 
 # Маппинг кодов CVSS 4.0 в человекочитаемые значения.
 CVSS4_METRIC_LABELS: dict[str, dict[str, str]] = {
@@ -1630,6 +1635,73 @@ def _update_project_intro(doc: DocxDocument, project: Project) -> None:
         break
 
 
+_TASK_LINK_RE = re.compile(r"по задаче\s+(\S+)")
+
+
+def _update_task_link(doc: DocxDocument, project: Project) -> None:
+    """Подставляет ссылку на связанный AppSec-тикет после «по задаче …».
+
+    В PP-шаблоне стоит плейсхолдер «по задаче XXX», в SZI — пример-URL. Заменяем
+    токен сразу после «по задаче » на project.appsec_ticket_url. Пусто → не трогаем.
+    """
+    url = (getattr(project, "appsec_ticket_url", None) or "").strip()
+    if not url:
+        return
+    # _iter_all_paragraphs — чтобы покрыть и таблицы/текстовые поля (в PP фраза
+    # «по задаче XXX» лежит в таблице, не в основном потоке). Заменяем ВСЮ фразу
+    # «по задаче <токен>», а не просто токен — иначе можно задеть посторонний XXX.
+    for paragraph in _iter_all_paragraphs(doc):
+        if "по задаче" not in paragraph.text:
+            continue
+        match = _TASK_LINK_RE.search(paragraph.text)
+        if not match:
+            continue
+        _replace_in_paragraph(paragraph, match.group(0), f"по задаче {url}")
+
+
+def _fill_credentials_table(doc: DocxDocument, credentials: list[dict]) -> None:
+    """Заполняет таблицу «Учётные данные» (шапка Логин/Пароль) из кредов проекта.
+
+    Шаблонная строка под шапкой содержит плейсхолдеры XXX(логин)/XXXX(пароль).
+    Первую запись кладём в неё, для каждой следующей клонируем строку. Если
+    кредов нет — проставляем «—», чтобы в отчёте не осталось XXX/XXXX.
+    """
+    target = None
+    login_col = pass_col = -1
+    for table in doc.tables:
+        if not table.rows:
+            continue
+        header = [_normalize_label(c.text) for c in table.rows[0].cells]
+        if "логин" in header and "пароль" in header:
+            target = table
+            login_col = header.index("логин")
+            pass_col = header.index("пароль")
+            break
+    if target is None or len(target.rows) < 2:
+        return
+    data_idx = 1  # строка с XXX/XXXX сразу под шапкой
+
+    def _fill_row(row, cred: dict) -> None:
+        if 0 <= login_col < len(row.cells):
+            _strip_cell_highlight(row.cells[login_col])
+            _set_cell_text(row.cells[login_col], (cred.get("username") or "—"))
+        if 0 <= pass_col < len(row.cells):
+            _strip_cell_highlight(row.cells[pass_col])
+            _set_cell_text(row.cells[pass_col], (cred.get("password") or "—"))
+
+    creds = credentials or []
+    if not creds:
+        _fill_row(target.rows[data_idx], {"username": "—", "password": "—"})
+        return
+    _fill_row(target.rows[data_idx], creds[0])
+    prev_idx = data_idx
+    for cred in creds[1:]:
+        new_tr = copy.deepcopy(target.rows[data_idx]._tr)
+        target.rows[prev_idx]._tr.addnext(new_tr)
+        prev_idx += 1
+        _fill_row(target.rows[prev_idx], cred)
+
+
 def _update_cover_page(doc: DocxDocument, project: Project) -> None:
     """Подставляет название проекта на обложку отчёта.
 
@@ -3066,6 +3138,8 @@ def _build_common(
     _update_cover_page(doc, project)
     _update_cover_date(doc, project)
     _update_project_intro(doc, project)
+    _update_task_link(doc, project)
+    _fill_credentials_table(doc, data.get("credentials") or [])
     if kind == "szi":
         _update_object_under_test(doc, project, hosts)
     _update_test_stand_paragraphs(doc, hosts)

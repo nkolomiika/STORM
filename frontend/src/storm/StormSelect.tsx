@@ -125,7 +125,8 @@ export function StormSelect({ value, options, onChange, id, placeholder }: Storm
                 padding: "9px 10px",
                 borderRadius: 9,
                 cursor: "pointer",
-                background: on ? "var(--st-accent-soft)" : "transparent",
+                // undefined (не "transparent"), иначе инлайн-фон перебьёт .nav:hover.
+                background: on ? "var(--st-accent-soft)" : undefined,
               }}
             >
               {o.dot && <span style={{ width: 9, height: 9, borderRadius: "50%", flex: "none", background: o.dot }} />}

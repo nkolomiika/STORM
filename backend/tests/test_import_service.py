@@ -33,14 +33,14 @@ async def test_find_matching_host_returns_exact_host() -> None:
 
 def test_merge_host_fields_only_fills_missing_values() -> None:
     host = SimpleNamespace(ip_address=None, hostname="api.local", status=HostStatus.UNKNOWN, notes=None)
-    host_data = SimpleNamespace(ip_address="10.0.0.5", hostname="api.local", status=HostStatus.UP, notes="Imported from PCF")
+    host_data = SimpleNamespace(ip_address="10.0.0.5", hostname="api.local", status=HostStatus.UP, notes="Imported from STORM")
 
     ImportService._merge_host_fields(host, host_data)
 
     assert host.ip_address == "10.0.0.5"
     assert host.hostname == "api.local"
     assert host.status == HostStatus.UP
-    assert host.notes == "Imported from PCF"
+    assert host.notes == "Imported from STORM"
 
 
 def test_merge_endpoint_fields_preserves_existing_data_and_fills_missing() -> None:

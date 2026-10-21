@@ -1,7 +1,7 @@
 import { createTheme, type PaletteMode, type Theme } from "@mui/material";
 
 /**
- * Builds the SberPCF application theme.
+ * Builds the STORM application theme.
  *
  * This is the single source of the design language: the dark palette, the
  * zero-radius geometry, Inter typography, and the per-component MUI style
@@ -200,5 +200,5 @@ export function createAppTheme(mode: PaletteMode = "dark"): Theme {
   });
 }
 
-/** The default SberPCF dark theme instance. */
+/** The default STORM dark theme instance. */
 export const sberTheme: Theme = createAppTheme("dark");
