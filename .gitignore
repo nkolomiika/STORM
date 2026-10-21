@@ -39,3 +39,11 @@ frontend/design-kit/dist/
 # macOS
 .DS_Store
 **/.DS_Store
+
+# Корпоративные CA — реальные сертификаты не коммитим (см. backend/certs/README.md)
+backend/certs/*
+!backend/certs/.gitkeep
+!backend/certs/README.md
+certs/*.crt
+certs/*.pem
+certs/*.key

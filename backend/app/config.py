@@ -159,7 +159,9 @@ class Settings(BaseSettings):
     works_space: str = "STS"
     works_suit: str = "bug_appsec"
     works_tenant: str = "default"
-    works_verify_ssl: bool = True
+    # true — проверять TLS системным бандлом; false — не проверять (только тест);
+    # путь — PEM-файл с корпоративным CA (внутренний УЦ для portal.works.prod.sbt).
+    works_verify_ssl: Union[bool, str] = True
     works_timeout_seconds: float = 30.0
     # Пути (без base — он из works_base_url).
     works_create_path: str = "/rest/api/unit/v2/bug_appsec/create"
@@ -272,7 +274,7 @@ class Settings(BaseSettings):
         """Заданы ли все обязательные параметры подключения к Jira."""
         return bool(self.jira_base_url and self.jira_email and self.jira_api_token)
 
-    @field_validator("sso_verify_tls", mode="before")
+    @field_validator("sso_verify_tls", "works_verify_ssl", mode="before")
     @classmethod
     def _parse_sso_verify_tls(cls, v):
         """'true'/'false' -> bool, иначе путь к PEM-файлу с CA."""

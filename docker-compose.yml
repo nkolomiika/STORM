@@ -2,6 +2,13 @@ services:
   backend:
     build:
       context: ./backend
+      # Корп-CA (Works/IAM) вшиваются в образ из backend/certs/*.crt — см.
+      # backend/certs/README.md. За периметром можно передать прокси для сборки:
+      #   BUILD_HTTPS_PROXY=http://proxy:3128 docker compose build backend
+      args:
+        HTTP_PROXY: ${BUILD_HTTP_PROXY:-}
+        HTTPS_PROXY: ${BUILD_HTTPS_PROXY:-}
+        NO_PROXY: ${BUILD_NO_PROXY:-}
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     # Порт наружу — чтобы Swagger (/api/v1/docs и /api/v2/docs) был доступен с хоста.
     # Документация закрыта авторизацией: нужна активная сессия Storm (cookie).

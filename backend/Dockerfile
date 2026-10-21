@@ -2,6 +2,12 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
+# Опциональный корпоративный прокси для сборки за периметром (в dev пустые — no-op).
+# Docker автоматически прокидывает эти ARG в окружение RUN-шагов (pip, curl).
+ARG HTTP_PROXY=""
+ARG HTTPS_PROXY=""
+ARG NO_PROXY=""
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libmagic1 \
@@ -10,6 +16,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     unzip \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+
+# Корпоративные CA (цепочка Works/IAM и т.п.): любые *.crt из backend/certs/
+# вносятся в системный trust store. Затем SSL_CERT_FILE/REQUESTS_CA_BUNDLE/PIP_CERT
+# переводят httpx/requests/pip/curl на системный бандл (с корп-CA) ВМЕСТО certifi —
+# тогда исходящий TLS к внутренним сервисам (portal.works.prod.sbt, IAM) работает
+# с WORKS_VERIFY_SSL=true / SSO_VERIFY_TLS=true из коробки, без правок кода.
+# В dev папка пустая (только README/.gitkeep) — шаг безвреден. См. backend/certs/README.md.
+COPY certs/ /usr/local/share/ca-certificates/storm/
+RUN update-ca-certificates || true
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
+    REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt \
+    PIP_CERT=/etc/ssl/certs/ca-certificates.crt
 
 # httpx (ProjectDiscovery) — определение технологий и CDN веб-порта. Быстрее и
 # точнее whatweb, отдаёт стек + cdn_name одним batch-вызовом. Ставим prebuilt-бинарь
