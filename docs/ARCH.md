@@ -18,7 +18,7 @@
 - `minio` — S3-совместимое хранилище для аватаров пользователей и evidence-файлов уязвимостей.
 - `rabbitmq` — брокер сообщений для очереди отправки писем (`storm.mail`).
 - `mail-worker` — отдельный sidecar-процесс, потребляющий `storm.mail` и отправляющий письма по SMTP.
-- `mailpit` (dev) / внешний SMTP (prod) — приём писем.
+- внешний SMTP — отправка писем (по умолчанию почта выключена, `MAIL_ENABLED=false`).
 
 ### Стек
 
@@ -189,7 +189,7 @@ frontend/src/
 | PostgreSQL  | основная БД                                                  | `database_url` (asyncpg), `app/database.py`                |
 | MinIO       | хранилище файлов (avatars, vulnerability evidence)           | `app/storage/minio_client.py` (`MinioStorage`)             |
 | RabbitMQ    | очередь `storm.mail` для асинхронной отправки писем            | publish — `app/messaging.py`, consume — `app/worker/`      |
-| Mailpit/SMTP| отправка писем (dev — Mailpit, prod — внешний SMTP)          | `app/worker/mail_worker.py` (aiosmtplib)                   |
+| SMTP        | отправка писем через внешний SMTP (по умолчанию выключено)   | `app/worker/mail_worker.py` (aiosmtplib)                   |
 | Jira REST   | (опционально) экспорт уязвимостей в Jira issues              | `JiraIntegrationService` (httpx), backend-only             |
 
 ---

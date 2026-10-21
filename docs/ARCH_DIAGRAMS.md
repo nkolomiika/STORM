@@ -61,7 +61,6 @@ flowchart TB
             Postgres[("db<br/>PostgreSQL 16<br/>:5433→5432")]
             MinIO[("minio<br/>S3-compatible<br/>:9000 + :9001")]
             Rabbit[("rabbitmq<br/>3-management<br/>:5672 + :15672")]
-            Mailpit[("mailpit<br/>dev SMTP catcher<br/>:1025 + :8025")]
         end
     end
 
@@ -77,7 +76,6 @@ flowchart TB
 
     MailWorker -->|aio-pika consume| Rabbit
     MailWorker -->|asyncpg<br/>read MailJob| Postgres
-    MailWorker -->|aiosmtplib<br/>dev| Mailpit
     MailWorker -.->|aiosmtplib<br/>prod| ExternalSMTP
 ```
 
@@ -337,7 +335,7 @@ sequenceDiagram
     participant DB as PostgreSQL
     participant MQ as RabbitMQ storm.mail
     participant W as mail-worker
-    participant SMTP as SMTP сервер<br/>(mailpit / Gmail / sbertech)
+    participant SMTP as SMTP сервер<br/>(внешний: Gmail / sbertech)
 
     API->>DB: INSERT MailJob (status="pending")
     DB-->>API: job.id

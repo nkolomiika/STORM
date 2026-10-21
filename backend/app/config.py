@@ -69,9 +69,12 @@ class Settings(BaseSettings):
 
     rabbitmq_url: str = "amqp://guest:guest@rabbitmq/"
     mail_queue_name: str = "storm.mail"
-    mail_enabled: bool = True
-    smtp_host: str = "mailpit"
-    smtp_port: int = 1025
+    # Почта по умолчанию ВЫКЛЮЧЕНА (без локального mailpit): приглашения создаются,
+    # ссылка активации возвращается в ответе/логе. Для реальной отправки задайте
+    # MAIL_ENABLED=true + SMTP_* (см. .env.example).
+    mail_enabled: bool = False
+    smtp_host: str = ""
+    smtp_port: int = 587
     smtp_username: str = ""
     smtp_password: str = ""
     smtp_use_tls: bool = False
@@ -87,7 +90,22 @@ class Settings(BaseSettings):
     google_oauth_client_secret: str = ""
     google_oauth_refresh_token: str = ""
     google_oauth_token_uri: str = "https://oauth2.googleapis.com/token"
-    mail_preview_url: str | None = "http://localhost:8025"
+    # --- Обобщённый OAuth2 для SMTP XOAUTH2: работает и с Google, и с Microsoft
+    #     365 / Exchange Online. Если smtp_oauth_* пусты — берутся google_oauth_*
+    #     (обратная совместимость). Для Exchange Online:
+    #       SMTP_OAUTH_TOKEN_URL=https://login.microsoftonline.com/<tenant>/oauth2/v2.0/token
+    #       SMTP_OAUTH_GRANT_TYPE=client_credentials  (app-only, без refresh token)
+    #       SMTP_OAUTH_SCOPE=https://outlook.office365.com/.default
+    #       SMTP_HOST=smtp.office365.com  SMTP_PORT=587  SMTP_USE_TLS=true
+    #       SMTP_USERNAME=<адрес почтового ящика>
+    smtp_oauth_token_url: str = ""
+    smtp_oauth_client_id: str = ""
+    smtp_oauth_client_secret: str = ""
+    smtp_oauth_refresh_token: str = ""
+    smtp_oauth_scope: str = ""
+    smtp_oauth_grant_type: str = "refresh_token"  # refresh_token | client_credentials
+    # Превью писем (раньше — UI локального mailpit). mailpit удалён, поэтому пусто.
+    mail_preview_url: str | None = None
     mail_max_attempts: int = 5
 
     # База для ссылки активации в письме-приглашении (фронтенд): {app_base_url}/activate?token=...
@@ -126,7 +144,32 @@ class Settings(BaseSettings):
     jira_search_method: str = "GET"  # GET (Cloud /search/jql) | POST (классический /search)
     jira_issue_path: str = "/rest/api/{version}/issue/{key}"
     jira_create_issue_path: str = "/rest/api/{version}/issue"
-    jira_browse_path: str = "/browse/{key}"
+    # Человекочитаемая ссылка на задачу в Task Tracker (Works, пространство STS).
+    # base = jira_base_url (напр. https://portal.works.prod.sbt).
+    jira_browse_path: str = "/swtr/units/current/unit/{key}?space=STS&tenant=default"
+
+    # --- Works (sbertrack) — экспорт устранения уязвимостей в пространство STS,
+    # suit bug_appsec. Аутентификация как в qg-sa: Bearer-токен сервисной учётки +
+    # статическая cookie. Пути эндпоинтов вынесены в env (подстраиваемы без правки
+    # кода). Пусто works_api_token / works_enabled=false → экспорт недоступен.
+    works_enabled: bool = False
+    works_base_url: str = "https://portal.works.prod.sbt/swtr"
+    works_api_token: str = ""              # Bearer-токен сервисной учётки Works
+    works_cookies: str = "api_swtr_as21=true"  # статические cookie "k1=v1; k2=v2"
+    works_space: str = "STS"
+    works_suit: str = "bug_appsec"
+    works_tenant: str = "default"
+    works_verify_ssl: bool = True
+    works_timeout_seconds: float = 30.0
+    # Пути (без base — он из works_base_url).
+    works_create_path: str = "/rest/api/unit/v2/bug_appsec/create"
+    works_upload_path: str = "/rest/api/draft/files/v1/upload"
+    works_component_find_path: str = "/extension/plugin/v2/rest/api/sber_components_plugin/v1/component/find"
+    works_version_find_path: str = "/extension/plugin/v2/rest/api/swtr_task_tracker_plugin/v1/version/find"
+    # Поиск юнитов по ключам — для получения текущего workflow_status тикета (как в qg-sa).
+    works_unit_find_path: str = "/rest/api/unit/v3/find"
+    # Ссылка на тикет в UI Works ({key}/{space} подставляются).
+    works_issue_url_template: str = "https://portal.works.prod.sbt/swtr/units/current/unit/{key}?space={space}&tenant=default"
 
     # --- Recon farm: серверный пробив вставленных списков хостов и IP ---
     # Максимум различных хостов на один импорт (защита от network-amplification).
@@ -284,6 +327,22 @@ class Settings(BaseSettings):
     def csrf_origins(self) -> list[str]:
         """Возвращает список разрешённых Origin для CSRF-проверки."""
         return [origin.strip() for origin in self.csrf_allowed_origins.split(",") if origin.strip()]
+
+    @property
+    def works_configured(self) -> bool:
+        """Достаточно ли настроек, чтобы экспортировать тикеты в Works."""
+        return bool(self.works_enabled and self.works_api_token.strip() and self.works_base_url.strip())
+
+    @property
+    def works_cookies_dict(self) -> dict[str, str]:
+        """Статические cookie Works ("k1=v1; k2=v2") → dict."""
+        out: dict[str, str] = {}
+        for part in self.works_cookies.split(";"):
+            if "=" in part:
+                k, v = part.split("=", 1)
+                if k.strip():
+                    out[k.strip()] = v.strip()
+        return out
 
 
 @lru_cache

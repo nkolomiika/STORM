@@ -392,7 +392,7 @@ sequenceDiagram
 
 **Особенности.**
 - Если RabbitMQ недоступен, `mail_jobs.status='pending'` остаётся; `relay_pending_jobs` периодически перепубликует задания.
-- Mailpit (dev) показывает `mail_preview_url` в ответе.
+- При выключенной почте `mail_preview_url` возвращается в ответе.
 
 ### Процесс 3. Управление проектами
 

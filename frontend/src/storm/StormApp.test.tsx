@@ -29,7 +29,7 @@ vi.mock("../api", async (importOriginal) => {
   ];
   const mkUser = (id: number, username: string, role: string, isLead: boolean) => ({
     id, username, email: `${username}@example.com`, full_name: null, avatar_url: null,
-    role, project_role: isLead ? "lead" : "pentester", is_active: true, totp_enabled: false, password_changed_at: null,
+    role, project_role: isLead ? "lead" : "pentester", is_active: true, totp_enabled: false, is_sso: false, password_changed_at: null,
     created_at: "2026-01-01T00:00:00Z",
   });
   const users = [
@@ -196,7 +196,12 @@ vi.mock("../api", async (importOriginal) => {
     createProject: vi.fn(async () => projects[0]),
     updateProject: vi.fn(async () => projects[0]),
     deleteProject: vi.fn(async () => undefined),
-    getHosts: vi.fn(async () => ({ items: hosts, total: hosts.length, page: 1, size: 100, pages: 1 })),
+    // Эндпоинты теперь едут прямо в списке хостов (бэкенд батч-грузит их), фронт
+    // больше не дёргает getHost на каждый хост — поэтому мок списка несёт endpoints.
+    getHosts: vi.fn(async () => ({
+      items: hosts.map((h) => ({ ...h, endpoints: endpointsByHost[h.id] ?? [] })),
+      total: hosts.length, page: 1, size: 100, pages: 1,
+    })),
     getHost: vi.fn(async (_projectId: number, hostId: number) => ({
       ...hosts.find((h) => h.id === hostId),
       endpoints: endpointsByHost[hostId] ?? [],
@@ -266,7 +271,7 @@ describe("StormApp (design prototype port)", () => {
     useAuthStore.setState({
       user: {
         id: 1, username: "admin", email: "admin@sbertech.ru", full_name: null, avatar_url: null,
-        role: "admin", project_role: "lead", is_active: true, is_locked: false, totp_enabled: false, password_changed_at: null,
+        role: "admin", project_role: "lead", is_active: true, is_locked: false, totp_enabled: false, is_sso: false, password_changed_at: null,
         created_at: "2026-01-01T00:00:00Z",
       },
       isInitialized: true,
@@ -574,7 +579,8 @@ describe("StormApp (design prototype port)", () => {
     const group = screen.getAllByText("api.northwind.test").find((n) => n.closest(".prow"));
     fireEvent.click(group as HTMLElement);
     expect(await screen.findByText("/v1/orders")).toBeInTheDocument();
-    expect(vi.mocked(api.getHost)).toHaveBeenCalledWith(2, 11);
+    // Эндпоинты приезжают прямо в списке хостов (getHosts), getHost на каждый хост
+    // больше не вызывается (убран N+1) — факт рендера «/v1/orders» это и подтверждает.
   });
 
   it("bulk-adds endpoints from a pasted URL list, matching hosts by name", async () => {
@@ -886,7 +892,7 @@ describe("StormApp (design prototype port)", () => {
         {
           id: 3, type: "vuln_status_changed", comment_id: null, note_comment_id: null, is_read: true,
           created_at: "2026-07-10T00:00:00Z",
-          context: { ...ctx, vulnerability_id: 72, vulnerability_title: "JWT algorithm confusion (alg=none)", status: "wont_fix" },
+          context: { ...ctx, vulnerability_id: 72, vulnerability_title: "JWT algorithm confusion (alg=none)", status: "cancelled" },
         },
         { id: 4, type: "project_status_changed", comment_id: null, note_comment_id: null, is_read: true, created_at: "2026-07-10T00:00:00Z", context: { ...ctx, status: "freeze" } },
       ],
@@ -901,7 +907,7 @@ describe("StormApp (design prototype port)", () => {
     render(<MemoryRouter><StormApp /></MemoryRouter>);
     expect(await screen.findByText("mentioned you in")).toBeInTheDocument();
     expect(screen.getByText("added you to")).toBeInTheDocument();
-    expect(screen.getByText("set your finding to Won't fix —")).toBeInTheDocument();
+    expect(screen.getByText("set your finding to Cancelled —")).toBeInTheDocument();
     expect(screen.getByText("changed the project status to Freeze —")).toBeInTheDocument();
     // Two of the four are unread.
     expect(screen.getByText("2 new")).toBeInTheDocument();

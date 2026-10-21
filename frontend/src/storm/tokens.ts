@@ -39,6 +39,8 @@ export const SEV: Record<Severity, ColorPair> = {
   medium: { bg: "var(--st-warn-soft)", color: "var(--st-warn)" },
   low: { bg: "var(--st-accent-soft)", color: "var(--st-accent)" },
   info: { bg: "var(--st-elevated)", color: "var(--st-text-3)" },
+  // «Проверка» — приглушённый нейтральный, чтобы визуально отделять от реализуемых.
+  unrealized: { bg: "var(--st-hover)", color: "var(--st-text-faint)" },
 };
 
 /** Badge colour for a secret found in JS, by its severity. */
@@ -49,28 +51,54 @@ export const SECRET_SEV: Record<string, ColorPair> = {
 };
 
 /** Vulnerability status dot/text colour. */
+// Цвет статуса по категории Task Tracker: ожидание — серый, в работе — синий,
+// завершено — зелёный (как в Works-схеме BUG APPSEC).
+// Цвет по смыслу статуса: открытые/решённые — зелёный, в работе — синий,
+// ждёт информации — янтарный, отменённые — красный, пауза/закрыто/ошибка — серый.
 export const VSTATUS: Record<VStatus, string> = {
-  open: "var(--st-danger)",
-  in_progress: "var(--st-warn)",
-  fixed: "var(--st-success)",
-  wont_fix: "var(--st-text-3)",
-  accepted_risk: "var(--st-purple)",
+  open: "var(--st-success)",
+  in_progress: "var(--st-accent-2)",
+  problem_analysis: "var(--st-accent-2)",
+  need_info: "var(--st-warn)",
+  paused: "var(--st-text-3)",
+  resolved: "var(--st-success)",
+  closed: "var(--st-text-3)",
+  cancelled: "var(--st-danger)",
+  sent_by_mistake: "var(--st-text-3)",
 };
 
-/** Human labels for the backend's vulnerability statuses. */
+/** Human labels for the backend's vulnerability/ticket statuses. */
 export const VSTATUS_LABEL: Record<VStatus, string> = {
   open: "Open",
   in_progress: "In progress",
-  fixed: "Fixed",
-  wont_fix: "Won't fix",
-  accepted_risk: "Accepted risk",
+  problem_analysis: "Problem analysis",
+  need_info: "Need info",
+  paused: "Paused",
+  resolved: "Resolved",
+  closed: "Closed",
+  cancelled: "Cancelled",
+  sent_by_mistake: "Sent by mistake",
 };
 
-/** Statuses in the order they are offered in pickers and filters. */
-export const VSTATUS_ORDER: VStatus[] = ["open", "in_progress", "fixed", "wont_fix", "accepted_risk"];
+/** Statuses in the order they are offered in pickers and filters (waiting → progress → done). */
+export const VSTATUS_ORDER: VStatus[] = [
+  "open",
+  "in_progress",
+  "problem_analysis",
+  "need_info",
+  "paused",
+  "resolved",
+  "closed",
+  "cancelled",
+  "sent_by_mistake",
+];
 
-/** A finding still needing work — the "unresolved" filter and the open-count tile. */
-export const VSTATUS_OPEN: VStatus[] = ["open", "in_progress"];
+/** A finding still needing work — the "unresolved" filter and the open-count tile.
+ *  = «не завершённые» категории Task Tracker (ожидание + в работе). */
+export const VSTATUS_OPEN: VStatus[] = ["open", "in_progress", "problem_analysis", "need_info", "paused"];
+
+/** Статусы в фильтре раздела Issues — только основные состояния воркфлоу (без «паузных» подстатусов). */
+export const VSTATUS_FILTER: VStatus[] = ["open", "in_progress", "resolved", "closed", "cancelled"];
 
 /** Default HTTP status shown per method in the endpoints view. */
 export const EPSTATUS: Record<Method, string> = {
@@ -127,11 +155,15 @@ export const HSTAT: Record<HostStatus, { label: string; color: string; bg: strin
 
 /** Vulnerability-status summary tiles. */
 export const VSTAT: Record<VStatus, { label: string; color: string; bg: string }> = {
-  open: { label: "Open", color: "var(--st-danger)", bg: "var(--st-danger-soft)" },
-  in_progress: { label: "In progress", color: "var(--st-warn)", bg: "var(--st-warn-soft)" },
-  fixed: { label: "Fixed", color: "var(--st-success)", bg: "var(--st-success-soft)" },
-  wont_fix: { label: "Won't fix", color: "var(--st-text-3)", bg: "var(--st-elevated)" },
-  accepted_risk: { label: "Accepted risk", color: "var(--st-purple)", bg: "var(--st-purple-soft)" },
+  open: { label: "Open", color: "var(--st-text-3)", bg: "var(--st-elevated)" },
+  need_info: { label: "Need info", color: "var(--st-text-3)", bg: "var(--st-elevated)" },
+  paused: { label: "Paused", color: "var(--st-text-3)", bg: "var(--st-elevated)" },
+  in_progress: { label: "In progress", color: "var(--st-accent-2)", bg: "var(--st-accent-soft)" },
+  problem_analysis: { label: "Problem analysis", color: "var(--st-accent-2)", bg: "var(--st-accent-soft)" },
+  resolved: { label: "Resolved", color: "var(--st-success)", bg: "var(--st-success-soft)" },
+  closed: { label: "Closed", color: "var(--st-success)", bg: "var(--st-success-soft)" },
+  cancelled: { label: "Cancelled", color: "var(--st-success)", bg: "var(--st-success-soft)" },
+  sent_by_mistake: { label: "Sent by mistake", color: "var(--st-success)", bg: "var(--st-success-soft)" },
 };
 
 /** Project-list "findings" badge colours. */

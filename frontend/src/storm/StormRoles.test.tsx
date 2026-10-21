@@ -72,6 +72,7 @@ const asUser = (id: number, username: string, role: UserRole, projectRole: "lead
   project_role: projectRole,
   is_active: true,
   is_locked: false,
+  is_sso: false,
   totp_enabled: false,
   password_changed_at: null,
   created_at: "2026-01-01T00:00:00Z",

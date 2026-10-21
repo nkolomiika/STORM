@@ -10,6 +10,7 @@ import userHosts from "./user-hosts.md?raw";
 import userVulnerabilities from "./user-vulnerabilities.md?raw";
 import userNotes from "./user-notes.md?raw";
 import userReports from "./user-reports.md?raw";
+import userTaskTracker from "./user-task-tracker.md?raw";
 import userNotifications from "./user-notifications.md?raw";
 import userProfile from "./user-profile.md?raw";
 import userTeamLead from "./user-team-lead.md?raw";
@@ -55,6 +56,7 @@ export const DOC_CHAPTERS: DocChapter[] = [
   { id: "user-vulnerabilities", title: "Уязвимости", audience: "user", body: userVulnerabilities },
   { id: "user-notes", title: "Заметки проекта", audience: "user", body: userNotes },
   { id: "user-reports", title: "Отчёты", audience: "user", body: userReports },
+  { id: "user-task-tracker", title: "Task Tracker", audience: "user", body: userTaskTracker },
   { id: "user-notifications", title: "Уведомления", audience: "user", body: userNotifications },
   { id: "user-profile", title: "Профиль и безопасность", audience: "user", body: userProfile },
   { id: "user-team-lead", title: "Работа тимлида", audience: "user", body: userTeamLead },

@@ -4,12 +4,13 @@ import asyncio
 import base64
 import hashlib
 import json
+import logging
 import re
 import secrets
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from io import BytesIO
-from typing import Literal
+from typing import Any, Literal
 from urllib.parse import parse_qsl, urlparse, urlsplit
 from uuid import uuid4
 
@@ -41,6 +42,7 @@ from app.enums import (
 )
 from app.reports import ReportKind, build_pp, build_szi
 from app.exceptions import ConflictError, ForbiddenError, NotFoundError, UnauthorizedError, ValidationError
+from app.works import WorksClient, WorksError, priority_for_severity, works_issue_url
 from app.models import (
     AccountReactivationToken,
     AgentApiToken,
@@ -55,6 +57,7 @@ from app.models import (
     Invitation,
     JiraInstance,
     JiraIssueLink,
+    WorksIssueLink,
     JsFile,
     JsSecret,
     MailJob,
@@ -120,6 +123,15 @@ from app.storage.minio_client import MinioStorage
 from app.ws_manager import ws_manager
 
 settings = get_settings()
+
+# «Открытые» находки — все незавершённые статусы workflow Works (не done).
+_OPEN_VULN_STATUSES = (
+    VulnerabilityStatus.OPEN,
+    VulnerabilityStatus.IN_PROGRESS,
+    VulnerabilityStatus.PROBLEM_ANALYSIS,
+    VulnerabilityStatus.NEED_INFO,
+    VulnerabilityStatus.PAUSED,
+)
 MENTION_RE = re.compile(r"@([a-zA-Z0-9_.-]{1,100})")
 MAX_FILE_SIZE = 50 * 1024 * 1024
 MAX_OPENAPI_IMPORT_BYTES = 2 * 1024 * 1024
@@ -798,7 +810,7 @@ class JiraIntegrationService:
         except httpx.HTTPError as exc:
             raise ValidationError(f"Jira недоступна: {exc}") from exc
         if response.status_code == 404:
-            raise NotFoundError("Задача не найдена в Jira")
+            raise NotFoundError("No task found in the AppSec space")
         if response.status_code >= 400:
             raise ValidationError(f"Jira вернула ошибку {response.status_code}: {response.text[:300]}")
         try:
@@ -820,13 +832,19 @@ class JiraIntegrationService:
         path = self._api_path(s.jira_search_path)
         if (s.jira_search_method or "GET").upper() == "POST":
             # Классический /search ждёт fields списком в JSON-теле.
-            data, _ = await self._jira_request("POST", path, json_body={"jql": jql, "maxResults": 100, "fields": fields})
+            data, safe_base_url = await self._jira_request("POST", path, json_body={"jql": jql, "maxResults": 100, "fields": fields})
         else:
             # /search/jql ждёт fields строкой в query-параметрах.
-            data, _ = await self._jira_request("GET", path, params={"jql": jql, "maxResults": 100, "fields": ",".join(fields)})
+            data, safe_base_url = await self._jira_request("GET", path, params={"jql": jql, "maxResults": 100, "fields": ",".join(fields)})
         issues = data.get("issues") or []
+        items = []
+        for issue in issues:
+            item = self._map_task(issue)
+            # Ссылка на задачу — чтобы фронт мог связать тикет с проектом.
+            item["url"] = f"{safe_base_url}{self._api_path(s.jira_browse_path, key=item['key'])}" if item.get("key") else None
+            items.append(item)
         return {
-            "items": [self._map_task(issue) for issue in issues],
+            "items": items,
             "next_page_token": data.get("nextPageToken"),
             "is_last": bool(data.get("isLast", True)),
         }
@@ -854,6 +872,169 @@ class JiraIntegrationService:
             }
         )
         return detail
+
+
+class WorksService:
+    """Экспорт находок STORM в Works (STS / bug_appsec) + резолв справочников
+    (компонент/версия). Авторизация и эндпоинты — в app.works/WorksClient (конфиг
+    works_*). Всё за флагом settings.works_configured: не настроено → find'ы
+    отдают [], экспорт бросает понятную ошибку.
+    """
+
+    def __init__(self, db: AsyncSession) -> None:
+        self.db = db
+        self.audit = AuditService(db)
+
+    async def find_components(self, q: str = "") -> list[dict[str, str]]:
+        if not settings.works_configured:
+            return []
+        try:
+            async with WorksClient() as wc:
+                return await wc.find_components(q)
+        except WorksError as exc:
+            raise ValidationError(exc.message) from exc
+
+    async def find_versions(self, q: str = "") -> list[dict[str, str]]:
+        if not settings.works_configured:
+            return []
+        try:
+            async with WorksClient() as wc:
+                return await wc.find_versions(q)
+        except WorksError as exc:
+            raise ValidationError(exc.message) from exc
+
+    async def get_link(self, vulnerability_id: int) -> WorksIssueLink | None:
+        link = await self.db.scalar(
+            select(WorksIssueLink).where(WorksIssueLink.vulnerability_id == vulnerability_id)
+        )
+        # Автоапдейт статуса «при открытии» (Stage 4): тянем текущий workflow_status
+        # связанного тикета из Works и сохраняем, если изменился. Best-effort —
+        # ошибка/недоступность Works не ломает выдачу карточки.
+        if link is not None and settings.works_configured and link.works_key:
+            try:
+                async with WorksClient() as wc:
+                    status = await wc.get_ticket_status(link.works_key)
+                if status and status != link.works_status:
+                    link.works_status = status
+                    await self.db.commit()
+                    await self.db.refresh(link)
+            except WorksError as exc:
+                logging.getLogger("storm.works").warning(
+                    "Status refresh failed for %s: %s", link.works_key, getattr(exc, "detail", exc)
+                )
+        return link
+
+    @staticmethod
+    def _extract_key(response: Any) -> str:
+        """Достаёт код/ключ созданного тикета из ответа Works (форма заранее неизвестна)."""
+        if isinstance(response, dict):
+            for key in ("code", "key", "issue_key"):
+                val = response.get(key)
+                if isinstance(val, str) and val:
+                    return val
+            unit = response.get("unit")
+            if isinstance(unit, dict):
+                for key in ("code", "key"):
+                    val = unit.get(key)
+                    if isinstance(val, str) and val:
+                        return val
+        return str(response)[:64]
+
+    async def export_vulnerability(
+        self, project_id: int, vuln_id: int, user: User, assignee: str | None
+    ) -> WorksIssueLink:
+        if not settings.works_configured:
+            raise ValidationError("Интеграция с Works не настроена или отключена")
+        project = await self.db.scalar(select(Project).where(Project.id == project_id))
+        if project is None:
+            raise NotFoundError("Проект не найден")
+        vuln_data = await VulnerabilityService(self.db).get(project_id, vuln_id)
+        vulnerability = vuln_data["vulnerability"]
+
+        assignee_final = (assignee or project.appsec_assignee or "").strip()
+        if not assignee_final:
+            raise ValidationError("Не указан исполнитель (assignee) для экспорта в AppSec")
+
+        component = (
+            {"code": project.appsec_component_code, "name": project.appsec_component_name or ""}
+            if project.appsec_component_code
+            else None
+        )
+        version = (
+            {"code": project.appsec_version_code, "name": project.appsec_version_name or ""}
+            if project.appsec_version_code
+            else None
+        )
+
+        summary = f"BUG_APPSEC: {vulnerability.title}"[:250]
+        priority = priority_for_severity(vulnerability.severity.value)
+        description = vulnerability.description or "\n\n".join(
+            x for x in (vulnerability.steps_to_reproduce, vulnerability.impact, vulnerability.recommendations) if x
+        )
+
+        try:
+            async with WorksClient() as wc:
+                drafts_info = None
+                # Вложения (evidence-файлы) — предзагрузка в один черновик. Best-effort:
+                # падение загрузки отдельного файла не срывает создание тикета.
+                files = await FileService(self.db).list(project_id, vuln_id)
+                if files:
+                    draft_id = str(uuid4())
+                    uploaded = 0
+                    for f in files:
+                        try:
+                            _, content = await FileService(self.db).download(f.id, user)
+                            await wc.upload_draft_file(
+                                draft_id=draft_id,
+                                filename=f.original_name,
+                                content=content,
+                                content_type=f.content_type,
+                                relative_path=assignee_final,
+                            )
+                            uploaded += 1
+                        except Exception as exc:  # noqa: BLE001
+                            logging.getLogger("storm.works").warning(
+                                "Works: не удалось загрузить файл %s: %s", f.id, exc
+                            )
+                    if uploaded:
+                        drafts_info = [{"draftId": draft_id, "relativePathPart": assignee_final}]
+                response = await wc.create_bug_appsec(
+                    summary=summary,
+                    description_text=description,
+                    assigned_to=assignee_final,
+                    reporter=user.username,
+                    priority=priority,
+                    component=component,
+                    version=version,
+                    drafts_info=drafts_info,
+                )
+        except WorksError as exc:
+            raise ValidationError(exc.message) from exc
+
+        works_key = self._extract_key(response)
+        url = works_issue_url(works_key)
+
+        # Прямой запрос связи (без get_link): get_link дёргает Works за статусом
+        # старого тикета — здесь это лишний роундтрип, мы всё равно перезапишем ключ.
+        link = await self.db.scalar(
+            select(WorksIssueLink).where(WorksIssueLink.vulnerability_id == vuln_id)
+        )
+        if link is None:
+            link = WorksIssueLink(
+                vulnerability_id=vuln_id, works_key=works_key, works_url=url, created_by=user.id
+            )
+            self.db.add(link)
+        else:
+            link.works_key = works_key
+            link.works_url = url
+            link.created_by = user.id
+        await self.db.commit()
+        await self.db.refresh(link)
+        await self.audit.log(
+            "EXPORT_WORKS", user_id=user.id, entity_type="vulnerability", entity_id=vuln_id,
+            details={"works_key": works_key},
+        )
+        return link
 
 
 @dataclass
@@ -937,6 +1118,7 @@ class AuthService:
             password_changed_at=datetime.now(UTC),
             role=role,
             is_active=True,
+            is_sso=True,
         )
         self.db.add(user)
         await self.db.commit()
@@ -1169,6 +1351,34 @@ class UserService:
         ).all()
         return list(items), total
 
+    async def search_users(self, q: str, limit: int = 10) -> list[User]:
+        """Поиск активных пользователей по username ИЛИ ФИО (full_name) — для тайпхеда
+        исполнителя. Пустой q возвращает первых по алфавиту (ФИО, затем username)."""
+        limit = max(1, min(limit, 25))
+        stmt = select(User).where(User.is_active.is_(True), User.is_locked.is_(False))
+        term = (q or "").strip()
+        if term:
+            like = f"%{term}%"
+            stmt = stmt.where(or_(User.username.ilike(like), User.full_name.ilike(like)))
+        stmt = stmt.order_by(func.lower(func.coalesce(User.full_name, User.username))).limit(limit)
+        return list((await self.db.scalars(stmt)).all())
+
+    async def iam_user_candidates(self, q: str, limit: int = 10) -> list[dict]:
+        """Живой поиск людей в IAM (Keycloak) — дополняет локальных пользователей.
+
+        Gated: при ненастроенном IAM возвращает [] и никогда не валит запрос.
+        TODO: live IAM user search when IAM admin creds are configured — нужен admin-API
+        клиент Keycloak (service account с realm-management:view-users) и вызов
+        GET /admin/realms/{realm}/users?search={q}. Пока структурно готово: гейт + merge
+        по username делает роутер. Возвращаемая форма: [{"username","full_name"}].
+        """
+        if not settings.sso_configured:
+            return []
+        try:  # pragma: no cover - заглушка до реальных кредов IAM
+            return []
+        except Exception:
+            return []
+
     async def get_user(self, user_id: int) -> User:
         """Возвращает пользователя по идентификатору."""
         user = await self.db.scalar(select(User).where(User.id == user_id))
@@ -1371,7 +1581,9 @@ class UserService:
         user = User(
             username=username,
             email=invitation.email,
-            full_name=invitation.full_name,
+            # Для локального пользователя ФИО = заданный им username, если админ
+            # не указал ФИО в приглашении (full_name нужен для отображения «ФИ»).
+            full_name=invitation.full_name or username,
             password_hash=hash_password(password),
             password_changed_at=datetime.now(UTC),
             role=invitation.role,
@@ -1973,7 +2185,7 @@ class ProjectService:
                 Vulnerability.project_id.label("project_id"),
                 func.count().label("total_findings"),
                 func.count()
-                .filter(Vulnerability.status.in_((VulnerabilityStatus.OPEN, VulnerabilityStatus.IN_PROGRESS)))
+                .filter(Vulnerability.status.in_(_OPEN_VULN_STATUSES))
                 .label("open_findings"),
             )
             .group_by(Vulnerability.project_id)
@@ -2677,7 +2889,11 @@ class AssetService:
             base_query = base_query.where(Host.status == status)
         total = await self.db.scalar(select(func.count()).select_from(base_query.subquery())) or 0
         items_query = (
-            base_query.options(selectinload(Host.ip_addresses).selectinload(HostIpAddress.ports).selectinload(Port.services))
+            base_query.options(
+                selectinload(Host.ip_addresses).selectinload(HostIpAddress.ports).selectinload(Port.services),
+                # Батч-загрузка эндпоинтов всей страницы хостов одним запросом (без N+1).
+                selectinload(Host.endpoints),
+            )
             .order_by(Host.created_at.desc())
             .offset((page - 1) * size)
             .limit(size)
@@ -3308,8 +3524,9 @@ class VulnerabilityService:
 
     @staticmethod
     def _severity_from_cvss_score(score: float | None) -> Severity:
+        # CVSS не задан → «проверка»: находка считается нереализуемой.
         if score is None:
-            return Severity.INFO
+            return Severity.UNREALIZED
         if score >= 9.0:
             return Severity.CRITICAL
         if score >= 7.0:
@@ -4171,6 +4388,14 @@ class ProjectNoteService:
     async def delete_note(self, project_id: int, note_id: int, actor_id: int) -> None:
         note = await self._get_note(project_id, note_id)
         deleted_title = note.title  # запоминаем заголовок ДО удаления для журнала
+        # Перепривязываем прямых детей к родителю удаляемой заметки, иначе FK-каскад
+        # (parent_id → project_notes.id, ondelete=CASCADE) снёс бы всё поддерево —
+        # из-за чего удаление корневой заметки удаляло все остальные.
+        await self.db.execute(
+            update(ProjectNote)
+            .where(ProjectNote.parent_id == note_id)
+            .values(parent_id=note.parent_id)
+        )
         await self.db.delete(note)
         await self.db.commit()
         await self.audit.log(
@@ -5484,6 +5709,23 @@ class ReportService:
                 ).all()
             )
             files = list((await self.db.scalars(select(File).where(File.vulnerability_id.in_(vulnerability_ids)))).all())
+        # Учётные данные проекта (из раздела Creds) — для таблицы «Учётные данные»
+        # в отчёте. Пароль расшифровываем так же, как для API кредов.
+        credential_rows = (
+            await self.db.scalars(
+                select(ProjectCredential)
+                .where(ProjectCredential.project_id == project_id)
+                .order_by(ProjectCredential.created_at.asc(), ProjectCredential.id.asc())
+            )
+        ).all()
+        credentials = [
+            {
+                "username": c.username or "",
+                "password": decrypt_secret(c.password_encrypted) if c.password_encrypted else "",
+                "host": c.host or "",
+            }
+            for c in credential_rows
+        ]
         return {
             "project": project,
             "members": [m[0] for m in members],
@@ -5493,6 +5735,7 @@ class ReportService:
             "host_ids": host_ids,
             "vulnerability_assets": vulnerability_assets,
             "files": files,
+            "credentials": credentials,
         }
 
     @staticmethod

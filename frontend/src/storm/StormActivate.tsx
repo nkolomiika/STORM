@@ -17,7 +17,9 @@ import {
 import type { InvitationInfo } from "../types";
 import { useAuthStore, useToastStore } from "../store";
 
-const USERNAME_RE = /^[A-Za-z0-9._-]{3,100}$/;
+// Логин = ФИО: кириллица/латиница, пробелы, точки, подчёркивания, дефисы.
+// Должно совпадать с бэкендом (FULLNAME_USERNAME_PATTERN).
+const USERNAME_RE = /^[A-Za-zА-Яа-яЁё0-9 ._-]{3,100}$/;
 
 const REASON_TEXT: Record<string, string> = {
   expired: "The link has expired. Ask an admin to resend the invitation.",
@@ -112,10 +114,10 @@ export function StormActivate() {
 
   const usernameHint = useMemo(() => {
     if (!username) return null;
-    if (!usernameValid) return { text: "3–100 characters: letters, digits, . _ -", color: "var(--st-danger)" };
+    if (!usernameValid) return { text: "Enter your full name (3–100 characters)", color: "var(--st-danger)" };
     if (checking) return { text: "Checking…", color: "var(--st-text-3)" };
-    if (available === true) return { text: "Username available", color: "var(--st-success)" };
-    if (available === false) return { text: "Username already taken", color: "var(--st-danger)" };
+    if (available === true) return { text: "Name available", color: "var(--st-success)" };
+    if (available === false) return { text: "This name is already registered", color: "var(--st-danger)" };
     return null;
   }, [username, usernameValid, checking, available]);
 
@@ -170,13 +172,13 @@ export function StormActivate() {
               </div>
 
               <div style={{ marginBottom: 15 }}>
-                <label className="flabel" htmlFor="act-user">Username</label>
+                <label className="flabel" htmlFor="act-user">Full name</label>
                 <input
                   id="act-user"
                   className="finp"
                   autoComplete="username"
                   autoFocus
-                  placeholder="ivanov"
+                  placeholder="Иванов Иван Иванович"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                 />

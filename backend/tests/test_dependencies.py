@@ -42,7 +42,8 @@ async def test_enforce_csrf_rejects_unknown_origin_tc_sec_005() -> None:
 
 @pytest.mark.asyncio
 async def test_enforce_csrf_accepts_allowed_origin() -> None:
-    await enforce_csrf(_request("DELETE"), origin="http://localhost:3000")
+    # CSRF-origins по умолчанию — только https (см. config.csrf_allowed_origins).
+    await enforce_csrf(_request("DELETE"), origin="https://localhost:3000")
 
 
 @pytest.mark.asyncio

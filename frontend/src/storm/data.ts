@@ -13,9 +13,22 @@ export type HostStatus = "up" | "down" | "unknown";
 export type Role = "lead" | "pentester";
 /** Workspace-level (account) role — separate from the project role. */
 export type WsRole = "admin" | "user";
-export type Severity = "critical" | "high" | "medium" | "low" | "info";
+// "unrealized" — «проверка»: CVSS не задан, находка нереализуема (не эксплуатируема).
+export type Severity = "critical" | "high" | "medium" | "low" | "info" | "unrealized";
 /** Mirrors the backend's VulnerabilityStatus verbatim — no lossy re-mapping. */
-export type VStatus = "open" | "in_progress" | "fixed" | "wont_fix" | "accepted_risk";
+// Статусы тикета из Task Tracker (Works «BUG APPSEC»): 3 категории —
+// ожидание (open/need_info/paused), в работе (in_progress/problem_analysis),
+// завершено (resolved/closed/cancelled/sent_by_mistake).
+export type VStatus =
+  | "open"
+  | "in_progress"
+  | "problem_analysis"
+  | "need_info"
+  | "paused"
+  | "resolved"
+  | "closed"
+  | "cancelled"
+  | "sent_by_mistake";
 export type ProjectStatus = "active" | "archived";
 
 export interface Port {

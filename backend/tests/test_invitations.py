@@ -25,7 +25,9 @@ def test_invitation_accept_rejects_short_password() -> None:
         InvitationAcceptRequest(username="good.name", password="short")
 
 
-@pytest.mark.parametrize("bad", ["ab", "has space", "нет-латиницы", "bad!char"])
+# username теперь может быть ФИО (кириллица + пробелы), поэтому «has space» и
+# «нет-латиницы» валидны; отвергаем только спецсимволы и слишком короткие.
+@pytest.mark.parametrize("bad", ["ab", "bad!char", "x@y", "a/b", "c,d"])
 def test_invitation_accept_rejects_bad_username(bad: str) -> None:
     with pytest.raises(PydanticValidationError):
         InvitationAcceptRequest(username=bad, password="longenough1")
@@ -34,6 +36,12 @@ def test_invitation_accept_rejects_bad_username(bad: str) -> None:
 def test_invitation_accept_ok() -> None:
     payload = InvitationAcceptRequest(username="i.volkov", password="longenough1")
     assert payload.username == "i.volkov"
+
+
+@pytest.mark.parametrize("fio", ["Коломиец Никита Сергеевич", "Иванов Иван", "Петров П.С."])
+def test_invitation_accept_allows_fio_username(fio: str) -> None:
+    payload = InvitationAcceptRequest(username=fio, password="longenough1")
+    assert payload.username == fio
 
 
 # --------------------------- get_invitation_info ---------------------------
@@ -143,6 +151,43 @@ async def test_accept_creates_user_from_invitation() -> None:
     assert user.project_role == ProjectRole.LEAD
     assert user.is_active is True
     assert inv.status == "accepted"                  # приглашение закрыто (single-use)
+
+
+@pytest.mark.asyncio
+async def test_accept_sets_full_name_to_username_when_invite_has_none() -> None:
+    """Локальный пользователь без ФИО в приглашении: full_name = заданный username (ФИО)."""
+    db = AsyncMock()
+    inv = SimpleNamespace(
+        id=1, status="pending", is_expired=False, email="invitee@example.com",
+        full_name=None, role=UserRole.PENTESTER, project_role=ProjectRole.PENTESTER,
+        accepted_at=None, accepted_user_id=None,
+    )
+    db.scalar = AsyncMock(side_effect=[inv, None])
+    svc = UserService(db)
+    svc.audit.log = AsyncMock()
+
+    user = await svc.accept_invitation("tok", "Коломиец Никита Сергеевич", "longenough1")
+
+    assert user.username == "Коломиец Никита Сергеевич"
+    assert user.full_name == "Коломиец Никита Сергеевич"  # ФИО = username
+
+
+@pytest.mark.asyncio
+async def test_accept_keeps_invite_full_name_when_present() -> None:
+    """Если админ указал ФИО в приглашении — оно не перетирается username'ом."""
+    db = AsyncMock()
+    inv = SimpleNamespace(
+        id=1, status="pending", is_expired=False, email="invitee@example.com",
+        full_name="Админ Указал ФИО", role=UserRole.PENTESTER, project_role=ProjectRole.PENTESTER,
+        accepted_at=None, accepted_user_id=None,
+    )
+    db.scalar = AsyncMock(side_effect=[inv, None])
+    svc = UserService(db)
+    svc.audit.log = AsyncMock()
+
+    user = await svc.accept_invitation("tok", "n.kolomiets", "longenough1")
+
+    assert user.full_name == "Админ Указал ФИО"
 
 
 # --------------------------- create ---------------------------

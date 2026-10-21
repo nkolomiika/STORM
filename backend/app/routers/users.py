@@ -20,6 +20,7 @@ from app.schemas import (
     TwoFASetupResponse,
     UserOut,
     UserProfileUpdate,
+    UserSearchOut,
     UserUpdate,
 )
 from app.services import UserService
@@ -134,9 +135,16 @@ async def list_users(
     return to_paginated_response([UserOut.model_validate(it) for it in items], total, PageParams(page=page, size=size)).model_dump()
 
 
+def _activation_url(job) -> str | None:
+    """Ссылка активации в ответе — только при выключенной почте (иначе уходит письмом)."""
+    if settings.mail_enabled:
+        return None
+    return (getattr(job, "payload", None) or {}).get("activation_url")
+
+
 def _mail_preview_url() -> str | None:
-    """URL веб-интерфейса mailpit — показываем в dev, чтобы админ увидел письмо."""
-    return settings.mail_preview_url if settings.smtp_host == "mailpit" else None
+    """URL веб-интерфейса для просмотра письма (MAIL_PREVIEW_URL). По умолчанию None."""
+    return settings.mail_preview_url
 
 
 @router.post("/invitations", response_model=InvitationSentOut, status_code=status.HTTP_201_CREATED)
@@ -148,11 +156,12 @@ async def create_invitation(
     db: AsyncSession = Depends(get_db),
 ) -> InvitationSentOut:
     """Приглашает пользователя по email: шлёт ссылку активации, User создаётся при активации."""
-    invitation, _job = await UserService(db).create_invitation(payload.model_dump(), admin.id, get_client_ip(request))
+    invitation, job = await UserService(db).create_invitation(payload.model_dump(), admin.id, get_client_ip(request))
     return InvitationSentOut(
         invitation=InvitationOut.model_validate(invitation),
         email_sent_to=invitation.email,
         mail_preview_url=_mail_preview_url(),
+        activation_url=_activation_url(job),
     )
 
 
@@ -175,11 +184,12 @@ async def resend_invitation(
     db: AsyncSession = Depends(get_db),
 ) -> InvitationSentOut:
     """Перевыпускает ссылку приглашения и отправляет письмо заново."""
-    invitation, _job = await UserService(db).resend_invitation(invitation_id, admin.id, get_client_ip(request))
+    invitation, job = await UserService(db).resend_invitation(invitation_id, admin.id, get_client_ip(request))
     return InvitationSentOut(
         invitation=InvitationOut.model_validate(invitation),
         email_sent_to=invitation.email,
         mail_preview_url=_mail_preview_url(),
+        activation_url=_activation_url(job),
     )
 
 
@@ -193,6 +203,30 @@ async def revoke_invitation(
 ) -> None:
     """Отзывает приглашение — ссылка перестаёт работать."""
     await UserService(db).revoke_invitation(invitation_id, admin.id, get_client_ip(request))
+
+
+@router.get("/search", response_model=list[UserSearchOut])
+async def search_users(
+    q: str = Query("", max_length=100),
+    limit: int = Query(10, ge=1, le=25),
+    _: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[UserSearchOut]:
+    """Поиск людей для назначения исполнителя: по username или ФИО (full_name).
+
+    При настроенном IAM дополнительно подмешивает кандидатов из IAM
+    (dedup по username, локальные пользователи в приоритете).
+    """
+    service = UserService(db)
+    users = await service.search_users(q, limit)
+    out = [UserSearchOut.model_validate(u) for u in users]
+    seen = {u.username for u in out}
+    for cand in await service.iam_user_candidates(q, limit):
+        uname = cand.get("username")
+        if uname and uname not in seen:
+            out.append(UserSearchOut(username=uname, full_name=cand.get("full_name"), is_sso=True))
+            seen.add(uname)
+    return out[:limit]
 
 
 @router.get("/{user_id}", response_model=UserOut)

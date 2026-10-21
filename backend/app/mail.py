@@ -215,37 +215,53 @@ def build_reactivation_email(*, username: str, reactivate_url: str, expire_hours
 
 
 async def _get_oauth_access_token() -> str:
-    """Обменивает refresh token на короткоживущий access token (с кешированием)."""
-    for field in ("google_oauth_client_id", "google_oauth_client_secret", "google_oauth_refresh_token"):
-        if not getattr(settings, field):
-            raise RuntimeError(f"SMTP_AUTH_METHOD=xoauth2 требует заполненного {field.upper()} в .env")
+    """Получает короткоживущий access token для SMTP XOAUTH2 (с кешированием).
 
-    refresh_token = settings.google_oauth_refresh_token
-    cached = _oauth_token_cache.get(refresh_token)
+    Провайдеро-независимо: Google (refresh_token) и Microsoft 365 / Exchange Online
+    (client_credentials — app-only, или refresh_token). Берём обобщённые SMTP_OAUTH_*;
+    если не заданы — падаем на GOOGLE_OAUTH_* (обратная совместимость).
+    """
+    client_id = settings.smtp_oauth_client_id or settings.google_oauth_client_id
+    client_secret = settings.smtp_oauth_client_secret or settings.google_oauth_client_secret
+    token_url = settings.smtp_oauth_token_url or settings.google_oauth_token_uri
+    grant_type = (settings.smtp_oauth_grant_type or "refresh_token").strip()
+    scope = settings.smtp_oauth_scope.strip()
+    refresh_token = settings.smtp_oauth_refresh_token or settings.google_oauth_refresh_token
+
+    if not client_id or not client_secret:
+        raise RuntimeError("SMTP_AUTH_METHOD=xoauth2 требует SMTP_OAUTH_CLIENT_ID/SECRET (или GOOGLE_OAUTH_*) в .env")
+
+    if grant_type == "client_credentials":
+        # Microsoft app-only: токен выдаётся на приложение, refresh token не нужен.
+        if not scope:
+            raise RuntimeError("SMTP_OAUTH_GRANT_TYPE=client_credentials требует SMTP_OAUTH_SCOPE (напр. https://outlook.office365.com/.default)")
+        cache_key = f"cc:{client_id}:{scope}"
+        form = {"client_id": client_id, "client_secret": client_secret, "grant_type": "client_credentials", "scope": scope}
+    else:
+        if not refresh_token:
+            raise RuntimeError("SMTP_AUTH_METHOD=xoauth2 (grant_type=refresh_token) требует SMTP_OAUTH_REFRESH_TOKEN (или GOOGLE_OAUTH_REFRESH_TOKEN)")
+        cache_key = f"rt:{refresh_token}"
+        form = {"client_id": client_id, "client_secret": client_secret, "refresh_token": refresh_token, "grant_type": "refresh_token"}
+        if scope:  # Microsoft delegated требует scope; Google — нет.
+            form["scope"] = scope
+
+    cached = _oauth_token_cache.get(cache_key)
     now = time.monotonic()
     if cached and now < cached[1]:
         return cached[0]
 
     async with httpx.AsyncClient(timeout=settings.smtp_timeout_seconds) as client:
-        response = await client.post(
-            settings.google_oauth_token_uri,
-            data={
-                "client_id": settings.google_oauth_client_id,
-                "client_secret": settings.google_oauth_client_secret,
-                "refresh_token": refresh_token,
-                "grant_type": "refresh_token",
-            },
-        )
+        response = await client.post(token_url, data=form)
     if response.status_code != 200:
-        # Тело содержит {"error": "...", "error_description": "..."} — полезно для диагностики
-        # (invalid_grant = refresh token отозван/протух, нужно заново пройти consent).
-        raise RuntimeError(f"Google OAuth token refresh failed ({response.status_code}): {response.text}")
+        # Тело содержит {"error": ..., "error_description": ...} — полезно для диагностики
+        # (invalid_grant = refresh token отозван/протух; invalid_client = неверные client creds).
+        raise RuntimeError(f"OAuth2 token request failed ({response.status_code}): {response.text}")
 
     data = response.json()
     access_token = data["access_token"]
     # 60 секунд запаса на сетевые задержки, чтобы не отправить с истекающим токеном.
     expires_at = now + max(0, int(data.get("expires_in", 3600)) - 60)
-    _oauth_token_cache[refresh_token] = (access_token, expires_at)
+    _oauth_token_cache[cache_key] = (access_token, expires_at)
     return access_token
 
 

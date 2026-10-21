@@ -17,6 +17,8 @@ export interface User {
   is_locked: boolean;
   /** Включена ли двухфакторная аутентификация (TOTP). */
   totp_enabled: boolean;
+  /** Пользователь заведён через SSO — локального пароля нет, смену пароля прячем. */
+  is_sso: boolean;
   password_changed_at: string | null;
   created_at: string;
 }
@@ -69,6 +71,8 @@ export interface InvitationSentResult {
   invitation: Invitation;
   email_sent_to: string;
   mail_preview_url: string | null;
+  /** Прямая ссылка активации — приходит, когда почта выключена (MAIL_ENABLED=false). */
+  activation_url: string | null;
 }
 
 /** Проверка ссылки восстановления пароля. */
@@ -125,6 +129,34 @@ export interface Project {
   created_by: number;
   created_at: string;
   updated_at: string;
+  // AppSec/Works экспорт: компонент, затронутая версия (имя + Works-UUID) и
+  // исполнитель по умолчанию (IAM-логин). Пусто — не настроено для проекта.
+  appsec_component_code: string | null;
+  appsec_component_name: string | null;
+  appsec_version_code: string | null;
+  appsec_version_name: string | null;
+  appsec_assignee: string | null;
+  // Связанный AppSec-тикет из раздела Tasks (или вручную введённый URL) — идёт в отчёт.
+  appsec_ticket_url: string | null;
+  appsec_ticket_key: string | null;
+}
+
+/** Публичная конфигурация Works: доступен ли экспорт в AppSec. */
+export interface WorksConfig {
+  enabled: boolean;
+}
+
+/** Справочный элемент Works (компонент/версия): UUID + имя. */
+export interface WorksRef {
+  code: string;
+  name: string;
+}
+
+/** Связь уязвимости STORM с тикетом bug_appsec в Works. */
+export interface WorksIssueLink {
+  works_key: string;
+  works_url: string;
+  works_status: string | null;
 }
 
 export interface ProjectStats {
@@ -263,6 +295,8 @@ export interface Host {
   project_id: number;
   ip_address: string | null;
   ip_addresses: HostIpAddress[];
+  /** Эндпоинты хоста едут прямо в списке (батч-загрузка на бэкенде, без N+1). */
+  endpoints: Endpoint[];
   hostname: string | null;
   status: "up" | "down" | "unknown";
   os_type: OsType;
@@ -476,8 +510,8 @@ export interface Vulnerability {
   project_id: number;
   title: string;
   description: string | null;
-  severity: "critical" | "high" | "medium" | "low" | "info";
-  status: "open" | "in_progress" | "fixed" | "wont_fix" | "accepted_risk";
+  severity: "critical" | "high" | "medium" | "low" | "info" | "unrealized";
+  status: "open" | "in_progress" | "problem_analysis" | "need_info" | "paused" | "resolved" | "closed" | "cancelled" | "sent_by_mistake";
   cvss_version: "4.0" | null;
   cvss_score: number | null;
   cvss_vector: string | null;
@@ -660,6 +694,8 @@ export type JiraTaskCategory = "todo" | "inprogress" | "done" | "unknown";
 
 export interface JiraTask {
   key: string;
+  /** Ссылка на тикет в трекере (для связывания с проектом). */
+  url: string | null;
   summary: string;
   status: string;
   status_category: JiraTaskCategory;

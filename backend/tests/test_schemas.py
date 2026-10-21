@@ -97,7 +97,7 @@ def test_vulnerability_rejects_cvss_31_version() -> None:
 
 def test_vulnerability_rejects_invalid_status_patch_tc_vuln_010() -> None:
     with pytest.raises(PydanticValidationError):
-        VulnerabilityStatusPatch(status="closed")
+        VulnerabilityStatusPatch(status="not_a_status")
 
 
 def test_vulnerability_accepts_structured_workflow_steps() -> None:

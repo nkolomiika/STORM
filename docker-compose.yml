@@ -3,7 +3,8 @@ services:
     build:
       context: ./backend
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-    # Порт наружу — чтобы Swagger (/docs, /api/v2/docs) был доступен с хоста.
+    # Порт наружу — чтобы Swagger (/api/v1/docs и /api/v2/docs) был доступен с хоста.
+    # Документация закрыта авторизацией: нужна активная сессия Storm (cookie).
     ports:
       - "8000:8000"
     # Источник окружения: dev → .env, prod → .env.prod (ENV_FILE=.env.prod).
@@ -35,8 +36,6 @@ services:
         condition: service_started
       rabbitmq:
         condition: service_healthy
-      mailpit:
-        condition: service_started
     volumes:
       - ./backend:/app
       - ./:/workspace
@@ -108,12 +107,6 @@ services:
       timeout: 5s
       retries: 12
       start_period: 5s
-
-  mailpit:
-    image: axllent/mailpit
-    ports:
-      - "1025:1025"
-      - "8025:8025"
 
   # TLS-terminating reverse proxy: 80 -> 301 https, 443 -> app.
   nginx:

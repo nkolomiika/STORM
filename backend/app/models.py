@@ -63,6 +63,9 @@ class User(Base, TimestampMixin):
     avatar_uploaded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     password_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Пользователь заведён через SSO: локального пароля у него нет, поэтому в
+    # профиле не показываем форму смены пароля (менять его можно только в IdM).
+    is_sso: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     # TOTP-2FA (RFC 6238). Секрет хранится зашифрованным (Fernet), см. security.encrypt_secret.
     # totp_secret может быть выставлен на этапе setup, но пока totp_enabled=false код при
     # логине не спрашивается — это защищает от блокировки при незавершённой настройке.
@@ -256,6 +259,18 @@ class Project(Base, TimestampMixin):
         Enum(ProjectStatus, name="project_status"), nullable=False, default=ProjectStatus.ACTIVE
     )
     created_by: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    # Параметры экспорта находок в Works (STS / bug_appsec): справочный компонент
+    # и затронутая версия (code=UUID Works + человекочитаемое имя) и исполнитель
+    # по умолчанию (IAM-логин / username пользователя STORM). Спрашиваются при
+    # создании проекта, правятся при редактировании.
+    appsec_component_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    appsec_component_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    appsec_version_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    appsec_version_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    appsec_assignee: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Связанный AppSec-тикет из раздела Tasks (ссылка подставляется в отчёт «по задаче …»).
+    appsec_ticket_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    appsec_ticket_key: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
 
 class ProjectFolder(Base, TimestampMixin):
@@ -449,6 +464,12 @@ class Host(Base, TimestampMixin):
         back_populates="host",
         cascade="all, delete-orphan",
         order_by="HostIpAddress.created_at",
+    )
+    # viewonly — только для батч-загрузки в списке хостов (selectinload), чтобы не
+    # делать запрос эндпоинтов на каждый хост (N+1). Создание/удаление эндпоинтов
+    # идёт прямыми запросами, поэтому cascade здесь не нужен (его держит FK ondelete).
+    endpoints: Mapped[list["Endpoint"]] = relationship(
+        "Endpoint", order_by="Endpoint.created_at", viewonly=True,
     )
 
 
@@ -752,6 +773,26 @@ class JiraIssueLink(Base, TimestampMixin):
     jira_issue_url: Mapped[str] = mapped_column(String(1024), nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="linked", server_default="linked")
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class WorksIssueLink(Base, TimestampMixin):
+    """Связь уязвимости STORM с тикетом bug_appsec в Works (STS)."""
+
+    __tablename__ = "works_issue_links"
+    __table_args__ = (UniqueConstraint("vulnerability_id", name="uq_works_issue_link_vulnerability"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    vulnerability_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("vulnerabilities.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    works_key: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    works_url: Mapped[str] = mapped_column(String(1024), nullable=False)
+    # Актуальный статус тикета в Works (синкается «on open» на фронте). NULL — ещё не тянули.
+    works_status: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    created_by: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
 
 
 class File(Base):
