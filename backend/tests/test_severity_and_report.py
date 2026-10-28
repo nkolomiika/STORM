@@ -15,6 +15,7 @@ from app.reports.word_builder import (
     UNREALIZED_SEVERITIES,
     WEAKNESS_SEVERITIES,
     _distrib_version,
+    _sort_vulns_by_host_and_severity,
     _split_vulnerabilities,
     severity_label,
 )
@@ -54,9 +55,9 @@ def test_no_cvss_is_unrealized_not_info():
 # ---------- _split_vulnerabilities / WEAKNESS_SEVERITIES ----------
 
 def test_weakness_severities_set():
-    # Слабости — только info; «проверки» (unrealized) выделены в отдельную корзину
-    # и показываются ТОЛЬКО в разделе «Тесты».
-    assert WEAKNESS_SEVERITIES == {Severity.INFO}
+    # Слабости — low-уязвимости + info; «проверки» (unrealized) в отдельной
+    # корзине и показываются ТОЛЬКО в разделе «Тесты».
+    assert WEAKNESS_SEVERITIES == {Severity.LOW, Severity.INFO}
     assert UNREALIZED_SEVERITIES == {Severity.UNREALIZED}
 
 
@@ -74,12 +75,13 @@ def test_split_realizable_vs_weakness_vs_unrealized():
     main_sev = {v.severity for v in main}
     weak_sev = {v.severity for v in weaknesses}
     unreal_sev = {v.severity for v in unrealized}
-    # Детальный раздел уязвимостей: только реализуемое, без info и unrealized.
-    assert main_sev == {Severity.CRITICAL, Severity.HIGH, Severity.MEDIUM, Severity.LOW}
+    # Детальный раздел уязвимостей: critical/high/medium (без low/info/unrealized).
+    assert main_sev == {Severity.CRITICAL, Severity.HIGH, Severity.MEDIUM}
+    assert Severity.LOW not in main_sev
     assert Severity.INFO not in main_sev
     assert Severity.UNREALIZED not in main_sev
-    # Слабости — только info; unrealized сюда НЕ попадает.
-    assert weak_sev == {Severity.INFO}
+    # Слабости — low + info; unrealized сюда НЕ попадает.
+    assert weak_sev == {Severity.LOW, Severity.INFO}
     assert Severity.UNREALIZED not in weak_sev
     # «Проверки» — отдельная корзина (только для раздела «Тесты»).
     assert unreal_sev == {Severity.UNREALIZED}
@@ -141,3 +143,44 @@ def test_severity_ru_covers_all_enum_values():
     # Каждому значению enum сопоставлена подпись (иначе отчёт покажет пустоту).
     for sev in Severity:
         assert sev in SEVERITY_RU and SEVERITY_RU[sev]
+
+
+# ---------- _sort_vulns_by_host_and_severity ----------
+
+def test_sort_by_host_then_severity_desc():
+    """Находки группируются по хосту (в порядке hosts), внутри — по убыванию критичности."""
+    from app.enums import AssetType
+
+    hosts = [
+        SimpleNamespace(id=1, hostname="host-1", ip_address=None),
+        SimpleNamespace(id=2, hostname="host-2", ip_address=None),
+    ]
+
+    def host_asset(host_id):
+        return SimpleNamespace(asset_type=AssetType.HOST, asset_id=host_id)
+
+    vulns = [
+        SimpleNamespace(id=10, severity=Severity.LOW),       # host-2
+        SimpleNamespace(id=11, severity=Severity.CRITICAL),  # host-2
+        SimpleNamespace(id=12, severity=Severity.MEDIUM),    # host-1
+        SimpleNamespace(id=13, severity=Severity.HIGH),      # host-1
+    ]
+    indexes = {
+        "host_by_id": {1: hosts[0], 2: hosts[1]},
+        "assets_by_vuln_id": {
+            10: [host_asset(2)], 11: [host_asset(2)],
+            12: [host_asset(1)], 13: [host_asset(1)],
+        },
+    }
+    out = _sort_vulns_by_host_and_severity(vulns, indexes=indexes, hosts=hosts)
+    # host-1: HIGH(13) → MEDIUM(12); затем host-2: CRITICAL(11) → LOW(10).
+    assert [v.id for v in out] == [13, 12, 11, 10]
+
+
+def test_sort_no_host_goes_to_first_host():
+    """Находка без привязки к хосту относится к первому хосту проекта."""
+    hosts = [SimpleNamespace(id=1, hostname="host-1", ip_address=None)]
+    vulns = [SimpleNamespace(id=1, severity=Severity.INFO)]
+    indexes = {"host_by_id": {1: hosts[0]}, "assets_by_vuln_id": {}}
+    out = _sort_vulns_by_host_and_severity(vulns, indexes=indexes, hosts=hosts)
+    assert [v.id for v in out] == [1]

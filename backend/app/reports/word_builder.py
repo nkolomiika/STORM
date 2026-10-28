@@ -81,16 +81,26 @@ def _heading_size_pt_for_level(level: int | None) -> float | None:
     return None
 
 # Раскладка находок по разделам отчёта:
-#   • «Информация по выявленным уязвимостям» — только реализуемое
-#     (critical/high/medium/low);
-#   • «Информация по выявленным слабостям» — info-находки (слабости/недостатки);
+#   • «Информация по выявленным уязвимостям» — только critical/high/medium;
+#   • «Информация по выявленным слабостям» — low-уязвимости + info-находки
+#     (слабости/недостатки); если таких нет — раздел из отчёта убирается;
 #   • «проверки» (unrealized, нереализуемые) НЕ попадают ни в уязвимости, ни в
 #     слабости — они показываются ТОЛЬКО в разделе «Тесты» (4.4) с выводом, что
 #     сценарий не может быть реализован;
 #   • в раздел «Тесты» (4.4) попадают ВСЕ находки целиком.
-WEAKNESS_SEVERITIES: set[Severity] = {Severity.INFO}
+WEAKNESS_SEVERITIES: set[Severity] = {Severity.LOW, Severity.INFO}
 # Находки-«проверки»: только в разделе «Тесты», с выводом о нереализуемости.
 UNREALIZED_SEVERITIES: set[Severity] = {Severity.UNREALIZED}
+
+# Порядок критичности по убыванию — для сортировки находок внутри хоста.
+_SEVERITY_ORDER: dict[Severity, int] = {
+    Severity.CRITICAL: 0,
+    Severity.HIGH: 1,
+    Severity.MEDIUM: 2,
+    Severity.LOW: 3,
+    Severity.INFO: 4,
+    Severity.UNREALIZED: 5,
+}
 
 # Маппинг кодов CVSS 4.0 в человекочитаемые значения.
 CVSS4_METRIC_LABELS: dict[str, dict[str, str]] = {
@@ -1582,6 +1592,34 @@ def _split_vulnerabilities(
     return vulns, weaknesses, unrealized
 
 
+def _sort_vulns_by_host_and_severity(
+    vulnerabilities: list[Vulnerability], *, indexes: dict, hosts: list[Host]
+) -> list[Vulnerability]:
+    """Сортирует находки по хосту (в порядке списка хостов проекта), а внутри
+    каждого хоста — по убыванию критичности (critical→…→info→unrealized).
+
+    Находки без привязки к хосту относятся к первому хосту проекта — так же, как
+    при группировке по стендам в отчёте (`_group_items_by_host`). Сортировка
+    стабильна: при равных ключах сохраняется исходный порядок.
+    """
+    fallback = ""
+    if hosts:
+        fallback = hosts[0].hostname or hosts[0].ip_address or ""
+    host_index: dict[str, int] = {}
+    for i, host in enumerate(hosts):
+        label = host.hostname or host.ip_address or ""
+        if label and label not in host_index:
+            host_index[label] = i
+
+    def sort_key(vuln: Vulnerability) -> tuple[int, int]:
+        host = _vuln_host_address(vuln, indexes) or fallback
+        host_rank = host_index.get(host, len(host_index))
+        sev_rank = _SEVERITY_ORDER.get(vuln.severity, 99)
+        return (host_rank, sev_rank)
+
+    return sorted(vulnerabilities, key=sort_key)
+
+
 def _strip_run_highlight(run: Run) -> None:
     """Снимает `<w:highlight>` с run'а (нужно для шаблонных «жёлтых» ячеек)."""
     rPr = run._element.find(qn("w:rPr"))
@@ -2693,6 +2731,20 @@ def _replicate_h3_with_cards(
     return result
 
 
+def _remove_section(doc: DocxDocument, h2: Paragraph) -> None:
+    """Удаляет весь H2-раздел (заголовок + содержимое до следующего H1/H2).
+
+    Трейлинговый `<w:sectPr>` в конце body НЕ трогаем — иначе документ ломается
+    (это свойства секции, а не контент раздела).
+    """
+    for element in _block_elements_until_heading(h2, max_stop_level=2):
+        if element.tag == qn("w:sectPr"):
+            continue
+        parent = element.getparent()
+        if parent is not None:
+            parent.remove(element)
+
+
 def _build_section(
     doc: DocxDocument,
     *,
@@ -2704,14 +2756,21 @@ def _build_section(
     hosts: list[Host],
     image_bytes_by_id: dict[int, bytes],
     image_state: dict,
+    remove_section_if_empty: bool = False,
 ) -> None:
     """Клонирует пример карточки в указанном H2-разделе под каждый элемент `items`.
 
     Если в разделе есть H3 «Исследование стенда …», клонируем его под каждый
     стенд (хост) и под каждым размещаем карточки уязвимостей, привязанных к
-    этому стенду. Если элементов нет, пример карточки удаляется.
+    этому стенду. Если элементов нет, пример карточки удаляется; а при
+    `remove_section_if_empty` — удаляется весь раздел целиком (заголовок тоже),
+    чтобы в отчёте не оставалось пустых разделов (напр. «слабости», когда ни
+    low-уязвимостей, ни info-находок нет).
     """
     h2 = _find_h2_paragraph(doc, section_h2_text)
+    if h2 is not None and not items and remove_section_if_empty:
+        _remove_section(doc, h2)
+        return
     if h2 is not None:
         per_host = _replicate_h3_with_cards(
             doc, h2=h2, items=items, indexes=indexes, hosts=hosts,
@@ -3219,14 +3278,19 @@ def _build_common(
     _update_pp_headings(doc, project)
     _update_footers_and_headers(doc, project)
 
+    # Сортируем находки по хосту и убыванию критичности — в этом порядке они
+    # лягут и в детальные разделы (сгруппированные по стендам), и в «Тесты».
+    vulnerabilities = _sort_vulns_by_host_and_severity(vulnerabilities, indexes=indexes, hosts=hosts)
+
     severity_counts: dict[Severity, int] = {sev: 0 for sev in Severity}
     for vuln in vulnerabilities:
         severity_counts[vuln.severity] = severity_counts.get(vuln.severity, 0) + 1
     _update_severity_summary_table(doc, severity_counts)
 
     main_vulns, weakness_vulns, unrealized_vulns = _split_vulnerabilities(vulnerabilities)
-    # В раздел «Тесты» (4.4) идут ВСЕ находки, включая нереализуемые «проверки».
-    all_items = main_vulns + weakness_vulns + unrealized_vulns
+    # В раздел «Тесты» (4.4) идут ВСЕ находки целиком (включая нереализуемые
+    # «проверки»), в уже отсортированном порядке.
+    all_items = vulnerabilities
     _update_findings_summary_text(doc, vulnerability_count=len(main_vulns), weakness_count=len(weakness_vulns))
 
     if kind == "szi":
@@ -3263,6 +3327,7 @@ def _build_common(
         hosts=hosts,
         image_bytes_by_id=image_bytes_by_id,
         image_state=image_state,
+        remove_section_if_empty=True,
     )
 
     # Финальный проход: сбрасываем жирный со всех H3 — иначе Word при обновлении
