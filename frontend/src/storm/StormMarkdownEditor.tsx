@@ -16,6 +16,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
+import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Markdown } from "tiptap-markdown";
 
@@ -50,6 +51,10 @@ export function StormMarkdownEditor({ value, onChange, placeholder = "", minHeig
         // are StarterKit's own input rules — that is the whole feature.
         StarterKit.configure({ heading: { levels: [1, 2, 3, 4, 5, 6] } }),
         Link.configure({ openOnClick: false, autolink: true, HTMLAttributes: { rel: "noopener noreferrer", target: "_blank" } }),
+        // Renders Markdown image syntax (`![](url)`) inline as you type/paste, so a
+        // pasted screenshot shows up in the note immediately. tiptap-markdown
+        // serialises the node back to `![](url)`, keeping the note Markdown-only.
+        Image.configure({ inline: false, allowBase64: true, HTMLAttributes: { class: "stormmd-img" } }),
         Placeholder.configure({ placeholder }),
         Markdown.configure({
           html: false,

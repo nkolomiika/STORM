@@ -32,6 +32,7 @@ import { StormSelect } from "./StormSelect";
 import { PasswordInput } from "./PasswordInput";
 import { StormAppSecFields, type AppSecFieldsValue } from "./StormAppSecFields";
 import { t, useLangStore } from "./i18n";
+import { markdownUrlTransform } from "../markdownUrlTransform";
 import {
   getApiErrorMessage as rawGetApiErrorMessage,
   getApiErrorStatus,
@@ -94,6 +95,7 @@ import {
   uploadMyAvatar as apiUploadMyAvatar,
   listVulnerabilityFiles as apiListVulnFiles,
   uploadVulnerabilityFile as apiUploadVulnFile,
+  uploadProjectImage as apiUploadProjectImage,
   deleteVulnerabilityFile as apiDeleteVulnFile,
   markNotificationRead as apiMarkNotificationRead,
   markAllNotificationsRead as apiMarkAllNotificationsRead,
@@ -222,7 +224,9 @@ interface VulnDetailForm {
   sev?: Severity;
   status?: VStatus;
   stepsList?: string[];
-  stepImages?: Record<number, string[]>;
+  /** Per-step screenshot file ids (uploaded as vulnerability files). Keyed by
+      step index; the report pulls these via each step's `image_file_ids`. */
+  stepImages?: Record<number, number[]>;
   description?: string;
   impact?: string;
   remediation?: string;
@@ -1014,22 +1018,33 @@ function mdInline(text: string, kb: string): ReactNode[] {
   const nodes: ReactNode[] = [];
   let rest = text;
   let key = 0;
-  const re = /(\*\*([^*]+)\*\*|\*([^*]+)\*|`([^`]+)`|\[([^\]]+)\]\(([^)]+)\))/;
+  // Image (`![alt](src)`) must come first so it wins over the link rule below.
+  const re = /(!\[([^\]]*)\]\(([^)\s]+)\)|\*\*([^*]+)\*\*|\*([^*]+)\*|`([^`]+)`|\[([^\]]+)\]\(([^)]+)\))/;
   let m: RegExpExecArray | null;
   while ((m = re.exec(rest))) {
     if (m.index > 0) nodes.push(rest.slice(0, m.index));
-    if (m[2] != null) nodes.push(<strong key={`${kb}-${key++}`}>{m[2]}</strong>);
-    else if (m[3] != null) nodes.push(<em key={`${kb}-${key++}`}>{m[3]}</em>);
-    else if (m[4] != null)
+    if (m[2] != null) {
+      // Image: sanitise the URL the same way the Markdown viewer does (allows
+      // data:image and same-origin/http, drops javascript: and other schemes).
+      const safe = markdownUrlTransform(m[3]);
+      if (safe)
+        nodes.push(
+          <a key={`${kb}-${key++}`} href={safe} target="_blank" rel="noopener noreferrer" style={{ display: "block", margin: "6px 0" }}>
+            <img src={safe} alt={m[2] || ""} style={{ maxWidth: "100%", borderRadius: 8, border: "1px solid var(--st-border)", cursor: "zoom-in", display: "block" }} />
+          </a>
+        );
+    } else if (m[4] != null) nodes.push(<strong key={`${kb}-${key++}`}>{m[4]}</strong>);
+    else if (m[5] != null) nodes.push(<em key={`${kb}-${key++}`}>{m[5]}</em>);
+    else if (m[6] != null)
       nodes.push(
         <code key={`${kb}-${key++}`} style={{ background: "var(--st-divider)", borderRadius: 5, padding: "1px 5px", fontFamily: "ui-monospace,Menlo,monospace", fontSize: ".9em" }}>
-          {m[4]}
+          {m[6]}
         </code>
       );
-    else if (m[5] != null)
+    else if (m[7] != null)
       nodes.push(
-        <a key={`${kb}-${key++}`} href={m[6]} style={{ color: "var(--st-accent-2)" }}>
-          {m[5]}
+        <a key={`${kb}-${key++}`} href={m[8]} style={{ color: "var(--st-accent-2)" }}>
+          {m[7]}
         </a>
       );
     rest = rest.slice(m.index + m[0].length);
@@ -1253,7 +1268,16 @@ function toStormVuln(v: ApiVulnerability, hostName: string): Vuln {
     author: v.created_by_username || "—",
     updated: relTime(v.updated_at),
     created: v.created_at,
-    steps: v.workflow_steps.map((s) => s.description || "").filter(Boolean),
+    // Keep steps and their screenshot ids index-aligned (don't drop empties, or
+    // a text-less screenshot-only step would lose its images). Trailing fully-
+    // empty steps are trimmed so the editor doesn't show blank rows.
+    ...(() => {
+      const rows = v.workflow_steps.map((s) => ({ desc: s.description || "", ids: s.image_file_ids || [] }));
+      while (rows.length && !rows[rows.length - 1].desc.trim() && rows[rows.length - 1].ids.length === 0) rows.pop();
+      const stepImages: Record<number, number[]> = {};
+      rows.forEach((r, i) => { if (r.ids.length) stepImages[i] = r.ids; });
+      return { steps: rows.map((r) => r.desc), stepImages };
+    })(),
     description: v.description || "",
     impact: v.impact || "",
     remediation: v.recommendations || "",
@@ -3456,6 +3480,26 @@ export function StormApp() {
   const openNoteViewer = (id: number) => setState({ section: "notes", openNoteId: id, noteEditorOpen: false });
   const closeNoteViewer = () => setState({ openNoteId: null, noteEditorOpen: false });
   const updateNoteForm = (k: keyof NoteForm, v: string) => setState((s) => ({ noteForm: { ...s.noteForm, [k]: v } }));
+  /** Upload screenshots pasted into the note editor and append them as Markdown
+      images; the editor (TipTap Image) renders them inline right away, and the
+      note stays plain Markdown (`![name](/api/v1/projects/…/images/…/download)`). */
+  const attachNoteImages = async (files: File[]) => {
+    const pid = state.openProjectId;
+    if (pid == null) return;
+    for (const file of files) {
+      if (!file.type.startsWith("image/")) continue;
+      try {
+        const { url } = await apiUploadProjectImage(pid, file);
+        setState((s) => {
+          const cur = s.noteForm.excerpt || "";
+          const sep = cur.trim() ? (cur.endsWith("\n") ? "\n" : "\n\n") : "";
+          return { noteForm: { ...s.noteForm, excerpt: `${cur}${sep}![${file.name}](${url})\n` } };
+        });
+      } catch (e) {
+        pushToast(getApiErrorMessage(e, t("Couldn't upload the image")), "error");
+      }
+    }
+  };
   const saveNote = async () => {
     const { noteEditorMode: mode, noteEditorIndex: index, noteForm: f } = state;
     const pid = state.openProjectId;
@@ -3551,18 +3595,32 @@ export function StormApp() {
       list[i] = val;
       return { vulnDetailForm: { ...s.vulnDetailForm, stepsList: list } };
     });
-  /** Read image files (from a paste in the step editor) and append them to step i. */
-  const attachVdStepImages = (i: number, files: File[]) => {
-    for (const file of files) {
-      if (!file.type.startsWith("image/")) continue;
-      const reader = new FileReader();
-      reader.onload = (ev) =>
+  /** Upload screenshots pasted into step i as vulnerability files and remember
+      their ids on the step. Persisted on save via `image_file_ids`, which the
+      Word report renders inside the reproduction step (the old data-URL thumbs
+      were client-only and never reached the report). */
+  const attachVdStepImages = async (i: number, files: File[]) => {
+    const pid = state.openProjectId;
+    const vid = state.openVulnId;
+    if (pid == null || vid == null) return;
+    const images = files.filter((f) => f.type.startsWith("image/"));
+    if (images.length === 0) return;
+    setState({ vulnFilesBusy: true });
+    try {
+      for (const file of images) {
+        const uploaded = await apiUploadVulnFile(pid, vid, file);
         setState((s) => {
           const imgs = { ...(s.vulnDetailForm.stepImages ?? {}) };
-          imgs[i] = [...(imgs[i] ?? []), String(ev.target?.result ?? "")];
+          imgs[i] = [...(imgs[i] ?? []), uploaded.id];
           return { vulnDetailForm: { ...s.vulnDetailForm, stepImages: imgs } };
         });
-      reader.readAsDataURL(file);
+      }
+      // Keep the Attachments list in sync (the screenshots are real files now).
+      const fresh = await apiListVulnFiles(pid, vid);
+      setState({ vulnFiles: fresh, vulnFilesBusy: false });
+    } catch (e) {
+      setState({ vulnFilesBusy: false });
+      pushToast(getApiErrorMessage(e, t("Couldn't upload the image")), "error");
     }
   };
   const removeVdStepImage = (i: number, imgIdx: number) =>
@@ -3592,11 +3650,14 @@ export function StormApp() {
         cvss_vector: vector || null,
         cvss_version: vector ? "4.0" : null,
         cvss_score: c ? c.score : null,
-        // Step images are still client-only (they are pasted data URLs, not uploads),
-        // so only the step text round-trips through the backend.
+        // Keep a step if it has text OR screenshots; carry its uploaded image
+        // ids in `image_file_ids` so the Word report renders them in-step.
+        // Image ids are keyed by the ORIGINAL index, so pair them up before
+        // filtering (filtering first would misalign the keys).
         workflow_steps: (f.stepsList ?? [])
-          .filter((s) => s.trim())
-          .map((s, i) => ({ id: `step-${i + 1}`, description: s })),
+          .map((s, i) => ({ description: s, imageIds: (f.stepImages ?? {})[i] ?? [] }))
+          .filter(({ description, imageIds }) => description.trim() || imageIds.length)
+          .map(({ description, imageIds }, i) => ({ id: `step-${i + 1}`, description, image_file_ids: imageIds })),
       });
       setState({ openVulnId: null });
       reloadVulns();
@@ -6393,7 +6454,7 @@ export function StormApp() {
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <Suspense fallback={<div className="stormmd" style={{ minHeight: 44, color: "var(--st-text-faint)", font: "500 14px Inter,sans-serif" }}>{t("Loading editor…")}</div>}>
-                          <StormMarkdownEditor value={s} onChange={(md) => updateVdStep(i, md)} onImagePaste={(files) => attachVdStepImages(i, files)} placeholder={t("Describe this step… (paste a screenshot to attach)")} minHeight={44} />
+                          <StormMarkdownEditor value={s} onChange={(md) => updateVdStep(i, md)} onImagePaste={(files) => void attachVdStepImages(i, files)} placeholder={t("Describe this step… (paste a screenshot to attach)")} minHeight={44} />
                         </Suspense>
                       </div>
                       <div style={{ flex: "none", height: 49, display: "flex", alignItems: "center" }}>
@@ -6402,12 +6463,15 @@ export function StormApp() {
                     </div>
                     {imgs.length > 0 && (
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginLeft: 36 }}>
-                        {imgs.map((src, ii) => (
-                          <div key={ii} style={{ position: "relative" }}>
+                        {imgs.map((fileId, ii) => {
+                          const src = `/api/v1/files/${fileId}/download`;
+                          return (
+                          <div key={fileId} style={{ position: "relative" }}>
                             <img src={src} alt={`Step ${i + 1} screenshot ${ii + 1}`} title={t("Click to view")} onClick={() => setState({ lightboxSrc: src })} style={{ height: 78, borderRadius: 9, border: "1px solid var(--st-border-strong)", display: "block", cursor: "zoom-in" }} />
                             <div className="clk" onClick={() => removeVdStepImage(i, ii)} style={{ position: "absolute", top: -7, right: -7, width: 20, height: 20, borderRadius: "50%", background: "var(--st-danger)", color: "var(--st-on-accent)", display: "flex", alignItems: "center", justifyContent: "center", font: "700 13px Inter,sans-serif", lineHeight: 1, cursor: "pointer", border: "2px solid var(--st-surface)" }}>×</div>
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -6650,7 +6714,8 @@ export function StormApp() {
             <StormMarkdownEditor
               value={state.noteForm.excerpt}
               onChange={(md) => updateNoteForm("excerpt", md)}
-              placeholder={t("Write your note… «### » makes a heading, «- » a list")}
+              onImagePaste={(files) => void attachNoteImages(files)}
+              placeholder={t("Write your note… «### » makes a heading, «- » a list (paste a screenshot to insert it)")}
             />
           </Suspense>
         </div>

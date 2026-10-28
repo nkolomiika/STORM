@@ -117,7 +117,8 @@ export interface Vuln {
   /** ISO creation timestamp — drives the cumulative Overview sparkline. */
   created?: string;
   steps?: string[];
-  stepImages?: Record<number, string[]>;
+  /** Per-step screenshot file ids (uploaded vulnerability files), keyed by step index. */
+  stepImages?: Record<number, number[]>;
   description?: string;
   impact?: string;
   remediation?: string;

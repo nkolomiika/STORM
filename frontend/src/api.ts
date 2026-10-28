@@ -1137,6 +1137,20 @@ export async function deleteVulnerabilityFile(projectId: number, vulnerabilityId
   await api.delete(`/projects/${projectId}/vulnerabilities/${vulnerabilityId}/files/${fileId}`);
 }
 
+/** Uploads an inline image (pasted into a note / markdown field) and returns the
+ *  served URL to embed as `![alt](url)`. Backed by POST /projects/{id}/images. */
+export async function uploadProjectImage(projectId: number, file: File): Promise<{ url: string }> {
+  if (!file) {
+    throw new Error("Select an image");
+  }
+  const formData = new FormData();
+  formData.append("file", file);
+  const { data } = await api.post<{ url: string }>(`/projects/${projectId}/images`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+}
+
 export async function listVulnerabilityComments(projectId: number, vulnerabilityId: number): Promise<PaginatedResponse<VulnerabilityComment>> {
   const { data } = await api.get<PaginatedResponse<VulnerabilityComment>>(`/projects/${projectId}/vulnerabilities/${vulnerabilityId}/comments`, {
     params: { page: 1, size: 100 },
