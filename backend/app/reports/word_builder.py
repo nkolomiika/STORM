@@ -80,11 +80,17 @@ def _heading_size_pt_for_level(level: int | None) -> float | None:
         return HEADING_FONT_SIZE_PT[max(HEADING_FONT_SIZE_PT)]
     return None
 
-# Что НЕ попадает в детальный раздел «Информация по выявленным уязвимостям»:
-# info-находки и «проверки» (unrealized, нереализуемые). Они идут в раздел
-# слабостей, а в раздел «Тесты» (4.4) попадают ВСЕ находки целиком. Таким образом
-# детальный раздел уязвимостей содержит только реализуемое (critical/high/medium/low).
-WEAKNESS_SEVERITIES: set[Severity] = {Severity.INFO, Severity.UNREALIZED}
+# Раскладка находок по разделам отчёта:
+#   • «Информация по выявленным уязвимостям» — только реализуемое
+#     (critical/high/medium/low);
+#   • «Информация по выявленным слабостям» — info-находки (слабости/недостатки);
+#   • «проверки» (unrealized, нереализуемые) НЕ попадают ни в уязвимости, ни в
+#     слабости — они показываются ТОЛЬКО в разделе «Тесты» (4.4) с выводом, что
+#     сценарий не может быть реализован;
+#   • в раздел «Тесты» (4.4) попадают ВСЕ находки целиком.
+WEAKNESS_SEVERITIES: set[Severity] = {Severity.INFO}
+# Находки-«проверки»: только в разделе «Тесты», с выводом о нереализуемости.
+UNREALIZED_SEVERITIES: set[Severity] = {Severity.UNREALIZED}
 
 # Маппинг кодов CVSS 4.0 в человекочитаемые значения.
 CVSS4_METRIC_LABELS: dict[str, dict[str, str]] = {
@@ -1558,15 +1564,22 @@ def _remove_block(elements: list) -> None:
             parent.remove(element)
 
 
-def _split_vulnerabilities(vulnerabilities: list[Vulnerability]) -> tuple[list[Vulnerability], list[Vulnerability]]:
+def _split_vulnerabilities(
+    vulnerabilities: list[Vulnerability],
+) -> tuple[list[Vulnerability], list[Vulnerability], list[Vulnerability]]:
+    """Делит находки на три корзины: уязвимости (реализуемые), слабости (info) и
+    «проверки» (unrealized). Последние идут ТОЛЬКО в раздел «Тесты»."""
     vulns: list[Vulnerability] = []
     weaknesses: list[Vulnerability] = []
+    unrealized: list[Vulnerability] = []
     for vuln in vulnerabilities:
-        if vuln.severity in WEAKNESS_SEVERITIES:
+        if vuln.severity in UNREALIZED_SEVERITIES:
+            unrealized.append(vuln)
+        elif vuln.severity in WEAKNESS_SEVERITIES:
             weaknesses.append(vuln)
         else:
             vulns.append(vuln)
-    return vulns, weaknesses
+    return vulns, weaknesses, unrealized
 
 
 def _strip_run_highlight(run: Run) -> None:
@@ -1700,6 +1713,52 @@ def _fill_credentials_table(doc: DocxDocument, credentials: list[dict]) -> None:
         target.rows[prev_idx]._tr.addnext(new_tr)
         prev_idx += 1
         _fill_row(target.rows[prev_idx], cred)
+
+
+def _distrib_version(project: Project) -> str:
+    """Версия дистрибутива из поля затронутой версии проекта (`appsec_version_name`).
+
+    Значения приходят в формате «Platform V PRODUCT 1.1» — нас интересует только
+    номер версии в конце. Разбиваем по пробелам и берём последний токен
+    («1.1»). Пусто/нет данных → "" (плейсхолдер в шаблоне не трогаем).
+    """
+    raw = (getattr(project, "appsec_version_name", None) or "").strip()
+    if not raw:
+        return ""
+    return raw.split()[-1]
+
+
+def _update_cover_distrib_version(doc: DocxDocument, project: Project) -> None:
+    """Подставляет версию дистрибутива в «distribVersion: XXX» на обложке (СЗИ).
+
+    Строка лежит в текстовом фрейме (`txbxContent`): «distribVersion», «:», « »,
+    «XXX» — отдельными run-ами. Находим фрейм с «distribVersion» и заменяем «XXX»
+    в первом run-е после слова «distribVersion». Нет версии — не трогаем.
+    """
+    version = _distrib_version(project)
+    if not version:
+        return
+    body = doc.element.body
+    # Обложка может встречаться в нескольких текстовых фреймах (напр. основной
+    # `txbxContent` + VML-дубликат в mc:Fallback). Обрабатываем ВСЕ, а внутри
+    # фрейма — каждую пару «distribVersion … XXX» (не прерываемся на первой).
+    for txbx in body.iter(qn("w:txbxContent")):
+        full_text = "".join(t.text or "" for t in txbx.iter(qn("w:t")))
+        if "distribVersion" not in full_text or "XXX" not in full_text:
+            continue
+        seen_label = False
+        for run_element in txbx.iter(qn("w:r")):
+            run_text = "".join(t.text or "" for t in run_element.iter(qn("w:t")))
+            if not run_text:
+                continue
+            if "distribVersion" in run_text:
+                seen_label = True
+                continue
+            if seen_label and "XXX" in run_text:
+                for text_element in run_element.iter(qn("w:t")):
+                    if text_element.text and "XXX" in text_element.text:
+                        text_element.text = text_element.text.replace("XXX", version)
+                seen_label = False
 
 
 def _update_cover_page(doc: DocxDocument, project: Project) -> None:
@@ -2465,6 +2524,12 @@ def _update_object_under_test(doc: DocxDocument, project: Project, hosts: list[H
             _set_paragraph_text(paragraph, f"Продукт: ПА «{name}»")
             continue
 
+        if normalized.lower().startswith("версия дистрибутива") and "XXX" in raw_text:
+            version = _distrib_version(project)
+            if version:
+                _set_paragraph_text(paragraph, raw_text.replace("XXX", version, 1))
+            continue
+
         if host_labels and normalized.lower().startswith("стенды тестирования"):
             # Вариант 1: всё в одной строке «Стенды тестирования: XXX»: меняем XXX
             # на первый хост, остальные — отдельными параграфами-bullet'ами после.
@@ -2907,10 +2972,17 @@ def _fill_test_card(
     # подписи, в одной строке (а не как отдельный абзац ниже). Поэтому
     # дописываем его run'ом прямо в параграф-подпись и удаляем все
     # автогенерированные контентные параграфы под ним.
-    conclusion_text = (
-        f" Сценарий атаки Test-{sequence} «{title}» может быть использован для реализации "
-        "угроз безопасности информации."
-    )
+    if vuln.severity in UNREALIZED_SEVERITIES:
+        # «Проверка»: нереализуемая находка — вывод о невозможности реализации.
+        conclusion_text = (
+            f" Сценарий атаки Test-{sequence} «{title}» не может быть реализован и "
+            "не приводит к реализации угроз безопасности информации."
+        )
+    else:
+        conclusion_text = (
+            f" Сценарий атаки Test-{sequence} «{title}» может быть использован для реализации "
+            "угроз безопасности информации."
+        )
     conclusion_header = section_headers.get(TEST_CONCLUSION_HEADER)
     if conclusion_header is not None:
         conclusion_run = conclusion_header.add_run(conclusion_text)
@@ -3136,6 +3208,7 @@ def _build_common(
     image_state: dict = {_FIGURE_COUNTER_KEY: 0}
 
     _update_cover_page(doc, project)
+    _update_cover_distrib_version(doc, project)
     _update_cover_date(doc, project)
     _update_project_intro(doc, project)
     _update_task_link(doc, project)
@@ -3151,8 +3224,9 @@ def _build_common(
         severity_counts[vuln.severity] = severity_counts.get(vuln.severity, 0) + 1
     _update_severity_summary_table(doc, severity_counts)
 
-    main_vulns, weakness_vulns = _split_vulnerabilities(vulnerabilities)
-    all_items = main_vulns + weakness_vulns
+    main_vulns, weakness_vulns, unrealized_vulns = _split_vulnerabilities(vulnerabilities)
+    # В раздел «Тесты» (4.4) идут ВСЕ находки, включая нереализуемые «проверки».
+    all_items = main_vulns + weakness_vulns + unrealized_vulns
     _update_findings_summary_text(doc, vulnerability_count=len(main_vulns), weakness_count=len(weakness_vulns))
 
     if kind == "szi":
