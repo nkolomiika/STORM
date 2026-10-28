@@ -840,8 +840,9 @@ class JiraIntegrationService:
         items = []
         for issue in issues:
             item = self._map_task(issue)
-            # Ссылка на задачу — чтобы фронт мог связать тикет с проектом.
-            item["url"] = f"{safe_base_url}{self._api_path(s.jira_browse_path, key=item['key'])}" if item.get("key") else None
+            # Ссылка на задачу — чтобы фронт мог связать тикет с проектом. Это
+            # запрос на АЗ из APPSEC, поэтому берём APPSEC-шаблон (space=APPSEC).
+            item["url"] = f"{safe_base_url}{self._api_path(s.jira_tasks_browse_path, key=item['key'])}" if item.get("key") else None
             items.append(item)
         return {
             "items": items,
@@ -868,7 +869,7 @@ class JiraIntegrationService:
                 "reporter": reporter.get("displayName") if isinstance(reporter, dict) else None,
                 "description": self._adf_to_text(fields_data.get("description")).strip(),
                 "labels": list(fields_data.get("labels") or []),
-                "url": f"{safe_base_url}{self._api_path(get_settings().jira_browse_path, key=detail['key'])}",
+                "url": f"{safe_base_url}{self._api_path(get_settings().jira_tasks_browse_path, key=detail['key'])}",
             }
         )
         return detail
@@ -1008,6 +1009,18 @@ class WorksService:
                     version=version,
                     drafts_info=drafts_info,
                 )
+                # Привязываем созданный STS-тикет к APPSEC-тикету проекта (запросу
+                # на АЗ), если он задан. Best-effort: сбой связи не срывает экспорт.
+                created_key = self._extract_key(response)
+                linked_key = (project.appsec_ticket_key or "").strip()
+                if created_key and linked_key:
+                    try:
+                        await wc.link_units(source=created_key, destination=linked_key)
+                    except WorksError as exc:
+                        logging.getLogger("storm.works").warning(
+                            "Works: не удалось привязать %s к %s: %s",
+                            created_key, linked_key, exc.detail or exc.message,
+                        )
         except WorksError as exc:
             raise ValidationError(exc.message) from exc
 

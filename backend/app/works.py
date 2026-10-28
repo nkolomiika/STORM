@@ -307,6 +307,30 @@ class WorksClient:
         except ValueError:
             return {"raw": resp.text}
 
+    async def link_units(
+        self, *, source: str, destination: str, link_type: str | None = None
+    ) -> dict[str, Any]:
+        """Создаёт связь между юнитами Works.
+
+        POST {works_link_path} с телом {"source", "destination", "type"}. Применяется
+        для привязки созданного STS-тикета (bug_appsec) к APPSEC-тикету проекта
+        (запросу на АЗ). Возвращает JSON ответа Works.
+        """
+        payload = {
+            "source": source,
+            "destination": destination,
+            "type": link_type or settings.works_link_type,
+        }
+        try:
+            resp = await self._client.post(self._url(settings.works_link_path), json=payload)
+        except httpx.HTTPError as exc:  # noqa: BLE001
+            raise WorksError("Не удалось создать связь тикетов в Works.", str(exc)) from exc
+        self._raise_for_status(resp, "link")
+        try:
+            return resp.json()
+        except ValueError:
+            return {"raw": resp.text}
+
 
 def works_issue_url(key: str) -> str:
     """Ссылка на тикет Works в UI."""

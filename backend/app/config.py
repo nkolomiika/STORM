@@ -126,8 +126,9 @@ class Settings(BaseSettings):
     jira_default_issue_type: str = "Task"
     # Все задачи создаются в этом Jira-проекте (напр. "SEC").
     jira_default_project_key: str = ""
-    # Раздел «Tasks» — read-only витрина задач этого Jira-проекта (пробел «STS»).
-    jira_tasks_project_key: str = "STS"
+    # Раздел «Tasks» — read-only витрина запросов на АЗ из пространства APPSEC
+    # (их мы привязываем к проекту; уязвимости же пушатся в STS, см. Works ниже).
+    jira_tasks_project_key: str = "APPSEC"
     jira_enabled: bool = True
     # Дата начала = сегодня, срок выполнения = сегодня + jira_due_in_days.
     # ID поля «Дата начала» специфичен для сайта (кастомное поле); пусто = не проставлять.
@@ -144,9 +145,12 @@ class Settings(BaseSettings):
     jira_search_method: str = "GET"  # GET (Cloud /search/jql) | POST (классический /search)
     jira_issue_path: str = "/rest/api/{version}/issue/{key}"
     jira_create_issue_path: str = "/rest/api/{version}/issue"
-    # Человекочитаемая ссылка на задачу в Task Tracker (Works, пространство STS).
+    # Человекочитаемая ссылка на созданную через экспорт задачу (Works, STS).
     # base = jira_base_url (напр. https://portal.works.prod.sbt).
     jira_browse_path: str = "/swtr/units/current/unit/{key}?space=STS&tenant=default"
+    # Ссылка на задачу РАЗДЕЛА «Tasks» — это запрос на АЗ из пространства APPSEC;
+    # используется как appsec_ticket_url проекта (идёт в отчёт «по задаче …»).
+    jira_tasks_browse_path: str = "/swtr/units/current/unit/{key}?space=APPSEC&tenant=default"
 
     # --- Works (sbertrack) — экспорт устранения уязвимостей в пространство STS,
     # suit bug_appsec. Аутентификация как в qg-sa: Bearer-токен сервисной учётки +
@@ -165,6 +169,10 @@ class Settings(BaseSettings):
     works_timeout_seconds: float = 30.0
     # Пути (без base — он из works_base_url).
     works_create_path: str = "/rest/api/unit/v2/bug_appsec/create"
+    # Создание связи между юнитами (привязка STS bug_appsec к APPSEC-тикету проекта).
+    # Тело: {"source": "<ключ-источник>", "destination": "<ключ-назначение>", "type": "<тип>"}.
+    works_link_path: str = "/rest/api/unit/v1/link"
+    works_link_type: str = "plain_connection"
     works_upload_path: str = "/rest/api/draft/files/v1/upload"
     works_component_find_path: str = "/extension/plugin/v2/rest/api/sber_components_plugin/v1/component/find"
     works_version_find_path: str = "/extension/plugin/v2/rest/api/swtr_task_tracker_plugin/v1/version/find"

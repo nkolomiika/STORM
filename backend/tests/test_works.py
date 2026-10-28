@@ -212,3 +212,63 @@ def test_works_configured_true_when_all_set(monkeypatch) -> None:
     monkeypatch.setattr(s, "works_api_token", "service-token")
     monkeypatch.setattr(s, "works_base_url", "https://portal.works.prod.sbt/swtr")
     assert s.works_configured is True
+
+
+# ---------- link_units (привязка STS-тикета к APPSEC-тикету проекта) ----------
+
+@pytest.mark.asyncio
+async def test_link_units_posts_source_destination_type(monkeypatch) -> None:
+    """link_units бьёт в works_link_path телом {source, destination, type}."""
+    import json as _json
+
+    import httpx
+
+    from app.works import WorksClient
+
+    captured: dict = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["url"] = str(request.url)
+        captured["json"] = _json.loads(request.content)
+        return httpx.Response(200, json={"ok": True})
+
+    # Обходим __init__ (он требует works_configured и реальных настроек) — нам
+    # нужен только _client с мок-транспортом и _base.
+    wc = WorksClient.__new__(WorksClient)
+    wc._base = "https://portal.works.prod.sbt/swtr"
+    wc._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    try:
+        result = await wc.link_units(source="STS-594003", destination="APPSEC-10744")
+    finally:
+        await wc._client.aclose()
+
+    assert result == {"ok": True}
+    assert captured["url"].endswith("/rest/api/unit/v1/link")
+    assert captured["json"] == {
+        "source": "STS-594003",
+        "destination": "APPSEC-10744",
+        "type": "plain_connection",
+    }
+
+
+@pytest.mark.asyncio
+async def test_link_units_custom_type_overrides_default() -> None:
+    import httpx
+
+    from app.works import WorksClient
+
+    captured: dict = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        import json as _json
+        captured["json"] = _json.loads(request.content)
+        return httpx.Response(200, json={})
+
+    wc = WorksClient.__new__(WorksClient)
+    wc._base = "https://works/swtr"
+    wc._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    try:
+        await wc.link_units(source="A-1", destination="B-2", link_type="blocks")
+    finally:
+        await wc._client.aclose()
+    assert captured["json"]["type"] == "blocks"

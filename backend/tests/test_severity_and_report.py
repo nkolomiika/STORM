@@ -12,7 +12,9 @@ import pytest
 from app.enums import Severity
 from app.reports.word_builder import (
     SEVERITY_RU,
+    UNREALIZED_SEVERITIES,
     WEAKNESS_SEVERITIES,
+    _distrib_version,
     _split_vulnerabilities,
     severity_label,
 )
@@ -52,10 +54,13 @@ def test_no_cvss_is_unrealized_not_info():
 # ---------- _split_vulnerabilities / WEAKNESS_SEVERITIES ----------
 
 def test_weakness_severities_set():
-    assert WEAKNESS_SEVERITIES == {Severity.INFO, Severity.UNREALIZED}
+    # Слабости — только info; «проверки» (unrealized) выделены в отдельную корзину
+    # и показываются ТОЛЬКО в разделе «Тесты».
+    assert WEAKNESS_SEVERITIES == {Severity.INFO}
+    assert UNREALIZED_SEVERITIES == {Severity.UNREALIZED}
 
 
-def test_split_realizable_vs_weakness():
+def test_split_realizable_vs_weakness_vs_unrealized():
     # Только .severity используется — хватает лёгких заглушек.
     items = [
         SimpleNamespace(severity=Severity.CRITICAL),
@@ -65,26 +70,50 @@ def test_split_realizable_vs_weakness():
         SimpleNamespace(severity=Severity.INFO),
         SimpleNamespace(severity=Severity.UNREALIZED),
     ]
-    main, weaknesses = _split_vulnerabilities(items)
+    main, weaknesses, unrealized = _split_vulnerabilities(items)
     main_sev = {v.severity for v in main}
     weak_sev = {v.severity for v in weaknesses}
+    unreal_sev = {v.severity for v in unrealized}
     # Детальный раздел уязвимостей: только реализуемое, без info и unrealized.
     assert main_sev == {Severity.CRITICAL, Severity.HIGH, Severity.MEDIUM, Severity.LOW}
     assert Severity.INFO not in main_sev
     assert Severity.UNREALIZED not in main_sev
-    # В слабости уходят info + unrealized.
-    assert weak_sev == {Severity.INFO, Severity.UNREALIZED}
+    # Слабости — только info; unrealized сюда НЕ попадает.
+    assert weak_sev == {Severity.INFO}
+    assert Severity.UNREALIZED not in weak_sev
+    # «Проверки» — отдельная корзина (только для раздела «Тесты»).
+    assert unreal_sev == {Severity.UNREALIZED}
 
 
 def test_split_empty():
-    assert _split_vulnerabilities([]) == ([], [])
+    assert _split_vulnerabilities([]) == ([], [], [])
 
 
-def test_split_all_weakness():
+def test_split_weakness_and_unrealized_separated():
     items = [SimpleNamespace(severity=Severity.UNREALIZED), SimpleNamespace(severity=Severity.INFO)]
-    main, weaknesses = _split_vulnerabilities(items)
+    main, weaknesses, unrealized = _split_vulnerabilities(items)
     assert main == []
-    assert len(weaknesses) == 2
+    assert [v.severity for v in weaknesses] == [Severity.INFO]
+    assert [v.severity for v in unrealized] == [Severity.UNREALIZED]
+
+
+# ---------- _distrib_version (парсинг версии дистрибутива) ----------
+
+@pytest.mark.parametrize(
+    "affected,expected",
+    [
+        ("Platform V PRODUCT 1.1", "1.1"),        # основной формат: берём последний токен
+        ("Platform V Stack 1.0.2-beta2", "1.0.2-beta2"),
+        ("2.3.4", "2.3.4"),                        # уже только версия
+        ("  Platform V X 9.9  ", "9.9"),           # обрезаем пробелы по краям
+        (None, ""),                                # нет данных → пусто (плейсхолдер не трогаем)
+        ("", ""),
+        ("   ", ""),
+    ],
+)
+def test_distrib_version(affected, expected):
+    project = SimpleNamespace(appsec_version_name=affected)
+    assert _distrib_version(project) == expected
 
 
 # ---------- severity_label / SEVERITY_RU ----------

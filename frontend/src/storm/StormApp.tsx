@@ -7430,25 +7430,26 @@ export function StormApp() {
                 </div>
               )}
 
-              <div style={{ marginTop: 16, minHeight: 40 }}>
-                {state.jiraExportChecking ? (
-                  <div style={{ font: "600 13px Inter,sans-serif", color: "var(--st-text-3)" }}>{t("Checking status…")}</div>
-                ) : isLinked ? (
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, border: "1px solid var(--st-success-soft)", background: "var(--st-success-soft)", borderRadius: 12, padding: "13px 15px" }}>
-                    <Icon name="check-circle" size={18} color="var(--st-success)" sw={2.2} />
-                    <div style={{ font: "600 13.5px Inter,sans-serif", color: "var(--st-text)" }}>
-                      {t("Already exported:")}{" "}
-                      <a href={link!.jira_issue_url} target="_blank" rel="noreferrer" style={{ color: "var(--st-accent)", fontWeight: 700 }}>{link!.jira_issue_key}</a>
+              {/* Статус-блок рендерим ТОЛЬКО когда есть что показать (проверка /
+                  уже экспортировано / ошибка). Иначе — без пустого зарезервированного
+                  пространства: карточка находки идёт сразу к кнопкам. */}
+              {(state.jiraExportChecking || isLinked || state.jiraExportError) && (
+                <div style={{ marginTop: 16 }}>
+                  {state.jiraExportChecking ? (
+                    <div style={{ font: "600 13px Inter,sans-serif", color: "var(--st-text-3)" }}>{t("Checking status…")}</div>
+                  ) : isLinked ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, border: "1px solid var(--st-success-soft)", background: "var(--st-success-soft)", borderRadius: 12, padding: "13px 15px" }}>
+                      <Icon name="check-circle" size={18} color="var(--st-success)" sw={2.2} />
+                      <div style={{ font: "600 13.5px Inter,sans-serif", color: "var(--st-text)" }}>
+                        {t("Already exported:")}{" "}
+                        <a href={link!.jira_issue_url} target="_blank" rel="noreferrer" style={{ color: "var(--st-accent)", fontWeight: 700 }}>{link!.jira_issue_key}</a>
+                      </div>
                     </div>
-                  </div>
-                ) : (
-                  <div style={{ font: "600 13px Inter,sans-serif", color: "var(--st-text-2)", lineHeight: 1.5 }}>
-                    {state.jiraExportError && (
-                      <div style={{ marginTop: 10, color: "var(--st-danger)", font: "600 12.5px Inter,sans-serif" }}>{state.jiraExportError}</div>
-                    )}
-                  </div>
-                )}
-              </div>
+                  ) : (
+                    <div style={{ color: "var(--st-danger)", font: "600 12.5px Inter,sans-serif" }}>{state.jiraExportError}</div>
+                  )}
+                </div>
+              )}
 
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 22 }}>
                 {isLinked ? (
