@@ -6,6 +6,7 @@ import {
   lazy,
   Suspense,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ChangeEvent,
@@ -19,6 +20,11 @@ import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 import "./storm.css";
 import { Icon, SberMark } from "./icons";
+import { imageTitleSize } from "./imageSize";
+import { EndpointDiscussion } from "./EndpointDiscussion";
+import { buildHostIndex } from "./hostIndex";
+import { SwaggerEndpointImport } from "./SwaggerEndpointImport";
+import { ENDPOINT_METHODS } from "./swaggerEndpoints";
 
 /* TipTap/ProseMirror is ~460 kB — more than the rest of the app put together, and
    only the note editor needs it. Loading it on demand keeps that weight off every
@@ -54,9 +60,11 @@ import {
   deleteUser as apiDeleteUser,
   reactivateUser as apiReactivateUser,
   getHosts as apiGetHosts,
+  getHostCreationTimes as apiGetHostCreationTimes,
   getHiddenIps as apiGetHiddenIps,
   hideIp as apiHideIp,
   getHost as apiGetHost,
+  createHost as apiCreateHost,
   updateHost as apiUpdateHost,
   deleteHost as apiDeleteHost,
   startHostFarm as apiStartHostFarm,
@@ -66,12 +74,12 @@ import {
   startJsScan as apiStartJsScan,
   getJsScanJob as apiGetJsScanJob,
   getJsFilesPage as apiGetJsFilesPage,
-  bulkDeleteJsFiles as apiBulkDeleteJsFiles,
   deleteJsFilesForHost as apiDeleteJsFilesForHost,
   downloadJsArchive as apiDownloadJsArchive,
   createEndpoint as apiCreateEndpoint,
   getEndpoints as apiGetEndpoints,
   deleteEndpoint as apiDeleteEndpoint,
+  updateEndpoint as apiUpdateEndpoint,
   getProjectMembers as apiGetProjectMembers,
   addProjectMember as apiAddProjectMember,
   removeProjectMember as apiRemoveProjectMember,
@@ -142,7 +150,6 @@ import type {
 } from "../types";
 import {
   type ApiKey,
-  type CfState,
   type Cred,
   type Endpoint,
   type Host,
@@ -191,7 +198,7 @@ import {
 const getApiErrorMessage = (error: unknown, fallback: string): string =>
   t(rawGetApiErrorMessage(error, fallback));
 
-type NavId = "projects" | "tasks" | "mine" | "docs" | "members";
+type NavId = "projects" | "tasks" | "docs" | "members";
 type ViewId = "list" | "detail" | "profile" | "workspaceMembers";
 type SectionId = "overview" | "hosts" | "vulns" | "notes" | "creds" | "members" | "activity";
 type ReconView = "hosts" | "ips" | "endpoints" | "js";
@@ -284,13 +291,11 @@ interface StormState {
   epImportRaw: string;
   epImportPreview: string;
   epImportBusy: boolean;
+  epImportSwaggerHosts: string[];
   /** Hosts filter pills (multi-select, empty = all): "up" | "down" | HTTP code. */
   hostFilters: string[];
   /** Same status filter, for the IPs view. */
   ipFilters: string[];
-  /** Cloudflare filter: "" = all, "yes" = behind CF, "no" = not. Separate per view. */
-  ipCfFilter: "" | "yes" | "no";
-  hostCfFilter: "" | "yes" | "no";
   /** The running/finished probe job being polled, or null when idle. */
   hostFarmJob: ApiHostFarmJob | null;
   ipFarmJob: ApiIpFarmJob | null;
@@ -347,14 +352,18 @@ interface StormState {
   noteEditorOpen: boolean;
   noteEditorMode: "add" | "edit";
   noteEditorIndex: number;
+  noteEditorId: number | null;
+  noteSaving: boolean;
   noteForm: NoteForm;
+  noteFormOriginal: Pick<NoteForm, "title" | "excerpt">;
   epOpen: boolean;
   epData: { method: Method; path: string; host: string; hostId: number; endpointId: number };
   /** Raw request being edited — saved to the endpoint (request_raw). */
   epRequest: string;
+  epRequestOriginal: string;
+  epLoading: boolean;
   /* The response is a scratchpad: there is no column for it on the backend, so it
      is deliberately not saved — it exists to be tweaked and copied out. */
-  epResponse: string;
   epSaving: boolean;
   exportModalOpen: boolean;
   /** Backend report template: "szi" = certification, "pp" = internal acceptance. */
@@ -527,8 +536,6 @@ const initialState: StormState = {
   hostsTick: 0,
   hiddenIps: [],
   hostImportOpen: false,
-  ipCfFilter: "",
-  hostCfFilter: "",
   ipImportOpen: false,
   ipImportRaw: "",
   ipImportPreview: "",
@@ -537,6 +544,7 @@ const initialState: StormState = {
   epImportRaw: "",
   epImportPreview: "",
   epImportBusy: false,
+  epImportSwaggerHosts: [],
   ipFarmJob: null,
   jsFarmJob: null,
   apiJsFiles: null,
@@ -582,11 +590,15 @@ const initialState: StormState = {
   noteEditorOpen: false,
   noteEditorMode: "add",
   noteEditorIndex: -1,
+  noteEditorId: null,
+  noteSaving: false,
   noteForm: { title: "", excerpt: "", author: "" },
+  noteFormOriginal: { title: "", excerpt: "" },
   epOpen: false,
   epData: { method: "GET", path: "", host: "", hostId: 0, endpointId: 0 },
   epRequest: "",
-  epResponse: "",
+  epRequestOriginal: "",
+  epLoading: false,
   epSaving: false,
   exportModalOpen: false,
   exportKind: "szi",
@@ -918,7 +930,7 @@ function pathFor(s: {
   }
   // Открытая задача Jira — последний сегмент, карточка deep-linkable (/tasks/STS-123).
   if (s.nav === "tasks") return s.tasksOpenKey ? `/tasks/${encodeURIComponent(s.tasksOpenKey)}` : "/tasks";
-  return ({ projects: "/projects", tasks: "/tasks", mine: "/my-tasks", docs: "/docs", members: "/members" } as Record<NavId, string>)[s.nav] || "/projects";
+  return ({ projects: "/projects", tasks: "/tasks", docs: "/docs", members: "/members" } as Record<NavId, string>)[s.nav] || "/projects";
 }
 
 /** Parse a URL path back into the navigation-state fields it encodes. */
@@ -964,7 +976,7 @@ function navStateFromPath(path: string): Partial<StormState> {
     return { ...base, section: "overview" };
   }
   if (head === "tasks") return { view: "list", nav: "tasks", tasksOpenKey: parts[1] ? decodeURIComponent(parts[1]) : null };
-  if (head === "my-tasks") return { view: "list", nav: "mine" };
+  if (head === "my-tasks") return { view: "list", nav: "projects" };
   if (head === "docs") return { view: "list", nav: "docs" };
   if (head === "members") return { view: "workspaceMembers", nav: "members" };
   if (head === "profile") return { view: "profile", profileTab: ["security", "api", "customizing"].includes(parts[1]) ? (parts[1] as ProfileTab) : "account" };
@@ -1019,7 +1031,7 @@ function mdInline(text: string, kb: string): ReactNode[] {
   let rest = text;
   let key = 0;
   // Image (`![alt](src)`) must come first so it wins over the link rule below.
-  const re = /(!\[([^\]]*)\]\(([^)\s]+)\)|\*\*([^*]+)\*\*|\*([^*]+)\*|`([^`]+)`|\[([^\]]+)\]\(([^)]+)\))/;
+  const re = /(!\[([^\]]*)\]\(([^)\s]+)(?:\s+"(?:\\.|[^"\\])*")?\)|\*\*([^*]+)\*\*|\*([^*]+)\*|`([^`]+)`|\[([^\]]+)\]\(([^)]+)\))/;
   let m: RegExpExecArray | null;
   while ((m = re.exec(rest))) {
     if (m.index > 0) nodes.push(rest.slice(0, m.index));
@@ -1027,10 +1039,11 @@ function mdInline(text: string, kb: string): ReactNode[] {
       // Image: sanitise the URL the same way the Markdown viewer does (allows
       // data:image and same-origin/http, drops javascript: and other schemes).
       const safe = markdownUrlTransform(m[3]);
+      const metadata = imageTitleSize(/\s+"((?:\\.|[^"\\])*)"\)$/.exec(m[0])?.[1]?.replace(/\\"/g, '"'));
       if (safe)
         nodes.push(
           <a key={`${kb}-${key++}`} href={safe} target="_blank" rel="noopener noreferrer" style={{ display: "block", margin: "6px 0" }}>
-            <img src={safe} alt={m[2] || ""} style={{ maxWidth: "100%", borderRadius: 8, border: "1px solid var(--st-border)", cursor: "zoom-in", display: "block" }} />
+            <img src={safe} alt={m[2] || ""} width={metadata.width ?? undefined} title={metadata.title || undefined} style={{ height: "auto", maxWidth: "100%", borderRadius: 8, border: "1px solid var(--st-border)", cursor: "zoom-in", display: "block" }} />
           </a>
         );
     } else if (m[4] != null) nodes.push(<strong key={`${kb}-${key++}`}>{m[4]}</strong>);
@@ -1193,9 +1206,9 @@ function sparkArea(points: string, w: number, h = 30): string {
    locally rather than reaching outside this module. */
 type ApiPortWithServices = ApiPort & { services?: ApiService[] };
 
-const STORM_METHODS: Method[] = ["GET", "POST", "PUT", "PATCH", "DELETE"];
+const STORM_METHODS: Method[] = [...ENDPOINT_METHODS];
 
-/** The API also emits HEAD/OPTIONS/null, which Storm's `Method` union has no pill for. */
+/** Сохраняем HTTP-метод без подмены HEAD/OPTIONS/TRACE/QUERY на GET. */
 function toStormMethod(m: ApiEndpoint["method"]): Method {
   return m && (STORM_METHODS as string[]).includes(m) ? (m as Method) : "GET";
 }
@@ -1220,19 +1233,6 @@ function toStormPorts(h: ApiHost): Host["ports"] {
     }));
 }
 
-/** Host-level CF from its addresses (tri-state): any CF → true; all confirmed-not → false;
- *  otherwise (no addresses / any still unknown) → null. A still-probing host has no
- *  addresses yet, so it reads as unknown rather than "not CF". */
-function hostCf(addrs: { is_cloudflare: boolean | null }[]): CfState {
-  if (addrs.some((a) => a.is_cloudflare === true)) return true;
-  if (addrs.length > 0 && addrs.every((a) => a.is_cloudflare === false)) return false;
-  return null;
-}
-
-/** Merge two CF tri-states: any true → true; else any false → false; else unknown. */
-const mergeCf = (a: CfState, b: CfState): CfState =>
-  a === true || b === true ? true : a === false || b === false ? false : null;
-
 function toStormHost(h: ApiHost, endpoints: Endpoint[] = []): Host {
   return {
     id: h.id,
@@ -1242,12 +1242,8 @@ function toStormHost(h: ApiHost, endpoints: Endpoint[] = []): Host {
     ipEntries: h.ip_addresses.map((a) => ({
       ip: a.ip_address,
       hostnames: a.hostnames ?? [],
-      cloudflare: a.is_cloudflare ?? null,
     })),
     origin: h.origin === "ip" ? "ip" : "host",
-    // Derived, not stored: a host-level column in the DB would need invalidating
-    // on every address add/remove, and every address already carries the flag.
-    cloudflare: hostCf(h.ip_addresses),
     status: h.status,
     ports: toStormPorts(h),
     endpoints,
@@ -1374,6 +1370,7 @@ const ACT_NOUN: Record<string, [string, string]> = {
   project: ["project", "projects"],
   project_member: ["member", "members"],
   member: ["member", "members"],
+  js_farm: ["JS scan", "JS scans"],
   comment: ["comment", "comments"],
   note_comment: ["comment", "comments"],
 };
@@ -1429,6 +1426,10 @@ function activityLine(a: ProjectActivityItem, resolve: ActivityResolver): Activi
       const host = actDetail(a, "host");
       return { ...base, text: host ? `${who} for ${host}` : who };
     }
+    case "js_farm": {
+      const targets = Array.isArray(a.details?.targets) ? a.details.targets.filter((value): value is string => typeof value === "string") : [];
+      return { ...base, text: targets.length ? targets.join(", ") : `${t("JS scan")} · ${actDetail(a, "domains_scanned") || actDetail(a, "targets_total") || "0"} ${t("hosts")}` };
+    }
     case "project":
       return { ...base, text: actDetail(a, "project") || a.title || fallback };
     case "project_member":
@@ -1462,7 +1463,8 @@ function groupActivity(items: ProjectActivityItem[], resolve: ActivityResolver =
       : ACT_TONE.info;
     // Findings are "reported"; everything else is added / updated / removed.
     const verb =
-      first.action === "CREATE" ? (type === "vulnerability" ? "reported" : "added")
+      first.action === "START" ? "started"
+      : first.action === "CREATE" ? (type === "vulnerability" ? "reported" : type === "js_farm" ? "completed" : "added")
       : first.action === "UPDATE" ? "updated"
       : first.action === "DELETE" ? "removed"
       : first.action.toLowerCase().replace(/_/g, " ");
@@ -1475,7 +1477,7 @@ function groupActivity(items: ProjectActivityItem[], resolve: ActivityResolver =
       time: relTime(first.created_at),
       lines: bucket.map((a) => activityLine(a, resolve)),
       // Findings are standalone, so the card carries exactly one finding to link to.
-      vulnId: type === "vulnerability" ? first.entity_id : null,
+      vulnId: type === "vulnerability" && first.action !== "DELETE" && first.url ? first.entity_id : null,
     });
     bucket = [];
   };
@@ -1507,6 +1509,12 @@ function elapsedPct(startISO: string, endISO: string): number {
 
 export function StormApp() {
   const [state, setStateRaw] = useState<StormState>(initialState);
+  const [vulnerabilityRows, setVulnerabilityRows] = useState<ApiVulnerability[] | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<(() => Promise<void>) | null>(null);
+  const [pendingDeleteLabel, setPendingDeleteLabel] = useState<string | null>(null);
+  const endpointRequestVersion = useRef(0);
+  const noteEditorVersion = useRef(0);
+  const [deletingEndpointHosts, setDeletingEndpointHosts] = useState<number[]>([]);
   const setState = (patch: Partial<StormState> | ((s: StormState) => Partial<StormState>)) =>
     setStateRaw((prev) => ({ ...prev, ...(typeof patch === "function" ? patch(prev) : patch) }));
   const toggle = (k: keyof StormState) => setStateRaw((s) => ({ ...s, [k]: !s[k] }));
@@ -1698,11 +1706,11 @@ export function StormApp() {
           batch.map(async (r) => {
             // Best-effort per project: a 403/404 on one project must not blank the
             // whole card — that project simply contributes no points.
-            const [hostsRes, vulnsRes] = await Promise.all([
-              apiGetHosts(r.id).catch(() => null),
+            const [hostTimes, vulnsRes] = await Promise.all([
+              apiGetHostCreationTimes(r.id).catch(() => [] as string[]),
               apiGetVulnerabilities(r.id).catch(() => null),
             ]);
-            const hosts = (hostsRes?.items ?? []).map((h) => h.created_at);
+            const hosts = hostTimes;
             const openVulns = (vulnsRes?.items ?? [])
               .filter((v) => (VSTATUS_OPEN as readonly string[]).includes(v.status))
               .map((v) => v.created_at);
@@ -1976,12 +1984,12 @@ export function StormApp() {
 
   /** Hosts rendered by the whole Recon section. Backend-only — never the seed. */
   const hosts: Host[] = state.apiHosts ?? [];
-  const hostNameById = (id: number) => hosts.find((h) => h.id === id)?.host ?? "";
+  const hostIndex = useMemo(() => buildHostIndex(hosts), [hosts]);
   /* Subdomains are not a stored field — they are simply the project's other hosts
      that live under this one's name (www.acme.com under acme.com). Derived here so
      the tree reflects the real host list instead of a parallel, hand-kept one. */
   const subdomainsOf = (host: Host): Host[] =>
-    hosts.filter((h) => h.id !== host.id && h.host.toLowerCase().endsWith(`.${host.host.toLowerCase()}`));
+    hostIndex.descendants.get(host.id) ?? [];
 
   // ================= members: load from backend =================
   const reloadMembers = () => setStateRaw((s) => ({ ...s, membersTick: s.membersTick + 1 }));
@@ -2012,14 +2020,13 @@ export function StormApp() {
   }, [state.openProjectId, state.membersTick]);
 
   // ================= vulnerabilities: load from backend =================
-  /* The list endpoint does not say which host a finding is on — that lives in its
-     asset links — so the affected host is resolved per finding against the
-     project's already-loaded hosts. The author's name, by contrast, ships with
-     the payload (`created_by_username`), because /users is admin-only. */
+  // Host links arrive with the page. A host refresh only updates names locally;
+  // it must not reload the finding list or fan out one HTTP request per row.
   const reloadVulns = () => setStateRaw((s) => ({ ...s, vulnsTick: s.vulnsTick + 1 }));
   useEffect(() => {
     const pid = state.openProjectId;
     if (pid == null) {
+      setVulnerabilityRows(null);
       setStateRaw((s) => (s.apiVulns === null ? s : { ...s, apiVulns: null }));
       return;
     }
@@ -2027,22 +2034,10 @@ export function StormApp() {
     void (async () => {
       try {
         const res = await apiGetVulnerabilities(pid);
-        const rows = await Promise.all(
-          res.items.map(async (v) => {
-            let hostName = "";
-            try {
-              const det = await apiGetVulnerability(pid, v.id);
-              const link = det.assets.find((a) => a.asset_type === "host");
-              if (link) hostName = hostNameById(link.asset_id);
-            } catch {
-              /* best-effort: a finding without a resolvable host still lists */
-            }
-            return toStormVuln(v, hostName);
-          })
-        );
-        if (!cancelled) setStateRaw((s) => ({ ...s, apiVulns: rows }));
+        if (!cancelled) setVulnerabilityRows(res.items);
       } catch (e) {
         if (!cancelled) {
+          setVulnerabilityRows([]);
           setStateRaw((s) => ({ ...s, apiVulns: [] }));
           handleProjectError(e, "Couldn't load vulnerabilities");
         }
@@ -2052,7 +2047,16 @@ export function StormApp() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.openProjectId, state.vulnsTick, state.apiHosts]);
+  }, [state.openProjectId, state.vulnsTick]);
+
+  useEffect(() => {
+    if (vulnerabilityRows === null) return;
+    const hostNames = new Map((state.apiHosts ?? []).map((host) => [host.id, host.host]));
+    const rows = vulnerabilityRows
+      .filter((v) => v.project_id === state.openProjectId)
+      .map((v) => toStormVuln(v, v.affected_host_id == null ? "" : hostNames.get(v.affected_host_id) ?? ""));
+    setStateRaw((s) => ({ ...s, apiVulns: rows }));
+  }, [vulnerabilityRows, state.apiHosts, state.openProjectId]);
 
   // ================= notes: load from backend =================
   const reloadNotes = () => setStateRaw((s) => ({ ...s, notesTick: s.notesTick + 1 }));
@@ -2227,6 +2231,7 @@ export function StormApp() {
      Whoever changed first wins; the other side stands down for that one run. */
   const adoptingUrlRef = useRef(false);
   useEffect(() => {
+    if (location.pathname === "/my-tasks") { navigate("/projects", { replace: true }); return; }
     const patch = navStateFromPath(location.pathname);
     const keys = Object.keys(patch) as (keyof StormState)[];
     // `state` here is the render the URL change arrived in — comparing against it
@@ -2777,30 +2782,19 @@ export function StormApp() {
     setState((s) => ({ epExpanded: s.epExpanded.includes(key) ? s.epExpanded.filter((x) => x !== key) : [...s.epExpanded, key] }));
   };
   /** Deletes every JS finding of one host, after confirmation. */
-  const deleteJsHost = async (hostId: number | undefined, label: string) => {
+  const deleteJsHost = (hostId: number | undefined, label: string) => {
     const pid = state.openProjectId;
     if (pid == null || hostId == null) return;
-    if (!window.confirm(`${t("Delete all JS findings for")} ${label}?`)) return;
-    try {
-      await apiDeleteJsFilesForHost(pid, hostId);
-      reloadJsFiles();
-      pushToast(t("JS findings deleted"), "success");
-    } catch (e) {
-      pushToast(getApiErrorMessage(e, t("Delete failed")), "error");
-    }
-  };
-  /** Bulk-deletes every JS file currently shown (after the section's filters). */
-  const bulkDeleteJsVisible = async (ids: number[]) => {
-    const pid = state.openProjectId;
-    if (pid == null || ids.length === 0) return;
-    if (!window.confirm(`${t("Delete")} ${ids.length} ${t("JS files")}?`)) return;
-    try {
-      const n = await apiBulkDeleteJsFiles(pid, ids);
-      reloadJsFiles();
-      pushToast(`${t("JS findings deleted")} (${n})`, "success");
-    } catch (e) {
-      pushToast(getApiErrorMessage(e, t("Delete failed")), "error");
-    }
+    setPendingDelete(() => async () => {
+      try {
+        await apiDeleteJsFilesForHost(pid, hostId);
+        reloadJsFiles();
+        pushToast(t("JS findings deleted"), "success");
+      } catch (e) {
+        pushToast(getApiErrorMessage(e, t("Delete failed")), "error");
+      }
+    });
+    setState({ confirmOpen: true, confirmProjectId: null, confirmUserId: null, confirmLabel: `${t("JS files")}: ${label}` });
   };
   /* Starts the scan on exactly the domains left in the setup page's list — the
      backend takes that list verbatim (empty would fall back to every project
@@ -2846,34 +2840,76 @@ export function StormApp() {
      made-up template. When it has never been filled in, a skeleton request line
      is offered as a starting point. The response has no backend field, so it
      starts empty and stays local. */
+  const formatEndpointRequest = (endpoint: ApiEndpoint, host: string) => {
+    const params = new URLSearchParams();
+    for (const query of endpoint.query_params ?? []) params.append(query.name, query.value ?? "");
+    const query = params.toString();
+    const target = endpoint.path + (query ? `?${query}` : "");
+    const headers = (endpoint.request_headers ?? []).filter((header) => !["host", "content-type"].includes(header.name.toLowerCase())).map((header) => `${header.name}: ${header.value}`);
+    if (endpoint.request_content_type) headers.unshift(`Content-Type: ${endpoint.request_content_type}`);
+    return [`${endpoint.method ?? "GET"} ${target} HTTP/1.1`, `Host: ${host}`, ...headers, "", endpoint.request_body ?? ""].join("\n").trimEnd();
+  };
   const openEndpoint = (ep: { method: Method; path: string; host: string; hostId: number; endpointId: number }) => {
-    setState({ epOpen: true, epData: ep, epRequest: "", epResponse: "", epSaving: false });
+    const version = ++endpointRequestVersion.current;
+    const raw = `${ep.method} ${ep.path} HTTP/1.1\nHost: ${ep.host}`;
+    setState({ epOpen: true, epData: ep, epRequest: raw, epRequestOriginal: raw, epLoading: true, epSaving: false });
     const pid = state.openProjectId;
     if (pid == null) return;
     void (async () => {
       try {
         const list = await apiGetEndpoints(pid, ep.hostId);
-        const stored = list.find((e) => e.id === ep.endpointId);
-        const headers = (stored?.request_headers ?? []).map((h) => `${h.name}: ${h.value}`).join("\n");
-        const body = stored?.request_body ?? "";
-        const raw = [`${ep.method} ${ep.path} HTTP/1.1`, `Host: ${ep.host}`, headers, "", body].filter((p, i) => p !== "" || i === 3).join("\n");
-        setStateRaw((s) => (s.epOpen && s.epData.endpointId === ep.endpointId ? { ...s, epRequest: raw.trimEnd() } : s));
-      } catch {
-        /* best-effort: an empty box is better than a fabricated one */
+        const stored = list.find((entry) => entry.id === ep.endpointId);
+        const request = stored ? formatEndpointRequest(stored, ep.host) : raw;
+        if (version === endpointRequestVersion.current) setState({ epRequest: request, epRequestOriginal: request });
+      } catch (error) {
+        if (version === endpointRequestVersion.current) pushToast(getApiErrorMessage(error, t("Couldn't load endpoint request")), "error");
+      } finally {
+        if (version === endpointRequestVersion.current) setState({ epLoading: false });
       }
     })();
   };
-  const closeEndpoint = () => setState({ epOpen: false });
-
-
-  const copyText = (text: string, what: string) => {
+  const closeEndpoint = () => { endpointRequestVersion.current++; setState({ epOpen: false }); };
+  const saveEndpointRequest = async () => {
+    const pid = state.openProjectId;
+    if (pid == null || state.epSaving || state.epLoading || state.epRequest === state.epRequestOriginal) return;
+    if (!state.epRequest.trim()) { pushToast(t("Enter an HTTP request"), "error"); return; }
+    const version = endpointRequestVersion.current;
+    const ep = state.epData;
+    setState({ epSaving: true });
     try {
-      void navigator.clipboard?.writeText(text);
-      pushToast(`${what} copied to clipboard`, "success");
-    } catch {
-      pushToast("Clipboard unavailable", "error");
+      const saved = await apiUpdateEndpoint(pid, ep.hostId, ep.endpointId, { request_raw: state.epRequest });
+      const request = formatEndpointRequest(saved, ep.host);
+      if (version === endpointRequestVersion.current) setState({ epData: { ...ep, method: toStormMethod(saved.method), path: saved.path }, epRequest: request, epRequestOriginal: request });
+      reloadHosts();
+      pushToast(t("Endpoint updated"), "success");
+    } catch (error) {
+      pushToast(getApiErrorMessage(error, t("Couldn't save endpoint")), "error");
+    } finally {
+      if (version === endpointRequestVersion.current) setState({ epSaving: false });
     }
   };
+  const copyText = async (text: string, what: string) => {
+    try {
+      if (!navigator.clipboard) throw new Error("Clipboard unavailable");
+      await navigator.clipboard.writeText(text);
+      pushToast(`${what} copied to clipboard`, "success");
+    } catch { pushToast(t("Clipboard unavailable"), "error"); }
+  };
+  const copyEndpointCurl = () => {
+    const [head, ...body] = state.epRequest.replace(/\r\n/g, "\n").split("\n\n");
+    const [line, ...headers] = head.split("\n");
+    const match = /^(\S+)\s+(\S+)\s+HTTP\/\S+$/.exec(line);
+    if (!match) { pushToast(t("Enter an HTTP request"), "error"); return; }
+    const host = headers.find((header) => /^host\s*:/i.test(header))?.replace(/^host\s*:\s*/i, "") ?? state.epData.host;
+    const quote = (value: string) => "'" + value.replace(/'/g, "'\"'\"'") + "'";
+    const url = /^https?:\/\//i.test(match[2]) ? match[2] : `https://${host}${match[2]}`;
+    const parts = [`curl -X ${match[1]} ${quote(url)}`, ...headers.filter((header) => !/^host\s*:/i.test(header)).map((header) => `-H ${quote(header)}`)];
+    if (body.length) parts.push(`--data-raw ${quote(body.join("\n\n"))}`);
+    void copyText(parts.join(" "), "cURL");
+  };
+  const requestCopyStyle: CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, height: 32, padding: "0 12px", border: "1px solid var(--st-accent-2)", borderRadius: 8, background: "transparent", color: "var(--st-accent-2)", font: "700 12px Inter,sans-serif", cursor: "pointer" };
+  const endpointSaveDisabled = state.epSaving || state.epLoading || state.epRequest === state.epRequestOriginal;
+
   /** Toggle whether one credential's secret is shown in clear text. */
   const toggleCredReveal = (id: number) =>
     setState((s) => ({
@@ -2893,6 +2929,7 @@ export function StormApp() {
     try {
       await apiDeleteEndpoint(pid, hostId, endpointId);
       reloadHosts();
+      pushToast(t("Endpoint deleted"), "success");
     } catch (e) {
       pushToast(getApiErrorMessage(e, "Couldn't delete endpoint"), "error");
     }
@@ -3073,8 +3110,8 @@ export function StormApp() {
      form, submit. Each line is a URL (with an optional leading METHOD); the host is
      taken from the URL and matched to an existing project host — endpoints hang off
      a host, so a line whose host is not in the project is skipped on submit. */
-  const EP_METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "QUERY"]);
-  const parseEpLine = (line: string): { host: string; method: string; path: string } | null => {
+  const EP_METHODS = new Set<string>(ENDPOINT_METHODS);
+  const parseEpLine = (line: string): { host: string; method: string; path: string; url: string } | null => {
     const l = line.trim();
     if (!l || l.startsWith("#") || l.startsWith("//")) return null;
     const parts = l.split(/\s+/);
@@ -3086,16 +3123,19 @@ export function StormApp() {
     }
     let host: string;
     let path: string;
+    let url: string;
     try {
       const u = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(target) ? target : `https://${target}`);
+      if (!["http:", "https:"].includes(u.protocol) || u.username || u.password) return null;
       host = u.hostname.toLowerCase();
+      url = `${u.protocol}//${u.host}${u.pathname}${u.search}`;
       path = (u.pathname || "/") + (u.search || "");
     } catch {
       return null;
     }
     // Need a real host to attach to (domain or IP); a bare path has none.
-    if (!host || !host.includes(".")) return null;
-    return { host, method, path };
+    if (!host || target.startsWith("/")) return null;
+    return { host, method, path, url };
   };
   const normalizeEpList = (raw: string): string => {
     const seen = new Set<string>();
@@ -3103,7 +3143,7 @@ export function StormApp() {
     for (const line of raw.split(/\r?\n/)) {
       const p = parseEpLine(line);
       if (!p) continue;
-      const canon = `${p.method} https://${p.host}${p.path}`;
+      const canon = `${p.method} ${p.url}`;
       if (!seen.has(canon)) {
         seen.add(canon);
         out.push(canon);
@@ -3111,14 +3151,14 @@ export function StormApp() {
     }
     return out.join("\n");
   };
-  const openEpImport = () => setState({ epImportOpen: true, epImportRaw: "", epImportPreview: "", epImportBusy: false });
-  const closeEpImport = () => setState({ epImportOpen: false, epImportRaw: "", epImportPreview: "", epImportBusy: false });
+  const openEpImport = () => setState({ epImportOpen: true, epImportRaw: "", epImportPreview: "", epImportBusy: false, epImportSwaggerHosts: [] });
+  const closeEpImport = () => setState({ epImportOpen: false, epImportRaw: "", epImportPreview: "", epImportBusy: false, epImportSwaggerHosts: [] });
   const submitEpImport = async () => {
     const pid = state.openProjectId;
     const parsed = state.epImportPreview
       .split(/\r?\n/)
       .map(parseEpLine)
-      .filter((x): x is { host: string; method: string; path: string } => x != null);
+      .filter((x): x is NonNullable<ReturnType<typeof parseEpLine>> => x != null);
     if (pid == null || parsed.length === 0) {
       pushToast(t("Paste at least one endpoint"), "error");
       return;
@@ -3126,8 +3166,15 @@ export function StormApp() {
     setState({ epImportBusy: true });
     let added = 0;
     let skipped = 0;
+    const importHosts = new Map(hosts.map((h) => [h.host.toLowerCase(), h]));
     for (const ep of parsed) {
-      const host = hosts.find((h) => h.host.toLowerCase() === ep.host);
+      let host = importHosts.get(ep.host);
+      if (!host && (ep.host === "unknown" || state.epImportSwaggerHosts.includes(ep.host))) {
+        try {
+          host = toStormHost(await apiCreateHost(pid, { hostname: ep.host }));
+          importHosts.set(ep.host, host);
+        } catch (error) { pushToast(getApiErrorMessage(error, t("Couldn't add host")), "error"); skipped++; continue; }
+      }
       if (!host) {
         skipped++;
         continue;
@@ -3139,7 +3186,7 @@ export function StormApp() {
         skipped++;
       }
     }
-    setState({ epImportOpen: false, epImportRaw: "", epImportPreview: "", epImportBusy: false });
+    setState({ epImportOpen: false, epImportRaw: "", epImportPreview: "", epImportBusy: false, epImportSwaggerHosts: [] });
     reloadHosts();
     pushToast(
       skipped ? `${t("Added")} ${added} · ${skipped} ${t("skipped (host not found)")}` : `${t("Added")} ${added} ${t("endpoints")}`,
@@ -3390,8 +3437,18 @@ export function StormApp() {
   // ================= delete confirm =================
   const askDelete = (type: EditorType, index: number, label: string) =>
     setState({ confirmOpen: true, confirmType: type, confirmIndex: index, confirmLabel: label, confirmProjectId: null, confirmUserId: null });
-  const closeConfirm = () => setState({ confirmOpen: false, confirmProjectId: null, confirmUserId: null });
+  const closeConfirm = () => {
+    setPendingDelete(null);
+    setPendingDeleteLabel(null);
+    setState({ confirmOpen: false, confirmProjectId: null, confirmUserId: null });
+  };
   const confirmDelete = async () => {
+    if (pendingDelete) {
+      const action = pendingDelete;
+      closeConfirm();
+      await action();
+      return;
+    }
     if (state.confirmProjectId) {
       const id = state.confirmProjectId;
       setState({ confirmOpen: false, confirmProjectId: null });
@@ -3464,11 +3521,16 @@ export function StormApp() {
   // ================= notes =================
   const openNoteEditor = (mode: "add" | "edit", index: number) => {
     const n = mode === "edit" ? d.notes[index] : null;
+    noteEditorVersion.current++;
     setState({
       noteEditorOpen: true,
       noteEditorMode: mode,
       noteEditorIndex: index,
+      noteEditorId: n?.id ?? null,
+      openNoteId: n?.id ?? null,
+      noteSaving: false,
       noteForm: { title: n ? n.title : "", excerpt: n ? n.excerpt : "", author: n ? n.author : me },
+      noteFormOriginal: { title: n ? n.title : "", excerpt: n ? n.excerpt : "" },
     });
   };
   const closeNoteEditor = () => setState({ noteEditorOpen: false });
@@ -3500,22 +3562,34 @@ export function StormApp() {
       }
     }
   };
+  const noteHasChanges = state.noteForm.title !== state.noteFormOriginal.title || state.noteForm.excerpt !== state.noteFormOriginal.excerpt;
+  const noteSaveDisabled = state.noteSaving || !noteHasChanges;
   const saveNote = async () => {
     const { noteEditorMode: mode, noteEditorIndex: index, noteForm: f } = state;
     const pid = state.openProjectId;
-    if (pid == null) return;
+    if (pid == null || noteSaveDisabled) return;
+    const id = state.noteEditorId ?? d.notes[index]?.id;
+    if (mode === "edit" && id == null) return;
+    const version = noteEditorVersion.current;
     const payload = { title: (f.title || "Untitled").trim(), content: (f.excerpt || "").trim() };
+    setState({ noteSaving: true });
     try {
-      if (mode === "add") await apiCreateProjectNote(pid, payload);
-      else {
-        const target = d.notes[index];
-        if (!target) return;
-        await apiUpdateProjectNote(pid, target.id, payload);
-      }
-      setState({ noteEditorOpen: false, openNoteId: null });
+      const saved = mode === "add" ? await apiCreateProjectNote(pid, payload) : await apiUpdateProjectNote(pid, id as number, payload);
+      const savedNote = toStormNote(saved);
+      setState((s) => {
+        if (s.openProjectId !== pid) return {};
+        const notes = s.apiNotes ?? [];
+        const apiNotes = notes.some((note) => note.id === saved.id) ? notes.map((note) => note.id === saved.id ? savedNote : note) : [...notes, savedNote];
+        if (!s.noteEditorOpen || version !== noteEditorVersion.current) return { apiNotes };
+        // Compare with the submitted draft; edits made during this request stay dirty.
+        return { apiNotes, noteEditorMode: "edit", noteEditorId: saved.id, openNoteId: saved.id, noteFormOriginal: { title: f.title, excerpt: f.excerpt } };
+      });
       reloadNotes();
+      pushToast(t("Note saved"), "success");
     } catch (e) {
       pushToast(getApiErrorMessage(e, mode === "add" ? "Couldn't create note" : "Couldn't save note"), "error");
+    } finally {
+      if (version === noteEditorVersion.current) setState({ noteSaving: false });
     }
   };
 
@@ -3582,7 +3656,7 @@ export function StormApp() {
     setState((s) => {
       const imgs = { ...(s.vulnDetailForm.stepImages ?? {}) };
       delete imgs[i];
-      const shifted: Record<number, string[]> = {};
+      const shifted: Record<number, number[]> = {};
       Object.keys(imgs).forEach((k) => {
         const n = +k;
         shifted[n > i ? n - 1 : n] = imgs[n];
@@ -3835,10 +3909,16 @@ export function StormApp() {
       pushToast(getApiErrorMessage(e, "Couldn't resend invitation"), "error");
     }
   };
+  const askRevokeInvite = (id: number, email: string) => {
+    setPendingDelete(() => () => revokeInvite(id));
+    setPendingDeleteLabel(t("Revoke invitation"));
+    setState({ confirmOpen: true, confirmProjectId: null, confirmUserId: null, confirmLabel: email });
+  };
   const revokeInvite = async (id: number) => {
     try {
       await apiRevokeInvitation(id);
       reloadUsers();
+      pushToast(t("Invitation revoked"), "success");
     } catch (e) {
       pushToast(getApiErrorMessage(e, "Couldn't revoke invitation"), "error");
     }
@@ -3989,13 +4069,6 @@ export function StormApp() {
   const isList = state.view === "list" && state.nav === "projects";
   const isDocs = state.view === "list" && state.nav === "docs";
   const isTasks = state.view === "list" && state.nav === "tasks";
-  const isStub = state.view === "list" && state.nav !== "projects" && state.nav !== "members" && state.nav !== "docs" && state.nav !== "tasks";
-  const stubTitle = ({ tasks: "Tasks", mine: "My Tasks" } as Record<string, string>)[state.nav] || "";
-  const stubDesc =
-    ({ tasks: "Track and assign engagement tasks across the team.", mine: "Your personally assigned tasks and reviews." } as Record<string, string>)[
-      state.nav
-    ] || "";
-
   /* Notification rows, built from the backend payload. There are exactly four
      reasons to be notified (NotificationKind), and each reads differently — the
      row is a sentence: "<who> <action> <subject>". */
@@ -4062,7 +4135,7 @@ export function StormApp() {
   // Hosts are searched by name here; addresses have their own search in the IPs view.
   /** A host that is a subdomain of another host in the project (shown nested, not top-level). */
   const isNestedSubdomain = (h: Host) =>
-    hosts.some((p) => p.origin !== "ip" && p.id !== h.id && h.host.toLowerCase().endsWith(`.${p.host.toLowerCase()}`));
+    hostIndex.nestedIds.has(h.id);
   /* Rows the hosts table shows. The IP farm has to create a parent Host per address
      (ports hang off host_ip_addresses, which hangs off hosts), but the user added an
      address, not a host — a nameless row here would just be noise. They stay visible
@@ -4080,15 +4153,11 @@ export function StormApp() {
       return codes.includes(Number(k));
     });
   };
-  /** Признак Cloudflare — отдельный вопрос («что за прокси»), а не разновидность
-   *  статуса, поэтому свой переключатель, а не ещё одна пилюля в общем ряду. */
-  const matchesCfFilter = (cloudflare: CfState, filter: "" | "yes" | "no"): boolean =>
-    filter === "" || cloudflare === (filter === "yes");  // unknown (null) — только под "all"
   /* Единственное место, где решается судьба строки в таблице хостов, — через него
      же идёт экспорт (exportLinesFor → hostsList/visibleSubdomainsOf), поэтому
      фильтры не могут разъехаться между тем, что видно, и тем, что выгружается. */
   const hostMatchesFilters = (h: Host): boolean =>
-    matchesStatusFilters(h.ports, h.status, state.hostFilters) && matchesCfFilter(h.cloudflare, state.hostCfFilter);
+    matchesStatusFilters(h.ports, h.status, state.hostFilters);
   /** Status pills offered in the hosts and IPs views (empty selection = all). */
   const STATUS_FILTER_KEYS = ["up", "200", "301", "401", "403", "down"];
   /** Subdomains of a host, filtered by the active pills (empty = all). */
@@ -4195,7 +4264,7 @@ export function StormApp() {
   };
   const ipRowsByAddr = new Map<
     string,
-    { ip: string; hostIdx: number; names: IpRowNames; cloudflare: CfState; ipMeas: IpBucket | null; domainMeas: IpBucket | null }
+    { ip: string; hostIdx: number; names: IpRowNames; ipMeas: IpBucket | null; domainMeas: IpBucket | null }
   >();
   hosts.forEach((h, idx) => {
     h.ipEntries.forEach((entry) => {
@@ -4207,12 +4276,11 @@ export function StormApp() {
       const acc =
         ipRowsByAddr.get(entry.ip) ??
         (() => {
-          const fresh = { ip: entry.ip, hostIdx: idx, names: [] as IpRowNames, cloudflare: null as CfState, ipMeas: null as IpBucket | null, domainMeas: null as IpBucket | null };
+          const fresh = { ip: entry.ip, hostIdx: idx, names: [] as IpRowNames, ipMeas: null as IpBucket | null, domainMeas: null as IpBucket | null };
           ipRowsByAddr.set(entry.ip, fresh);
           return fresh;
         })();
       acc.names.push(...entry.hostnames, ...own);
-      acc.cloudflare = mergeCf(acc.cloudflare, entry.cloudflare);
       // Prefer a real host as the row's edit/delete target over the IP farm's
       // nameless parent — that is the row a user means when they click edit.
       if (h.origin === "host" && hosts[acc.hostIdx]?.origin === "ip") acc.hostIdx = idx;
@@ -4254,7 +4322,6 @@ export function StormApp() {
     // Same status filter as hosts. The Status *column* is gone from this table,
     // but filtering by HTTP code still answers a real question here.
     .filter((row) => matchesStatusFilters(row.ports, row.status, state.ipFilters))
-    .filter((row) => matchesCfFilter(row.cloudflare, state.ipCfFilter))
     .map((row, i) => ({
       ...row,
       onEdit: (e: ReactMouseEvent) => {
@@ -4269,13 +4336,13 @@ export function StormApp() {
   /** The IP row whose detail card is open (looked up by address, like _hd by id). */
   const _ipd = state.openIp != null ? ipsRows.find((r) => r.ip === state.openIp) : undefined;
   /** Flat endpoint list, so a confirm dialog can address one by position. */
-  const endpointRows = hosts.flatMap((h) => h.endpoints.map((e) => ({ hostId: h.id, endpointId: e.id, host: h.host, label: `${e.m} ${e.p}` })));
+  const endpointRows = useMemo(() => hosts.flatMap((h) => h.endpoints.map((e) => ({ hostId: h.id, endpointId: e.id, host: h.host, label: `${e.m} ${e.p}` }))), [hosts]);
   /* Endpoints view filters: method pills (empty = all), plus separate searches for
      the host and the endpoint path — they are different questions ("everything on
      this host" vs "where is /login"), so one combined box would answer neither. */
   const epHostQ = state.epHostQuery.trim().toLowerCase();
   const epPathQ = state.epPathQuery.trim().toLowerCase();
-  const endpointGroups = hosts
+  const endpointGroups = useMemo(() => hosts
     .filter((h) => !epHostQ || h.host.toLowerCase().includes(epHostQ))
     .map((h) => ({
       hostId: h.id,
@@ -4286,9 +4353,32 @@ export function StormApp() {
       expanded: state.epExpanded.includes(h.host),
     }))
     .filter((g) => g.endpoints.length > 0)
-    .map((g) => ({ ...g, count: g.endpoints.length }));
+    .map((g) => ({ ...g, count: g.endpoints.length })), [hosts, epHostQ, epPathQ, state.epMethods, state.epExpanded]);
   // Counts what the filters actually left on screen.
   const endpointTotal = endpointGroups.reduce((s, g) => s + g.count, 0);
+  const askDeleteEndpoints = (group: typeof endpointGroups[number]) => {
+    const pid = state.openProjectId;
+    if (pid == null || group.count === 0 || deletingEndpointHosts.includes(group.hostId)) return;
+    const targets = group.endpoints.map((e) => ({ hostId: group.hostId, id: e.id }));
+    setPendingDelete(() => async () => {
+      setDeletingEndpointHosts((ids) => [...ids, group.hostId]);
+      try {
+        let deleted = 0;
+        let failed = 0;
+        for (let offset = 0; offset < targets.length; offset += 10) {
+          const results = await Promise.allSettled(targets.slice(offset, offset + 10).map((e) => apiDeleteEndpoint(pid, e.hostId, e.id)));
+          deleted += results.filter((r) => r.status === "fulfilled").length;
+          failed += results.filter((r) => r.status === "rejected").length;
+        }
+        reloadHosts();
+        if (deleted) pushToast(`${t("Endpoints deleted")}: ${deleted}`, "success");
+        if (failed) pushToast(`${t("Couldn't delete endpoints")}: ${failed}`, "error");
+      } finally {
+        setDeletingEndpointHosts((ids) => ids.filter((id) => id !== group.hostId));
+      }
+    });
+    setState({ confirmOpen: true, confirmProjectId: null, confirmUserId: null, confirmLabel: `${group.host} · ${group.count} ${t("endpoints")}` });
+  };
 
   /* JS files pulled from the backend, filtered by the JS view's controls, then
      grouped by the domain they were found on — the table mirrors the endpoints
@@ -4359,6 +4449,11 @@ export function StormApp() {
   /** Wording for that count, matching the active view. */
   const reconTotalLabel = rv === "ips" ? t("Total IPs") : rv === "endpoints" ? t("Total endpoints") : rv === "js" ? t("Total JS files") : t("Total hosts");
 
+  const reconJob = rv === "ips" ? state.ipFarmJob : rv === "js" ? state.jsFarmJob : rv === "hosts" ? state.hostFarmJob : null;
+  const reconProgress = isFarmJobInFlight(reconJob?.status ?? "")
+    ? `${rv === "js" ? t("Scanning") : t("Probing")} ${reconJob?.targets_total ?? ""} ${rv === "ips" ? t("IPs") : rv === "js" ? t("domains…") : t("hosts…")}`
+    : (rv === "js" ? state.apiJsFiles === null : state.hostsLoading) ? t("Loading…") : null;
+
   /* Retuning a filter reseeds the editable pane from what the filter left on
      screen. Hand edits are dropped on purpose: the filters are the coarse
      selection and the pane the fine one, so the coarse one has to win. Only the
@@ -4370,7 +4465,7 @@ export function StormApp() {
       return s.exportText === next ? s : { ...s, exportText: next };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.exportPageOpen, state.exportScope, state.hostQuery, state.hostFilters, state.hostCfFilter, state.ipQuery, state.ipCfFilter, state.epHostQuery, state.epPathQuery, state.epMethods]);
+  }, [state.exportPageOpen, state.exportScope, state.hostQuery, state.hostFilters, state.ipQuery, state.epHostQuery, state.epPathQuery, state.epMethods]);
 
   /* Same contract as the export reseed above: the JS scan page's host filters are
      the coarse pick, the domain list the fine one, so retuning a filter reseeds the
@@ -4383,7 +4478,7 @@ export function StormApp() {
       return s.jsScanText === next ? s : { ...s, jsScanText: next };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.jsScanSetupOpen, state.hostQuery, state.hostFilters, state.hostCfFilter]);
+  }, [state.jsScanSetupOpen, state.hostQuery, state.hostFilters]);
 
   // The chip shows the project's real status (active / freeze / …), not the
   // coarse active-vs-archived split the tabs use.
@@ -4870,23 +4965,6 @@ export function StormApp() {
     );
   };
 
-  // ---------- Stub page ----------
-  const renderStub = () => (
-    <div className="route" style={{ padding: "40px 48px 36px", width: "100%" }}>
-      {eyebrow([{ label: "Workspace", onClick: selProjects }, { label: stubTitle, muted: true }])}
-      <h1 style={{ margin: 0, fontSize: 30, fontWeight: 800, letterSpacing: "-.7px", color: "var(--st-text)" }}>{t(stubTitle)}</h1>
-      <div style={{ fontSize: 13.5, color: "var(--st-text-3)", marginTop: 6 }}>{t(stubDesc)}</div>
-      <div style={{ marginTop: 32, ...CARD, padding: "60px 24px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 14 }}>
-        <div style={{ width: 56, height: 56, borderRadius: 14, background: "var(--st-hover)", color: "var(--st-text-faint)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <Icon name="calendar" size={26} sw={1.8} />
-        </div>
-        <div style={{ font: "700 15px Inter,sans-serif", color: "var(--st-text)" }}>{t("Coming soon")}</div>
-        <div style={{ fontSize: 13, color: "var(--st-text-3)", maxWidth: 340 }}>{t("This area is under construction. Head back to Projects to continue your work.")}</div>
-        <button className="clk" onClick={selProjects} style={{ marginTop: 6, height: 40, padding: "0 18px", border: "none", borderRadius: 10, background: "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13px Inter,sans-serif", cursor: "pointer" }}>{t("Back to Projects")}</button>
-      </div>
-    </div>
-  );
-
   // ---------- Workspace members (admin) ----------
   const renderWorkspaceMembers = () => (
     <div className="route" style={{ padding: "40px 48px 36px", width: "100%" }}>
@@ -4894,7 +4972,6 @@ export function StormApp() {
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 20 }}>
         <div>
           <h1 style={{ margin: 0, fontSize: 30, fontWeight: 800, letterSpacing: "-.7px", color: "var(--st-text)" }}>{t("Members")}</h1>
-          <div style={{ fontSize: 13.5, color: "var(--st-text-3)", marginTop: 6 }}>{t("Invite people by email — they set their own username and password from the link")}</div>
         </div>
         <button className="clk" onClick={() => openWSUserEditor("add", -1)} style={{ flex: "none", display: "inline-flex", alignItems: "center", gap: 8, height: 42, padding: "0 18px", border: "none", borderRadius: 11, background: "var(--st-accent)", color: "var(--st-on-accent)", font: "700 13.5px Inter,sans-serif", cursor: "pointer" }}>
           <Icon name="plus" size={15} sw={2.2} />
@@ -4956,7 +5033,7 @@ export function StormApp() {
               </div>
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
                 <button className="clk" onClick={() => resendInvite(inv.id)} style={{ height: 30, padding: "0 12px", border: "1px solid var(--st-border-strong)", borderRadius: 8, background: "var(--st-surface)", color: "var(--st-accent)", font: "600 12px Inter,sans-serif", cursor: "pointer" }}>{t("Resend")}</button>
-                <div className="actbtn del" onClick={() => revokeInvite(inv.id)} title={t("Revoke invitation")}><Icon name="trash" size={15} /></div>
+                <div className="actbtn del" onClick={() => askRevokeInvite(inv.id, inv.email)} title={t("Revoke invitation")}><Icon name="trash" size={15} /></div>
               </div>
             </div>
           ))}
@@ -5124,8 +5201,10 @@ export function StormApp() {
               {sec === "hosts" && !_hd && !_ipd && (
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 6, font: "600 12.5px Inter,sans-serif", color: "var(--st-text-2)", background: "var(--st-surface)", border: "1px solid var(--st-border-strong)", borderRadius: 20, padding: "5px 13px" }}>{reconTotalLabel} <b className="mono" style={{ color: "var(--st-text)" }}>{reconTotal}</b></span>
               )}
+              {sec === "hosts" && !_hd && !_ipd && reconProgress && <span role="status" aria-label={t("Recon progress")} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 12px", borderRadius: 12, background: "var(--st-accent-soft)", color: "var(--st-accent)", font: "600 12.5px Inter,sans-serif", whiteSpace: "nowrap" }}><span className="storm-spin" style={{ width: 14, height: 14, flex: "none", borderRadius: "50%", border: "2px solid var(--st-accent)", borderTopColor: "transparent", display: "inline-block" }} />{reconProgress}</span>}
             </div>
             <div style={{ display: "flex", gap: 10, flex: "none" }}>
+
               {sec === "hosts" && rv === "hosts" && !state.hostImportOpen && !_hd && (
                 <>
                   <button className="clk" onClick={() => openReconExport("hosts")} style={{ height: 42, padding: "0 16px", border: "1px solid var(--st-border)", borderRadius: 10, background: "var(--st-surface)", font: "700 13px Inter,sans-serif", color: "var(--st-accent-2)", display: "inline-flex", alignItems: "center", gap: 7 }}>
@@ -5174,6 +5253,7 @@ export function StormApp() {
               {/* Opens the domain picker rather than scanning straight away, so the
                   label says what the click does: choose what to scan. */}
               {/* Одна кнопка «Экспорт»: пути или секреты выбираются уже на странице экспорта. */}
+
               {sec === "hosts" && rv === "js" && !state.jsScanSetupOpen && !state.exportPageOpen && !_jsd && (
                 <>
                   <button className="clk" onClick={() => openReconExport("js-endpoints")} style={{ height: 42, padding: "0 16px", border: "1px solid var(--st-border)", borderRadius: 10, background: "var(--st-surface)", font: "700 13px Inter,sans-serif", color: "var(--st-accent-2)", display: "inline-flex", alignItems: "center", gap: 7 }}>
@@ -5383,26 +5463,6 @@ export function StormApp() {
     </div>
   );
 
-  /** Признак Cloudflare чипом (трёхзначно): true подсвечен, false приглушён,
-   *  null («unknown») — самый бледный: хост ещё пробится, признак не определён. */
-  const cloudflarePill = (state: CfState) => (
-    <span
-      className="mono"
-      style={{
-        display: "inline-block",
-        fontSize: 11,
-        fontWeight: 700,
-        borderRadius: 6,
-        padding: "2px 8px",
-        background: state === true ? "var(--st-warn-soft)" : "var(--st-elevated)",
-        color:
-          state === true ? "var(--st-warn)" : state === null ? "var(--st-text-faint)" : "var(--st-text-3)",
-      }}
-    >
-      {state === null ? "unknown" : String(state)}
-    </span>
-  );
-
   /* Имена, в которые резолвится адрес — серыми чипами по образцу портов: один
      адрес часто отдаёт несколько имён, и перечисление через запятую в узкой
      ячейке читается хуже, чем набор плашек. Неподтверждённые (PTR без обратного
@@ -5469,16 +5529,16 @@ export function StormApp() {
           <div style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             <div style={paneCol}>
               <label className="flabel">{cfg.pasteLabel}</label>
-              <textarea className="finp" placeholder={cfg.placeholder} value={cfg.raw} onChange={(e) => cfg.onRaw(e.target.value)} style={fillArea} />
+              <textarea className="finp" disabled={cfg.busy} aria-label={cfg.pasteLabel} placeholder={cfg.placeholder} value={cfg.raw} onChange={(e) => cfg.onRaw(e.target.value)} style={fillArea} />
             </div>
             <div style={paneCol}>
               <label className="flabel">{t("Will be imported")}{previewCount ? ` (${previewCount})` : ""}</label>
-              <textarea className="finp" placeholder={cfg.previewPlaceholder} value={cfg.preview} onChange={(e) => cfg.onPreview(e.target.value)} style={fillArea} />
+              <textarea className="finp" disabled={cfg.busy} aria-label={t("Will be imported")} placeholder={cfg.previewPlaceholder} value={cfg.preview} onChange={(e) => cfg.onPreview(e.target.value)} style={fillArea} />
             </div>
           </div>
           <div style={{ flex: "none", display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 16 }}>
             <button className="clk" onClick={cfg.onCancel} style={{ height: 42, padding: "0 20px", border: "1px solid var(--st-border)", borderRadius: 11, background: "var(--st-surface)", font: "700 13.5px Inter,sans-serif", color: "var(--st-text-2)" }}>{t("Cancel")}</button>
-            <button className="clk" onClick={cfg.onSubmit} style={{ height: 42, padding: "0 22px", border: "none", borderRadius: 11, background: "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13.5px Inter,sans-serif" }}>{cfg.busy ? (cfg.busyLabel ?? t("Starting…")) : (cfg.submitLabel ?? t("Probe & add"))}</button>
+            <button className="clk" disabled={cfg.busy} onClick={cfg.onSubmit} style={{ height: 42, padding: "0 22px", border: "none", borderRadius: 11, background: "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13.5px Inter,sans-serif" }}>{cfg.busy ? (cfg.busyLabel ?? t("Starting…")) : (cfg.submitLabel ?? t("Probe & add"))}</button>
           </div>
         </div>
       </div>
@@ -5543,18 +5603,6 @@ export function StormApp() {
     <div key={label} className="clk" onClick={onClick} style={{ font: "600 12px Inter,sans-serif", padding: "6px 12px", borderRadius: 20, cursor: "pointer", ...vfPill(on) }}>{label}</div>
   );
 
-  /** Группа пилюль Cloudflare — одна на таблицы хостов и IP. Выбор взаимо-
-   *  исключающий: true и false вместе — это и есть All, поэтому повторный клик
-   *  по активной пилюле возвращает в All. Метки — те же true/false, что в колонке. */
-  const cfFilterGroup = (value: "" | "yes" | "no", onChange: (v: "" | "yes" | "no") => void) => (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-      <span style={{ font: "700 11px Inter,sans-serif", letterSpacing: ".5px", textTransform: "uppercase", color: "var(--st-text-faint)" }}>{t("Cloudflare")}</span>
-      {filterPill(t("All"), value === "", () => onChange(""))}
-      {filterPill("true", value === "yes", () => onChange(value === "yes" ? "" : "yes"))}
-      {filterPill("false", value === "no", () => onChange(value === "no" ? "" : "no"))}
-    </div>
-  );
-
   /* The recon filter rows. The export page renders the same row as the view it
      exports — sharing one definition is what keeps the two from ever disagreeing
      about which rows are selected. Empty pill selection means All. */
@@ -5565,7 +5613,6 @@ export function StormApp() {
         <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 16, flexWrap: "wrap" }}>
           {searchBox(t("Filter by IP or host…"), state.ipQuery, (v) => setState({ ipQuery: v }))}
           <div style={{ flex: 1 }} />
-          {cfFilterGroup(state.ipCfFilter, (v) => setState({ ipCfFilter: v }))}
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <span style={{ font: "700 11px Inter,sans-serif", letterSpacing: ".5px", textTransform: "uppercase", color: "var(--st-text-faint)" }}>{t("Status")}</span>
             {filterPill(t("All"), state.ipFilters.length === 0, () => setState({ ipFilters: [] }))}
@@ -5582,7 +5629,7 @@ export function StormApp() {
           {searchBox(t("Filter by host…"), state.epHostQuery, (v) => setState({ epHostQuery: v }), 190)}
           {searchBox(t("Filter by endpoint…"), state.epPathQuery, (v) => setState({ epPathQuery: v }), 190)}
           <div style={{ flex: 1 }} />
-          {/* Подписан так же, как Status и Cloudflare, — иначе единственный ряд
+          {/* Подписан так же, как Status, — иначе единственный ряд
              пилюль без заголовка читается как «непонятно что фильтрует». */}
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <span style={{ font: "700 11px Inter,sans-serif", letterSpacing: ".5px", textTransform: "uppercase", color: "var(--st-text-faint)" }}>{t("Method")}</span>
@@ -5609,7 +5656,6 @@ export function StormApp() {
       <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 16, flexWrap: "wrap" }}>
         {searchBox(t("Filter by host…"), state.hostQuery, (v) => setState({ hostQuery: v }))}
         <div style={{ flex: 1 }} />
-        {cfFilterGroup(state.hostCfFilter, (v) => setState({ hostCfFilter: v }))}
         {/* Label + pills share one flex gap so the spacing between filters is equal. */}
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           <span style={{ font: "700 11px Inter,sans-serif", letterSpacing: ".5px", textTransform: "uppercase", color: "var(--st-text-faint)" }}>{t("Status")}</span>
@@ -5648,17 +5694,19 @@ export function StormApp() {
           <div style={{ flex: "none", display: "flex", alignItems: "center", gap: 10, padding: "16px 22px", borderBottom: "1px solid var(--st-divider)" }}>
             <span className="clk" onClick={closeReconExport} style={{ display: "flex", color: "var(--st-text-3)", cursor: "pointer" }}><Icon name="chevron-left" size={20} /></span>
             <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "var(--st-text)" }}>{title}</h2>
+            <div style={{ marginLeft: "auto" }}>{scope === "endpoints" && <SwaggerEndpointImport disabled={state.epImportBusy} onParsed={(lines) => setState((s) => ({ exportPageOpen: false, epImportOpen: true, epImportSwaggerHosts: [...new Set([...(s.epImportOpen ? s.epImportSwaggerHosts : []), ...lines.map(parseEpLine).filter((ep) => ep != null).map((ep) => ep.host)])], epImportRaw: [...new Set([...(s.epImportOpen ? s.epImportRaw.split(/\r?\n/).filter(Boolean) : []), ...lines])].join("\n"), epImportPreview: normalizeEpList([...(s.epImportOpen ? s.epImportPreview.split(/\r?\n/).filter(Boolean) : []), ...lines].join("\n")) }))} />}</div>
           </div>
           <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", padding: "18px 22px 20px" }}>
             <div style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
               <div style={paneCol}>
                 <label className="flabel">{t("Found")}{left.length ? ` (${left.length})` : ""}</label>
-                <textarea className="finp" readOnly value={left.join("\n")} style={{ ...fillArea, background: "var(--st-sunken)", color: "var(--st-text-2)" }} />
+                <textarea className="finp" aria-label={t("Found")} readOnly value={left.join("\n")} style={{ ...fillArea, background: "var(--st-sunken)", color: "var(--st-text-2)" }} />
               </div>
               <div style={paneCol}>
                 <label className="flabel">{t("Will be exported")}{keptCount ? ` (${keptCount})` : ""}</label>
                 <textarea
                   className="finp"
+                  aria-label={t("Will be exported")}
                   value={state.exportText}
                   onChange={(e) => setState({ exportText: e.target.value })}
                   style={fillArea}
@@ -5890,24 +5938,18 @@ export function StormApp() {
     if (rv === "ips") {
       if (state.ipImportOpen) return renderIpImport();
       if (_ipd) return renderIpDetail(_ipd);
-      const ipFarmRunning = isFarmJobInFlight(state.ipFarmJob?.status ?? "");
-      // Grid shared by the header and every row — Status is gone, Cloudflare took its place.
-      const ipGrid = "minmax(0,1fr) minmax(0,1.4fr) minmax(0,1fr) 104px 72px";
+      // Grid shared by the header and every IP row.
+      const ipGrid = "minmax(0,1fr) minmax(0,1.4fr) minmax(0,1fr) 72px";
       return (
         <div className="route">
           {reconFilterRow("ips")}
           {/* Та же плашка, что у фермы хостов: синяя, со спиннером. */}
-          {ipFarmRunning && (
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, padding: "11px 16px", borderRadius: 12, background: "var(--st-accent-soft)", color: "var(--st-accent)", font: "600 12.5px Inter,sans-serif" }}>
-              <span className="storm-spin" style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid var(--st-accent)", borderTopColor: "transparent", display: "inline-block" }} />
-              {t("Probing")} {state.ipFarmJob?.targets_total ?? ""} {t("IPs — hostnames and ports update automatically.")}
-            </div>
-          )}
+
           <div style={{ ...CARD, overflow: "hidden" }}>
             {/* No column headers over an empty table (same as the hosts table). */}
             {ipsRows.length > 0 && (
               <div style={{ display: "grid", gridTemplateColumns: ipGrid, gap: 14, padding: "13px 20px", borderBottom: "1px solid var(--st-divider)", font: "700 11px Inter,sans-serif", letterSpacing: ".6px", color: "var(--st-text-faint)", textTransform: "uppercase" }}>
-                <div>{t("IP address")}</div><div>{t("Hostname")}</div><div>{t("Ports")}</div><div>{t("Cloudflare")}</div><div style={{ textAlign: "right" }}>{t("Actions")}</div>
+                <div>{t("IP address")}</div><div>{t("Hostname")}</div><div>{t("Ports")}</div><div style={{ textAlign: "right" }}>{t("Actions")}</div>
               </div>
             )}
             {ipsRows.slice(0, LIST_CAP).map((i, idx) => (
@@ -5919,7 +5961,6 @@ export function StormApp() {
                     names (PTR with no matching forward record) are dimmed, not hidden. */}
                 <div style={{ minWidth: 0 }} title={i.names.map((n) => n.hostname).join(", ")}>{hostnamePills(i.names)}</div>
                 <div style={{ minWidth: 0 }}>{portPills(i.ports, i.status === "down")}</div>
-                <div>{cloudflarePill(i.cloudflare)}</div>
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
                   <div className="actbtn" onClick={i.onEdit}><Icon name="edit" size={15} /></div>
                   <div className="actbtn del" onClick={i.onDelete}><Icon name="trash" size={15} /></div>
@@ -5945,6 +5986,10 @@ export function StormApp() {
                   <Icon name="globe2" size={16} color="var(--st-text-3)" />
                   <span className="mono" style={{ font: "700 14px 'JetBrains Mono',monospace", color: "var(--st-text)", flex: 1 }}>{g.host}</span>
                   <span className="mono" style={{ fontSize: 11.5, fontWeight: 700, color: "var(--st-text-2)", background: "var(--st-hover)", borderRadius: 7, padding: "3px 9px" }}>{g.count}</span>
+                  {canEditProject && <div className="endpoint-actions">
+                    <button type="button" className="actbtn" aria-label={`${t("Edit host")}: ${g.host}`} title={t("Edit host")} onClick={(event) => { event.stopPropagation(); openEditor("host", "edit", hosts.findIndex((host) => host.id === g.hostId)); }}><Icon name="edit" size={15} /></button>
+                    <button type="button" className="actbtn del" aria-label={`${t("Delete endpoints")}: ${g.host}`} title={t("Delete endpoints")} disabled={deletingEndpointHosts.includes(g.hostId)} onClick={(event) => { event.stopPropagation(); askDeleteEndpoints(g); }}><Icon name="trash" size={15} /></button>
+                  </div>}
                 </div>
                 <Collapse open={g.expanded}>
                   <div style={{ borderTop: "1px solid var(--st-divider)" }}>
@@ -5957,8 +6002,9 @@ export function StormApp() {
                         <div key={i} className="prow clk" onClick={() => openEndpoint({ method: e.m, path: e.p, host: g.host, hostId: g.hostId, endpointId: e.id })} style={{ display: "grid", gridTemplateColumns: "72px minmax(0,1fr) 96px", alignItems: "center", gap: 10, padding: "11px 20px 11px 50px", borderBottom: "1px solid var(--st-elevated)" }}>
                           <span className="mono" style={{ justifySelf: "start", fontWeight: 700, borderRadius: 5, padding: "2px 8px", fontSize: 10.5, background: m.bg, color: m.color }}>{e.m}</span>
                           <div className="mono" style={{ fontSize: 12.5, color: "var(--st-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.p}</div>
-                          <div style={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
+                          <div className="endpoint-actions">
                             <Tip label={t("Copy as cURL")}><div className="actbtn" onClick={(ev) => { ev.stopPropagation(); copyCurl({ method: e.m, path: e.p, host: g.host }); }}><Icon name="copy" size={15} /></div></Tip>
+                            <Tip label={t("Edit endpoint")}><button type="button" className="actbtn" aria-label={`${t("Edit endpoint")}: ${e.m} ${e.p}`} onClick={(ev) => { ev.stopPropagation(); openEndpoint({ method: e.m, path: e.p, host: g.host, hostId: g.hostId, endpointId: e.id }); }}><Icon name="edit" size={15} /></button></Tip>
                             <Tip label={t("Delete endpoint")}><div className="actbtn del" onClick={(ev) => { ev.stopPropagation(); void deleteEndpoint(g.hostId, e.id); }}><Icon name="trash" size={15} /></div></Tip>
                           </div>
                         </div>
@@ -5982,32 +6028,21 @@ export function StormApp() {
       // со страницы хоста показывает файл, а «назад» возвращает на страницу хоста.
       if (_jsd) return renderJsFileDetail(_jsd);
       if (_jsHost) return renderJsHostDetail(_jsHost);
-      const jsRunning = isFarmJobInFlight(state.jsFarmJob?.status ?? "");
       // Та же сетка, что у таблицы хостов: домен — раскрывающаяся строка, файлы под
       // ним — вложенные. Столбцы: chevron, хост, пути, секреты, действия.
       const jsGrid = "24px minmax(0,1.6fr) 84px 84px 96px";
-      const allVisibleIds = jsFilesFiltered.map((f) => f.id);
       return (
         <div className="route">
           {reconFilterRow("js")}
           {/* Same blue in-flight banner as the host/IP farms. */}
-          {jsRunning && (
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, padding: "11px 16px", borderRadius: 12, background: "var(--st-accent-soft)", color: "var(--st-accent)", font: "600 12.5px Inter,sans-serif" }}>
-              <span className="storm-spin" style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid var(--st-accent)", borderTopColor: "transparent", display: "inline-block" }} />
-              {t("Scanning")} {state.jsFarmJob?.targets_total ?? ""} {t("domains — secrets and paths appear as files are scanned.")}
-            </div>
-          )}
+
           <div style={{ ...CARD, overflow: "hidden" }}>
             {jsGroups.length > 0 && (
               <div style={{ display: "grid", alignItems: "center", gridTemplateColumns: jsGrid, gap: 14, padding: "12px 20px", borderBottom: "1px solid var(--st-divider)", font: "700 11px Inter,sans-serif", letterSpacing: ".5px", color: "var(--st-text-faint)", textTransform: "uppercase" }}>
                 <div /><div>{t("Host")}</div><div>{t("Paths")}</div><div>{t("Secrets")}</div>
                 <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8 }}>
                   <span>{t("Actions")}</span>
-                  {canEditProject && allVisibleIds.length > 0 && (
-                    <button className="clk" title={t("Delete objects")} aria-label={t("Delete objects")} onClick={() => bulkDeleteJsVisible(allVisibleIds)} style={{ width: 27, height: 27, flex: "none", padding: 0, border: "1px solid var(--st-border)", borderRadius: 8, background: "var(--st-surface)", color: "var(--st-danger)", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
-                      <Icon name="trash" size={15} sw={2.2} color="var(--st-danger)" />
-                    </button>
-                  )}
+
                 </div>
               </div>
             )}
@@ -6063,24 +6098,18 @@ export function StormApp() {
     // rv === "hosts"
     if (state.hostImportOpen) return renderHostImport();
     if (_hd) return renderHostDetail(_hd);
-    const farmRunning = isFarmJobInFlight(state.hostFarmJob?.status ?? "");
     // Grid shared by the header, each host row and each nested subdomain row.
-    const hostGrid = "24px minmax(0,1.25fr) minmax(0,1fr) 104px 72px";
+    const hostGrid = "24px minmax(0,1.25fr) minmax(0,1fr) 72px";
     return (
       <div className="route">
         {/* While a probe job runs, statuses fill in live in the table below. */}
-        {farmRunning && (
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, padding: "11px 16px", borderRadius: 12, background: "var(--st-accent-soft)", color: "var(--st-accent)", font: "600 12.5px Inter,sans-serif" }}>
-            <span className="storm-spin" style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid var(--st-accent)", borderTopColor: "transparent", display: "inline-block" }} />
-            {t("Probing")} {state.hostFarmJob?.targets_total ?? ""} {t("hosts — statuses update automatically.")}
-          </div>
-        )}
+
         {reconFilterRow("hosts")}
         <div style={{ ...CARD, overflow: "hidden" }}>
           {/* No column headers over an empty table — only show them with rows. */}
           {hostsList.length > 0 && (
             <div style={{ display: "grid", gridTemplateColumns: hostGrid, gap: 14, padding: "12px 20px", borderBottom: "1px solid var(--st-divider)", font: "700 11px Inter,sans-serif", letterSpacing: ".5px", color: "var(--st-text-faint)", textTransform: "uppercase" }}>
-              <div /><div>{t("Host")}</div><div>{t("Ports")}</div><div>{t("Cloudflare")}</div><div style={{ textAlign: "right" }}>{t("Actions")}</div>
+              <div /><div>{t("Host")}</div><div>{t("Ports")}</div><div style={{ textAlign: "right" }}>{t("Actions")}</div>
             </div>
           )}
           {hostsList.slice(0, LIST_CAP).map(({ h, idx }) => {
@@ -6098,8 +6127,6 @@ export function StormApp() {
                     </div>
                   </div>
                   <div style={{ minWidth: 0 }}>{portPills(h.ports, h.status === "down")}</div>
-                  {/* True when any address of the host sits in a Cloudflare range. */}
-                  <div style={{ marginTop: 1 }}>{cloudflarePill(h.cloudflare)}</div>
                   <div style={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
                     <div className="actbtn" onClick={(ev) => { ev.stopPropagation(); openEditor("host", "edit", idx); }}><Icon name="edit" size={15} /></div>
                     <div className="actbtn del" onClick={(ev) => { ev.stopPropagation(); askDelete("host", idx, h.host); }}><Icon name="trash" size={15} /></div>
@@ -6115,7 +6142,6 @@ export function StormApp() {
                           <span className="mono hostname" style={{ font: "600 13px 'JetBrains Mono',monospace", color: "var(--st-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block", cursor: "pointer" }}>{sub.host}</span>
                         </div>
                         <div style={{ minWidth: 0 }}>{portPills(sub.ports, sub.status === "down")}</div>
-                        <div style={{ marginTop: 1 }}>{cloudflarePill(sub.cloudflare)}</div>
                         <div style={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
                           <div className="actbtn" onClick={(ev) => { ev.stopPropagation(); openEditor("host", "edit", hosts.findIndex((x) => x.id === sub.id)); }}><Icon name="edit" size={15} /></div>
                           <div className="actbtn del" onClick={(ev) => { ev.stopPropagation(); askDelete("host", hosts.findIndex((x) => x.id === sub.id), sub.host); }}><Icon name="trash" size={15} /></div>
@@ -6199,8 +6225,9 @@ export function StormApp() {
               <div key={ei} className="prow clk" onClick={() => openEndpoint({ method: e.m, path: e.p, host: h.host, hostId: h.id, endpointId: e.id })} style={{ display: "grid", gridTemplateColumns: "72px minmax(0,1fr) 96px", alignItems: "center", gap: 12, padding: "13px 20px", borderBottom: "1px solid var(--st-divider)" }}>
                 <span className="mono" style={{ justifySelf: "start", fontWeight: 700, borderRadius: 5, padding: "2px 8px", fontSize: 10.5, background: m.bg, color: m.color }}>{e.m}</span>
                 <div className="mono" style={{ fontSize: 12.5, color: "var(--st-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.p}</div>
-                <div style={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
+                <div className="endpoint-actions">
                   <Tip label={t("Copy as cURL")}><div className="actbtn" onClick={(ev) => { ev.stopPropagation(); copyCurl({ method: e.m, path: e.p, host: h.host }); }}><Icon name="copy" size={15} /></div></Tip>
+                  <Tip label={t("Edit endpoint")}><button type="button" className="actbtn" aria-label={`${t("Edit endpoint")}: ${e.m} ${e.p}`} onClick={(ev) => { ev.stopPropagation(); openEndpoint({ method: e.m, path: e.p, host: h.host, hostId: h.id, endpointId: e.id }); }}><Icon name="edit" size={15} /></button></Tip>
                   <Tip label={t("Delete endpoint")}><div className="actbtn del" onClick={(ev) => { ev.stopPropagation(); void deleteEndpoint(h.id, e.id); }}><Icon name="trash" size={15} /></div></Tip>
                 </div>
               </div>
@@ -6230,9 +6257,7 @@ export function StormApp() {
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <span style={{ width: 6, height: 6, flex: "none", borderRadius: "50%", background: STDOT[row.status] ?? STDOT.unknown }} />
               <span className="mono" style={{ font: "800 20px 'JetBrains Mono',monospace", color: "var(--st-text)", wordBreak: "break-all" }}>{row.ip}</span>
-              {row.cloudflare && (
-                <span className="mono" style={{ fontSize: 11, fontWeight: 700, borderRadius: 6, padding: "3px 9px", background: "var(--st-warn-soft)", color: "var(--st-warn)" }}>{t("Cloudflare")}</span>
-              )}
+
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 12 }}>
               <span style={{ font: "700 11px Inter,sans-serif", letterSpacing: ".5px", color: "var(--st-text-faint)", textTransform: "uppercase" }}>{t("Hostnames")}</span>
@@ -6561,13 +6586,13 @@ export function StormApp() {
     if (state.apiCreds === null) {
       return <div className="route" style={{ ...CARD, padding: 48, textAlign: "center", color: "var(--st-text-faint)", fontSize: 14 }}>{t("Loading credentials…")}</div>;
     }
-    const monoCell: CSSProperties = { fontFamily: "ui-monospace,Menlo,monospace", fontSize: 13.5, color: "var(--st-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
+    const monoCell: CSSProperties = { font: "500 13px 'JetBrains Mono',monospace", color: "var(--st-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
     const empty = d.creds.length === 0;
     return (
       <div className="route" style={{ ...CARD, padding: 0, overflow: "hidden" }}>
         {/* Column headers only make sense with rows — hide them for an empty vault. */}
         {!empty && (
-          <div className="mono" style={{ display: "grid", gridTemplateColumns: credCols, gap: 16, alignItems: "center", padding: "11px 20px", borderBottom: "1px solid var(--st-divider)", background: "var(--st-elevated)", fontSize: 11, letterSpacing: 0.4, textTransform: "uppercase", color: "var(--st-text-faint)", fontWeight: 700 }}>
+          <div style={{ display: "grid", gridTemplateColumns: credCols, gap: 14, alignItems: "center", padding: "12px 20px", borderBottom: "1px solid var(--st-divider)", font: "700 11px Inter,sans-serif", letterSpacing: ".5px", textTransform: "uppercase", color: "var(--st-text-faint)" }}>
             <div>#</div>
             <div>{t("Username")}</div>
             <div>{t("Password")}</div>
@@ -6578,12 +6603,12 @@ export function StormApp() {
         {d.creds.map((c, idx) => {
           const revealed = state.revealedCredIds.includes(c.id);
           return (
-            <div key={c.id} className="statc" style={{ display: "grid", gridTemplateColumns: credCols, gap: 16, alignItems: "center", padding: "11px 20px", borderBottom: "1px solid var(--st-divider)" }}>
+            <div key={c.id} className="prow" style={{ display: "grid", gridTemplateColumns: credCols, gap: 14, alignItems: "center", padding: "15px 20px", borderBottom: "1px solid var(--st-divider)" }}>
               {/* row index */}
               <div className="mono" style={{ fontSize: 13, fontWeight: 600, color: "var(--st-text-faint)" }}>{String(idx + 1).padStart(2, "0")}</div>
               {/* username + copy — one line */}
               <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-                <span style={{ ...monoCell, flex: "0 1 auto" }}>{c.username || <span style={{ color: "var(--st-text-faint)" }}>—</span>}</span>
+                <span style={{ ...monoCell, fontSize: 14, fontWeight: 700, flex: "0 1 auto" }}>{c.username || <span style={{ color: "var(--st-text-faint)" }}>—</span>}</span>
                 {c.username && <div className="actbtn" title={t("Copy username")} onClick={() => copyText(c.username, "Username")}><Icon name="copy" size={14} /></div>}
               </div>
               {/* password (masked) + reveal + copy — the value box is a fixed width so
@@ -6599,7 +6624,7 @@ export function StormApp() {
                 {c.host && <div className="actbtn" title={t("Copy host")} onClick={() => copyText(c.host, "Host")}><Icon name="copy" size={14} /></div>}
               </div>
               {/* row actions */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 4 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 2 }}>
                 <div className="actbtn" title={t("Edit")} onClick={() => openEditor("cred", "edit", idx)}><Icon name="edit" size={15} /></div>
                 <div className="actbtn del" title={t("Delete")} onClick={() => askDelete("cred", idx, c.username || "credential")}><Icon name="trash" size={15} /></div>
               </div>
@@ -6688,9 +6713,9 @@ export function StormApp() {
   };
 
   // Редактор заметки — как карточка уязвимости: «All notes» сверху, поля инлайн,
-  // Save/Cancel снизу. Сохраняется по кнопке, затем возврат к списку.
+  // Save/Cancel снизу. После сохранения редактор остаётся открытым.
   const renderNoteEditor = () => {
-    const editing = state.noteEditorMode === "edit" ? d.notes[state.noteEditorIndex] : undefined;
+    const editing = state.noteEditorMode === "edit" ? d.notes.find((note) => note.id === state.noteEditorId) ?? d.notes[state.noteEditorIndex] : undefined;
     const footAuthor = editing?.author ?? me;
     const footWhen = editing?.when ?? "";
     return (
@@ -6723,7 +6748,7 @@ export function StormApp() {
           <span className="mono" style={{ fontSize: 11.5, color: "var(--st-text-faint)" }}>{footAuthor}{footWhen ? ` · ${footWhen}` : ""}</span>
           <div style={{ display: "flex", gap: 10 }}>
             <button className="clk" onClick={backToNotesList} style={{ height: 40, padding: "0 18px", border: "1px solid var(--st-border)", borderRadius: 10, background: "var(--st-surface)", font: "700 13px Inter,sans-serif", color: "var(--st-text-2)" }}>{t("Cancel")}</button>
-            <button className="clk" onClick={saveNote} style={{ height: 40, padding: "0 20px", border: "none", borderRadius: 10, background: "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13px Inter,sans-serif" }}>{t("Save changes")}</button>
+            <button className="clk" disabled={noteSaveDisabled} onClick={saveNote} style={{ height: 40, padding: "0 20px", border: "none", borderRadius: 10, background: "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13px Inter,sans-serif", cursor: noteSaveDisabled ? "default" : "pointer", opacity: noteSaveDisabled ? .45 : 1 }}>{state.noteSaving ? t("Saving…") : t("Save changes")}</button>
           </div>
         </div>
       </div>
@@ -7198,7 +7223,6 @@ export function StormApp() {
             {([
               { id: "projects" as const, icon: "folder" as const, label: "Projects", onClick: selProjects },
               { id: "tasks" as const, icon: "check-square" as const, label: "Tasks", onClick: () => setState({ nav: "tasks", view: "list", tasksOpenKey: null }) },
-              { id: "mine" as const, icon: "user1" as const, label: "My Tasks", onClick: () => setState({ nav: "mine", view: "list" }) },
               { id: "docs" as const, icon: "doc" as const, label: "Docs", onClick: () => setState({ nav: "docs", view: "list" }) },
               ...(isAdmin ? [{ id: "members" as const, icon: "users" as const, label: "Members", onClick: selWSMembers }] : []),
             ]).map((it) => (
@@ -7224,7 +7248,6 @@ export function StormApp() {
                 </Suspense>
               )}
               {isTasks && renderTasks()}
-              {isStub && renderStub()}
               {/* /members is admin-only (GET /users is too) — say so rather than
                   quietly showing the projects list instead. */}
               {state.view === "workspaceMembers" &&
@@ -7700,17 +7723,17 @@ export function StormApp() {
           <>
             <div style={{ display: "flex", alignItems: "center", gap: 13, marginBottom: 14 }}>
               <span style={{ width: 42, height: 42, flex: "none", borderRadius: "50%", background: "var(--st-danger-soft)", color: "var(--st-danger)", display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name="trash" size={20} /></span>
-              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "var(--st-text)" }}>{t("Confirm deletion")}</h2>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "var(--st-text)" }}>{pendingDeleteLabel ?? t("Confirm deletion")}</h2>
             </div>
-            <div style={{ fontSize: 14, color: "var(--st-text-2)", lineHeight: 1.55 }}>{t("Are you sure you want to delete")} <b style={{ color: "var(--st-text)" }}>{state.confirmLabel}</b>{t("? This action cannot be undone.")}</div>
-            {modalFooter(closeConfirm, confirmDelete, t("Delete"), "var(--st-danger)")}
+            <div style={{ fontSize: 14, color: "var(--st-text-2)", lineHeight: 1.55 }}>{pendingDeleteLabel ? t("Revoke this invitation for") : t("Are you sure you want to delete")} <b style={{ color: "var(--st-text)" }}>{state.confirmLabel}</b>{t("? This action cannot be undone.")}</div>
+            {modalFooter(closeConfirm, confirmDelete, pendingDeleteLabel ?? t("Delete"), "var(--st-danger)")}
           </>
         )
       )}
 
       {/* endpoint detail */}
-      <div className={`modalback ${state.epOpen ? "open" : ""}`} onClick={closeEndpoint} style={{ position: "absolute", inset: 0, zIndex: 66, background: "rgba(20,28,40,.42)", display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "40px 24px", overflow: "auto" }}>
-        <div className="modalcard" onClick={stop} style={{ width: 820, maxWidth: "100%", background: "var(--st-surface)", borderRadius: 20, boxShadow: "0 30px 80px rgba(15,27,45,.3)", padding: "24px 26px 22px" }}>
+      <div className={`modalback ${state.epOpen ? "open" : ""}`} aria-hidden={!state.epOpen} onClick={closeEndpoint} style={{ position: "absolute", inset: 0, zIndex: 66, background: "rgba(20,28,40,.42)", display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "40px 24px", overflow: "auto" }}>
+        <div className="modalcard" role="dialog" aria-modal="true" aria-label={t("Endpoint request")} onClick={stop} style={{ width: 820, maxWidth: "100%", background: "var(--st-surface)", borderRadius: 20, boxShadow: "0 30px 80px rgba(15,27,45,.3)", padding: "24px 26px 22px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
             <span className="mono" style={{ fontWeight: 700, borderRadius: 6, padding: "3px 10px", fontSize: 12, background: (METHOD[state.epData.method] ?? PORT.closed).bg, color: (METHOD[state.epData.method] ?? PORT.closed).color }}>{state.epData.method}</span>
             <span className="mono" style={{ font: "700 15px 'JetBrains Mono',monospace", color: "var(--st-text)" }}>{state.epData.path}</span>
@@ -7725,26 +7748,16 @@ export function StormApp() {
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
               <div className="mono" style={{ fontSize: 10.5, letterSpacing: 1, color: "var(--st-text-faint)", fontWeight: 700 }}>{t("REQUEST")}</div>
               <div style={{ flex: 1 }} />
-              <Tip label={t("Copy cURL request")}>
-                <span className="clk" onClick={() => copyCurl(state.epData)} style={{ display: "inline-flex", alignItems: "center", gap: 5, font: "700 11.5px Inter,sans-serif", color: "var(--st-accent-2)", cursor: "pointer" }}>
-                  <Icon name="copy" size={13} />{t("Copy cURL")}
-                </span>
-              </Tip>
+              <button type="button" style={requestCopyStyle} disabled={state.epLoading} onClick={() => void copyText(state.epRequest, "Request")}><Icon name="copy" size={14} />{t("Copy request")}</button>
+              <button type="button" style={requestCopyStyle} disabled={state.epLoading} onClick={copyEndpointCurl}><Icon name="copy" size={14} />{t("Copy cURL")}</button>
             </div>
-            <textarea className="finp mono" rows={9} style={{ fontSize: 12, lineHeight: 1.6, resize: "vertical" }} value={state.epRequest} onChange={(e) => setState({ epRequest: e.target.value })} placeholder={`${state.epData.method} ${state.epData.path} HTTP/1.1`} />
+            <textarea className="finp mono" aria-label={t("HTTP request")} disabled={state.epLoading || state.epSaving} rows={9} style={{ fontSize: 12, lineHeight: 1.6, resize: "vertical" }} value={state.epRequest} onChange={(e) => setState({ epRequest: e.target.value })} placeholder={`${state.epData.method} ${state.epData.path} HTTP/1.1`} />
           </div>
           <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
-            <button className="clk" onClick={() => copyText(state.epRequest, "Request")} style={{ display: "flex", alignItems: "center", gap: 8, height: 40, padding: "0 18px", border: "none", borderRadius: 10, background: "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13px Inter,sans-serif", cursor: "pointer" }}>
-              <Icon name="copy" size={15} color="var(--st-on-accent)" />{t("Copy request")}
-            </button>
+            <button type="button" className="clk" disabled={endpointSaveDisabled} onClick={() => void saveEndpointRequest()} style={{ height: 40, padding: "0 18px", border: "none", borderRadius: 10, background: "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13px Inter,sans-serif", cursor: endpointSaveDisabled ? "default" : "pointer", opacity: endpointSaveDisabled ? .45 : 1 }}>{state.epSaving ? t("Saving…") : t("Save changes")}</button>
           </div>
           <div style={{ height: 1, background: "var(--st-divider)", margin: "22px 0 18px" }} />
-          <div className="mono" style={{ fontSize: 10.5, letterSpacing: 1, color: "var(--st-text-faint)", fontWeight: 700, marginBottom: 10 }}>{t("DISCUSSION")}</div>
-          <div style={{ background: "var(--st-hover)", border: "1px solid var(--st-divider)", borderRadius: 12, padding: 16, fontSize: 13, color: "var(--st-text-3)", marginBottom: 12 }}>{t("No comments yet — start the discussion.")}</div>
-          <textarea className="finp" rows={3} placeholder={t("Share progress, blockers, or review notes…")} />
-          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginTop: 12 }}>
-            <button className="clk" onClick={closeEndpoint} style={{ height: 40, padding: "0 18px", border: "none", borderRadius: 10, background: "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13px Inter,sans-serif" }}>{t("Post comment")}</button>
-          </div>
+          {state.epOpen && state.openProjectId != null && <EndpointDiscussion key={`${state.openProjectId}:${state.epData.hostId}:${state.epData.endpointId}`} projectId={state.openProjectId} hostId={state.epData.hostId} endpointId={state.epData.endpointId} />}
         </div>
       </div>
 

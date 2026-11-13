@@ -72,9 +72,13 @@ html, body, #root {
 .storm .iconbtn { transition: background .12s; }
 .storm .iconbtn:hover { background: var(--st-hover); }
 
-.storm .actbtn { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--st-text-faint); cursor: pointer; transition: background .12s, color .12s; }
-.storm .actbtn:hover { background: var(--st-accent-soft); color: var(--st-accent-2); }
-.storm .actbtn.del:hover { background: var(--st-danger-soft); color: var(--st-danger); }
+.storm .actbtn { width: 28px; height: 28px; padding: 0; border: 0; background: transparent; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--st-text-faint); cursor: pointer; transition: background .12s, color .12s; }
+.storm .actbtn:not(:disabled):hover { background: var(--st-accent-soft) !important; color: var(--st-accent-2) !important; }
+.storm .actbtn.del:not(:disabled):hover { background: var(--st-danger-soft) !important; color: var(--st-danger) !important; }
+.storm .actbtn:not(:disabled):hover svg:not([stroke="none"]) { stroke: currentColor; }
+.storm .endpoint-actions { display: flex; align-items: center; justify-content: flex-end; gap: 4px; flex: none; }
+.storm .endpoint-actions .actbtn { box-sizing: border-box; flex: 0 0 28px; color: var(--st-text-3); }
+.storm .endpoint-actions .actbtn:disabled { opacity: .45; cursor: default; }
 
 .storm .addbtn { display: inline-flex; align-items: center; gap: 7px; height: 38px; padding: 0 15px; border: none; border-radius: 10px; background: var(--st-accent-2); color: var(--st-on-accent); font: 700 12.5px Inter, sans-serif; cursor: pointer; }
 
@@ -171,6 +175,23 @@ html, body, #root {
 .storm .stormmd-input a { color: var(--st-accent-2); text-decoration: underline; }
 .storm .stormmd-input hr { border: none; border-top: 1px solid var(--st-border-light); margin: 12px 0; }
 .storm .stormmd-input img { max-width: 100%; height: auto; border-radius: 8px; }
+/* Align following text and the single image caret with the image's lower edge. */
+.storm .stormmd-image { display: inline-block; vertical-align: baseline; max-width: 100%; margin: 6px 0; line-height: 0; }
+/* Replace only the browser's split native caret next to an image. The actual
+   ProseMirror TextSelection and keyboard input remain unchanged. */
+.storm .stormmd-input.stormmd-image-caret-active { caret-color: transparent; }
+.storm .stormmd-image-caret { display: inline-block; position: relative; vertical-align: baseline; width: 0; height: 1em; pointer-events: none; user-select: none; }
+.storm .stormmd-input.ProseMirror-focused .stormmd-image-caret::after { content: ""; position: absolute; bottom: 0; left: 1px; height: 1em; border-left: 1px solid var(--st-text); animation: stormmd-caret-blink 1.1s steps(2, start) infinite; }
+@keyframes stormmd-caret-blink { to { visibility: hidden; } }
+.storm .stormmd-image-frame { position: relative; display: inline-block; max-width: 100%; }
+.storm .stormmd-image-frame img { display: block; width: 100%; height: auto; cursor: pointer; }
+.storm .stormmd-image.selected .stormmd-image-frame { outline: 2px solid var(--st-accent-2); border-radius: 8px; }
+.storm .stormmd-resize { position: absolute; width: 10px; height: 10px; padding: 0; border: 2px solid var(--st-accent-2); border-radius: 3px; background: var(--st-surface); touch-action: none; }
+.storm .stormmd-resize[hidden] { display: none; }
+.storm .stormmd-resize.nw { top: -5px; left: -5px; cursor: nwse-resize; }
+.storm .stormmd-resize.ne { top: -5px; right: -5px; cursor: nesw-resize; }
+.storm .stormmd-resize.sw { bottom: -5px; left: -5px; cursor: nesw-resize; }
+.storm .stormmd-resize.se { bottom: -5px; right: -5px; cursor: nwse-resize; }
 /* Placeholder for the empty document (TipTap's Placeholder extension). */
 .storm .stormmd-input p.is-editor-empty:first-child::before { content: attr(data-placeholder); color: var(--st-text-faint); float: left; height: 0; pointer-events: none; }
 

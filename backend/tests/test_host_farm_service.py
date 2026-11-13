@@ -219,16 +219,14 @@ async def test_ensure_ips_stores_every_resolved_address() -> None:
     assert [row.is_primary for row in added] == [True, False, False]
     assert host.ip_address == "1.1.1.1"
     assert primary is added[0]
-    # 2606:4700::/32 — сеть Cloudflare → True; для остальных сигнала CF нет и
-    # cf_responded не передан → None (unknown), а не «нет CF».
-    assert [row.is_cloudflare for row in added] == [None, None, True]
+    assert all(not hasattr(row, "is_cloudflare") for row in added)
 
 
 @pytest.mark.asyncio
 async def test_ensure_ips_reuses_existing_rows() -> None:
     db = _mock_db()
     svc = HostFarmService(db)
-    existing = MagicMock(ip_address="104.16.0.1", is_primary=True, is_cloudflare=False)
+    existing = MagicMock(ip_address="104.16.0.1", is_primary=True)
     host = MagicMock(id=1, ip_addresses=[existing], ip_address="104.16.0.1")
     db.add = MagicMock()
 
@@ -236,28 +234,8 @@ async def test_ensure_ips_reuses_existing_rows() -> None:
 
     assert primary is existing
     db.add.assert_not_called()
-    # признак пересчитывается даже на переиспользованной строке
-    assert existing.is_cloudflare is True
 
 
-@pytest.mark.asyncio
-async def test_ensure_ips_cloudflare_tri_state() -> None:
-    """is_cloudflare трёхзначен: None — сигнала нет (хост ещё пробится),
-    False — ответил без CF, True — CF (по заголовкам/детекту или CIDR)."""
-
-    async def cf_of(ip: str, *, hint: bool, responded: bool):
-        db = _mock_db()
-        svc = HostFarmService(db)
-        added: list = []
-        db.add = MagicMock(side_effect=lambda row: added.append(row))
-        host = MagicMock(id=1, ip_addresses=[], ip_address=None)
-        await svc._ensure_ips(host, [ip], cloudflare_hint=hint, cf_responded=responded)
-        return added[0].is_cloudflare
-
-    assert await cf_of("8.8.8.8", hint=False, responded=False) is None   # unknown (пробится)
-    assert await cf_of("8.8.8.8", hint=False, responded=True) is False   # ответил, CF нет
-    assert await cf_of("8.8.8.8", hint=True, responded=True) is True     # CF по сигналу пробива
-    assert await cf_of("104.16.0.1", hint=False, responded=False) is True  # CF по CIDR
 
 
 # --------------------------------------------------------- service detection
@@ -267,7 +245,6 @@ def _mock_ip_row(id_: int = 1):
     row = MagicMock()
     row.id = id_
     row.is_primary = True
-    row.is_cloudflare = False
     row.ip_address = "1.1.1.1"
     return row
 
@@ -323,8 +300,8 @@ async def test_upsert_port_empty_techs_clears_services() -> None:
 
 
 @pytest.mark.asyncio
-async def test_persist_flags_cloudflare_from_detection(monkeypatch: pytest.MonkeyPatch) -> None:
-    """claude.com за CF, но его адрес вне CIDR-списка → CF ставится по детекту."""
+async def test_persist_creates_ip_without_cloudflare_flag(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Детект технологии не возвращает удалённый признак в модель IP."""
     from app.farm.fingerprint import Tech
     from app.models import HostIpAddress
 
@@ -341,7 +318,7 @@ async def test_persist_flags_cloudflare_from_detection(monkeypatch: pytest.Monke
     await svc._persist(101, targets, resolved, probes, actor_id=7, techs_by_port=techs)
 
     ip_rows = [c.args[0] for c in db.add.call_args_list if isinstance(c.args[0], HostIpAddress)]
-    assert ip_rows and ip_rows[0].is_cloudflare is True  # CIDR промахнулся — спас детект
+    assert ip_rows and not hasattr(ip_rows[0], "is_cloudflare")
 
 
 # ---------------------------------------------- skip existing / IP promotion

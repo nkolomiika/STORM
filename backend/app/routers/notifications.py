@@ -5,24 +5,24 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.dependencies import enforce_csrf, get_current_user
 from app.models import User
-from app.pagination import PageParams, to_paginated_response
+from app.pagination import PageParams, PaginatedResponse, to_paginated_response
 from app.schemas import NotificationOut, UnreadCountOut
 from app.services import NotificationService
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 
-@router.get("", response_model=dict)
+@router.get("", response_model=PaginatedResponse[NotificationOut])
 async def list_notifications(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=200),
     is_read: bool | None = Query(default=None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> dict:
+) -> PaginatedResponse[NotificationOut]:
     """Возвращает уведомления текущего пользователя."""
     items, total = await NotificationService(db).list(current_user.id, page, size, is_read)
-    return to_paginated_response(items, total, PageParams(page=page, size=size)).model_dump()
+    return to_paginated_response(items, total, PageParams(page=page, size=size))
 
 
 @router.get("/unread-count", response_model=UnreadCountOut)

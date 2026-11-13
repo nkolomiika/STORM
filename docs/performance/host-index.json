@@ -1,0 +1,25 @@
+{
+  "node": "v26.3.0",
+  "measured_at_utc": "2026-11-10T18:27:27.730Z",
+  "rounds": 3,
+  "scenarios": [
+    {
+      "hosts": 1000,
+      "before_ms_median": 45.649,
+      "after_ms_median": 0.355,
+      "speedup": 128.71
+    },
+    {
+      "hosts": 5000,
+      "before_ms_median": 1018.885,
+      "after_ms_median": 0.962,
+      "speedup": 1059.18
+    },
+    {
+      "hosts": 10000,
+      "before_ms_median": 4486.002,
+      "after_ms_median": 1.937,
+      "speedup": 2316.05
+    }
+  ]
+}

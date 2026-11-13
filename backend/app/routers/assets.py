@@ -1,12 +1,16 @@
 
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.enums import HostStatus
 from app.dependencies import enforce_csrf, get_current_user, require_project_access
 from app.farm import JsFarmService
 from app.models import User
-from app.pagination import PageParams, to_paginated_response
+from app.http_headers import content_disposition
+from app.pagination import PageParams, PaginatedResponse, to_paginated_response
 from app.schemas import (
     EndpointCreate,
     EndpointOut,
@@ -29,16 +33,26 @@ from app.services import AssetService
 router = APIRouter(tags=["assets"])
 
 
-@router.get("/projects/{project_id}/hosts", response_model=dict)
+@router.get("/projects/{project_id}/host-creation-times", response_model=list[datetime])
+async def list_host_creation_times(
+    project_id: int,
+    _project=Depends(require_project_access),
+    db: AsyncSession = Depends(get_db),
+) -> list[datetime]:
+    """Даты создания всех хостов для графиков без IP, портов и эндпоинтов."""
+    return await AssetService(db).list_host_creation_times(project_id)
+
+
+@router.get("/projects/{project_id}/hosts", response_model=PaginatedResponse[HostOut])
 async def list_hosts(
     project_id: int,
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=200),
-    status_filter: str | None = Query(None, alias="status"),
+    status_filter: HostStatus | None = Query(None, alias="status"),
     origin: str = Query("host", pattern="^(host|ip|all)$"),
     _project=Depends(require_project_access),
     db: AsyncSession = Depends(get_db),
-) -> dict:
+) -> PaginatedResponse[HostOut]:
     """Возвращает список хостов проекта.
 
     По умолчанию только origin=host: служебные родители адресов из фермы IP
@@ -46,7 +60,7 @@ async def list_hosts(
     наполнить и таблицу хостов, и таблицу IP.
     """
     items, total = await AssetService(db).list_hosts(project_id, page, size, status_filter, origin)
-    return to_paginated_response([HostOut.model_validate(it) for it in items], total, PageParams(page=page, size=size)).model_dump()
+    return to_paginated_response([HostOut.model_validate(it) for it in items], total, PageParams(page=page, size=size))
 
 
 @router.post("/projects/{project_id}/hosts", response_model=HostOut, status_code=status.HTTP_201_CREATED)
@@ -148,7 +162,7 @@ async def list_ports(
     db: AsyncSession = Depends(get_db),
 ) -> list[PortOut]:
     """Возвращает список портов хоста."""
-    ports = await AssetService(db).list_ports(host_id)
+    ports = await AssetService(db).list_ports(project_id, host_id)
     return [PortOut.model_validate(port) for port in ports]
 
 
@@ -176,7 +190,7 @@ async def get_port(
     db: AsyncSession = Depends(get_db),
 ) -> PortOut:
     """Возвращает порт."""
-    port = await AssetService(db).get_port(host_id, port_id)
+    port = await AssetService(db).get_port(project_id, host_id, port_id)
     return PortOut.model_validate(port)
 
 
@@ -219,7 +233,7 @@ async def list_services(
     db: AsyncSession = Depends(get_db),
 ) -> list[ServiceOut]:
     """Возвращает список сервисов порта."""
-    services = await AssetService(db).list_services(port_id)
+    services = await AssetService(db).list_services(project_id, host_id, port_id)
     return [ServiceOut.model_validate(service) for service in services]
 
 
@@ -279,23 +293,23 @@ async def delete_service(
     db: AsyncSession = Depends(get_db),
 ) -> None:
     """Удаляет сервис."""
-    await AssetService(db).delete_service(project_id, port_id, service_id, current_user.id)
+    await AssetService(db).delete_service(project_id, host_id, port_id, service_id, current_user.id)
 
 
-@router.get("/projects/{project_id}/js-files", response_model=dict)
+@router.get("/projects/{project_id}/js-files", response_model=PaginatedResponse[JsFileOut])
 async def list_js_files(
     project_id: int,
     page: int = Query(1, ge=1),
     size: int = Query(200, ge=1, le=1000),
     _project=Depends(require_project_access),
     db: AsyncSession = Depends(get_db),
-) -> dict:
+) -> PaginatedResponse[JsFileOut]:
     """JS-файлы проекта с находками (пагинация) — раздел JS группирует по хосту на фронте."""
     params = PageParams(page=page, size=size)
     items, total = await AssetService(db).list_js_files(project_id, params.offset, params.size)
     return to_paginated_response(
         [JsFileOut.model_validate(it) for it in items], total, params
-    ).model_dump()
+    )
 
 
 @router.post("/projects/{project_id}/js-files/bulk-delete", response_model=dict)
@@ -342,7 +356,7 @@ async def download_js_archive(
     return Response(
         content=blob,
         media_type="application/zip",
-        headers={"Content-Disposition": f'attachment; filename="{name}"'},
+        headers={"Content-Disposition": content_disposition(name)},
     )
 
 
@@ -354,7 +368,7 @@ async def list_endpoints(
     db: AsyncSession = Depends(get_db),
 ) -> list[EndpointOut]:
     """Возвращает endpoints хоста."""
-    endpoints = await AssetService(db).list_endpoints(host_id)
+    endpoints = await AssetService(db).list_endpoints(project_id, host_id)
     return [EndpointOut.model_validate(endpoint) for endpoint in endpoints]
 
 

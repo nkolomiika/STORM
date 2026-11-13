@@ -29,6 +29,9 @@ export const METHOD: Record<Method, ColorPair> = {
   PUT: { bg: "var(--st-purple-soft)", color: "var(--st-purple)" },
   PATCH: { bg: "var(--st-warn-soft)", color: "var(--st-warn)" },
   DELETE: { bg: "var(--st-danger-soft)", color: "var(--st-danger)" },
+  HEAD: { bg: "var(--st-elevated)", color: "var(--st-text-2)" },
+  OPTIONS: { bg: "var(--st-elevated)", color: "var(--st-text-2)" },
+  TRACE: { bg: "var(--st-elevated)", color: "var(--st-text-2)" },
   QUERY: { bg: "var(--st-cyan-soft)", color: "var(--st-cyan)" },
 };
 
@@ -107,6 +110,9 @@ export const EPSTATUS: Record<Method, string> = {
   PUT: "200",
   PATCH: "200",
   DELETE: "204",
+  HEAD: "200",
+  OPTIONS: "200",
+  TRACE: "200",
   QUERY: "200",
 };
 

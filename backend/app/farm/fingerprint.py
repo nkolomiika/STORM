@@ -108,10 +108,11 @@ def parse_httpx_jsonl(raw: str) -> dict[str, list[Tech]]:
         if not isinstance(entry, dict):
             continue
         url = entry.get("input") or entry.get("url")
-        if not url:
+        if not isinstance(url, str) or not url:
             continue
         techs: dict[str, Tech] = {}
-        for item in entry.get("tech") or []:
+        raw_tech = entry.get("tech")
+        for item in raw_tech if isinstance(raw_tech, list) else []:
             t = _split_tech(str(item))
             techs.setdefault(t.name.lower(), t)
         for extra_key in ("webserver", "cdn_name"):
@@ -173,7 +174,8 @@ def parse_whatweb_json(raw: str) -> list[Tech]:
     for entry in entries:
         if not isinstance(entry, dict):
             continue
-        for name, info in (entry.get("plugins") or {}).items():
+        plugins = entry.get("plugins")
+        for name, info in (plugins if isinstance(plugins, dict) else {}).items():
             if name in _META_PLUGINS:
                 continue
             version: str | None = None

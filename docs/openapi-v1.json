@@ -1940,6 +1940,83 @@
         }
       }
     },
+    "/api/v1/users/search": {
+      "get": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Search Users",
+        "description": "Поиск людей для назначения исполнителя: по username или ФИО (full_name).\n\nПри настроенном IAM дополнительно подмешивает кандидатов из IAM\n(dedup по username, локальные пользователи в приоритете).",
+        "operationId": "search_users_api_v1_users_search_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 100,
+              "default": "",
+              "title": "Q"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 25,
+              "minimum": 1,
+              "default": 10,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "access_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Access Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserSearchOut"
+                  },
+                  "title": "Response Search Users Api V1 Users Search Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/users/{user_id}": {
       "get": {
         "tags": [
@@ -2469,7 +2546,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "$ref": "#/components/schemas/ProjectStatus"
                 },
                 {
                   "type": "null"
@@ -4761,6 +4838,70 @@
         }
       }
     },
+    "/api/v1/projects/{project_id}/host-creation-times": {
+      "get": {
+        "tags": [
+          "assets"
+        ],
+        "summary": "List Host Creation Times",
+        "description": "Даты создания всех хостов для графиков без IP, портов и эндпоинтов.",
+        "operationId": "list_host_creation_times_api_v1_projects__project_id__host_creation_times_get",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "access_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Access Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "title": "Response List Host Creation Times Api V1 Projects  Project Id  Host Creation Times Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/projects/{project_id}/hosts": {
       "get": {
         "tags": [
@@ -4809,7 +4950,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "$ref": "#/components/schemas/HostStatus"
                 },
                 {
                   "type": "null"
@@ -4852,9 +4993,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response List Hosts Api V1 Projects  Project Id  Hosts Get"
+                  "$ref": "#/components/schemas/PaginatedResponse_HostOut_"
                 }
               }
             }
@@ -6285,9 +6424,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response List Js Files Api V1 Projects  Project Id  Js Files Get"
+                  "$ref": "#/components/schemas/PaginatedResponse_JsFileOut_"
                 }
               }
             }
@@ -7859,7 +7996,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "$ref": "#/components/schemas/Severity"
                 },
                 {
                   "type": "null"
@@ -7875,7 +8012,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "$ref": "#/components/schemas/VulnerabilityStatus"
                 },
                 {
                   "type": "null"
@@ -7907,9 +8044,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response List Vulnerabilities Api V1 Projects  Project Id  Vulnerabilities Get"
+                  "$ref": "#/components/schemas/PaginatedResponse_VulnerabilityListOut_"
                 }
               }
             }
@@ -8067,7 +8202,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "$ref": "#/components/schemas/Severity"
                 },
                 {
                   "type": "null"
@@ -8083,7 +8218,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "$ref": "#/components/schemas/VulnerabilityStatus"
                 },
                 {
                   "type": "null"
@@ -8115,9 +8250,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response List Host Vulnerabilities Api V1 Projects  Project Id  Hosts  Host Id  Vulnerabilities Get"
+                  "$ref": "#/components/schemas/PaginatedResponse_VulnerabilityOut_"
                 }
               }
             }
@@ -9249,9 +9382,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response List Comments Api V1 Projects  Project Id  Vulnerabilities  Vuln Id  Comments Get"
+                  "$ref": "#/components/schemas/PaginatedResponse_CommentOut_"
                 }
               }
             }
@@ -9548,6 +9679,207 @@
         }
       }
     },
+    "/api/v1/projects/{project_id}/hosts/{host_id}/endpoints/{endpoint_id}/comments": {
+      "get": {
+        "tags": [
+          "endpoint-comments"
+        ],
+        "summary": "List Endpoint Comments",
+        "description": "Сохранённые комментарии только указанного эндпоинта, новые первыми.",
+        "operationId": "list_endpoint_comments_api_v1_projects__project_id__hosts__host_id__endpoints__endpoint_id__comments_get",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "host_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Host Id"
+            }
+          },
+          {
+            "name": "endpoint_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Endpoint Id"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Size"
+            }
+          },
+          {
+            "name": "access_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Access Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_EndpointCommentOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "endpoint-comments"
+        ],
+        "summary": "Create Endpoint Comment",
+        "description": "Добавляет комментарий; запись и аудит сохраняются в одной транзакции.",
+        "operationId": "create_endpoint_comment_api_v1_projects__project_id__hosts__host_id__endpoints__endpoint_id__comments_post",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "host_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Host Id"
+            }
+          },
+          {
+            "name": "endpoint_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Endpoint Id"
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Origin"
+            }
+          },
+          {
+            "name": "access_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Access Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EndpointCommentCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EndpointCommentOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/notifications": {
       "get": {
         "tags": [
@@ -9619,9 +9951,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response List Notifications Api V1 Notifications Get"
+                  "$ref": "#/components/schemas/PaginatedResponse_NotificationOut_"
                 }
               }
             }
@@ -10643,6 +10973,352 @@
         }
       }
     },
+    "/api/v1/works/config": {
+      "get": {
+        "tags": [
+          "works"
+        ],
+        "summary": "Get Works Config",
+        "description": "Публичная конфигурация: доступен ли экспорт находок в Works (AppSec).",
+        "operationId": "get_works_config_api_v1_works_config_get",
+        "parameters": [
+          {
+            "name": "access_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Access Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorksConfigOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/works/components": {
+      "get": {
+        "tags": [
+          "works"
+        ],
+        "summary": "Find Works Components",
+        "description": "Typeahead по компонентам Works (имя→UUID). Пусто, если не настроено.",
+        "operationId": "find_works_components_api_v1_works_components_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Q"
+            }
+          },
+          {
+            "name": "access_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Access Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WorksRefOut"
+                  },
+                  "title": "Response Find Works Components Api V1 Works Components Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/works/versions": {
+      "get": {
+        "tags": [
+          "works"
+        ],
+        "summary": "Find Works Versions",
+        "description": "Typeahead по версиям Works (имя→UUID). Пусто, если не настроено.",
+        "operationId": "find_works_versions_api_v1_works_versions_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Q"
+            }
+          },
+          {
+            "name": "access_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Access Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WorksRefOut"
+                  },
+                  "title": "Response Find Works Versions Api V1 Works Versions Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{project_id}/vulnerabilities/{vuln_id}/works": {
+      "get": {
+        "tags": [
+          "works"
+        ],
+        "summary": "Get Vulnerability Works Link",
+        "operationId": "get_vulnerability_works_link_api_v1_projects__project_id__vulnerabilities__vuln_id__works_get",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "vuln_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Vuln Id"
+            }
+          },
+          {
+            "name": "access_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Access Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/WorksIssueLinkOut"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Get Vulnerability Works Link Api V1 Projects  Project Id  Vulnerabilities  Vuln Id  Works Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{project_id}/vulnerabilities/{vuln_id}/works/export": {
+      "post": {
+        "tags": [
+          "works"
+        ],
+        "summary": "Export Vulnerability To Works",
+        "operationId": "export_vulnerability_to_works_api_v1_projects__project_id__vulnerabilities__vuln_id__works_export_post",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "vuln_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Vuln Id"
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Origin"
+            }
+          },
+          {
+            "name": "access_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Access Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorksExportRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorksIssueLinkOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/projects/{project_id}/reports/szi": {
       "post": {
         "tags": [
@@ -11265,7 +11941,7 @@
         "properties": {
           "file": {
             "type": "string",
-            "format": "binary",
+            "contentMediaType": "application/octet-stream",
             "title": "File"
           }
         },
@@ -11279,7 +11955,7 @@
         "properties": {
           "file": {
             "type": "string",
-            "format": "binary",
+            "contentMediaType": "application/octet-stream",
             "title": "File"
           }
         },
@@ -11293,7 +11969,7 @@
         "properties": {
           "file": {
             "type": "string",
-            "format": "binary",
+            "contentMediaType": "application/octet-stream",
             "title": "File"
           }
         },
@@ -11307,7 +11983,7 @@
         "properties": {
           "avatar": {
             "type": "string",
-            "format": "binary",
+            "contentMediaType": "application/octet-stream",
             "title": "Avatar"
           }
         },
@@ -11321,7 +11997,7 @@
         "properties": {
           "file": {
             "type": "string",
-            "format": "binary",
+            "contentMediaType": "application/octet-stream",
             "title": "File"
           }
         },
@@ -11430,6 +12106,76 @@
           "4.0"
         ],
         "title": "CvssVersion"
+      },
+      "EndpointCommentCreate": {
+        "properties": {
+          "content": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Content"
+          }
+        },
+        "type": "object",
+        "required": [
+          "content"
+        ],
+        "title": "EndpointCommentCreate"
+      },
+      "EndpointCommentOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "endpoint_id": {
+            "type": "integer",
+            "title": "Endpoint Id"
+          },
+          "user_id": {
+            "type": "integer",
+            "title": "User Id"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "endpoint_id",
+          "user_id",
+          "username",
+          "content",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "EndpointCommentOut"
       },
       "EndpointCreate": {
         "properties": {
@@ -12209,17 +12955,6 @@
             "type": "array",
             "title": "Hostnames"
           },
-          "is_cloudflare": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Is Cloudflare"
-          },
           "ports": {
             "items": {
               "$ref": "#/components/schemas/PortOut"
@@ -12277,6 +13012,13 @@
             },
             "type": "array",
             "title": "Ip Addresses"
+          },
+          "endpoints": {
+            "items": {
+              "$ref": "#/components/schemas/EndpointOut"
+            },
+            "type": "array",
+            "title": "Endpoints"
           },
           "hostname": {
             "anyOf": [
@@ -12454,6 +13196,7 @@
           "DELETE",
           "HEAD",
           "OPTIONS",
+          "TRACE",
           "QUERY"
         ],
         "title": "HttpMethod"
@@ -12500,7 +13243,7 @@
             "type": "string",
             "maxLength": 100,
             "minLength": 3,
-            "pattern": "^[A-Za-z0-9._-]{3,100}$",
+            "pattern": "^[A-Za-zА-Яа-яЁё0-9 ._-]{3,100}$",
             "title": "Username"
           },
           "password": {
@@ -12690,6 +13433,17 @@
               }
             ],
             "title": "Mail Preview Url"
+          },
+          "activation_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activation Url"
           }
         },
         "type": "object",
@@ -12723,17 +13477,6 @@
             },
             "type": "array",
             "title": "Hostnames"
-          },
-          "is_cloudflare": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Is Cloudflare"
           },
           "created": {
             "type": "boolean",
@@ -13133,6 +13876,11 @@
             "type": "string",
             "title": "Created"
           },
+          "url": {
+            "type": "string",
+            "title": "Url",
+            "default": ""
+          },
           "reporter": {
             "anyOf": [
               {
@@ -13155,11 +13903,6 @@
             },
             "type": "array",
             "title": "Labels"
-          },
-          "url": {
-            "type": "string",
-            "title": "Url",
-            "default": ""
           }
         },
         "type": "object",
@@ -13257,6 +14000,17 @@
           "created": {
             "type": "string",
             "title": "Created"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
           }
         },
         "type": "object",
@@ -13450,6 +14204,137 @@
         },
         "type": "object",
         "title": "JsFarmResult"
+      },
+      "JsFileOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "host_id": {
+            "type": "integer",
+            "title": "Host Id"
+          },
+          "hostname": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hostname"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Bytes"
+          },
+          "content_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Type"
+          },
+          "secret_count": {
+            "type": "integer",
+            "title": "Secret Count",
+            "default": 0
+          },
+          "endpoint_count": {
+            "type": "integer",
+            "title": "Endpoint Count",
+            "default": 0
+          },
+          "endpoints": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Endpoints"
+          },
+          "secrets": {
+            "items": {
+              "$ref": "#/components/schemas/JsSecretOut"
+            },
+            "type": "array",
+            "title": "Secrets"
+          },
+          "fetched_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fetched At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "host_id",
+          "url",
+          "status"
+        ],
+        "title": "JsFileOut"
+      },
+      "JsSecretOut": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "match_preview": {
+            "type": "string",
+            "title": "Match Preview"
+          },
+          "snippet": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snippet"
+          },
+          "severity": {
+            "type": "string",
+            "title": "Severity"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "match_preview",
+          "severity"
+        ],
+        "title": "JsSecretOut"
       },
       "LoginRequest": {
         "properties": {
@@ -13777,6 +14662,258 @@
           "new_password"
         ],
         "title": "OwnPasswordChangeRequest"
+      },
+      "PaginatedResponse_CommentOut_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CommentOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "pages": {
+            "type": "integer",
+            "title": "Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "size",
+          "pages"
+        ],
+        "title": "PaginatedResponse[CommentOut]"
+      },
+      "PaginatedResponse_EndpointCommentOut_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/EndpointCommentOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "pages": {
+            "type": "integer",
+            "title": "Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "size",
+          "pages"
+        ],
+        "title": "PaginatedResponse[EndpointCommentOut]"
+      },
+      "PaginatedResponse_HostOut_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/HostOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "pages": {
+            "type": "integer",
+            "title": "Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "size",
+          "pages"
+        ],
+        "title": "PaginatedResponse[HostOut]"
+      },
+      "PaginatedResponse_JsFileOut_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/JsFileOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "pages": {
+            "type": "integer",
+            "title": "Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "size",
+          "pages"
+        ],
+        "title": "PaginatedResponse[JsFileOut]"
+      },
+      "PaginatedResponse_NotificationOut_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/NotificationOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "pages": {
+            "type": "integer",
+            "title": "Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "size",
+          "pages"
+        ],
+        "title": "PaginatedResponse[NotificationOut]"
+      },
+      "PaginatedResponse_VulnerabilityListOut_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/VulnerabilityListOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "pages": {
+            "type": "integer",
+            "title": "Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "size",
+          "pages"
+        ],
+        "title": "PaginatedResponse[VulnerabilityListOut]"
+      },
+      "PaginatedResponse_VulnerabilityOut_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/VulnerabilityOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "pages": {
+            "type": "integer",
+            "title": "Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "size",
+          "pages"
+        ],
+        "title": "PaginatedResponse[VulnerabilityOut]"
       },
       "PasswordResetConfirmRequest": {
         "properties": {
@@ -14283,6 +15420,90 @@
               }
             ],
             "title": "End Date"
+          },
+          "appsec_component_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appsec Component Code"
+          },
+          "appsec_component_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appsec Component Name"
+          },
+          "appsec_version_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appsec Version Code"
+          },
+          "appsec_version_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appsec Version Name"
+          },
+          "appsec_assignee": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appsec Assignee"
+          },
+          "appsec_ticket_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1024
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appsec Ticket Url"
+          },
+          "appsec_ticket_key": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appsec Ticket Key"
           }
         },
         "type": "object",
@@ -15025,6 +16246,83 @@
             "type": "integer",
             "title": "Created By"
           },
+          "appsec_component_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appsec Component Code"
+          },
+          "appsec_component_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appsec Component Name"
+          },
+          "appsec_version_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appsec Version Code"
+          },
+          "appsec_version_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appsec Version Name"
+          },
+          "appsec_assignee": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appsec Assignee"
+          },
+          "appsec_ticket_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appsec Ticket Url"
+          },
+          "appsec_ticket_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appsec Ticket Key"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -15144,6 +16442,90 @@
                 "type": "null"
               }
             ]
+          },
+          "appsec_component_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appsec Component Code"
+          },
+          "appsec_component_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appsec Component Name"
+          },
+          "appsec_version_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appsec Version Code"
+          },
+          "appsec_version_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appsec Version Name"
+          },
+          "appsec_assignee": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appsec Assignee"
+          },
+          "appsec_ticket_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1024
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appsec Ticket Url"
+          },
+          "appsec_ticket_key": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appsec Ticket Key"
           }
         },
         "type": "object",
@@ -15487,7 +16869,8 @@
           "high",
           "medium",
           "low",
-          "info"
+          "info",
+          "unrealized"
         ],
         "title": "Severity"
       },
@@ -15787,6 +17170,11 @@
             "title": "Totp Enabled",
             "default": false
           },
+          "is_sso": {
+            "type": "boolean",
+            "title": "Is Sso",
+            "default": false
+          },
           "password_changed_at": {
             "anyOf": [
               {
@@ -15866,6 +17254,36 @@
           "pentester"
         ],
         "title": "UserRole"
+      },
+      "UserSearchOut": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          },
+          "is_sso": {
+            "type": "boolean",
+            "title": "Is Sso",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "username"
+        ],
+        "title": "UserSearchOut",
+        "description": "Лёгкая выдача для тайпхеда исполнителя: поиск по username или ФИО (full_name)."
       },
       "UserUpdate": {
         "properties": {
@@ -15977,6 +17395,13 @@
           "type": {
             "type": "string",
             "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
           }
         },
         "type": "object",
@@ -16157,6 +17582,179 @@
         ],
         "title": "VulnerabilityCreate"
       },
+      "VulnerabilityListOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "project_id": {
+            "type": "integer",
+            "title": "Project Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/Severity"
+          },
+          "cvss_version": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CvssVersion"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cvss_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cvss Score"
+          },
+          "cvss_vector": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cvss Vector"
+          },
+          "cwe_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cwe Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/VulnerabilityStatus"
+          },
+          "workflow_steps": {
+            "items": {
+              "$ref": "#/components/schemas/VulnerabilityWorkflowStep"
+            },
+            "type": "array",
+            "title": "Workflow Steps"
+          },
+          "steps_to_reproduce": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Steps To Reproduce"
+          },
+          "impact": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Impact"
+          },
+          "recommendations": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recommendations"
+          },
+          "created_by": {
+            "type": "integer",
+            "title": "Created By"
+          },
+          "created_by_username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By Username"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "affected_host_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Affected Host Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "project_id",
+          "title",
+          "description",
+          "severity",
+          "cvss_version",
+          "cvss_score",
+          "cvss_vector",
+          "cwe_id",
+          "status",
+          "steps_to_reproduce",
+          "impact",
+          "recommendations",
+          "created_by",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "VulnerabilityListOut",
+        "description": "Список сразу содержит первую привязку к хосту, без HTTP-запроса на строку."
+      },
       "VulnerabilityOut": {
         "properties": {
           "id": {
@@ -16323,11 +17921,16 @@
         "enum": [
           "open",
           "in_progress",
-          "fixed",
-          "wont_fix",
-          "accepted_risk"
+          "problem_analysis",
+          "need_info",
+          "paused",
+          "resolved",
+          "closed",
+          "cancelled",
+          "sent_by_mistake"
         ],
-        "title": "VulnerabilityStatus"
+        "title": "VulnerabilityStatus",
+        "description": "Статусы тикета, согласованные с workflow Works «BUG APPSEC».\n\nКатегории: не завершённые (OPEN/IN_PROGRESS/PROBLEM_ANALYSIS/NEED_INFO/PAUSED)\nсчитаются «открытыми» находками; завершённые (RESOLVED/CLOSED/CANCELLED/\nSENT_BY_MISTAKE) — закрытыми."
       },
       "VulnerabilityStatusPatch": {
         "properties": {
@@ -16539,6 +18142,86 @@
           "id"
         ],
         "title": "VulnerabilityWorkflowStep"
+      },
+      "WorksConfigOut": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "WorksConfigOut",
+        "description": "Публичная конфигурация Works: доступен ли экспорт в AppSec."
+      },
+      "WorksExportRequest": {
+        "properties": {
+          "assignee": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assignee"
+          }
+        },
+        "type": "object",
+        "title": "WorksExportRequest",
+        "description": "Тело запроса экспорта находки в Works (исполнитель опционален —\nпо умолчанию берётся appsec_assignee проекта)."
+      },
+      "WorksIssueLinkOut": {
+        "properties": {
+          "works_key": {
+            "type": "string",
+            "title": "Works Key"
+          },
+          "works_url": {
+            "type": "string",
+            "title": "Works Url"
+          },
+          "works_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Works Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "works_key",
+          "works_url"
+        ],
+        "title": "WorksIssueLinkOut",
+        "description": "Связь находки с тикетом Works."
+      },
+      "WorksRefOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "name"
+        ],
+        "title": "WorksRefOut",
+        "description": "Справочный элемент Works (компонент/версия): UUID + имя."
       }
     }
   }

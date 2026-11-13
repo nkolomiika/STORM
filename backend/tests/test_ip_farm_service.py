@@ -224,7 +224,7 @@ async def test_persist_creates_ip_only_host(monkeypatch: pytest.MonkeyPatch) -> 
     assert result.ips_created == 1
     assert result.ips_online == 1
     assert result.hostnames_found == 1
-    assert result.ips[0].is_cloudflare is True
+    assert "is_cloudflare" not in result.ips[0].model_dump()
     assert result.ips[0].hostnames[0].hostname == "cf.acme.com"
     assert result.ips[0].attached_to_existing_host is False
     svc.audit.log.assert_awaited_once()
@@ -264,7 +264,7 @@ async def test_persist_reuses_existing_ip_host(monkeypatch: pytest.MonkeyPatch) 
     и обновляет статус ЕГО (не доменного) свежим пробивом."""
     db = _mock_db()
     svc = _service(monkeypatch, db)
-    ip_row = MagicMock(ip_address="1.2.3.4", is_primary=True, is_cloudflare=False)
+    ip_row = MagicMock(ip_address="1.2.3.4", is_primary=True)
     ip_host = MagicMock(id=9, origin="ip", hostname=None, status=HostStatus.DOWN, ip_addresses=[ip_row])
     # 1-й scalar — attach находит origin=ip хост; 2-й — порт-лукап (нет → создастся).
     db.scalar = AsyncMock(side_effect=[ip_host, None])

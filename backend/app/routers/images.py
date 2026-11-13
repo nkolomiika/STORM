@@ -1,6 +1,8 @@
 import asyncio
 import re
+from io import BytesIO
 from uuid import uuid4
+from PIL import Image, UnidentifiedImageError
 
 from fastapi import APIRouter, Depends, File as UploadApiFile, UploadFile
 from fastapi.responses import Response
@@ -9,6 +11,7 @@ from app.dependencies import enforce_csrf, get_current_user, require_project_acc
 from app.exceptions import NotFoundError, ValidationError
 from app.models import User
 from app.storage.minio_client import MinioStorage
+from app.input_safety import read_upload
 
 router = APIRouter(tags=["images"])
 
@@ -35,17 +38,25 @@ async def upload_project_image(
     ext = _ALLOWED_EXT.get((file.content_type or "").lower())
     if not ext:
         raise ValidationError("Поддерживаются только изображения PNG, JPEG, GIF или WEBP")
-    content = await file.read()
+    content = await read_upload(file, _MAX_BYTES)
     if not content:
         raise ValidationError("Пустой файл")
     if len(content) > _MAX_BYTES:
         raise ValidationError("Изображение больше 10 МБ")
+    try:
+        with Image.open(BytesIO(content)) as image:
+            detected = Image.MIME.get(image.format)
+            if detected not in _ALLOWED_EXT:
+                raise ValueError("Unsupported image")
+            image.verify()
+    except (ValueError, OSError, UnidentifiedImageError, Image.DecompressionBombError) as exc:
+        raise ValidationError("Файл не является корректным изображением") from exc
 
     storage = MinioStorage()
-    storage.ensure_bucket()
-    image_name = f"{uuid4()}{ext}"
+    await asyncio.to_thread(storage.ensure_bucket)
+    image_name = f"{uuid4()}{_ALLOWED_EXT[detected]}"
     key = f"images/{project_id}/{image_name}"
-    await asyncio.to_thread(storage.upload_bytes_with_key, key, content, file.content_type or "application/octet-stream")
+    await asyncio.to_thread(storage.upload_bytes_with_key, key, content, detected)
     return {"url": f"/api/v1/projects/{project_id}/images/{image_name}/download"}
 
 

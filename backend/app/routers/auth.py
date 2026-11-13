@@ -32,6 +32,7 @@ from app.schemas import (
 )
 from app.security import TWO_FA_PENDING_TTL_MINUTES
 from app.services import AuthService, UserService
+from app.auth_limits import limit_auth_attempts
 
 logger = logging.getLogger("storm.auth")
 
@@ -105,7 +106,7 @@ def _clear_twofa_cookie(response: Response) -> None:
     )
 
 
-@router.post("/login", response_model=LoginResponse, status_code=status.HTTP_200_OK)
+@router.post("/login", response_model=LoginResponse, status_code=status.HTTP_200_OK, dependencies=[Depends(limit_auth_attempts)])
 async def login(
     payload: LoginRequest,
     response: Response,
@@ -125,7 +126,7 @@ async def login(
     return LoginResponse(id=outcome.user.id, username=outcome.user.username, role=outcome.user.role)
 
 
-@router.post("/2fa/verify", response_model=LoginResponse, status_code=status.HTTP_200_OK)
+@router.post("/2fa/verify", response_model=LoginResponse, status_code=status.HTTP_200_OK, dependencies=[Depends(limit_auth_attempts)])
 async def verify_2fa(
     payload: TwoFAVerifyRequest,
     response: Response,
@@ -164,7 +165,7 @@ async def invitation_username_available(
     return UsernameAvailabilityOut(available=available)
 
 
-@router.post("/invitations/{token}/accept", response_model=LoginResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/invitations/{token}/accept", response_model=LoginResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(limit_auth_attempts)])
 async def accept_invitation(
     token: str,
     payload: InvitationAcceptRequest,
@@ -182,7 +183,7 @@ async def accept_invitation(
     return LoginResponse(id=user.id, username=user.username, role=user.role)
 
 
-@router.post("/password-reset/request", response_model=PasswordResetRequestOut, status_code=status.HTTP_200_OK)
+@router.post("/password-reset/request", response_model=PasswordResetRequestOut, status_code=status.HTTP_200_OK, dependencies=[Depends(limit_auth_attempts)])
 async def request_password_reset(
     payload: PasswordResetRequest,
     request: Request,
@@ -208,7 +209,7 @@ async def password_reset_info(
     return PasswordResetInfoOut(**await UserService(db).get_password_reset_info(token))
 
 
-@router.post("/password-reset/{token}", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/password-reset/{token}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(limit_auth_attempts)])
 async def confirm_password_reset(
     token: str,
     payload: PasswordResetConfirmRequest,
@@ -234,7 +235,7 @@ async def reactivation_info(
     return ReactivationInfoOut(**await UserService(db).get_reactivation_info(token))
 
 
-@router.post("/reactivate/{token}", response_model=LoginResponse, status_code=status.HTTP_200_OK)
+@router.post("/reactivate/{token}", response_model=LoginResponse, status_code=status.HTTP_200_OK, dependencies=[Depends(limit_auth_attempts)])
 async def complete_reactivation(
     token: str,
     response: Response,

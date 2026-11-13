@@ -1,0 +1,126 @@
+{
+  "label": "before",
+  "environment": {
+    "python": "3.12.14",
+    "machine": "aarch64",
+    "transport": "TCP HTTP, Uvicorn 1 worker, lifespan off",
+    "pool_size": 5,
+    "max_overflow": 10
+  },
+  "dataset": {
+    "hosts": 1000,
+    "ips": 1000,
+    "ports": 4000,
+    "services": 4000,
+    "endpoints": 20000,
+    "vulnerabilities": 1000,
+    "comments": 1000,
+    "notifications": 1000,
+    "js_files": 1000
+  },
+  "concurrency": 8,
+  "requests_per_scenario": 20,
+  "scenarios": {
+    "hosts_20": {
+      "p50_ms": 101.05,
+      "p95_ms": 227.1,
+      "rps": 56.06,
+      "queries_avg": 8.0,
+      "sql_ms_avg": 58.23,
+      "response_bytes_avg": 208435,
+      "statuses": {
+        "200": 20
+      }
+    },
+    "hosts_200": {
+      "p50_ms": 1009.9,
+      "p95_ms": 2584.3,
+      "rps": 7.06,
+      "queries_avg": 9.0,
+      "sql_ms_avg": 507.85,
+      "response_bytes_avg": 2096355,
+      "statuses": {
+        "200": 20
+      }
+    },
+    "ports": {
+      "p50_ms": 50.99,
+      "p95_ms": 88.33,
+      "rps": 120.46,
+      "queries_avg": 9.0,
+      "sql_ms_avg": 15.32,
+      "response_bytes_avg": 1432,
+      "statuses": {
+        "200": 20
+      }
+    },
+    "endpoints": {
+      "p50_ms": 50.69,
+      "p95_ms": 78.02,
+      "rps": 128.52,
+      "queries_avg": 8.0,
+      "sql_ms_avg": 13.73,
+      "response_bytes_avg": 8482,
+      "statuses": {
+        "200": 20
+      }
+    },
+    "comments_100": {
+      "p50_ms": 166.94,
+      "p95_ms": 200.19,
+      "rps": 45.36,
+      "queries_avg": 106.0,
+      "sql_ms_avg": 108.28,
+      "response_bytes_avg": 23739,
+      "statuses": {
+        "200": 20
+      }
+    },
+    "notifications_100": {
+      "p50_ms": 174.64,
+      "p95_ms": 210.1,
+      "rps": 42.95,
+      "queries_avg": 203.0,
+      "sql_ms_avg": 111.68,
+      "response_bytes_avg": 34647,
+      "statuses": {
+        "200": 20
+      }
+    },
+    "js_200": {
+      "p50_ms": 76.27,
+      "p95_ms": 170.55,
+      "rps": 85.91,
+      "queries_avg": 6.0,
+      "sql_ms_avg": 20.74,
+      "response_bytes_avg": 47349,
+      "statuses": {
+        "200": 20
+      }
+    },
+    "vulnerabilities_100": {
+      "p50_ms": 51.77,
+      "p95_ms": 76.01,
+      "rps": 127.89,
+      "queries_avg": 5.0,
+      "sql_ms_avg": 11.08,
+      "response_bytes_avg": 38539,
+      "statuses": {
+        "200": 20
+      }
+    },
+    "project_stats": {
+      "p50_ms": 47.57,
+      "p95_ms": 66.51,
+      "rps": 152.45,
+      "queries_avg": 2.0,
+      "sql_ms_avg": 4.62,
+      "response_bytes_avg": 98,
+      "statuses": {
+        "200": 20
+      }
+    }
+  },
+  "peak_rss_mb": 220.66,
+  "services_sha256": "2aa11bcfdc0a9eb2fa9fcc70d05a1aed6b0f7a2e354b5c3b3aebffe324a3185d"
+}

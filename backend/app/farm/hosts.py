@@ -14,13 +14,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import set_committed_value
 
-from app.cloudflare import is_cloudflare_ip
 from app.config import get_settings
 from app.enums import HostStatus, PortState, Protocol, ReconJobKind, ReconJobStatus
 from app.exceptions import NotFoundError, ValidationError
 from app.farm import core
 from app.farm.core import ParsedTarget, ProbeCandidate, ProbeResult
-from app.farm.fingerprint import Tech, detect_services, has_cloudflare
+from app.farm.fingerprint import Tech, detect_services
 from app.farm.resolver import ResolvedHost, resolve_forward
 from app.models import Host, HostFarmJob, HostIpAddress, Port, Service
 from app.schemas import HostFarmHostResult, HostFarmPortResult, HostFarmResult
@@ -103,35 +102,10 @@ class HostFarmService:
         set_committed_value(host, "ip_addresses", [])  # тот же MissingGreenlet-guard, что в create_host
         return host, True
 
-    async def _ensure_ips(
-        self, host: Host, ips: list[str], cloudflare_hint: bool = False, cf_responded: bool = False
-    ) -> HostIpAddress | None:
-        """Заводит ВСЕ разрешённые адреса хоста; первый становится primary.
-
-        За одним именем обычно стоит несколько A/AAAA-записей — раньше писался
-        только первый, и остальные адреса терялись. Возвращает строку primary:
-        на неё вешаются порты пробива (пробивали мы именно её).
-
-        cloudflare_hint — на портах хоста увиден Cloudflare (по заголовкам пробива
-        или детектом технологий). У claude.com и подобных статический список CIDR
-        даёт ложный минус (BYOIP не в опубликованных диапазонах), поэтому
-        CF = (адрес в диапазонах CF) ИЛИ (сигнал CF на пробиве). Хост за CF — значит
-        и его адреса это CF-edge, помечаем все.
-
-        cf_responded — на этом скане хост реально ответил, значит отсутствие CF-сигнала
-        достоверно. Если False (хост не отозвался / детект не запускался), уже
-        проставленный is_cloudflare НЕ понижаем: флейк движка не должен затирать факт.
-
-        is_cloudflare — трёхзначный: True — виден CF; False — достоверно НЕ CF (хост
-        ответил, сигнала CF нет); None — неизвестно (ещё пробивается / не ответил /
-        детект не запускался). Пока хост «пробится», адреса ещё не заведены, а у нового
-        адреса без сигнала CF = None (unknown), а не «нет CF».
-        """
+    async def _ensure_ips(self, host: Host, ips: list[str]) -> HostIpAddress | None:
+        """Заводит адреса хоста, сохраняя primary и существующие порты."""
         primary_row: HostIpAddress | None = None
         for idx, ip in enumerate(ips):
-            cf = is_cloudflare_ip(ip) or cloudflare_hint
-            # cf_state: True/False/None по силе сигнала (см. docstring).
-            cf_state = True if cf else (False if cf_responded else None)
             row = next((r for r in host.ip_addresses if r.ip_address == ip), None)
             if row is None:
                 is_primary = idx == 0 and not any(a.is_primary for a in host.ip_addresses)
@@ -139,7 +113,6 @@ class HostFarmService:
                     host_id=host.id,
                     ip_address=ip,
                     is_primary=is_primary,
-                    is_cloudflare=cf_state,
                 )
                 self.db.add(row)
                 await self.db.flush()
@@ -147,12 +120,6 @@ class HostFarmService:
                 host.ip_addresses.append(row)
                 if is_primary:
                     host.ip_address = ip
-            elif cf:
-                row.is_cloudflare = True
-            elif cf_responded:
-                # Достоверный отрицательный сигнал (хост ответил, CF нет) — снимаем флаг.
-                row.is_cloudflare = False
-            # else: сигнала нет — оставляем прежнее значение (не понижаем в unknown).
             if idx == 0:
                 primary_row = row
         return primary_row
@@ -277,15 +244,7 @@ class HostFarmService:
                 port_results: list[HostFarmPortResult] = []
                 ports_created = ports_updated = 0
                 if r is not None and r.ip is not None:
-                    # CF на пробиве: заголовки ответа (server=cloudflare / cf-ray) ИЛИ
-                    # детект технологий увидел Cloudflare — помечаем адреса CF даже
-                    # когда статический CIDR-список промахнулся (BYOIP вроде claude.com).
-                    cf_hint = any(p.cloudflare for p in host_probes) or has_cloudflare(
-                        [t for hp in host_probes for t in techs_by_port.get((hp.hostname, hp.port), [])]
-                    )
-                    ip_row = await self._ensure_ips(
-                        host, r.ips or [r.ip], cloudflare_hint=cf_hint, cf_responded=responded
-                    )
+                    ip_row = await self._ensure_ips(host, r.ips or [r.ip])
                     if ip_row is not None and not r.blocked:
                         port_results, ports_created, ports_updated = await self._write_ports(
                             host, ip_row, host_probes, techs_by_port

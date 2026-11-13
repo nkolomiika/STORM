@@ -200,7 +200,8 @@ class JsFarmService:
     # --------------------------------------------------------------- persist
 
     async def _persist(
-        self, project_id: int, files: list[ScannedFile], errors: list[str], actor_id: int
+        self, project_id: int, files: list[ScannedFile], errors: list[str], actor_id: int,
+        targets: list[str] | None = None,
     ) -> JsFarmResult:
         result = JsFarmResult()
         result.errors = list(errors)
@@ -284,7 +285,7 @@ class JsFarmService:
             user_id=actor_id,
             entity_type="js_farm",
             entity_id=None,
-            details={"project_id": str(project_id), **result.model_dump(exclude={"files"})},
+            details={"project_id": str(project_id), "targets": targets if targets is not None else sorted(domains), **result.model_dump(exclude={"files"})},
         )
         await ws_manager.broadcast(
             project_id,
@@ -301,7 +302,7 @@ class JsFarmService:
         if not domains:
             return JsFarmResult()
         files, errors = await self._discover_and_scan(domains, transport=transport)
-        return await self._persist(project_id, files, errors, actor_id)
+        return await self._persist(project_id, files, errors, actor_id, targets=domains)
 
     async def create_job(self, project_id: int, raw: str, actor_id: int) -> HostFarmJob:
         # Снимок доменов в raw: воркер живёт в другом процессе и получает только id.
@@ -317,8 +318,12 @@ class JsFarmService:
             raw="\n".join(domains),
         )
         self.db.add(job)
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(job)
+        await self.audit.log(
+            "START", user_id=actor_id, entity_type="js_farm", entity_id=job.id,
+            details={"project_id": str(project_id), "targets": domains, "targets_total": len(domains)},
+        )
         return job
 
     async def get_job(self, project_id: int, job_id: int) -> HostFarmJob:

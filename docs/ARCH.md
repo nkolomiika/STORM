@@ -34,7 +34,7 @@
 
 **Frontend**
 - React 18 + TypeScript, сборка через Vite 6
-- MUI 6 (`@mui/material`, `@mui/icons-material`)
+- Собственные компоненты `storm/`, CSS и SVG-иконки
 - React Router 6
 - Zustand (state) — `useAuthStore`, `useToastStore`
 - `axios` (HTTP-клиент), `react-markdown` (рендер Markdown)

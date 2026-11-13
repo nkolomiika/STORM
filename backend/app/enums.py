@@ -64,6 +64,7 @@ class HttpMethod(str, enum.Enum):
     DELETE = "DELETE"
     HEAD = "HEAD"
     OPTIONS = "OPTIONS"
+    TRACE = "TRACE"
     # QUERY — метод из RFC-драфта httpbis (безопасный поиск с телом запроса).
     QUERY = "QUERY"
 

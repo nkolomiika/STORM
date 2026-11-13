@@ -12,7 +12,7 @@ from passlib.context import CryptContext
 from app.config import get_settings
 from app.exceptions import UnauthorizedError
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["bcrypt_sha256", "bcrypt"], deprecated="auto")
 settings = get_settings()
 
 # Тип и время жизни промежуточного токена между шагами логина: пароль уже
@@ -24,13 +24,16 @@ TOTP_ISSUER = "STORM"
 
 
 def hash_password(password: str) -> str:
-    """Хэширует пароль пользователя с использованием bcrypt."""
+    """Хэширует пароль через bcrypt_sha256 без усечения на 72 байтах; проверка поддерживает прежний bcrypt."""
     return pwd_context.hash(password)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Проверяет соответствие пароля его bcrypt-хэшу."""
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        return pwd_context.verify(plain_password, hashed_password)
+    except (ValueError, TypeError):
+        return False
 
 
 def hash_refresh_token(token: str) -> str:
@@ -113,8 +116,11 @@ def decode_token(token: str, expected_type: str) -> int:
         sub = payload.get("sub")
         if not sub:
             raise UnauthorizedError("В токене отсутствует sub")
-        return int(sub)
-    except (JWTError, ValueError) as exc:
+        user_id = int(sub)
+        if not 1 <= user_id <= 2**31 - 1:
+            raise UnauthorizedError("Некорректный идентификатор пользователя")
+        return user_id
+    except (JWTError, ValueError, TypeError) as exc:
         raise UnauthorizedError("Токен недействителен или истёк") from exc
 
 

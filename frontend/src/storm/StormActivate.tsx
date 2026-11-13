@@ -56,6 +56,9 @@ export function StormActivate() {
   // Загрузка данных приглашения по токену.
   useEffect(() => {
     let cancelled = false;
+    setInfo(null);
+    setLoadingInfo(true);
+    setSubmitting(false);
     if (!token) {
       setInfo({ valid: false, reason: "not_found" });
       setLoadingInfo(false);
@@ -79,6 +82,7 @@ export function StormActivate() {
   // Debounced-проверка занятости username (только при валидном формате).
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
+    let cancelled = false;
     if (debounceRef.current) clearTimeout(debounceRef.current);
     setAvailable(null);
     if (!info?.valid || !usernameValid) {
@@ -87,7 +91,6 @@ export function StormActivate() {
     }
     setChecking(true);
     debounceRef.current = setTimeout(() => {
-      let cancelled = false;
       void (async () => {
         try {
           const ok = await checkInvitationUsername(token, username);
@@ -98,11 +101,9 @@ export function StormActivate() {
           if (!cancelled) setChecking(false);
         }
       })();
-      return () => {
-        cancelled = true;
-      };
     }, 400);
     return () => {
+      cancelled = true;
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [username, usernameValid, info?.valid, token]);

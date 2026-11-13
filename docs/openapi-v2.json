@@ -4,11 +4,6 @@
     "title": "STORM Agent API",
     "version": "2.0.0"
   },
-  "servers": [
-    {
-      "url": "/v2"
-    }
-  ],
   "paths": {
     "/projects": {
       "get": {
@@ -1107,6 +1102,83 @@
             "type": "integer",
             "title": "Created By"
           },
+          "appsec_component_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appsec Component Code"
+          },
+          "appsec_component_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appsec Component Name"
+          },
+          "appsec_version_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appsec Version Code"
+          },
+          "appsec_version_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appsec Version Name"
+          },
+          "appsec_assignee": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appsec Assignee"
+          },
+          "appsec_ticket_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appsec Ticket Url"
+          },
+          "appsec_ticket_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appsec Ticket Key"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -1153,7 +1225,8 @@
           "high",
           "medium",
           "low",
-          "info"
+          "info",
+          "unrealized"
         ],
         "title": "Severity"
       },
@@ -1180,6 +1253,13 @@
           "type": {
             "type": "string",
             "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
           }
         },
         "type": "object",
@@ -1482,11 +1562,16 @@
         "enum": [
           "open",
           "in_progress",
-          "fixed",
-          "wont_fix",
-          "accepted_risk"
+          "problem_analysis",
+          "need_info",
+          "paused",
+          "resolved",
+          "closed",
+          "cancelled",
+          "sent_by_mistake"
         ],
-        "title": "VulnerabilityStatus"
+        "title": "VulnerabilityStatus",
+        "description": "Статусы тикета, согласованные с workflow Works «BUG APPSEC».\n\nКатегории: не завершённые (OPEN/IN_PROGRESS/PROBLEM_ANALYSIS/NEED_INFO/PAUSED)\nсчитаются «открытыми» находками; завершённые (RESOLVED/CLOSED/CANCELLED/\nSENT_BY_MISTAKE) — закрытыми."
       },
       "VulnerabilityUpdate": {
         "properties": {

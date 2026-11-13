@@ -1,4 +1,17 @@
 import "@testing-library/jest-dom/vitest";
+import axios from "axios";
+import { afterEach, beforeEach, expect } from "vitest";
+
+// UI tests must provide API fixtures. A caught network error must not silently
+// turn a missing fixture into an apparently successful test.
+const unexpectedRequests: string[] = [];
+axios.defaults.adapter = async (config) => {
+  const request = `${config.method?.toUpperCase()} ${config.url}`;
+  unexpectedRequests.push(request);
+  throw new Error(`Unexpected HTTP request in a unit test: ${request}`);
+};
+beforeEach(() => { unexpectedRequests.length = 0; });
+afterEach(() => { expect(unexpectedRequests, "Mock every HTTP request in UI tests").toEqual([]); });
 
 if (!window.matchMedia) {
   Object.defineProperty(window, "matchMedia", {

@@ -16,6 +16,7 @@ from app.enums import (
     UserRole,
     VulnerabilityStatus,
 )
+from app.input_safety import MAX_RESOURCE_ID, validate_json_value
 
 
 class ORMBase(BaseModel):
@@ -30,6 +31,20 @@ class InputBaseModel(BaseModel):
     @field_validator("*", mode="before")
     @classmethod
     def normalize_strings(cls, value: object, info: ValidationInfo) -> object:
+        validate_json_value(value)
+        name = info.field_name
+        if name.endswith("_id") or name.endswith("_ids") or name == "ids":
+            for item in value if isinstance(value, list) else [value]:
+                if item is None:
+                    continue
+                if isinstance(item, bool):
+                    raise ValueError("Идентификатор не может быть boolean")
+                try:
+                    number = int(item)
+                except (ValueError, TypeError, OverflowError):
+                    continue  # The declared field type handles nonnumeric values.
+                if not 1 <= number <= MAX_RESOURCE_ID:
+                    raise ValueError("Идентификатор вне допустимого диапазона")
         if isinstance(value, str):
             stripped = value.strip()
             field = cls.model_fields.get(info.field_name)
@@ -38,6 +53,13 @@ class InputBaseModel(BaseModel):
             return stripped
         if isinstance(value, list) and all(isinstance(item, str) for item in value):
             return [item.strip() for item in value if item.strip()]
+        return value
+
+    @field_validator("*", mode="after")
+    @classmethod
+    def validate_integer_range(cls, value: object) -> object:
+        if isinstance(value, int) and not isinstance(value, bool) and not -(2**31) <= value <= MAX_RESOURCE_ID:
+            raise ValueError("Целое число вне допустимого диапазона")
         return value
 
 
@@ -94,6 +116,13 @@ class AgentTokenCreate(InputBaseModel):
     project_ids: list[int] = Field(default_factory=list)
     all_projects: bool = False
     expires_at: datetime | None = None
+
+    @field_validator("expires_at")
+    @classmethod
+    def require_expiration_timezone(cls, value: datetime | None) -> datetime | None:
+        if value is not None and (value.tzinfo is None or value.utcoffset() is None):
+            raise ValueError("expires_at должен содержать часовой пояс")
+        return value
 
 
 class AgentTokenOut(ORMBase):
@@ -585,7 +614,6 @@ class HostIpAddressOut(ORMBase):
     label: str | None
     is_primary: bool
     hostnames: list[HostnameResolutionOut] = Field(default_factory=list)
-    is_cloudflare: bool | None = None
     ports: list["PortOut"] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
@@ -861,6 +889,11 @@ class VulnerabilityOut(ORMBase):
     updated_at: datetime
 
 
+class VulnerabilityListOut(VulnerabilityOut):
+    """Список сразу содержит первую привязку к хосту, без HTTP-запроса на строку."""
+    affected_host_id: int | None = None
+
+
 class VulnerabilityAssetCreate(InputBaseModel):
     asset_type: AssetType
     asset_id: int
@@ -880,6 +913,21 @@ class FileOut(ORMBase):
     size_bytes: int
     uploaded_by: int
     uploaded_at: datetime
+
+
+class EndpointCommentCreate(InputBaseModel):
+    content: str = Field(min_length=1)
+
+
+class EndpointCommentOut(ORMBase):
+    id: int
+    endpoint_id: int
+    user_id: int
+    username: str
+    avatar_url: str | None = None
+    content: str
+    created_at: datetime
+    updated_at: datetime
 
 
 class CommentCreate(InputBaseModel):
@@ -1040,7 +1088,6 @@ class IpFarmIpResult(BaseModel):
     ip_address: str
     host_id: int | None = None
     hostnames: list[HostnameResolutionOut] = Field(default_factory=list)
-    is_cloudflare: bool | None = None
     created: bool = False
     # true — адрес подшит к уже существующему хосту (по адресу или по PTR-имени),
     # а не к новой служебной строке origin='ip'.

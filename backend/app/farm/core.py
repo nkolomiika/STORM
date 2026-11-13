@@ -109,7 +109,10 @@ def resolve_scheme(existing: str | None, new: str | None, port: int) -> str:
 
 def parse_token(token: str) -> tuple[str, bool, int | None, str | None] | None:
     """(hostname, is_ip, port|None, scheme|None) или None, если токен невалиден."""
-    split = urlsplit(token if "://" in token else f"//{token}")
+    try:
+        split = urlsplit(token if "://" in token else f"//{token}")
+    except ValueError:
+        return None
     scheme = (split.scheme or "").lower() or None
     if scheme is not None and scheme not in ("http", "https"):
         return None  # ftp:// и прочее — не веб, отклоняем

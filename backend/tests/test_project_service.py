@@ -20,6 +20,7 @@ def _make_scalars_result(items: list[object]) -> MagicMock:
 @pytest.mark.asyncio
 async def test_list_projects_applies_status_filter_for_admin() -> None:
     db = AsyncMock()
+    db.add = MagicMock()  # AsyncSession.add is synchronous.
     project_item = SimpleNamespace(id=next(_ids), name="Project A")
     db.scalar = AsyncMock(return_value=1)
     db.scalars = AsyncMock(return_value=_make_scalars_result([project_item]))
@@ -44,6 +45,7 @@ async def test_list_projects_ignores_membership_for_admin() -> None:
     джойнит project_members вообще, поэтому его членство ни на что не влияет.
     """
     db = AsyncMock()
+    db.add = MagicMock()  # AsyncSession.add is synchronous.
     project_item = SimpleNamespace(id=next(_ids), name="Project without the admin")
     db.scalar = AsyncMock(return_value=1)
     db.scalars = AsyncMock(return_value=_make_scalars_result([project_item]))
@@ -61,6 +63,7 @@ async def test_list_projects_ignores_membership_for_admin() -> None:
 @pytest.mark.asyncio
 async def test_list_projects_limits_to_membership_for_pentester() -> None:
     db = AsyncMock()
+    db.add = MagicMock()  # AsyncSession.add is synchronous.
     project_item = SimpleNamespace(id=next(_ids), name="Project B")
     db.scalar = AsyncMock(return_value=1)
     db.scalars = AsyncMock(return_value=_make_scalars_result([project_item]))
@@ -80,6 +83,7 @@ async def test_list_projects_limits_to_membership_for_pentester() -> None:
 @pytest.mark.asyncio
 async def test_delete_project_removes_entity_and_writes_audit() -> None:
     db = AsyncMock()
+    db.add = MagicMock()  # AsyncSession.add is synchronous.
     service = ProjectService(db)
     project_id = next(_ids)
     actor_id = next(_ids)
@@ -90,7 +94,9 @@ async def test_delete_project_removes_entity_and_writes_audit() -> None:
     await service.delete_project(project_id=project_id, actor_id=actor_id, ip_address="127.0.0.1")
 
     db.delete.assert_awaited_once_with(project)
-    db.commit.assert_awaited_once()
+    db.flush.assert_awaited_once()
+    # AuditService is stubbed here; the real logger performs the only commit.
+    db.commit.assert_not_awaited()
     service.audit.log.assert_awaited_once_with(
         "DELETE",
         user_id=actor_id,
@@ -103,6 +109,7 @@ async def test_delete_project_removes_entity_and_writes_audit() -> None:
 @pytest.mark.asyncio
 async def test_update_project_freezes_timeline_on_first_non_active_status() -> None:
     db = AsyncMock()
+    db.add = MagicMock()  # AsyncSession.add is synchronous.
     # Смена статуса рассылает уведомления участникам — здесь их нет.
     db.scalars = AsyncMock(return_value=_make_scalars_result([]))
     service = ProjectService(db)
@@ -134,6 +141,7 @@ async def test_update_project_freezes_timeline_on_first_non_active_status() -> N
 @pytest.mark.asyncio
 async def test_update_project_keeps_existing_frozen_timestamp_for_non_active_transitions() -> None:
     db = AsyncMock()
+    db.add = MagicMock()  # AsyncSession.add is synchronous.
     # Смена статуса рассылает уведомления участникам — здесь их нет.
     db.scalars = AsyncMock(return_value=_make_scalars_result([]))
     service = ProjectService(db)
@@ -165,6 +173,7 @@ async def test_update_project_keeps_existing_frozen_timestamp_for_non_active_tra
 @pytest.mark.asyncio
 async def test_update_project_unfreezes_timeline_when_reactivated() -> None:
     db = AsyncMock()
+    db.add = MagicMock()  # AsyncSession.add is synchronous.
     # Смена статуса рассылает уведомления участникам — здесь их нет.
     db.scalars = AsyncMock(return_value=_make_scalars_result([]))
     service = ProjectService(db)
@@ -200,6 +209,7 @@ async def test_update_project_unfreezes_timeline_when_reactivated() -> None:
 def _edit_service(project, membership):
     """ProjectService с подменёнными get_project и поиском членства."""
     db = AsyncMock()
+    db.add = MagicMock()  # AsyncSession.add is synchronous.
     db.scalar = AsyncMock(return_value=membership)
     service = ProjectService(db)
     service.get_project = AsyncMock(return_value=project)  # type: ignore[method-assign]
@@ -262,6 +272,7 @@ async def test_ensure_can_edit_project_rejects_plain_member() -> None:
 async def test_add_member_notifies_the_added_user(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("app.services.ws_manager", SimpleNamespace(notify_user=AsyncMock()))
     db = AsyncMock()
+    db.add = MagicMock()  # AsyncSession.add is synchronous.
     added = SimpleNamespace(id=42, username="bob", project_role=ProjectRole.PENTESTER)
     # 1-й scalar — пользователь, 2-й — проверка, что он ещё не участник.
     db.scalar = AsyncMock(side_effect=[added, None])
@@ -283,6 +294,7 @@ async def test_add_member_does_not_notify_yourself(monkeypatch: pytest.MonkeyPat
     """Добавил себя — уведомлять некого."""
     monkeypatch.setattr("app.services.ws_manager", SimpleNamespace(notify_user=AsyncMock()))
     db = AsyncMock()
+    db.add = MagicMock()  # AsyncSession.add is synchronous.
     me = SimpleNamespace(id=1, username="admin", project_role=ProjectRole.LEAD)
     db.scalar = AsyncMock(side_effect=[me, None])
     service = ProjectService(db)
@@ -299,6 +311,7 @@ async def test_project_status_change_notifies_members_except_actor(monkeypatch: 
     ws = SimpleNamespace(broadcast=AsyncMock(), broadcast_projects_index=AsyncMock(), notify_user=AsyncMock())
     monkeypatch.setattr("app.services.ws_manager", ws)
     db = AsyncMock()
+    db.add = MagicMock()  # AsyncSession.add is synchronous.
     # Участники: сам инициатор (1) и ещё двое.
     db.scalars = AsyncMock(return_value=_make_scalars_result([1, 2, 3]))
     service = ProjectService(db)
@@ -322,6 +335,7 @@ async def test_project_update_without_status_change_notifies_nobody(monkeypatch:
     ws = SimpleNamespace(broadcast=AsyncMock(), broadcast_projects_index=AsyncMock(), notify_user=AsyncMock())
     monkeypatch.setattr("app.services.ws_manager", ws)
     db = AsyncMock()
+    db.add = MagicMock()  # AsyncSession.add is synchronous.
     db.scalars = AsyncMock(return_value=_make_scalars_result([1, 2, 3]))
     service = ProjectService(db)
     project = SimpleNamespace(

@@ -163,7 +163,7 @@ export function StormLogin() {
                   height: 46,
                   border: "none",
                   borderRadius: 12,
-                  background: disabled ? "var(--st-accent-muted)" : "var(--st-accent)",
+                  background: disabled ? "var(--st-accent-muted)" : "var(--st-accent-2)",
                   color: "var(--st-on-accent)",
                   font: "700 14px Inter,sans-serif",
                   cursor: disabled ? "not-allowed" : "pointer",
@@ -171,7 +171,7 @@ export function StormLogin() {
                   alignItems: "center",
                   justifyContent: "center",
                   gap: 9,
-                  boxShadow: "0 6px 18px rgba(46,95,191,.28)",
+                  boxShadow: "none",
                 }}
               >
                 {isLoading ? "Signing in…" : "Sign in"}

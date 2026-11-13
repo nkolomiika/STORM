@@ -1,0 +1,98 @@
+# Каталог методов STORM
+
+Справочник охватывает все объявленные функции и методы в `backend/app/**/*.py` и все именованные функции/методы с телом в `frontend/src/**/*.{ts,tsx}`. Включены приватные и вложенные функции, валидаторы, React-компоненты и обработчики store/config-объектов. Исключены тесты, декларации типов без тела, сторонние библиотеки и безымянные callbacks JSX/map/useEffect. Скрипты обслуживания документированы в руководстве разработчика, миграции — в Alembic.
+
+Для каждого метода приведены сигнатура, параметры, тип результата, исходный docstring/проверенное описание, прямые вызовы и, для Python, явные raise и операции с БД. Это статический справочник: прямые вызовы не являются полным графом исполнения; исключения и эффекты вложенных сервисов наследуются. Если docstring отсутствует, каталог показывает проверяемые вызовы вместо выдуманного бизнес-контракта. Для сложных бизнес-процессов читайте [руководство](DEVELOPER_GUIDE.md) и [контракты HTTP](API_REFERENCE.md).
+
+Ссылки ведут на строку актуального исходника. После изменения кода выполните команды генерации из [руководства](DEVELOPER_GUIDE.md); `--check` проверяет отсутствие расхождений без записи.
+
+| Модуль | Методов | Документация |
+| --- | --- | --- |
+| `backend/app/auth_limits.py` | 4 | [Методы](reference/backend/app/auth_limits.py.md) |
+| `backend/app/cloudflare.py` | 1 | [Методы](reference/backend/app/cloudflare.py.md) |
+| `backend/app/config.py` | 12 | [Методы](reference/backend/app/config.py.md) |
+| `backend/app/database.py` | 1 | [Методы](reference/backend/app/database.py.md) |
+| `backend/app/dependencies.py` | 10 | [Методы](reference/backend/app/dependencies.py.md) |
+| `backend/app/endpoint_comments.py` | 5 | [Методы](reference/backend/app/endpoint_comments.py.md) |
+| `backend/app/farm/core.py` | 10 | [Методы](reference/backend/app/farm/core.py.md) |
+| `backend/app/farm/fingerprint.py` | 13 | [Методы](reference/backend/app/farm/fingerprint.py.md) |
+| `backend/app/farm/hosts.py` | 15 | [Методы](reference/backend/app/farm/hosts.py.md) |
+| `backend/app/farm/ips.py` | 7 | [Методы](reference/backend/app/farm/ips.py.md) |
+| `backend/app/farm/jobs.py` | 3 | [Методы](reference/backend/app/farm/jobs.py.md) |
+| `backend/app/farm/js.py` | 14 | [Методы](reference/backend/app/farm/js.py.md) |
+| `backend/app/farm/jsmine.py` | 9 | [Методы](reference/backend/app/farm/jsmine.py.md) |
+| `backend/app/farm/jsscan.py` | 8 | [Методы](reference/backend/app/farm/jsscan.py.md) |
+| `backend/app/farm/portscan.py` | 8 | [Методы](reference/backend/app/farm/portscan.py.md) |
+| `backend/app/farm/resolver.py` | 11 | [Методы](reference/backend/app/farm/resolver.py.md) |
+| `backend/app/farm/reverse.py` | 6 | [Методы](reference/backend/app/farm/reverse.py.md) |
+| `backend/app/farm/subs.py` | 16 | [Методы](reference/backend/app/farm/subs.py.md) |
+| `backend/app/http_headers.py` | 1 | [Методы](reference/backend/app/http_headers.py.md) |
+| `backend/app/input_safety.py` | 6 | [Методы](reference/backend/app/input_safety.py.md) |
+| `backend/app/mail.py` | 10 | [Методы](reference/backend/app/mail.py.md) |
+| `backend/app/main.py` | 17 | [Методы](reference/backend/app/main.py.md) |
+| `backend/app/messaging.py` | 1 | [Методы](reference/backend/app/messaging.py.md) |
+| `backend/app/models.py` | 7 | [Методы](reference/backend/app/models.py.md) |
+| `backend/app/netguard.py` | 3 | [Методы](reference/backend/app/netguard.py.md) |
+| `backend/app/oidc.py` | 10 | [Методы](reference/backend/app/oidc.py.md) |
+| `backend/app/pagination.py` | 2 | [Методы](reference/backend/app/pagination.py.md) |
+| `backend/app/reports/word_builder.py` | 126 | [Методы](reference/backend/app/reports/word_builder.py.md) |
+| `backend/app/routers/agent_tokens.py` | 3 | [Методы](reference/backend/app/routers/agent_tokens.py.md) |
+| `backend/app/routers/assets.py` | 26 | [Методы](reference/backend/app/routers/assets.py.md) |
+| `backend/app/routers/audit_logs.py` | 1 | [Методы](reference/backend/app/routers/audit_logs.py.md) |
+| `backend/app/routers/auth.py` | 25 | [Методы](reference/backend/app/routers/auth.py.md) |
+| `backend/app/routers/comments.py` | 4 | [Методы](reference/backend/app/routers/comments.py.md) |
+| `backend/app/routers/endpoint_comments.py` | 2 | [Методы](reference/backend/app/routers/endpoint_comments.py.md) |
+| `backend/app/routers/farm.py` | 6 | [Методы](reference/backend/app/routers/farm.py.md) |
+| `backend/app/routers/files.py` | 4 | [Методы](reference/backend/app/routers/files.py.md) |
+| `backend/app/routers/images.py` | 2 | [Методы](reference/backend/app/routers/images.py.md) |
+| `backend/app/routers/import_.py` | 3 | [Методы](reference/backend/app/routers/import_.py.md) |
+| `backend/app/routers/jira.py` | 8 | [Методы](reference/backend/app/routers/jira.py.md) |
+| `backend/app/routers/notifications.py` | 4 | [Методы](reference/backend/app/routers/notifications.py.md) |
+| `backend/app/routers/project_credentials.py` | 4 | [Методы](reference/backend/app/routers/project_credentials.py.md) |
+| `backend/app/routers/project_notes.py` | 12 | [Методы](reference/backend/app/routers/project_notes.py.md) |
+| `backend/app/routers/projects.py` | 14 | [Методы](reference/backend/app/routers/projects.py.md) |
+| `backend/app/routers/reports.py` | 5 | [Методы](reference/backend/app/routers/reports.py.md) |
+| `backend/app/routers/scanner.py` | 6 | [Методы](reference/backend/app/routers/scanner.py.md) |
+| `backend/app/routers/users.py` | 23 | [Методы](reference/backend/app/routers/users.py.md) |
+| `backend/app/routers/v2_agent.py` | 12 | [Методы](reference/backend/app/routers/v2_agent.py.md) |
+| `backend/app/routers/vulnerabilities.py` | 10 | [Методы](reference/backend/app/routers/vulnerabilities.py.md) |
+| `backend/app/routers/websocket.py` | 5 | [Методы](reference/backend/app/routers/websocket.py.md) |
+| `backend/app/routers/works.py` | 5 | [Методы](reference/backend/app/routers/works.py.md) |
+| `backend/app/schemas.py` | 14 | [Методы](reference/backend/app/schemas.py.md) |
+| `backend/app/security.py` | 22 | [Методы](reference/backend/app/security.py.md) |
+| `backend/app/services.py` | 274 | [Методы](reference/backend/app/services.py.md) |
+| `backend/app/storage/minio_client.py` | 7 | [Методы](reference/backend/app/storage/minio_client.py.md) |
+| `backend/app/worker/mail_worker.py` | 5 | [Методы](reference/backend/app/worker/mail_worker.py.md) |
+| `backend/app/worker/recon_worker.py` | 5 | [Методы](reference/backend/app/worker/recon_worker.py.md) |
+| `backend/app/works.py` | 20 | [Методы](reference/backend/app/works.py.md) |
+| `backend/app/ws_manager.py` | 10 | [Методы](reference/backend/app/ws_manager.py.md) |
+| `frontend/src/StormRoot.tsx` | 1 | [Методы](reference/frontend/src/StormRoot.tsx.md) |
+| `frontend/src/api.ts` | 140 | [Методы](reference/frontend/src/api.ts.md) |
+| `frontend/src/cvss.ts` | 3 | [Методы](reference/frontend/src/cvss.ts.md) |
+| `frontend/src/markdownUrlTransform.ts` | 2 | [Методы](reference/frontend/src/markdownUrlTransform.ts.md) |
+| `frontend/src/store.ts` | 8 | [Методы](reference/frontend/src/store.ts.md) |
+| `frontend/src/storm/EndpointDiscussion.tsx` | 3 | [Методы](reference/frontend/src/storm/EndpointDiscussion.tsx.md) |
+| `frontend/src/storm/ImageCaret.ts` | 4 | [Методы](reference/frontend/src/storm/ImageCaret.ts.md) |
+| `frontend/src/storm/PasswordInput.tsx` | 1 | [Методы](reference/frontend/src/storm/PasswordInput.tsx.md) |
+| `frontend/src/storm/ResizableImage.ts` | 21 | [Методы](reference/frontend/src/storm/ResizableImage.ts.md) |
+| `frontend/src/storm/StormActivate.tsx` | 2 | [Методы](reference/frontend/src/storm/StormActivate.tsx.md) |
+| `frontend/src/storm/StormApp.tsx` | 317 | [Методы](reference/frontend/src/storm/StormApp.tsx.md) |
+| `frontend/src/storm/StormAppSecFields.tsx` | 5 | [Методы](reference/frontend/src/storm/StormAppSecFields.tsx.md) |
+| `frontend/src/storm/StormDatePicker.tsx` | 9 | [Методы](reference/frontend/src/storm/StormDatePicker.tsx.md) |
+| `frontend/src/storm/StormDocs.tsx` | 8 | [Методы](reference/frontend/src/storm/StormDocs.tsx.md) |
+| `frontend/src/storm/StormLogin.tsx` | 7 | [Методы](reference/frontend/src/storm/StormLogin.tsx.md) |
+| `frontend/src/storm/StormMarkdownEditor.tsx` | 4 | [Методы](reference/frontend/src/storm/StormMarkdownEditor.tsx.md) |
+| `frontend/src/storm/StormReactivate.tsx` | 2 | [Методы](reference/frontend/src/storm/StormReactivate.tsx.md) |
+| `frontend/src/storm/StormResetPassword.tsx` | 2 | [Методы](reference/frontend/src/storm/StormResetPassword.tsx.md) |
+| `frontend/src/storm/StormSelect.tsx` | 3 | [Методы](reference/frontend/src/storm/StormSelect.tsx.md) |
+| `frontend/src/storm/StormToaster.tsx` | 1 | [Методы](reference/frontend/src/storm/StormToaster.tsx.md) |
+| `frontend/src/storm/SwaggerEndpointImport.tsx` | 5 | [Методы](reference/frontend/src/storm/SwaggerEndpointImport.tsx.md) |
+| `frontend/src/storm/docs/index.ts` | 1 | [Методы](reference/frontend/src/storm/docs/index.ts.md) |
+| `frontend/src/storm/hostIndex.ts` | 1 | [Методы](reference/frontend/src/storm/hostIndex.ts.md) |
+| `frontend/src/storm/i18n.ts` | 3 | [Методы](reference/frontend/src/storm/i18n.ts.md) |
+| `frontend/src/storm/icons.tsx` | 2 | [Методы](reference/frontend/src/storm/icons.tsx.md) |
+| `frontend/src/storm/imageSize.ts` | 2 | [Методы](reference/frontend/src/storm/imageSize.ts.md) |
+| `frontend/src/storm/swaggerEndpoints.ts` | 5 | [Методы](reference/frontend/src/storm/swaggerEndpoints.ts.md) |
+| `frontend/src/storm/theme.ts` | 5 | [Методы](reference/frontend/src/storm/theme.ts.md) |
+
+Всего: backend **877**, frontend **567**, модулей **86**.

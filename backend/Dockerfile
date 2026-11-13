@@ -46,13 +46,8 @@ RUN set -eux; \
     httpx-pd -version
 
 COPY requirements.txt /app/requirements.txt
+RUN python -m pip install --no-cache-dir --upgrade pip==26.3
 RUN pip install --no-cache-dir -r requirements.txt
-
-# Гарантируем наличие Pillow отдельной инструкцией, чтобы избежать ситуации,
-# когда BuildKit возвращает закешированный слой `pip install`, собранный до
-# добавления Pillow в requirements.txt (PIL нужен app.services для нормализации
-# изображений в отчётах).
-RUN pip install --no-cache-dir Pillow==10.4.0
 
 # trufflehog — verified-секреты в JS (ферма JS, app/farm/jsmine.py). Тянем
 # prebuilt-бинарь из GitHub-релизов под нужную архитектуру тем же способом, что и
