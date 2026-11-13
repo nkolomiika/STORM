@@ -16,7 +16,7 @@ DOCX_MEDIA_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingm
 
 def _safe_filename(name: str) -> str:
     """Возвращает имя файла с разрешёнными ASCII-символами для Content-Disposition."""
-    cleaned = "".join(ch for ch in (name or "").strip() if ch.isalnum() or ch in ("-", "_"))
+    cleaned = "".join(ch for ch in (name or "").strip() if ch.isascii() and (ch.isalnum() or ch in ("-", "_")))
     return cleaned or "report"
 
 
@@ -24,7 +24,8 @@ def _content_disposition(project_name: str, suffix: str) -> str:
     base = _safe_filename(project_name)
     filename_ascii = f"{base}_{suffix}.docx"
     filename_utf8 = f"{(project_name or 'report').strip()}_{suffix}.docx"
-    return f'attachment; filename="{filename_ascii}"; filename*=UTF-8\'\'{quote(filename_utf8)}'
+    filename_encoded = quote(filename_utf8, safe="")
+    return f'attachment; filename="{filename_ascii}"; filename*=UTF-8\'\'{filename_encoded}'
 
 
 async def _stream_word_report(

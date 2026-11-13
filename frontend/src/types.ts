@@ -264,7 +264,6 @@ export interface HostIpAddress {
   /** Обратный резолв адреса; у строк, заведённых до фермы IP, пустой. */
   hostnames: ResolvedHostname[];
   /** Трёхзначно: true — за CF, false — достоверно нет, null — ещё неизвестно (пробится). */
-  is_cloudflare: boolean | null;
   ports: Port[];
   created_at: string;
   updated_at: string;
@@ -386,7 +385,6 @@ export interface IpFarmIpResult {
   host_id: number | null;
   hostnames: ResolvedHostname[];
   /** Трёхзначно: true — за CF, false — достоверно нет, null — ещё неизвестно (пробится). */
-  is_cloudflare: boolean | null;
   created: boolean;
   /** Адрес подшит к уже существующему хосту, а не к новой строке origin='ip'. */
   attached_to_existing_host: boolean;
@@ -488,12 +486,23 @@ export interface Endpoint {
   id: number;
   host_id: number;
   path: string;
-  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "HEAD" | "OPTIONS" | "QUERY" | null;
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "HEAD" | "OPTIONS" | "TRACE" | "QUERY" | null;
   description: string | null;
   query_params: EndpointQueryParam[];
   request_body: string | null;
   request_content_type: string | null;
   request_headers?: EndpointRequestHeader[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EndpointComment {
+  id: number;
+  endpoint_id: number;
+  user_id: number;
+  username: string;
+  avatar_url: string | null;
+  content: string;
   created_at: string;
   updated_at: string;
 }
@@ -508,6 +517,8 @@ export interface EndpointQueryParam {
 export interface Vulnerability {
   id: number;
   project_id: number;
+  /** Первая привязка к хосту; возвращается в списке, чтобы не читать каждую карточку. */
+  affected_host_id?: number | null;
   title: string;
   description: string | null;
   severity: "critical" | "high" | "medium" | "low" | "info" | "unrealized";

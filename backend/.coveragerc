@@ -1,0 +1,7 @@
+[run]
+branch = True
+source = app
+concurrency = thread,greenlet
+
+[report]
+show_missing = True

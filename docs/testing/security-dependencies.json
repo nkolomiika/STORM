@@ -1,0 +1,166 @@
+{
+  "date": "2026-11-13",
+  "npm_before": {
+    "info": 0,
+    "low": 1,
+    "moderate": 42,
+    "high": 14,
+    "critical": 0,
+    "total": 57
+  },
+  "npm_after": {
+    "info": 0,
+    "low": 0,
+    "moderate": 6,
+    "high": 0,
+    "critical": 0,
+    "total": 6
+  },
+  "npm_runtime_after": {
+    "info": 0,
+    "low": 0,
+    "moderate": 0,
+    "high": 0,
+    "critical": 0,
+    "total": 0
+  },
+  "npm_remaining": {
+    "@typescript-eslint/eslint-plugin": {
+      "severity": "moderate",
+      "isDirect": true,
+      "range": "6.16.0 - 8.72.2",
+      "via": [
+        "@typescript-eslint/type-utils",
+        "@typescript-eslint/utils"
+      ],
+      "fixAvailable": {
+        "name": "@typescript-eslint/eslint-plugin",
+        "version": "6.15.0",
+        "isSemVerMajor": true
+      }
+    },
+    "@typescript-eslint/parser": {
+      "severity": "moderate",
+      "isDirect": true,
+      "range": "6.16.0 - 8.72.2",
+      "via": [
+        "@typescript-eslint/typescript-estree"
+      ],
+      "fixAvailable": {
+        "name": "@typescript-eslint/parser",
+        "version": "6.15.0",
+        "isSemVerMajor": true
+      }
+    },
+    "@typescript-eslint/type-utils": {
+      "severity": "moderate",
+      "isDirect": false,
+      "range": "6.16.0 - 8.72.2",
+      "via": [
+        "@typescript-eslint/typescript-estree",
+        "@typescript-eslint/utils"
+      ],
+      "fixAvailable": true
+    },
+    "@typescript-eslint/typescript-estree": {
+      "severity": "moderate",
+      "isDirect": false,
+      "range": "6.16.0 - 8.72.2",
+      "via": [
+        "minimatch"
+      ],
+      "fixAvailable": {
+        "name": "@typescript-eslint/parser",
+        "version": "6.15.0",
+        "isSemVerMajor": true
+      }
+    },
+    "@typescript-eslint/utils": {
+      "severity": "moderate",
+      "isDirect": false,
+      "range": "6.16.0 - 8.72.2",
+      "via": [
+        "@typescript-eslint/typescript-estree"
+      ],
+      "fixAvailable": {
+        "name": "@typescript-eslint/eslint-plugin",
+        "version": "6.15.0",
+        "isSemVerMajor": true
+      }
+    },
+    "minimatch": {
+      "severity": "moderate",
+      "isDirect": false,
+      "range": "7.0.0 - 11.0.0",
+      "via": [
+        {
+          "source": 1244623,
+          "name": "minimatch",
+          "dependency": "minimatch",
+          "title": "minimatch has potential denial of service via globparts amplification",
+          "url": "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-405"
+          ],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": ">=7.0.0 <11.0.1"
+        }
+      ],
+      "fixAvailable": {
+        "name": "@typescript-eslint/parser",
+        "version": "6.15.0",
+        "isSemVerMajor": true
+      }
+    }
+  },
+  "python_before": {
+    "entries": 128,
+    "packages": 10
+  },
+  "python_after": {
+    "entries": 3,
+    "unique_advisories": 2
+  },
+  "python_remaining": [
+    {
+      "name": "ecdsa",
+      "version": "0.19.2",
+      "advisories": [
+        {
+          "id": "PYSEC-2026-1325",
+          "aliases": [
+            "CVE-2024-23342",
+            "GHSA-wj6h-64fc-37mp"
+          ],
+          "fix_versions": []
+        },
+        {
+          "id": "PYSEC-2026-1325",
+          "aliases": [
+            "CVE-2024-23342",
+            "GHSA-wj6h-64fc-37mp"
+          ],
+          "fix_versions": []
+        }
+      ]
+    },
+    {
+      "name": "python-jose",
+      "version": "3.5.0",
+      "advisories": [
+        {
+          "id": "PYSEC-2026-4298",
+          "aliases": [
+            "GHSA-3qf3-8w2g-rqmx",
+            "CVE-2026-85394"
+          ],
+          "fix_versions": []
+        }
+      ]
+    }
+  ]
+}

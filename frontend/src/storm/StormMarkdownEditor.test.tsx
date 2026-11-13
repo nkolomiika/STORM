@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
 
 import { StormMarkdownEditor } from "./StormMarkdownEditor";
@@ -63,5 +63,43 @@ describe("StormMarkdownEditor", () => {
 
     await waitFor(() => expect(document.querySelector(".stormmd-input ul li")).toBeInTheDocument());
     expect(screen.getByTestId("markdown")).toHaveTextContent("- первый");
+  });
+
+  it("selects an image, resizes from a corner, persists the width and hides handles outside", async () => {
+    const initial = '![Screenshot](/api/v1/images/shot.png "Caption {width=320}")';
+    const view = render(<Harness initial={initial} />);
+    const image = await screen.findByAltText("Screenshot");
+    const frame = image.parentElement as HTMLElement;
+    expect(frame).toHaveStyle({ width: "320px" });
+    expect(image).toHaveAttribute("title", "Caption");
+    fireEvent(image, new MouseEvent("pointerdown", { bubbles: true, cancelable: true, clientX: 100, clientY: 100 }));
+    const handles = Array.from(frame.querySelectorAll<HTMLButtonElement>(".stormmd-resize"));
+    expect(handles).toHaveLength(4);
+    expect(handles.every((handle) => !handle.hidden)).toBe(true);
+    const handle = frame.querySelector(".stormmd-resize.se") as HTMLElement;
+    fireEvent(handle, new MouseEvent("pointerdown", { bubbles: true, cancelable: true, clientX: 100, clientY: 100 }));
+    fireEvent(document, new MouseEvent("pointermove", { bubbles: true, clientX: 180, clientY: 140 }));
+    fireEvent(document, new MouseEvent("pointerup", { bubbles: true, clientX: 180, clientY: 140 }));
+    await waitFor(() => expect(screen.getByTestId("markdown").textContent).toContain("Caption {width=400}"));
+    expect(frame).toHaveStyle({ width: "400px" });
+    fireEvent(document.body, new MouseEvent("pointerdown", { bubbles: true }));
+    expect(handles.every((button) => button.hidden)).toBe(true);
+    const saved = screen.getByTestId("markdown").textContent ?? "";
+    view.unmount();
+    render(<Harness initial={saved} />);
+    expect((await screen.findByAltText("Screenshot")).parentElement).toHaveStyle({ width: "400px" });
+  });
+
+  it("cancels a resize without changing the stored Markdown", async () => {
+    const initial = '![Screenshot](/api/v1/images/shot.png "{width=320}")';
+    render(<Harness initial={initial} />);
+    const image = await screen.findByAltText("Screenshot");
+    fireEvent(image, new MouseEvent("pointerdown", { bubbles: true, cancelable: true }));
+    const frame = image.parentElement as HTMLElement;
+    fireEvent(frame.querySelector(".stormmd-resize.se") as HTMLElement, new MouseEvent("pointerdown", { bubbles: true, cancelable: true }));
+    fireEvent(document, new MouseEvent("pointermove", { bubbles: true, clientX: 100, clientY: 50 }));
+    fireEvent(document, new MouseEvent("pointercancel", { bubbles: true }));
+    expect(frame).toHaveStyle({ width: "320px" });
+    expect(screen.getByTestId("markdown").textContent).toBe(initial);
   });
 });

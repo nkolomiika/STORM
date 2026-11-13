@@ -45,7 +45,9 @@ class ConnectionManager:
     async def broadcast(self, project_id: int, payload: dict) -> None:
         """Рассылает событие всем активным подключениям комнаты."""
         stale: list[WebSocket] = []
-        for ws in self.rooms.get(project_id, set()):
+        # send_json отдаёт управление: обработчик disconnect может изменить set.
+        # Снимок адресатов защищает итерацию и не задерживает отключение клиента.
+        for ws in tuple(self.rooms.get(project_id, ())):
             try:
                 await ws.send_json(payload)
             except Exception:
@@ -57,7 +59,7 @@ class ConnectionManager:
     async def notify_user(self, user_id: int, payload: dict) -> None:
         """Рассылает персональное уведомление в персональный и проектные каналы пользователя."""
         stale_user_sockets: list[WebSocket] = []
-        for ws in self.user_sockets.get(user_id, set()):
+        for ws in tuple(self.user_sockets.get(user_id, ())):
             try:
                 await ws.send_json(payload)
             except Exception:
@@ -67,7 +69,7 @@ class ConnectionManager:
 
         for room_id, sockets in list(self.rooms.items()):
             stale: list[WebSocket] = []
-            for ws in sockets:
+            for ws in tuple(sockets):
                 if getattr(ws.state, "user_id", None) == user_id:
                     try:
                         await ws.send_json(payload)

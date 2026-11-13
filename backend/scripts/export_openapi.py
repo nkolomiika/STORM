@@ -38,6 +38,14 @@ def _dump(spec: dict, path: Path) -> None:
 
 def main() -> int:
     repo_root = _backend_root.parent
+    # В compose backend смонтирован как /app, весь репозиторий — как /workspace.
+    # /app.parent == /: без этого JSON попадали в /docs внутри контейнера,
+    # оставляя спецификации в рабочем дереве устаревшими.
+    if not (repo_root / "frontend").is_dir():
+        workspace = Path("/workspace")
+        if not (workspace / "backend" / "app").is_dir() or not (workspace / "frontend").is_dir():
+            raise RuntimeError("Не найден корень репозитория для экспорта OpenAPI")
+        repo_root = workspace
     docs_dir = repo_root / "docs"
 
     v1_path = docs_dir / "openapi-v1.json"

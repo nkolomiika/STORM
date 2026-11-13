@@ -5,14 +5,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.dependencies import enforce_csrf, get_current_user, require_project_access
 from app.models import User
-from app.pagination import PageParams, to_paginated_response
+from app.pagination import PageParams, PaginatedResponse, to_paginated_response
 from app.schemas import CommentCreate, CommentOut, CommentUpdate
 from app.services import CommentService
 
 router = APIRouter(tags=["comments"])
 
 
-@router.get("/projects/{project_id}/vulnerabilities/{vuln_id}/comments", response_model=dict)
+@router.get("/projects/{project_id}/vulnerabilities/{vuln_id}/comments", response_model=PaginatedResponse[CommentOut])
 async def list_comments(
     project_id: int,
     vuln_id: int,
@@ -20,10 +20,10 @@ async def list_comments(
     size: int = Query(50, ge=1, le=200),
     _project=Depends(require_project_access),
     db: AsyncSession = Depends(get_db),
-) -> dict:
+) -> PaginatedResponse[CommentOut]:
     """Возвращает комментарии уязвимости."""
-    items, total = await CommentService(db).list(vuln_id, page, size)
-    return to_paginated_response(items, total, PageParams(page=page, size=size)).model_dump()
+    items, total = await CommentService(db).list(project_id, vuln_id, page, size)
+    return to_paginated_response(items, total, PageParams(page=page, size=size))
 
 
 @router.post("/projects/{project_id}/vulnerabilities/{vuln_id}/comments", response_model=CommentOut, status_code=status.HTTP_201_CREATED)

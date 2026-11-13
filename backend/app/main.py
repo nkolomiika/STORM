@@ -17,6 +17,7 @@ from app.routers import (
     audit_logs,
     auth,
     comments,
+    endpoint_comments,
     farm,
     files,
     images,
@@ -36,20 +37,24 @@ from app.routers import (
 )
 from app.services import UserService
 from app.storage.minio_client import MinioStorage
+from app.input_safety import SecurityHeadersMiddleware, validate_request_parameters
 
 settings = get_settings()
 
 # Swagger UI / ReDoc / openapi.json отдаём не штатными маршрутами FastAPI, а
 # своими — закрытыми авторизацией (см. _register_protected_docs). Поэтому здесь
 # все три auto-маршрута выключены (docs_url/redoc_url/openapi_url = None).
-app = FastAPI(title="STORM API", version="1.0.0", docs_url=None, redoc_url=None, openapi_url=None)
+app = FastAPI(title="STORM API", version="1.0.0", docs_url=None, redoc_url=None, openapi_url=None, dependencies=[Depends(validate_request_parameters)])
 agent_api_v2 = FastAPI(
     title="STORM Agent API",
     version="2.0.0",
     docs_url=None,
     redoc_url=None,
     openapi_url=None,
+    dependencies=[Depends(validate_request_parameters)],
 )
+app.add_middleware(SecurityHeadersMiddleware)
+agent_api_v2.add_middleware(SecurityHeadersMiddleware)
 
 
 def _register_protected_docs(fastapi_app: FastAPI, *, openapi_route: str, docs_route: str, redoc_route: str) -> None:
@@ -100,6 +105,7 @@ def _register_routes() -> None:
     app.include_router(files.router, prefix=prefix)
     app.include_router(images.router, prefix=prefix)
     app.include_router(comments.router, prefix=prefix)
+    app.include_router(endpoint_comments.router, prefix=prefix)
     app.include_router(notifications.router, prefix=prefix)
     app.include_router(import_.router, prefix=prefix)
     app.include_router(jira.router, prefix=prefix)
@@ -198,6 +204,7 @@ async def startup() -> None:
                 await conn.execute(text(f"ALTER TYPE vuln_status ADD VALUE IF NOT EXISTS '{_st}'"))
             await conn.execute(text("ALTER TYPE project_status ADD VALUE IF NOT EXISTS 'handover_to_development'"))
             await conn.execute(text("ALTER TYPE project_status ADD VALUE IF NOT EXISTS 'vulnerability_recheck'"))
+            await conn.execute(text("ALTER TYPE http_method ADD VALUE IF NOT EXISTS 'TRACE'"))
             # Критичность 'UNKNOWN' убрана: по умолчанию находка создаётся как INFO.
             # Старые находки со снятым уровнем переводим в INFO (severity::text — на
             # свежей БД метки 'UNKNOWN' в типе уже нет, каст к тексту не падает), и
@@ -250,13 +257,10 @@ async def startup() -> None:
             await conn.execute(text("ALTER TABLE endpoints ADD COLUMN IF NOT EXISTS request_content_type VARCHAR(127)"))
             await conn.execute(text("ALTER TABLE endpoints ADD COLUMN IF NOT EXISTS request_headers JSON"))
             await conn.execute(text("ALTER TABLE ports ADD COLUMN IF NOT EXISTS http_status INTEGER"))
-            # Рекон-ферма: происхождение хоста, обратный резолв и признак Cloudflare.
+            # Рекон-ферма: происхождение хоста и обратный резолв.
             await conn.execute(text("ALTER TABLE hosts ADD COLUMN IF NOT EXISTS origin VARCHAR(16) NOT NULL DEFAULT 'host'"))
             await conn.execute(text("ALTER TABLE host_ip_addresses ADD COLUMN IF NOT EXISTS hostnames JSON"))
-            await conn.execute(text("ALTER TABLE host_ip_addresses ADD COLUMN IF NOT EXISTS is_cloudflare BOOLEAN NOT NULL DEFAULT false"))
-            # is_cloudflare стал трёхзначным (NULL = ещё неизвестно / пробится): снимаем NOT NULL и default.
-            await conn.execute(text("ALTER TABLE host_ip_addresses ALTER COLUMN is_cloudflare DROP NOT NULL"))
-            await conn.execute(text("ALTER TABLE host_ip_addresses ALTER COLUMN is_cloudflare DROP DEFAULT"))
+            await conn.execute(text("ALTER TABLE host_ip_addresses DROP COLUMN IF EXISTS is_cloudflare"))
             await conn.execute(text("ALTER TABLE host_farm_jobs ADD COLUMN IF NOT EXISTS kind VARCHAR(16) NOT NULL DEFAULT 'hosts'"))
             await conn.execute(text("ALTER TABLE host_farm_jobs ADD COLUMN IF NOT EXISTS raw TEXT"))
             await conn.execute(text("ALTER TABLE host_farm_jobs ADD COLUMN IF NOT EXISTS attempts INTEGER NOT NULL DEFAULT 0"))
@@ -295,7 +299,6 @@ async def startup() -> None:
                 "host_ip_addresses",
                 {
                     "hostnames": "hostnames JSON",
-                    "is_cloudflare": "is_cloudflare BOOLEAN NOT NULL DEFAULT 0",
                 },
             )
             await add_missing(

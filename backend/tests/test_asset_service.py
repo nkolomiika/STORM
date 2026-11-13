@@ -40,10 +40,11 @@ async def test_create_endpoint_checks_duplicate_by_normalized_uuid_path(monkeypa
     db = MagicMock()
     db.scalar = AsyncMock(return_value=existing_endpoint)
     db.commit = AsyncMock()
+    db.flush = AsyncMock()
     db.refresh = AsyncMock()
     db.add = MagicMock()
     service = AssetService(db)
-    service._get_host = AsyncMock(return_value=SimpleNamespace(id=host_id))
+    service._ensure_host = AsyncMock()
     service.audit.log = AsyncMock()
     broadcast_mock = AsyncMock()
     monkeypatch.setattr("app.services.ws_manager.broadcast", broadcast_mock)
@@ -139,8 +140,8 @@ async def test_list_hosts_defaults_to_host_origin() -> None:
     assert "hosts.origin =" in _compiled_where(db.scalars.await_args.args[0])
 
 
-def test_normalize_host_ip_entries_keeps_cloudflare_out_of_user_input() -> None:
-    """is_cloudflare выводится из адреса при записи, а не приходит из формы."""
+def test_normalize_host_ip_entries_returns_only_address_metadata() -> None:
+    """У адреса сохраняются только IP, метка и признак primary."""
     entries = AssetService._normalize_host_ip_entries("104.16.0.1", [])
 
     assert entries == [{"ip_address": "104.16.0.1", "label": None, "is_primary": True}]

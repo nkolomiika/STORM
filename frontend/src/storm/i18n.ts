@@ -51,7 +51,6 @@ const RU: Record<string, string> = {
   // ── navigation / sections ──
   Projects: "Проекты",
   Tasks: "Задачи",
-  "My Tasks": "Мои задачи",
   Docs: "Документация",
   // ── Раздел Tasks (Task Tracker, пространство STS) ──
   Refresh: "Обновить",
@@ -152,6 +151,37 @@ const RU: Record<string, string> = {
   "Copy cURL request": "Скопировать cURL-запрос",
   "cURL copied": "cURL скопирован",
   "Delete endpoint": "Удалить эндпоинт",
+  "Delete endpoints": "Удалить эндпоинты",
+  "Upload Swagger JSON": "Загрузить Swagger JSON",
+  "Edit endpoint": "Редактировать эндпоинт",
+  "Endpoint request": "Запрос эндпоинта",
+  "HTTP request": "HTTP-запрос",
+  "Enter an HTTP request": "Введите HTTP-запрос",
+  "Endpoint updated": "Эндпоинт обновлён",
+  "Note saved": "Заметка сохранена",
+  "Couldn't save endpoint": "Не удалось сохранить эндпоинт",
+  "Couldn't load endpoint request": "Не удалось загрузить запрос эндпоинта",
+  "Hosts are read from the specification. Missing hosts are imported as unknown.": "Хосты определяются из спецификации. Если адрес не указан, используется unknown.",
+  "Swagger JSON files": "JSON-файлы Swagger",
+  "Drop Swagger JSON here": "Перетащите сюда Swagger JSON",
+  "Parsing JSON…": "Разбираем JSON…",
+  "Drop JSON files here or click to browse": "Перетащите JSON-файлы сюда или нажмите для выбора",
+  "For Swagger 1.x, include API Declaration files. Upload referenced JSON files together.": "Для Swagger 1.x добавьте файлы API Declaration. Связанные JSON-файлы загружайте вместе.",
+  "Choose up to 32 JSON files, 2 MB each, 8 MB total": "Выберите до 32 JSON-файлов, до 2 МБ каждый и 8 МБ суммарно",
+  "Choose JSON files": "Выберите JSON-файлы",
+  "Couldn't read JSON file": "Не удалось прочитать JSON-файл",
+  "Invalid JSON": "Некорректный JSON",
+  "Endpoints parsed": "Эндпоинты разобраны",
+  "This JSON is not a Swagger/OpenAPI document": "Этот JSON не является документом Swagger/OpenAPI",
+  "No endpoints found in JSON": "В JSON не найдены эндпоинты",
+  "Select a project host for relative URLs": "Выберите хост проекта для относительных адресов",
+  "Recon progress": "Ход сканирования",
+  "Revoke this invitation for": "Отозвать приглашение для",
+  "Invitation revoked": "Приглашение отозвано",
+  "JS scan": "Сканирование JS",
+  "Endpoint deleted": "Эндпоинт удалён",
+  "Endpoints deleted": "Эндпоинты удалены",
+  "Couldn't delete endpoints": "Не удалось удалить эндпоинты",
   "Search by host…": "Поиск по хосту…",
   "Search by IP or host…": "Поиск по IP или хосту…",
   "Search by endpoint…": "Поиск по эндпоинту…",
@@ -264,8 +294,6 @@ const RU: Record<string, string> = {
   // ── members ──
   "Add member": "Добавить участника",
   "Invite member": "Пригласить участника",
-  "Invite people by email — they set their own username and password from the link":
-    "Приглашайте людей по email — логин и пароль они задают сами по ссылке",
   "No members match.": "Нет подходящих участников.",
   // Деактивация участника (мягкое удаление, is_locked). «Удаление» больше не
   // стирает пользователя — блокирует, и его можно разблокировать тут же.
@@ -413,6 +441,15 @@ const RU: Record<string, string> = {
   REQUEST: "ЗАПРОС",
   RESPONSE: "ОТВЕТ",
   "Copy request": "Скопировать запрос",
+  "Endpoint discussion": "Обсуждение эндпоинта",
+  "Endpoint comment": "Комментарий к эндпоинту",
+  "Loading comments…": "Загрузка комментариев…",
+  "Couldn't load comments": "Не удалось загрузить комментарии",
+  "Couldn't post comment": "Не удалось отправить комментарий",
+  "Comment posted": "Комментарий отправлен",
+  "Posting…": "Отправка…",
+  "Retry loading comments": "Повторить загрузку комментариев",
+  "Load more comments": "Загрузить ещё комментарии",
   "Copy response": "Скопировать ответ",
 
   // ── generic form / modal ──
@@ -540,7 +577,6 @@ const RU: Record<string, string> = {
   "IPs — hostnames and ports update automatically.": "IP — имена и порты обновляются автоматически.",
   // Имя из PTR, чей прямой резолв не вернул этот адрес: показываем приглушённо.
   unconfirmed: "не подтверждено прямым резолвом",
-  Cloudflare: "Cloudflare",
   unknown: "unknown",
   // ── recon farm: JS ──
   JS: "JS",

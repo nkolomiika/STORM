@@ -25,7 +25,7 @@ from app.enums import HostStatus, ReconJobKind, ReconJobStatus
 from app.exceptions import ValidationError
 from app.farm import core
 from app.farm.core import ParsedTarget, ProbeResult
-from app.farm.fingerprint import Tech, detect_services, has_cloudflare
+from app.farm.fingerprint import Tech, detect_services
 from app.farm.hosts import HostFarmService
 from app.farm.resolver import ResolvedHost, ResolvedName, ReverseResult, reverse_resolve
 from app.models import Host, HostFarmJob, HostIpAddress, ProjectHiddenIp
@@ -180,17 +180,8 @@ class IpFarmService(HostFarmService):
                 if host.origin == "ip":
                     host.status = status
 
-                # CF на пробиве: заголовки ответа (server=cloudflare / cf-ray) ИЛИ
-                # детект технологий. У голого IP без SNI Cloudflare обычно молчит —
-                # тогда сигнала нет и _ensure_ips прежний флаг не понижает.
-                cf_hint = any(p.cloudflare for p in ip_probes) or has_cloudflare(
-                    [t for pp in ip_probes for t in techs_by_port.get((pp.hostname, pp.port), [])]
-                )
                 ip_existed = any(a.ip_address == ip for a in host.ip_addresses)
-                # is_cloudflare проставляет _ensure_ips (со стики-логикой), отдельно не трогаем.
-                ip_row = await self._ensure_ips(
-                    host, [ip], cloudflare_hint=cf_hint, cf_responded=responded
-                )
+                ip_row = await self._ensure_ips(host, [ip])
                 if ip_row is None:
                     raise RuntimeError("не удалось завести адрес")
                 # JSON-колонка не отслеживает мутацию на месте — присваиваем целиком.
@@ -206,7 +197,6 @@ class IpFarmService(HostFarmService):
                     ip_address=ip,
                     host_id=host.id,
                     hostnames=[n.as_dict() for n in rev.names],
-                    is_cloudflare=ip_row.is_cloudflare,
                     created=host_created,
                     attached_to_existing_host=attached,
                     ports=port_results,

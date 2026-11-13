@@ -7,7 +7,7 @@
 
 export type PortState = "open" | "filtered" | "closed";
 /** QUERY — метод из RFC-драфта httpbis; остальное — обычные глаголы. */
-export type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "QUERY";
+export type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "HEAD" | "OPTIONS" | "TRACE" | "QUERY";
 export type HostStatus = "up" | "down" | "unknown";
 /** Global project role — mirrors the backend's User.project_role. */
 export type Role = "lead" | "pentester";
@@ -50,14 +50,10 @@ export interface Endpoint {
 }
 
 /** One address of a host, with what it reverse-resolves to. */
-/** Cloudflare tri-state: true — behind CF, false — confirmed not, null — unknown (still probing). */
-export type CfState = boolean | null;
-
 export interface IpEntry {
   ip: string;
   /** Names the address resolves to; `confirmed: false` = PTR without a forward match. */
   hostnames: { hostname: string; source: string; confirmed: boolean }[];
-  cloudflare: CfState;
 }
 
 /** A JS file discovered on a project domain, with what the scan found in it. */
@@ -84,13 +80,10 @@ export interface Host {
   created?: string;
   /** Every IP of the host; `ip` above is the primary one. */
   ips: string[];
-  /** Same addresses as `ips`, with reverse-resolution and the Cloudflare flag. */
+  /** Same addresses as `ips`, with reverse-resolution. */
   ipEntries: IpEntry[];
   /** `ip` — imported through the IP farm; such rows are hidden from the hosts table. */
   origin: "host" | "ip";
-  /** Host-level CF (tri-state): true if any address is CF, false if all confirmed not,
-   *  null if unknown (no addresses yet / still probing). */
-  cloudflare: CfState;
   ports: Port[];
   endpoints: Endpoint[];
 }
@@ -117,7 +110,8 @@ export interface Vuln {
   /** ISO creation timestamp — drives the cumulative Overview sparkline. */
   created?: string;
   steps?: string[];
-  stepImages?: Record<number, string[]>;
+  /** Per-step screenshot file ids (uploaded vulnerability files), keyed by step index. */
+  stepImages?: Record<number, number[]>;
   description?: string;
   impact?: string;
   remediation?: string;

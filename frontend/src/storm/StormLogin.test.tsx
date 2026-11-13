@@ -3,6 +3,11 @@ import { vi } from "vitest";
 import { StormLogin } from "./StormLogin";
 import { useAuthStore } from "../store";
 
+vi.mock("../api", async (importOriginal) => ({
+  ...await importOriginal<typeof import("../api")>(),
+  getSsoConfig: vi.fn(async () => ({ enabled: false, button_label: "", start_url: "" })),
+}));
+
 describe("StormLogin", () => {
   beforeEach(() => {
     useAuthStore.setState({ user: null, error: null, isLoading: false });

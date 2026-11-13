@@ -9,6 +9,7 @@ import type {
   VulnerabilityDetails,
   VulnerabilityFile,
   Endpoint,
+  EndpointComment,
   EndpointRequestHeader,
   Service,
   AuditLog,
@@ -649,6 +650,12 @@ export async function deleteProject(projectId: number): Promise<void> {
   await api.delete(`/projects/${projectId}`);
 }
 
+/** Даты всех хостов (включая origin=ip) для графиков, без полных деревьев. */
+export async function getHostCreationTimes(projectId: number): Promise<string[]> {
+  const { data } = await api.get<string[]>(`/projects/${projectId}/host-creation-times`);
+  return data;
+}
+
 export async function getHosts(projectId: number): Promise<PaginatedResponse<Host>> {
   // origin=all — один запрос кормит и таблицу хостов, и таблицу IP: строки
   // origin='ip' отфильтровываются на клиенте (см. hostsList в StormApp).
@@ -883,6 +890,18 @@ export async function deleteService(projectId: number, hostId: number, portId: n
   await api.delete(`/projects/${projectId}/hosts/${hostId}/ports/${portId}/services/${serviceId}`);
 }
 
+/** Сохранённое обсуждение эндпоинта, новые комментарии первыми. */
+export async function listEndpointComments(projectId: number, hostId: number, endpointId: number, page = 1): Promise<PaginatedResponse<EndpointComment>> {
+  const { data } = await api.get<PaginatedResponse<EndpointComment>>(`/projects/${projectId}/hosts/${hostId}/endpoints/${endpointId}/comments`, { params: { page, size: 50 } });
+  return data;
+}
+
+export async function createEndpointComment(projectId: number, hostId: number, endpointId: number, content: string): Promise<EndpointComment> {
+  assertRequired(content, "Comment");
+  const { data } = await api.post<EndpointComment>(`/projects/${projectId}/hosts/${hostId}/endpoints/${endpointId}/comments`, { content });
+  return data;
+}
+
 export async function getEndpoints(projectId: number, hostId: number): Promise<Endpoint[]> {
   const { data } = await api.get<Endpoint[]>(`/projects/${projectId}/hosts/${hostId}/endpoints`);
   return data;
@@ -893,7 +912,7 @@ export async function createEndpoint(
   hostId: number,
   payload: {
     path?: string;
-    method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "HEAD" | "OPTIONS" | "QUERY";
+    method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "HEAD" | "OPTIONS" | "TRACE" | "QUERY";
     description?: string | null;
     request_raw?: string;
     query_params?: { name: string; value?: string | null; required?: boolean; description?: string | null }[];
@@ -915,7 +934,7 @@ export async function updateEndpoint(
   endpointId: number,
   payload: {
     path?: string;
-    method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "HEAD" | "OPTIONS" | "QUERY";
+    method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "HEAD" | "OPTIONS" | "TRACE" | "QUERY";
     description?: string | null;
     request_raw?: string;
     query_params?: { name: string; value?: string | null; required?: boolean; description?: string | null }[];
@@ -936,10 +955,22 @@ export async function deleteEndpoint(projectId: number, hostId: number, endpoint
 }
 
 export async function getVulnerabilities(projectId: number): Promise<PaginatedResponse<Vulnerability>> {
-  const { data } = await api.get<PaginatedResponse<Vulnerability>>(`/projects/${projectId}/vulnerabilities`, {
+  const { data: first } = await api.get<PaginatedResponse<Vulnerability>>(`/projects/${projectId}/vulnerabilities`, {
     params: { page: 1, size: 100 },
   });
-  return data;
+  const items = new Map(first.items.map((item) => [item.id, item]));
+  // The UI applies filters and computes summaries locally, so it needs the
+  // complete list. Bound requests by the first response to avoid looping if
+  // concurrent inserts keep increasing the server's total.
+  const pages = first.pages || Math.ceil(first.total / 100);
+  for (let page = 2; page <= pages; page += 1) {
+    const { data } = await api.get<PaginatedResponse<Vulnerability>>(`/projects/${projectId}/vulnerabilities`, {
+      params: { page, size: 100 },
+    });
+    if (!data.items.length) break;
+    for (const item of data.items) items.set(item.id, item);
+  }
+  return { ...first, items: [...items.values()], size: items.size };
 }
 
 export async function createVulnerability(
@@ -1135,6 +1166,20 @@ export async function uploadVulnerabilityFile(projectId: number, vulnerabilityId
 
 export async function deleteVulnerabilityFile(projectId: number, vulnerabilityId: number, fileId: number): Promise<void> {
   await api.delete(`/projects/${projectId}/vulnerabilities/${vulnerabilityId}/files/${fileId}`);
+}
+
+/** Uploads an inline image (pasted into a note / markdown field) and returns the
+ *  served URL to embed as `![alt](url)`. Backed by POST /projects/{id}/images. */
+export async function uploadProjectImage(projectId: number, file: File): Promise<{ url: string }> {
+  if (!file) {
+    throw new Error("Select an image");
+  }
+  const formData = new FormData();
+  formData.append("file", file);
+  const { data } = await api.post<{ url: string }>(`/projects/${projectId}/images`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
 }
 
 export async function listVulnerabilityComments(projectId: number, vulnerabilityId: number): Promise<PaginatedResponse<VulnerabilityComment>> {

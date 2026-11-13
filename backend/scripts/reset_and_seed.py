@@ -47,6 +47,7 @@ from app.models import (
     Notification,
     Port,
     Project,
+    ProjectCredential,
     ProjectFolder,
     ProjectMember,
     ProjectNote,
@@ -56,7 +57,7 @@ from app.models import (
     Vulnerability,
     VulnerabilityAsset,
 )
-from app.security import hash_agent_token, hash_password
+from app.security import encrypt_secret, hash_agent_token, hash_password
 from app.services import UserService
 from app.storage.minio_client import MinioStorage
 
@@ -135,6 +136,7 @@ async def clear_domain_data_preserve_users() -> list[str]:
                     project_note_comments,
                     project_notes,
                     vulnerability_assets,
+                    project_credentials,
                     files,
                     vulnerabilities,
                     services,
@@ -261,6 +263,22 @@ async def seed_demo_data() -> None:
                 """created_at на доле `frac` окна проекта [start … min(now, end)]."""
                 return _lo + (_hi - _lo) * max(0.0, min(1.0, frac))
 
+            # === Параметры AppSec/Works — заполняем ВСЕ поля проекта, чтобы отчёт
+            # подставил «по задаче …», версию дистрибутива и таблицу УЗ, а экспорт
+            # в Works имел компонент/версию/исполнителя. assignee = username
+            # участника (у SSO-пользователей username = IAM-логин). Версия названа
+            # так, чтобы _distrib_version выделил последний токен ("1.1" и т.п.).
+            appsec_assignee = members[0].username if members else admin.username
+            appsec_version_name = f"Platform V PRODUCT {1 + project_index % 3}.{project_index % 5}"
+            appsec_ticket_key = f"APPSEC-{4200 + project_index}"
+            appsec_ticket_url = (
+                "https://portal.works.prod.sbt/swtr/units/current/unit/"
+                f"{appsec_ticket_key}?space=APPSEC&tenant=default"
+            )
+            # Таймлайн замораживается в момент выхода проекта из статуса ACTIVE
+            # (completed/archived) — повторяем это поведение для демо-данных.
+            timeline_frozen_at = None if project_status == ProjectStatus.ACTIVE else p_end_dt
+
             project = Project(
                 name=project_name,
                 folder=folder_path,
@@ -269,6 +287,15 @@ async def seed_demo_data() -> None:
                 end_date=end_date,
                 status=project_statuses[(project_index - 1) % len(project_statuses)] if project_status is None else project_status,
                 created_by=admin.id,
+                # Параметры экспорта в Works + связанный AppSec-тикет для отчёта.
+                appsec_component_code=str(uuid4()),
+                appsec_component_name="SEGR",
+                appsec_version_code=str(uuid4()),
+                appsec_version_name=appsec_version_name,
+                appsec_assignee=appsec_assignee,
+                appsec_ticket_key=appsec_ticket_key,
+                appsec_ticket_url=appsec_ticket_url,
+                timeline_frozen_at=timeline_frozen_at,
                 # Проект «заведён» в день своего старта — разносит точки на графиках
                 # количества проектов на главной странице.
                 created_at=p_start_dt,
@@ -305,6 +332,27 @@ async def seed_demo_data() -> None:
                     "created_at": now - timedelta(days=project_index),
                 }
             )
+
+            # === Учётные данные проекта (пароль — шифртекст Fernet в БД) ===
+            # Несколько разнотипных УЗ (веб-админ / сервисный аккаунт / root) —
+            # проверяют общий стор кредов и таблицу «Учётные данные» в отчёте
+            # (word_builder клонирует строку шаблона под каждую запись).
+            cred_host_fqdn = f"{project_name.lower().replace(' ', '-')}-host-1.demo.local"
+            for _cred_user, _cred_pw, _cred_host in [
+                (f"admin@{project_name.split()[0].lower()}.local", "P@ssw0rd-2026!", f"10.{project_index}.1.10"),
+                ("svc_scanner", "Sc@nner#S3cret", cred_host_fqdn),
+                ("root", f"toor-{project_index}-demo", f"172.16.{project_index}.1"),
+            ]:
+                db.add(
+                    ProjectCredential(
+                        project_id=project.id,
+                        username=_cred_user,
+                        password_encrypted=encrypt_secret(_cred_pw),
+                        host=_cred_host,
+                        created_by=members[0].id if members else admin.id,
+                    )
+                )
+            await db.flush()
 
             # === Заметки проекта (вложенное дерево из 3 уровней) ===
             note_root = ProjectNote(

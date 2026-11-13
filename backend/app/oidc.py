@@ -55,6 +55,7 @@ class OidcIdentity:
     email: str | None
     username: str | None
     full_name: str | None
+    email_verified: bool = False
 
 
 class OidcClient:
@@ -157,20 +158,28 @@ class OidcClient:
         claims = await self._verify_id_token(id_token, nonce, meta)
 
         email = claims.get(self.settings.sso_email_claim) or claims.get("email")
+        email_verified = claims.get("email_verified") is True
         username = claims.get(self.settings.sso_username_claim) or claims.get("preferred_username")
         full_name = claims.get("name") or claims.get("given_name")
 
         # Если в ID-токене нет email/имени — добираем из userinfo.
         if (not email or not full_name) and meta.get("userinfo_endpoint") and token.get("access_token"):
             info = await self._userinfo(meta["userinfo_endpoint"], token["access_token"])
+            if info and info.get("sub") != claims.get("sub"):
+                raise UnauthorizedError("userinfo принадлежит другой IdP-личности")
+            if not email:
+                email_verified = info.get("email_verified") is True
             email = email or info.get(self.settings.sso_email_claim) or info.get("email")
             username = username or info.get(self.settings.sso_username_claim) or info.get("preferred_username")
             full_name = full_name or info.get("name")
 
         subject = claims.get("sub")
-        if not subject:
+        if not isinstance(subject, str) or not subject:
             raise UnauthorizedError("В ID-токене отсутствует sub")
-        return OidcIdentity(subject=str(subject), email=email, username=username, full_name=full_name)
+        return OidcIdentity(subject=subject, email=email if isinstance(email, str) else None,
+                            username=username if isinstance(username, str) else None,
+                            full_name=full_name if isinstance(full_name, str) else None,
+                            email_verified=email_verified)
 
     async def _verify_id_token(self, id_token: str, nonce: str, meta: dict) -> dict:
         """Проверяет подпись (JWKS по kid), iss/aud/exp и nonce ID-токена."""
@@ -180,8 +189,12 @@ class OidcClient:
             raise UnauthorizedError("Некорректный ID-токен") from exc
         kid = header.get("kid")
         algorithm = header.get("alg", "RS256")
+        if algorithm not in {"RS256", "RS384", "RS512", "ES256", "ES384", "ES512"}:
+            raise UnauthorizedError("Недопустимый алгоритм подписи ID-токена")
 
         key = await self._find_key(kid)
+        if key.get("alg") and key["alg"] != algorithm:
+            raise UnauthorizedError("Алгоритм ключа не совпадает с ID-токеном")
         issuer = meta.get("issuer") or self.settings.sso_issuer.rstrip("/")
         try:
             claims = jwt.decode(
@@ -190,7 +203,7 @@ class OidcClient:
                 algorithms=[algorithm],
                 audience=self.settings.sso_client_id,
                 issuer=issuer,
-                options={"verify_at_hash": False},
+                options={"verify_at_hash": False, "require_exp": True, "require_iat": True, "require_sub": True},
             )
         except JWTError as exc:
             raise UnauthorizedError("ID-токен недействителен или истёк") from exc

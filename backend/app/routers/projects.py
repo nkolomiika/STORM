@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.enums import ProjectStatus
 from app.dependencies import enforce_csrf, get_client_ip, get_current_user, require_admin, require_project_access
 from app.models import User
 from app.pagination import PageParams, to_paginated_response
@@ -27,7 +28,7 @@ async def list_projects(
     # Лимит до 1000 — нужен для select-всех в UI (например, диалог токенов API),
     # где админу удобно один раз подтянуть весь каталог проектов и фильтровать локально.
     size: int = Query(20, ge=1, le=1000),
-    status_filter: str | None = Query(None, alias="status"),
+    status_filter: ProjectStatus | None = Query(None, alias="status"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict:

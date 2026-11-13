@@ -1,0 +1,2237 @@
+{
+  "backend": {
+    "all": {
+      "lines": {
+        "covered": 8363,
+        "total": 10915,
+        "pct": 76.62
+      },
+      "branches": {
+        "covered": 1904,
+        "total": 3210,
+        "pct": 59.31
+      }
+    },
+    "internal": {
+      "lines": {
+        "covered": 7979,
+        "total": 9831,
+        "pct": 81.16
+      },
+      "branches": {
+        "covered": 1847,
+        "total": 2918,
+        "pct": 63.3
+      }
+    },
+    "excluded_modules": [
+      "app/cloudflare.py",
+      "app/mail.py",
+      "app/messaging.py",
+      "app/oidc.py",
+      "app/routers/jira.py",
+      "app/routers/works.py",
+      "app/storage/minio_client.py",
+      "app/worker/mail_worker.py",
+      "app/works.py"
+    ],
+    "excluded_service_classes": [
+      "JiraCredentials",
+      "JiraIntegrationService",
+      "WorksService",
+      "_SafeJiraTransport"
+    ],
+    "excluded_auth_methods": [
+      "_provision_sso_user",
+      "_unique_username",
+      "login_via_sso"
+    ],
+    "internal_files": {
+      "app/__init__.py": {
+        "lines": {
+          "covered": 0,
+          "total": 0,
+          "pct": 100
+        },
+        "branches": {
+          "covered": 0,
+          "total": 0,
+          "pct": 100
+        }
+      },
+      "app/auth_limits.py": {
+        "lines": {
+          "covered": 36,
+          "total": 38,
+          "pct": 94.74
+        },
+        "branches": {
+          "covered": 6,
+          "total": 6,
+          "pct": 100.0
+        }
+      },
+      "app/config.py": {
+        "lines": {
+          "covered": 193,
+          "total": 201,
+          "pct": 96.02
+        },
+        "branches": {
+          "covered": 10,
+          "total": 18,
+          "pct": 55.56
+        }
+      },
+      "app/database.py": {
+        "lines": {
+          "covered": 11,
+          "total": 11,
+          "pct": 100.0
+        },
+        "branches": {
+          "covered": 0,
+          "total": 0,
+          "pct": 100
+        }
+      },
+      "app/dependencies.py": {
+        "lines": {
+          "covered": 88,
+          "total": 99,
+          "pct": 88.89
+        },
+        "branches": {
+          "covered": 28,
+          "total": 38,
+          "pct": 73.68
+        }
+      },
+      "app/endpoint_comments.py": {
+        "lines": {
+          "covered": 29,
+          "total": 29,
+          "pct": 100.0
+        },
+        "branches": {
+          "covered": 2,
+          "total": 2,
+          "pct": 100.0
+        }
+      },
+      "app/enums.py": {
+        "lines": {
+          "covered": 87,
+          "total": 87,
+          "pct": 100.0
+        },
+        "branches": {
+          "covered": 0,
+          "total": 0,
+          "pct": 100
+        }
+      },
+      "app/exceptions.py": {
+        "lines": {
+          "covered": 6,
+          "total": 6,
+          "pct": 100.0
+        },
+        "branches": {
+          "covered": 0,
+          "total": 0,
+          "pct": 100
+        }
+      },
+      "app/farm/__init__.py": {
+        "lines": {
+          "covered": 11,
+          "total": 11,
+          "pct": 100.0
+        },
+        "branches": {
+          "covered": 0,
+          "total": 0,
+          "pct": 100
+        }
+      },
+      "app/farm/core.py": {
+        "lines": {
+          "covered": 136,
+          "total": 160,
+          "pct": 85.0
+        },
+        "branches": {
+          "covered": 40,
+          "total": 56,
+          "pct": 71.43
+        }
+      },
+      "app/farm/fingerprint.py": {
+        "lines": {
+          "covered": 120,
+          "total": 165,
+          "pct": 72.73
+        },
+        "branches": {
+          "covered": 39,
+          "total": 62,
+          "pct": 62.9
+        }
+      },
+      "app/farm/hosts.py": {
+        "lines": {
+          "covered": 182,
+          "total": 204,
+          "pct": 89.22
+        },
+        "branches": {
+          "covered": 52,
+          "total": 64,
+          "pct": 81.25
+        }
+      },
+      "app/farm/ips.py": {
+        "lines": {
+          "covered": 128,
+          "total": 137,
+          "pct": 93.43
+        },
+        "branches": {
+          "covered": 31,
+          "total": 38,
+          "pct": 81.58
+        }
+      },
+      "app/farm/jobs.py": {
+        "lines": {
+          "covered": 27,
+          "total": 75,
+          "pct": 36.0
+        },
+        "branches": {
+          "covered": 4,
+          "total": 22,
+          "pct": 18.18
+        }
+      },
+      "app/farm/js.py": {
+        "lines": {
+          "covered": 204,
+          "total": 235,
+          "pct": 86.81
+        },
+        "branches": {
+          "covered": 49,
+          "total": 66,
+          "pct": 74.24
+        }
+      },
+      "app/farm/jsmine.py": {
+        "lines": {
+          "covered": 136,
+          "total": 156,
+          "pct": 87.18
+        },
+        "branches": {
+          "covered": 50,
+          "total": 56,
+          "pct": 89.29
+        }
+      },
+      "app/farm/jsscan.py": {
+        "lines": {
+          "covered": 81,
+          "total": 85,
+          "pct": 95.29
+        },
+        "branches": {
+          "covered": 30,
+          "total": 34,
+          "pct": 88.24
+        }
+      },
+      "app/farm/portscan.py": {
+        "lines": {
+          "covered": 93,
+          "total": 145,
+          "pct": 64.14
+        },
+        "branches": {
+          "covered": 23,
+          "total": 48,
+          "pct": 47.92
+        }
+      },
+      "app/farm/resolver.py": {
+        "lines": {
+          "covered": 90,
+          "total": 112,
+          "pct": 80.36
+        },
+        "branches": {
+          "covered": 11,
+          "total": 18,
+          "pct": 61.11
+        }
+      },
+      "app/farm/reverse.py": {
+        "lines": {
+          "covered": 37,
+          "total": 52,
+          "pct": 71.15
+        },
+        "branches": {
+          "covered": 3,
+          "total": 10,
+          "pct": 30.0
+        }
+      },
+      "app/farm/subs.py": {
+        "lines": {
+          "covered": 111,
+          "total": 174,
+          "pct": 63.79
+        },
+        "branches": {
+          "covered": 34,
+          "total": 62,
+          "pct": 54.84
+        }
+      },
+      "app/http_headers.py": {
+        "lines": {
+          "covered": 7,
+          "total": 7,
+          "pct": 100.0
+        },
+        "branches": {
+          "covered": 2,
+          "total": 2,
+          "pct": 100.0
+        }
+      },
+      "app/input_safety.py": {
+        "lines": {
+          "covered": 56,
+          "total": 56,
+          "pct": 100.0
+        },
+        "branches": {
+          "covered": 36,
+          "total": 36,
+          "pct": 100.0
+        }
+      },
+      "app/main.py": {
+        "lines": {
+          "covered": 108,
+          "total": 184,
+          "pct": 58.7
+        },
+        "branches": {
+          "covered": 16,
+          "total": 28,
+          "pct": 57.14
+        }
+      },
+      "app/models.py": {
+        "lines": {
+          "covered": 398,
+          "total": 400,
+          "pct": 99.5
+        },
+        "branches": {
+          "covered": 1,
+          "total": 2,
+          "pct": 50.0
+        }
+      },
+      "app/netguard.py": {
+        "lines": {
+          "covered": 21,
+          "total": 22,
+          "pct": 95.45
+        },
+        "branches": {
+          "covered": 7,
+          "total": 8,
+          "pct": 87.5
+        }
+      },
+      "app/pagination.py": {
+        "lines": {
+          "covered": 19,
+          "total": 19,
+          "pct": 100.0
+        },
+        "branches": {
+          "covered": 0,
+          "total": 0,
+          "pct": 100
+        }
+      },
+      "app/reports/__init__.py": {
+        "lines": {
+          "covered": 2,
+          "total": 2,
+          "pct": 100.0
+        },
+        "branches": {
+          "covered": 0,
+          "total": 0,
+          "pct": 100
+        }
+      },
+      "app/reports/word_builder.py": {
+        "lines": {
+          "covered": 1316,
+          "total": 1896,
+          "pct": 69.41
+        },
+        "branches": {
+          "covered": 577,
+          "total": 972,
+          "pct": 59.36
+        }
+      },
+      "app/routers/__init__.py": {
+        "lines": {
+          "covered": 0,
+          "total": 0,
+          "pct": 100
+        },
+        "branches": {
+          "covered": 0,
+          "total": 0,
+          "pct": 100
+        }
+      },
+      "app/routers/agent_tokens.py": {
+        "lines": {
+          "covered": 18,
+          "total": 18,
+          "pct": 100.0
+        },
+        "branches": {
+          "covered": 0,
+          "total": 0,
+          "pct": 100
+        }
+      },
+      "app/routers/assets.py": {
+        "lines": {
+          "covered": 108,
+          "total": 108,
+          "pct": 100.0
+        },
+        "branches": {
+          "covered": 0,
+          "total": 0,
+          "pct": 100
+        }
+      },
+      "app/routers/audit_logs.py": {
+        "lines": {
+          "covered": 29,
+          "total": 45,
+          "pct": 64.44
+        },
+        "branches": {
+          "covered": 9,
+          "total": 18,
+          "pct": 50.0
+        }
+      },
+      "app/routers/auth.py": {
+        "lines": {
+          "covered": 118,
+          "total": 174,
+          "pct": 67.82
+        },
+        "branches": {
+          "covered": 2,
+          "total": 14,
+          "pct": 14.29
+        }
+      },
+      "app/routers/comments.py": {
+        "lines": {
+          "covered": 22,
+          "total": 22,
+          "pct": 100.0
+        },
+        "branches": {
+          "covered": 0,
+          "total": 0,
+          "pct": 100
+        }
+      },
+      "app/routers/endpoint_comments.py": {
+        "lines": {
+          "covered": 16,
+          "total": 16,
+          "pct": 100.0
+        },
+        "branches": {
+          "covered": 0,
+          "total": 0,
+          "pct": 100
+        }
+      },
+      "app/routers/farm.py": {
+        "lines": {
+          "covered": 20,
+          "total": 35,
+          "pct": 57.14
+        },
+        "branches": {
+          "covered": 0,
+          "total": 0,
+          "pct": 100
+        }
+      },
+      "app/routers/files.py": {
+        "lines": {
+          "covered": 22,
+          "total": 27,
+          "pct": 81.48
+        },
+        "branches": {
+          "covered": 0,
+          "total": 0,
+          "pct": 100
+        }
+      },
+      "app/routers/images.py": {
+        "lines": {
+          "covered": 45,
+          "total": 51,
+          "pct": 88.24
+        },
+        "branches": {
+          "covered": 6,
+          "total": 10,
+          "pct": 60.0
+        }
+      },
+      "app/routers/import_.py": {
+        "lines": {
+          "covered": 26,
+          "total": 27,
+          "pct": 96.3
+        },
+        "branches": {
+          "covered": 1,
+          "total": 2,
+          "pct": 50.0
+        }
+      },
+      "app/routers/notifications.py": {
+        "lines": {
+          "covered": 24,
+          "total": 24,
+          "pct": 100.0
+        },
+        "branches": {
+          "covered": 0,
+          "total": 0,
+          "pct": 100
+        }
+      },
+      "app/routers/project_credentials.py": {
+        "lines": {
+          "covered": 23,
+          "total": 23,
+          "pct": 100.0
+        },
+        "branches": {
+          "covered": 0,
+          "total": 0,
+          "pct": 100
+        }
+      },
+      "app/routers/project_notes.py": {
+        "lines": {
+          "covered": 53,
+          "total": 53,
+          "pct": 100.0
+        },
+        "branches": {
+          "covered": 0,
+          "total": 0,
+          "pct": 100
+        }
+      },
+      "app/routers/projects.py": {
+        "lines": {
+          "covered": 66,
+          "total": 66,
+          "pct": 100.0
+        },
+        "branches": {
+          "covered": 0,
+          "total": 0,
+          "pct": 100
+        }
+      },
+      "app/routers/reports.py": {
+        "lines": {
+          "covered": 29,
+          "total": 29,
+          "pct": 100.0
+        },
+        "branches": {
+          "covered": 0,
+          "total": 0,
+          "pct": 100
+        }
+      },
+      "app/routers/scanner.py": {
+        "lines": {
+          "covered": 20,
+          "total": 35,
+          "pct": 57.14
+        },
+        "branches": {
+          "covered": 0,
+          "total": 0,
+          "pct": 100
+        }
+      },
+      "app/routers/users.py": {
+        "lines": {
+          "covered": 93,
+          "total": 110,
+          "pct": 84.55
+        },
+        "branches": {
+          "covered": 2,
+          "total": 6,
+          "pct": 33.33
+        }
+      },
+      "app/routers/v2_agent.py": {
+        "lines": {
+          "covered": 66,
+          "total": 69,
+          "pct": 95.65
+        },
+        "branches": {
+          "covered": 4,
+          "total": 8,
+          "pct": 50.0
+        }
+      },
+      "app/routers/vulnerabilities.py": {
+        "lines": {
+          "covered": 52,
+          "total": 55,
+          "pct": 94.55
+        },
+        "branches": {
+          "covered": 0,
+          "total": 0,
+          "pct": 100
+        }
+      },
+      "app/routers/websocket.py": {
+        "lines": {
+          "covered": 67,
+          "total": 76,
+          "pct": 88.16
+        },
+        "branches": {
+          "covered": 14,
+          "total": 20,
+          "pct": 70.0
+        }
+      },
+      "app/schemas.py": {
+        "lines": {
+          "covered": 910,
+          "total": 922,
+          "pct": 98.7
+        },
+        "branches": {
+          "covered": 34,
+          "total": 44,
+          "pct": 77.27
+        }
+      },
+      "app/security.py": {
+        "lines": {
+          "covered": 84,
+          "total": 86,
+          "pct": 97.67
+        },
+        "branches": {
+          "covered": 7,
+          "total": 8,
+          "pct": 87.5
+        }
+      },
+      "app/services.py": {
+        "lines": {
+          "covered": 2250,
+          "total": 2837,
+          "pct": 79.31
+        },
+        "branches": {
+          "covered": 692,
+          "total": 1096,
+          "pct": 63.14
+        }
+      },
+      "app/storage/__init__.py": {
+        "lines": {
+          "covered": 0,
+          "total": 0,
+          "pct": 100
+        },
+        "branches": {
+          "covered": 0,
+          "total": 0,
+          "pct": 100
+        }
+      },
+      "app/worker/__init__.py": {
+        "lines": {
+          "covered": 0,
+          "total": 0,
+          "pct": 100
+        },
+        "branches": {
+          "covered": 0,
+          "total": 0,
+          "pct": 100
+        }
+      },
+      "app/worker/recon_worker.py": {
+        "lines": {
+          "covered": 29,
+          "total": 91,
+          "pct": 31.87
+        },
+        "branches": {
+          "covered": 5,
+          "total": 20,
+          "pct": 25.0
+        }
+      },
+      "app/ws_manager.py": {
+        "lines": {
+          "covered": 56,
+          "total": 64,
+          "pct": 87.5
+        },
+        "branches": {
+          "covered": 20,
+          "total": 24,
+          "pct": 83.33
+        }
+      }
+    },
+    "internal_functions_without_execution": [
+      {
+        "file": "app/config.py",
+        "function": "Settings.jira_configured",
+        "line": 283
+      },
+      {
+        "file": "app/dependencies.py",
+        "function": "role_in",
+        "line": 98
+      },
+      {
+        "file": "app/farm/core.py",
+        "function": "ProbeTransport.handle_async_request",
+        "line": 85
+      },
+      {
+        "file": "app/farm/fingerprint.py",
+        "function": "_pick_engine",
+        "line": 233
+      },
+      {
+        "file": "app/farm/fingerprint.py",
+        "function": "_run_whatweb",
+        "line": 219
+      },
+      {
+        "file": "app/farm/fingerprint.py",
+        "function": "_run_whatweb.one",
+        "line": 222
+      },
+      {
+        "file": "app/farm/fingerprint.py",
+        "function": "_run_whatweb_one",
+        "line": 201
+      },
+      {
+        "file": "app/farm/hosts.py",
+        "function": "HostFarmService._resolve_dns",
+        "line": 56
+      },
+      {
+        "file": "app/farm/hosts.py",
+        "function": "HostFarmService.get_job",
+        "line": 431
+      },
+      {
+        "file": "app/farm/jobs.py",
+        "function": "enqueue_job",
+        "line": 133
+      },
+      {
+        "file": "app/farm/jobs.py",
+        "function": "run_recon_job",
+        "line": 67
+      },
+      {
+        "file": "app/farm/js.py",
+        "function": "JsFarmService.get_job",
+        "line": 330
+      },
+      {
+        "file": "app/farm/js.py",
+        "function": "JsFarmService.probe_and_import",
+        "line": 301
+      },
+      {
+        "file": "app/farm/portscan.py",
+        "function": "PortScanFarmService._project_targets",
+        "line": 110
+      },
+      {
+        "file": "app/farm/portscan.py",
+        "function": "PortScanFarmService._upsert_scan_port",
+        "line": 122
+      },
+      {
+        "file": "app/farm/portscan.py",
+        "function": "PortScanFarmService.create_job",
+        "line": 238
+      },
+      {
+        "file": "app/farm/portscan.py",
+        "function": "PortScanFarmService.get_job",
+        "line": 260
+      },
+      {
+        "file": "app/farm/portscan.py",
+        "function": "_run_nmap",
+        "line": 80
+      },
+      {
+        "file": "app/farm/resolver.py",
+        "function": "pick_addr",
+        "line": 88
+      },
+      {
+        "file": "app/farm/resolver.py",
+        "function": "resolve_forward",
+        "line": 101
+      },
+      {
+        "file": "app/farm/resolver.py",
+        "function": "resolve_forward.resolve_one",
+        "line": 105
+      },
+      {
+        "file": "app/farm/reverse.py",
+        "function": "ReverseFarmService._project_ips",
+        "line": 43
+      },
+      {
+        "file": "app/farm/reverse.py",
+        "function": "ReverseFarmService.get_job",
+        "line": 122
+      },
+      {
+        "file": "app/farm/subs.py",
+        "function": "SubdomainFarmService._project_hostnames",
+        "line": 197
+      },
+      {
+        "file": "app/farm/subs.py",
+        "function": "SubdomainFarmService._project_roots",
+        "line": 184
+      },
+      {
+        "file": "app/farm/subs.py",
+        "function": "SubdomainFarmService.create_job",
+        "line": 279
+      },
+      {
+        "file": "app/farm/subs.py",
+        "function": "SubdomainFarmService.get_job",
+        "line": 297
+      },
+      {
+        "file": "app/farm/subs.py",
+        "function": "_default_collector",
+        "line": 147
+      },
+      {
+        "file": "app/farm/subs.py",
+        "function": "_default_collector.one",
+        "line": 148
+      },
+      {
+        "file": "app/farm/subs.py",
+        "function": "_fetch_crtsh",
+        "line": 115
+      },
+      {
+        "file": "app/farm/subs.py",
+        "function": "_run_subfinder",
+        "line": 130
+      },
+      {
+        "file": "app/main.py",
+        "function": "_register_error_handlers.app_error_handler",
+        "line": 173
+      },
+      {
+        "file": "app/main.py",
+        "function": "health",
+        "line": 332
+      },
+      {
+        "file": "app/main.py",
+        "function": "startup",
+        "line": 195
+      },
+      {
+        "file": "app/main.py",
+        "function": "startup.add_missing",
+        "line": 277
+      },
+      {
+        "file": "app/reports/word_builder.py",
+        "function": "_add_figure_caption_after",
+        "line": 1096
+      },
+      {
+        "file": "app/reports/word_builder.py",
+        "function": "_add_picture_after",
+        "line": 1006
+      },
+      {
+        "file": "app/reports/word_builder.py",
+        "function": "_append_seq_field",
+        "line": 1139
+      },
+      {
+        "file": "app/reports/word_builder.py",
+        "function": "_append_seq_field._make_field_rpr",
+        "line": 1142
+      },
+      {
+        "file": "app/reports/word_builder.py",
+        "function": "_apply_paragraph_style",
+        "line": 1062
+      },
+      {
+        "file": "app/reports/word_builder.py",
+        "function": "_apply_run_font_xml",
+        "line": 1237
+      },
+      {
+        "file": "app/reports/word_builder.py",
+        "function": "_apply_run_highlight",
+        "line": 1017
+      },
+      {
+        "file": "app/reports/word_builder.py",
+        "function": "_apply_run_highlight_xml",
+        "line": 1190
+      },
+      {
+        "file": "app/reports/word_builder.py",
+        "function": "_block_until_heading_lte",
+        "line": 2938
+      },
+      {
+        "file": "app/reports/word_builder.py",
+        "function": "_detect_toc_pstyles",
+        "line": 1972
+      },
+      {
+        "file": "app/reports/word_builder.py",
+        "function": "_extract_file_ids_from_markdown",
+        "line": 1270
+      },
+      {
+        "file": "app/reports/word_builder.py",
+        "function": "_figure_caption_text",
+        "line": 1375
+      },
+      {
+        "file": "app/reports/word_builder.py",
+        "function": "_find_caption_style_id",
+        "line": 1042
+      },
+      {
+        "file": "app/reports/word_builder.py",
+        "function": "_force_caption_run",
+        "line": 1231
+      },
+      {
+        "file": "app/reports/word_builder.py",
+        "function": "_force_caption_run_appearance",
+        "line": 1206
+      },
+      {
+        "file": "app/reports/word_builder.py",
+        "function": "_force_center_paragraph",
+        "line": 982
+      },
+      {
+        "file": "app/reports/word_builder.py",
+        "function": "_insert_image_with_caption",
+        "line": 1404
+      },
+      {
+        "file": "app/reports/word_builder.py",
+        "function": "_iter_all_paragraphs",
+        "line": 394
+      },
+      {
+        "file": "app/reports/word_builder.py",
+        "function": "_next_figure_number",
+        "line": 1368
+      },
+      {
+        "file": "app/reports/word_builder.py",
+        "function": "_replace_xxx_in_runs",
+        "line": 342
+      },
+      {
+        "file": "app/reports/word_builder.py",
+        "function": "_step_image_file_ids",
+        "line": 1335
+      },
+      {
+        "file": "app/reports/word_builder.py",
+        "function": "_step_one_line",
+        "line": 908
+      },
+      {
+        "file": "app/reports/word_builder.py",
+        "function": "_strip_paragraph_numbering",
+        "line": 961
+      },
+      {
+        "file": "app/reports/word_builder.py",
+        "function": "_table_for_element",
+        "line": 419
+      },
+      {
+        "file": "app/routers/auth.py",
+        "function": "_clear_twofa_cookie",
+        "line": 98
+      },
+      {
+        "file": "app/routers/auth.py",
+        "function": "_frontend_url",
+        "line": 286
+      },
+      {
+        "file": "app/routers/auth.py",
+        "function": "_set_twofa_cookie",
+        "line": 85
+      },
+      {
+        "file": "app/routers/auth.py",
+        "function": "_sso_error_url",
+        "line": 291
+      },
+      {
+        "file": "app/routers/auth.py",
+        "function": "sso_callback",
+        "line": 374
+      },
+      {
+        "file": "app/routers/auth.py",
+        "function": "sso_config",
+        "line": 343
+      },
+      {
+        "file": "app/routers/auth.py",
+        "function": "sso_login",
+        "line": 351
+      },
+      {
+        "file": "app/routers/auth.py",
+        "function": "verify_2fa",
+        "line": 139
+      },
+      {
+        "file": "app/routers/farm.py",
+        "function": "get_host_farm_job",
+        "line": 48
+      },
+      {
+        "file": "app/routers/farm.py",
+        "function": "get_ip_farm_job",
+        "line": 80
+      },
+      {
+        "file": "app/routers/farm.py",
+        "function": "get_js_farm_job",
+        "line": 112
+      },
+      {
+        "file": "app/routers/farm.py",
+        "function": "start_host_farm",
+        "line": 35
+      },
+      {
+        "file": "app/routers/farm.py",
+        "function": "start_ip_farm",
+        "line": 67
+      },
+      {
+        "file": "app/routers/farm.py",
+        "function": "start_js_farm",
+        "line": 99
+      },
+      {
+        "file": "app/routers/files.py",
+        "function": "delete_file",
+        "line": 67
+      },
+      {
+        "file": "app/routers/files.py",
+        "function": "list_files",
+        "line": 24
+      },
+      {
+        "file": "app/routers/files.py",
+        "function": "upload_file",
+        "line": 39
+      },
+      {
+        "file": "app/routers/scanner.py",
+        "function": "get_port_scan_job",
+        "line": 93
+      },
+      {
+        "file": "app/routers/scanner.py",
+        "function": "get_reverse_scan_job",
+        "line": 129
+      },
+      {
+        "file": "app/routers/scanner.py",
+        "function": "get_subdomain_job",
+        "line": 58
+      },
+      {
+        "file": "app/routers/scanner.py",
+        "function": "start_port_scan",
+        "line": 77
+      },
+      {
+        "file": "app/routers/scanner.py",
+        "function": "start_reverse_scan",
+        "line": 113
+      },
+      {
+        "file": "app/routers/scanner.py",
+        "function": "start_subdomain_scan",
+        "line": 42
+      },
+      {
+        "file": "app/routers/users.py",
+        "function": "get_user_avatar",
+        "line": 250
+      },
+      {
+        "file": "app/routers/users.py",
+        "function": "reactivate_user",
+        "line": 295
+      },
+      {
+        "file": "app/routers/users.py",
+        "function": "reset_password",
+        "line": 309
+      },
+      {
+        "file": "app/routers/users.py",
+        "function": "upload_my_avatar",
+        "line": 122
+      },
+      {
+        "file": "app/routers/vulnerabilities.py",
+        "function": "add_vulnerability_asset",
+        "line": 159
+      },
+      {
+        "file": "app/routers/vulnerabilities.py",
+        "function": "delete_vulnerability_asset",
+        "line": 174
+      },
+      {
+        "file": "app/schemas.py",
+        "function": "VulnerabilityUpdate.validate_cvss_version",
+        "line": 861
+      },
+      {
+        "file": "app/security.py",
+        "function": "generate_reactivation_token",
+        "line": 71
+      },
+      {
+        "file": "app/services.py",
+        "function": "AgentTokenService._member_project_ids",
+        "line": 217
+      },
+      {
+        "file": "app/services.py",
+        "function": "AuthService.verify_2fa",
+        "line": 1182
+      },
+      {
+        "file": "app/services.py",
+        "function": "FileService._ensure_vuln",
+        "line": 3951
+      },
+      {
+        "file": "app/services.py",
+        "function": "FileService.delete",
+        "line": 4006
+      },
+      {
+        "file": "app/services.py",
+        "function": "FileService.list",
+        "line": 3957
+      },
+      {
+        "file": "app/services.py",
+        "function": "FileService.upload",
+        "line": 3961
+      },
+      {
+        "file": "app/services.py",
+        "function": "ImportService._merge_service_fields",
+        "line": 4946
+      },
+      {
+        "file": "app/services.py",
+        "function": "ImportService._normalize_relaxed_openapi_mime",
+        "line": 5053
+      },
+      {
+        "file": "app/services.py",
+        "function": "ImportService._normalize_relaxed_openapi_ref",
+        "line": 5063
+      },
+      {
+        "file": "app/services.py",
+        "function": "ReportService._is_image_file",
+        "line": 5881
+      },
+      {
+        "file": "app/services.py",
+        "function": "ReportService._resolve_step_files",
+        "line": 5868
+      },
+      {
+        "file": "app/services.py",
+        "function": "UserService._enqueue_reactivation_mail",
+        "line": 1753
+      },
+      {
+        "file": "app/services.py",
+        "function": "UserService._enqueue_temporary_password_mail",
+        "line": 1308
+      },
+      {
+        "file": "app/services.py",
+        "function": "UserService._generate_temporary_password",
+        "line": 1268
+      },
+      {
+        "file": "app/services.py",
+        "function": "UserService._normalized_admin_email",
+        "line": 1261
+      },
+      {
+        "file": "app/services.py",
+        "function": "UserService._publish_mail_job",
+        "line": 1325
+      },
+      {
+        "file": "app/services.py",
+        "function": "UserService.bootstrap_admin",
+        "line": 1340
+      },
+      {
+        "file": "app/services.py",
+        "function": "UserService.create_user",
+        "line": 1413
+      },
+      {
+        "file": "app/services.py",
+        "function": "UserService.download_avatar",
+        "line": 2034
+      },
+      {
+        "file": "app/services.py",
+        "function": "UserService.get_user_profile",
+        "line": 1336
+      },
+      {
+        "file": "app/services.py",
+        "function": "UserService.request_reactivation",
+        "line": 1778
+      },
+      {
+        "file": "app/services.py",
+        "function": "UserService.reset_password",
+        "line": 1906
+      },
+      {
+        "file": "app/services.py",
+        "function": "UserService.upload_avatar",
+        "line": 2012
+      },
+      {
+        "file": "app/services.py",
+        "function": "VulnerabilityService._get_primary_host_id",
+        "line": 3640
+      },
+      {
+        "file": "app/services.py",
+        "function": "VulnerabilityService.add_asset",
+        "line": 3884
+      },
+      {
+        "file": "app/services.py",
+        "function": "VulnerabilityService.delete_asset",
+        "line": 3914
+      },
+      {
+        "file": "app/services.py",
+        "function": "_sanitize_filename",
+        "line": 156
+      },
+      {
+        "file": "app/worker/recon_worker.py",
+        "function": "consume_recon_jobs",
+        "line": 148
+      },
+      {
+        "file": "app/worker/recon_worker.py",
+        "function": "main",
+        "line": 155
+      },
+      {
+        "file": "app/worker/recon_worker.py",
+        "function": "relay_pending_jobs",
+        "line": 103
+      },
+      {
+        "file": "app/worker/recon_worker.py",
+        "function": "wait_for_rabbitmq",
+        "line": 77
+      }
+    ]
+  },
+  "frontend": {
+    "all": {
+      "lines": {
+        "total": 3941,
+        "covered": 2564,
+        "skipped": 0,
+        "pct": 65.05
+      },
+      "statements": {
+        "total": 4872,
+        "covered": 3051,
+        "skipped": 0,
+        "pct": 62.62
+      },
+      "functions": {
+        "total": 1476,
+        "covered": 851,
+        "skipped": 0,
+        "pct": 57.65
+      },
+      "branches": {
+        "total": 4081,
+        "covered": 2349,
+        "skipped": 0,
+        "pct": 57.55
+      },
+      "branchesTrue": {
+        "total": 0,
+        "covered": 0,
+        "skipped": 0,
+        "pct": 100
+      }
+    },
+    "files": {
+      "src/StormRoot.tsx": {
+        "lines": {
+          "total": 38,
+          "covered": 33,
+          "skipped": 0,
+          "pct": 86.84
+        },
+        "functions": {
+          "total": 8,
+          "covered": 8,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 47,
+          "covered": 41,
+          "skipped": 0,
+          "pct": 87.23
+        },
+        "branches": {
+          "total": 37,
+          "covered": 28,
+          "skipped": 0,
+          "pct": 75.67
+        }
+      },
+      "src/api.ts": {
+        "lines": {
+          "total": 391,
+          "covered": 88,
+          "skipped": 0,
+          "pct": 22.5
+        },
+        "functions": {
+          "total": 149,
+          "covered": 23,
+          "skipped": 0,
+          "pct": 15.43
+        },
+        "statements": {
+          "total": 410,
+          "covered": 105,
+          "skipped": 0,
+          "pct": 25.6
+        },
+        "branches": {
+          "total": 150,
+          "covered": 90,
+          "skipped": 0,
+          "pct": 60
+        }
+      },
+      "src/cvss.ts": {
+        "lines": {
+          "total": 24,
+          "covered": 24,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 3,
+          "covered": 3,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 24,
+          "covered": 24,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 24,
+          "covered": 24,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "src/main.tsx": {
+        "lines": {
+          "total": 3,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        },
+        "functions": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 3,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        },
+        "branches": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "src/markdownUrlTransform.ts": {
+        "lines": {
+          "total": 14,
+          "covered": 14,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 2,
+          "covered": 2,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 14,
+          "covered": 14,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 6,
+          "covered": 6,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "src/projectStatus.ts": {
+        "lines": {
+          "total": 1,
+          "covered": 1,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 1,
+          "covered": 1,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "src/store.ts": {
+        "lines": {
+          "total": 41,
+          "covered": 41,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 13,
+          "covered": 13,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 46,
+          "covered": 46,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 7,
+          "covered": 7,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "src/types.ts": {
+        "lines": {
+          "total": 1,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        },
+        "functions": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 1,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        },
+        "branches": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "src/storm/EndpointDiscussion.tsx": {
+        "lines": {
+          "total": 61,
+          "covered": 61,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 17,
+          "covered": 16,
+          "skipped": 0,
+          "pct": 94.11
+        },
+        "statements": {
+          "total": 77,
+          "covered": 73,
+          "skipped": 0,
+          "pct": 94.8
+        },
+        "branches": {
+          "total": 43,
+          "covered": 38,
+          "skipped": 0,
+          "pct": 88.37
+        }
+      },
+      "src/storm/ImageCaret.ts": {
+        "lines": {
+          "total": 14,
+          "covered": 14,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 5,
+          "covered": 5,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 17,
+          "covered": 17,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 12,
+          "covered": 12,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "src/storm/PasswordInput.tsx": {
+        "lines": {
+          "total": 4,
+          "covered": 3,
+          "skipped": 0,
+          "pct": 75
+        },
+        "functions": {
+          "total": 4,
+          "covered": 2,
+          "skipped": 0,
+          "pct": 50
+        },
+        "statements": {
+          "total": 5,
+          "covered": 3,
+          "skipped": 0,
+          "pct": 60
+        },
+        "branches": {
+          "total": 8,
+          "covered": 4,
+          "skipped": 0,
+          "pct": 50
+        }
+      },
+      "src/storm/ResizableImage.ts": {
+        "lines": {
+          "total": 102,
+          "covered": 102,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 25,
+          "covered": 24,
+          "skipped": 0,
+          "pct": 96
+        },
+        "statements": {
+          "total": 122,
+          "covered": 115,
+          "skipped": 0,
+          "pct": 94.26
+        },
+        "branches": {
+          "total": 76,
+          "covered": 49,
+          "skipped": 0,
+          "pct": 64.47
+        }
+      },
+      "src/storm/StormActivate.tsx": {
+        "lines": {
+          "total": 74,
+          "covered": 73,
+          "skipped": 0,
+          "pct": 98.64
+        },
+        "functions": {
+          "total": 13,
+          "covered": 13,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 90,
+          "covered": 85,
+          "skipped": 0,
+          "pct": 94.44
+        },
+        "branches": {
+          "total": 67,
+          "covered": 54,
+          "skipped": 0,
+          "pct": 80.59
+        }
+      },
+      "src/storm/StormApp.tsx": {
+        "lines": {
+          "total": 2563,
+          "covered": 1607,
+          "skipped": 0,
+          "pct": 62.69
+        },
+        "functions": {
+          "total": 1038,
+          "covered": 602,
+          "skipped": 0,
+          "pct": 57.99
+        },
+        "statements": {
+          "total": 3237,
+          "covered": 1925,
+          "skipped": 0,
+          "pct": 59.46
+        },
+        "branches": {
+          "total": 3029,
+          "covered": 1636,
+          "skipped": 0,
+          "pct": 54.01
+        }
+      },
+      "src/storm/StormAppSecFields.tsx": {
+        "lines": {
+          "total": 72,
+          "covered": 67,
+          "skipped": 0,
+          "pct": 93.05
+        },
+        "functions": {
+          "total": 33,
+          "covered": 30,
+          "skipped": 0,
+          "pct": 90.9
+        },
+        "statements": {
+          "total": 87,
+          "covered": 79,
+          "skipped": 0,
+          "pct": 90.8
+        },
+        "branches": {
+          "total": 62,
+          "covered": 51,
+          "skipped": 0,
+          "pct": 82.25
+        }
+      },
+      "src/storm/StormDatePicker.tsx": {
+        "lines": {
+          "total": 59,
+          "covered": 30,
+          "skipped": 0,
+          "pct": 50.84
+        },
+        "functions": {
+          "total": 24,
+          "covered": 8,
+          "skipped": 0,
+          "pct": 33.33
+        },
+        "statements": {
+          "total": 77,
+          "covered": 37,
+          "skipped": 0,
+          "pct": 48.05
+        },
+        "branches": {
+          "total": 68,
+          "covered": 17,
+          "skipped": 0,
+          "pct": 25
+        }
+      },
+      "src/storm/StormDocs.tsx": {
+        "lines": {
+          "total": 57,
+          "covered": 52,
+          "skipped": 0,
+          "pct": 91.22
+        },
+        "functions": {
+          "total": 28,
+          "covered": 19,
+          "skipped": 0,
+          "pct": 67.85
+        },
+        "statements": {
+          "total": 73,
+          "covered": 59,
+          "skipped": 0,
+          "pct": 80.82
+        },
+        "branches": {
+          "total": 69,
+          "covered": 53,
+          "skipped": 0,
+          "pct": 76.81
+        }
+      },
+      "src/storm/StormLogin.tsx": {
+        "lines": {
+          "total": 71,
+          "covered": 41,
+          "skipped": 0,
+          "pct": 57.74
+        },
+        "functions": {
+          "total": 19,
+          "covered": 10,
+          "skipped": 0,
+          "pct": 52.63
+        },
+        "statements": {
+          "total": 81,
+          "covered": 46,
+          "skipped": 0,
+          "pct": 56.79
+        },
+        "branches": {
+          "total": 73,
+          "covered": 29,
+          "skipped": 0,
+          "pct": 39.72
+        }
+      },
+      "src/storm/StormMarkdownEditor.tsx": {
+        "lines": {
+          "total": 23,
+          "covered": 14,
+          "skipped": 0,
+          "pct": 60.86
+        },
+        "functions": {
+          "total": 8,
+          "covered": 6,
+          "skipped": 0,
+          "pct": 75
+        },
+        "statements": {
+          "total": 27,
+          "covered": 15,
+          "skipped": 0,
+          "pct": 55.55
+        },
+        "branches": {
+          "total": 14,
+          "covered": 6,
+          "skipped": 0,
+          "pct": 42.85
+        }
+      },
+      "src/storm/StormReactivate.tsx": {
+        "lines": {
+          "total": 36,
+          "covered": 36,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 7,
+          "covered": 7,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 42,
+          "covered": 41,
+          "skipped": 0,
+          "pct": 97.61
+        },
+        "branches": {
+          "total": 30,
+          "covered": 24,
+          "skipped": 0,
+          "pct": 80
+        }
+      },
+      "src/storm/StormResetPassword.tsx": {
+        "lines": {
+          "total": 43,
+          "covered": 42,
+          "skipped": 0,
+          "pct": 97.67
+        },
+        "functions": {
+          "total": 7,
+          "covered": 6,
+          "skipped": 0,
+          "pct": 85.71
+        },
+        "statements": {
+          "total": 48,
+          "covered": 46,
+          "skipped": 0,
+          "pct": 95.83
+        },
+        "branches": {
+          "total": 37,
+          "covered": 31,
+          "skipped": 0,
+          "pct": 83.78
+        }
+      },
+      "src/storm/StormSelect.tsx": {
+        "lines": {
+          "total": 22,
+          "covered": 8,
+          "skipped": 0,
+          "pct": 36.36
+        },
+        "functions": {
+          "total": 10,
+          "covered": 4,
+          "skipped": 0,
+          "pct": 40
+        },
+        "statements": {
+          "total": 26,
+          "covered": 10,
+          "skipped": 0,
+          "pct": 38.46
+        },
+        "branches": {
+          "total": 36,
+          "covered": 20,
+          "skipped": 0,
+          "pct": 55.55
+        }
+      },
+      "src/storm/StormToaster.tsx": {
+        "lines": {
+          "total": 12,
+          "covered": 12,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 10,
+          "covered": 9,
+          "skipped": 0,
+          "pct": 90
+        },
+        "statements": {
+          "total": 20,
+          "covered": 19,
+          "skipped": 0,
+          "pct": 95
+        },
+        "branches": {
+          "total": 6,
+          "covered": 5,
+          "skipped": 0,
+          "pct": 83.33
+        }
+      },
+      "src/storm/SwaggerEndpointImport.tsx": {
+        "lines": {
+          "total": 44,
+          "covered": 43,
+          "skipped": 0,
+          "pct": 97.72
+        },
+        "functions": {
+          "total": 25,
+          "covered": 18,
+          "skipped": 0,
+          "pct": 72
+        },
+        "statements": {
+          "total": 87,
+          "covered": 67,
+          "skipped": 0,
+          "pct": 77.01
+        },
+        "branches": {
+          "total": 53,
+          "covered": 32,
+          "skipped": 0,
+          "pct": 60.37
+        }
+      },
+      "src/storm/data.ts": {
+        "lines": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "src/storm/hostIndex.ts": {
+        "lines": {
+          "total": 18,
+          "covered": 18,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 1,
+          "covered": 1,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 21,
+          "covered": 20,
+          "skipped": 0,
+          "pct": 95.23
+        },
+        "branches": {
+          "total": 10,
+          "covered": 9,
+          "skipped": 0,
+          "pct": 90
+        }
+      },
+      "src/storm/i18n.ts": {
+        "lines": {
+          "total": 12,
+          "covered": 8,
+          "skipped": 0,
+          "pct": 66.66
+        },
+        "functions": {
+          "total": 4,
+          "covered": 3,
+          "skipped": 0,
+          "pct": 75
+        },
+        "statements": {
+          "total": 15,
+          "covered": 10,
+          "skipped": 0,
+          "pct": 66.66
+        },
+        "branches": {
+          "total": 8,
+          "covered": 2,
+          "skipped": 0,
+          "pct": 25
+        }
+      },
+      "src/storm/icons.tsx": {
+        "lines": {
+          "total": 5,
+          "covered": 5,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 2,
+          "covered": 2,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 5,
+          "covered": 5,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 13,
+          "covered": 9,
+          "skipped": 0,
+          "pct": 69.23
+        }
+      },
+      "src/storm/imageSize.ts": {
+        "lines": {
+          "total": 6,
+          "covered": 6,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 2,
+          "covered": 2,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 6,
+          "covered": 6,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 12,
+          "covered": 11,
+          "skipped": 0,
+          "pct": 91.66
+        }
+      },
+      "src/storm/swaggerEndpoints.ts": {
+        "lines": {
+          "total": 89,
+          "covered": 88,
+          "skipped": 0,
+          "pct": 98.87
+        },
+        "functions": {
+          "total": 11,
+          "covered": 11,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 119,
+          "covered": 107,
+          "skipped": 0,
+          "pct": 89.91
+        },
+        "branches": {
+          "total": 121,
+          "covered": 99,
+          "skipped": 0,
+          "pct": 81.81
+        }
+      },
+      "src/storm/theme.ts": {
+        "lines": {
+          "total": 14,
+          "covered": 6,
+          "skipped": 0,
+          "pct": 42.85
+        },
+        "functions": {
+          "total": 6,
+          "covered": 2,
+          "skipped": 0,
+          "pct": 33.33
+        },
+        "statements": {
+          "total": 16,
+          "covered": 7,
+          "skipped": 0,
+          "pct": 43.75
+        },
+        "branches": {
+          "total": 8,
+          "covered": 1,
+          "skipped": 0,
+          "pct": 12.5
+        }
+      },
+      "src/storm/tokens.ts": {
+        "lines": {
+          "total": 24,
+          "covered": 24,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 24,
+          "covered": 24,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "src/storm/docs/index.ts": {
+        "lines": {
+          "total": 3,
+          "covered": 3,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 2,
+          "covered": 2,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 4,
+          "covered": 4,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 2,
+          "covered": 2,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    }
+  }
+}

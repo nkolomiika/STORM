@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { beforeEach, vi } from "vitest";
 import { MemoryRouter, useLocation, useNavigate } from "react-router-dom";
 import { StormApp } from "./StormApp";
-import { useAuthStore } from "../store";
+import { useAuthStore, useToastStore } from "../store";
 import * as api from "../api";
 
 // The rich-text steps/impact/remediation editors are TipTap (ProseMirror), which
@@ -47,10 +47,10 @@ vi.mock("../api", async (importOriginal) => {
   });
   const mkIp = (
     id: number, hostId: number, ip: string, ports: unknown[],
-    extra: { hostnames?: unknown[]; is_cloudflare?: boolean } = {},
+    extra: { hostnames?: unknown[] } = {},
   ) => ({
     id, host_id: hostId, ip_address: ip, label: null, is_primary: true, ports,
-    hostnames: extra.hostnames ?? [], is_cloudflare: extra.is_cloudflare ?? false, ...ts,
+    hostnames: extra.hostnames ?? [], ...ts,
   });
   // Backend-shaped hosts: ports hang off ip_addresses, services off ports.
   const hosts = [
@@ -90,7 +90,7 @@ vi.mock("../api", async (importOriginal) => {
     },
     {
       id: 15, project_id: 2, ip_address: "104.16.132.229", hostname: null, origin: "ip",
-      ip_addresses: [mkIp(105, 15, "104.16.132.229", [], { is_cloudflare: true })],
+      ip_addresses: [mkIp(105, 15, "104.16.132.229", [])],
       status: "up", os_type: "unknown", notes: null, ...ts,
     },
   ];
@@ -105,7 +105,7 @@ vi.mock("../api", async (importOriginal) => {
   // Backend-shaped findings. `created_by_username` is resolved server-side, so the
   // author renders without the (admin-only) users list.
   const mkVuln = (id: number, title: string, severity: string, status: string, author: string) => ({
-    id, project_id: 2, title, description: "", severity, status,
+    id, project_id: 2, affected_host_id: 11, title, description: "", severity, status,
     cvss_version: null, cvss_score: null, cvss_vector: null, cwe_id: null,
     workflow_steps: [], steps_to_reproduce: null, impact: null, recommendations: null,
     created_by: 4, created_by_username: author, ...ts,
@@ -135,6 +135,11 @@ vi.mock("../api", async (importOriginal) => {
   });
   return {
     ...actual,
+    getWorksConfig: vi.fn(async () => null),
+    getVulnerabilityWorksLink: vi.fn(async () => null),
+    getHiddenIps: vi.fn(async () => []),
+    listVulnerabilityFiles: vi.fn(async () => []),
+    getProject: vi.fn(async (_id: number) => projects.find((p) => p.id === _id)!),
     getProjects: vi.fn(async () => ({ items: projects, total: projects.length, page: 1, size: 100, pages: 1 })),
     getUsers: vi.fn(async () => ({ items: users, total: users.length, page: 1, size: 200, pages: 1 })),
     getInvitations: vi.fn(async () => []),
@@ -198,6 +203,9 @@ vi.mock("../api", async (importOriginal) => {
     deleteProject: vi.fn(async () => undefined),
     // Эндпоинты теперь едут прямо в списке хостов (бэкенд батч-грузит их), фронт
     // больше не дёргает getHost на каждый хост — поэтому мок списка несёт endpoints.
+    getHostCreationTimes: vi.fn(async () => hosts.map((host) => host.created_at)),
+    listEndpointComments: vi.fn(async () => ({ items: [], total: 0, page: 1, size: 50, pages: 1 })),
+    createEndpointComment: vi.fn(),
     getHosts: vi.fn(async () => ({
       items: hosts.map((h) => ({ ...h, endpoints: endpointsByHost[h.id] ?? [] })),
       total: hosts.length, page: 1, size: 100, pages: 1,
@@ -206,9 +214,12 @@ vi.mock("../api", async (importOriginal) => {
       ...hosts.find((h) => h.id === hostId),
       endpoints: endpointsByHost[hostId] ?? [],
     })),
+    getEndpoints: vi.fn(async (_pid: number, hostId: number) => endpointsByHost[hostId] ?? []),
+    updateEndpoint: vi.fn(async (_pid: number, _hostId: number, id: number, _payload: { request_raw?: string }) => ({ id, host_id: 11, method: "POST", path: "/changed", query_params: [], request_headers: [], request_content_type: null, request_body: null, description: null, ...ts })),
     createHost: vi.fn(async () => hosts[1]),
     updateHost: vi.fn(async () => hosts[0]),
     deleteHost: vi.fn(async () => undefined),
+    deleteEndpoint: vi.fn(async () => undefined),
     createEndpoint: vi.fn(async (_pid: number, hostId: number, payload: { path: string; method: string }) => ({
       id: 900, host_id: hostId, path: payload.path, method: payload.method, description: null,
       query_params: [], request_body: null, request_content_type: null, request_headers: [], ...ts,
@@ -251,7 +262,6 @@ vi.mock("../api", async (importOriginal) => {
       ],
       total: 2, page: 1, size: 200, pages: 1,
     })),
-    bulkDeleteJsFiles: vi.fn(async () => 1),
     deleteJsFilesForHost: vi.fn(async () => undefined),
     downloadJsArchive: vi.fn(async () => new Blob(["zip"], { type: "application/zip" })),
     getHostFarmJob: vi.fn(async () => ({
@@ -264,10 +274,21 @@ vi.mock("../api", async (importOriginal) => {
   };
 });
 
+const defaultGetHosts = vi.mocked(api.getHosts).getMockImplementation()!;
+const defaultGetActivity = vi.mocked(api.getProjectActivity).getMockImplementation()!;
+
 describe("StormApp (design prototype port)", () => {
   // StormApp only ever renders behind auth, and admin-only surfaces (the
   // workspace Members page) key off the signed-in user — so sign one in.
   beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(api.listEndpointComments).mockReset().mockResolvedValue({ items: [], total: 0, page: 1, size: 50, pages: 1 });
+    vi.mocked(api.createEndpointComment).mockReset();
+    vi.mocked(api.getHosts).mockReset().mockImplementation(defaultGetHosts);
+    vi.mocked(api.getProjectActivity).mockReset().mockImplementation(defaultGetActivity);
+    useToastStore.setState({ toasts: [] });
+    vi.mocked(api.deleteEndpoint).mockClear();
+    vi.mocked(api.deleteJsFilesForHost).mockClear();
     useAuthStore.setState({
       user: {
         id: 1, username: "admin", email: "admin@sbertech.ru", full_name: null, avatar_url: null,
@@ -289,7 +310,16 @@ describe("StormApp (design prototype port)", () => {
     expect(await screen.findByText("Acme Corp — External Perimeter")).toBeInTheDocument();
     expect(screen.getByText("Northwind API")).toBeInTheDocument();
     expect(screen.getAllByText("STORM").length).toBeGreaterThan(0);
-    expect(screen.getByText("My Tasks")).toBeInTheDocument();
+    expect(screen.queryByText("My Tasks")).not.toBeInTheDocument();
+  });
+
+  it("loads only host timestamps for project charts, without downloading host trees", async () => {
+    render(<MemoryRouter><StormApp /></MemoryRouter>);
+    await screen.findByText("Acme Corp — External Perimeter");
+    await waitFor(() => expect(vi.mocked(api.getHostCreationTimes)).toHaveBeenCalledWith(2));
+    expect(vi.mocked(api.getHosts)).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText("Northwind API"));
+    await waitFor(() => expect(vi.mocked(api.getHosts)).toHaveBeenCalledWith(2));
   });
 
   it("switches to the Archived tab", async () => {
@@ -472,12 +502,86 @@ describe("StormApp (design prototype port)", () => {
     expect(screen.getByText("dbuser")).toBeInTheDocument();
     // The password stays masked until the row's eye is clicked.
     expect(screen.queryByText("eyJ.kube.token")).not.toBeInTheDocument();
-    const row = screen.getByText("kube-admin").closest(".statc") as HTMLElement;
+    const row = screen.getByText("kube-admin").closest(".prow") as HTMLElement;
     // The host these creds belong to is shown on the row.
     expect(within(row).getByText("10.0.0.5")).toBeInTheDocument();
     fireEvent.click(within(row).getByTitle("Reveal password"));
     expect(within(row).getByText("eyJ.kube.token")).toBeInTheDocument();
     expect(vi.mocked(api.listProjectCredentials)).toHaveBeenCalledWith(2);
+  });
+
+  it("keeps the note editor and draft open after saving, then updates the same note", async () => {
+    const Path = () => <span data-testid="note-path">{useLocation().pathname}</span>;
+    render(<MemoryRouter initialEntries={["/projects/2/notes"]}><StormApp /><Path /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole("button", { name: "Add note" }));
+    const title = screen.getByPlaceholderText("Give this note a title…");
+    const content = screen.getByPlaceholderText(/Write your note/);
+    const save = screen.getByRole("button", { name: "Save changes" });
+    expect(save).toBeDisabled();
+    fireEvent.change(title, { target: { value: "New note" } });
+    fireEvent.change(content, { target: { value: "My draft" } });
+    expect(save).not.toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(api.createProjectNote).toHaveBeenCalledWith(2, { title: "New note", content: "My draft" }));
+    await waitFor(() => expect(screen.getByTestId("note-path")).toHaveTextContent("/projects/2/notes/81"));
+    expect(screen.getByPlaceholderText("Give this note a title…")).toHaveValue("New note");
+    expect(screen.getByPlaceholderText(/Write your note/)).toHaveValue("My draft");
+    await waitFor(() => expect(save).toBeDisabled());
+    fireEvent.change(content, { target: { value: "Continued editing" } });
+    fireEvent.click(await screen.findByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(api.updateProjectNote).toHaveBeenCalledWith(2, 81, { title: "New note", content: "Continued editing" }));
+    expect(api.createProjectNote).toHaveBeenCalledTimes(1);
+    expect(screen.getByPlaceholderText(/Write your note/)).toHaveValue("Continued editing");
+    expect(screen.getByTestId("note-path")).toHaveTextContent("/projects/2/notes/81");
+    await waitFor(() => expect(save).toBeDisabled());
+  });
+
+  it("keeps note saving disabled until the title or content differs, including undo", async () => {
+    vi.mocked(api.listProjectNotes).mockResolvedValueOnce([{
+      id: 81, project_id: 2, parent_id: null, title: "My note", content: "Saved text", sort_order: 0,
+      created_by: 1, created_by_username: "admin", updated_by: null,
+      created_at: "2026-11-11T12:00:00Z", updated_at: "2026-11-11T12:00:00Z",
+    }]);
+    render(<MemoryRouter initialEntries={["/projects/2/notes"]}><StormApp /></MemoryRouter>);
+    fireEvent.click(await screen.findByText("My note"));
+    const title = screen.getByPlaceholderText("Give this note a title…");
+    const content = screen.getByPlaceholderText(/Write your note/);
+    const save = screen.getByRole("button", { name: "Save changes" });
+    expect(save).toBeDisabled();
+    fireEvent.click(save);
+    expect(api.updateProjectNote).not.toHaveBeenCalled();
+    fireEvent.change(title, { target: { value: "Renamed" } });
+    expect(save).not.toBeDisabled();
+    fireEvent.change(title, { target: { value: "My note" } });
+    expect(save).toBeDisabled();
+    fireEvent.change(content, { target: { value: "Changed text" } });
+    expect(save).not.toBeDisabled();
+    fireEvent.change(content, { target: { value: "Saved text" } });
+    expect(save).toBeDisabled();
+  });
+
+  it("keeps edits made during note saving dirty and allows retry after a failed save", async () => {
+    let finish!: (value: Awaited<ReturnType<typeof api.createProjectNote>>) => void;
+    vi.mocked(api.createProjectNote).mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+    vi.mocked(api.updateProjectNote).mockRejectedValueOnce(new Error("Save failed"));
+    render(<MemoryRouter initialEntries={["/projects/2/notes"]}><StormApp /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole("button", { name: "Add note" }));
+    const title = screen.getByPlaceholderText("Give this note a title…");
+    const content = screen.getByPlaceholderText(/Write your note/);
+    fireEvent.change(title, { target: { value: "New note" } });
+    fireEvent.change(content, { target: { value: "Sent text" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(screen.getByRole("button", { name: "Saving…" })).toBeDisabled();
+    fireEvent.change(content, { target: { value: "Newer text" } });
+    finish({ id: 81, project_id: 2, parent_id: null, title: "New note", content: "Sent text", sort_order: 0,
+      created_by: 1, created_by_username: "admin", updated_by: null, created_at: "2026-11-11T12:00:00Z", updated_at: "2026-11-11T12:00:00Z" });
+    const save = await screen.findByRole("button", { name: "Save changes" });
+    expect(save).not.toBeDisabled();
+    expect(content).toHaveValue("Newer text");
+    fireEvent.click(save);
+    await waitFor(() => expect(api.updateProjectNote).toHaveBeenCalledWith(2, 81, { title: "New note", content: "Newer text" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Save changes" })).not.toBeDisabled());
+    expect(content).toHaveValue("Newer text");
   });
 
   it("adds a project credential through the backend API", async () => {
@@ -583,6 +687,117 @@ describe("StormApp (design prototype port)", () => {
     // больше не вызывается (убран N+1) — факт рендера «/v1/orders» это и подтверждает.
   });
 
+  const openEndpointsView = async () => {
+    await openHostsSection();
+    await screen.findByText("api.northwind.test", { selector: ".hostname" });
+    fireEvent.click(screen.getAllByText("Endpoints").find((node) => node.closest(".menu")) as HTMLElement);
+  };
+
+  it("deletes only the endpoints of the chosen host", async () => {
+    const base = await api.getHosts(2);
+    const endpoint = base.items.find((host) => host.id === 11)!.endpoints![0];
+    vi.mocked(api.getHosts).mockResolvedValue({ ...base, items: base.items.map((host) => host.id === 12 ? { ...host, endpoints: [{ ...endpoint, id: 502, host_id: 12, path: "/other" }] } : host) });
+    await openEndpointsView();
+    expect(screen.getByRole("button", { name: "Delete endpoints: test.com" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Delete endpoints: api.northwind.test" }));
+    const dialog = document.querySelector(".modalback.open") as HTMLElement;
+    fireEvent.click(within(dialog).getByRole("button", { name: "Delete" }));
+    await waitFor(() => expect(api.deleteEndpoint).toHaveBeenCalledWith(2, 11, 501));
+    expect(api.deleteEndpoint).toHaveBeenCalledTimes(1);
+  });
+
+  it("renames an endpoint group host using its pencil", async () => {
+    await openEndpointsView();
+    fireEvent.click(screen.getByRole("button", { name: "Edit host: api.northwind.test" }));
+    const dialog = document.querySelector(".modalback.open") as HTMLElement;
+    fireEvent.change(within(dialog).getByDisplayValue("api.northwind.test"), { target: { value: "renamed.example.com" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(api.updateHost).toHaveBeenCalledWith(2, 11, { hostname: "renamed.example.com" }));
+  });
+
+  it("opens the request via pencil and saves a changed endpoint with matching copy buttons", async () => {
+    await openEndpointsView();
+    fireEvent.click(screen.getAllByText("api.northwind.test").find((node) => node.closest(".prow")) as HTMLElement);
+    fireEvent.click(screen.getByRole("button", { name: "Edit endpoint: GET /v1/orders" }));
+    const dialog = screen.getByRole("dialog", { name: "Endpoint request" });
+    const request = within(dialog).getByRole("textbox", { name: "HTTP request" });
+    await waitFor(() => expect(request).not.toBeDisabled());
+    const save = within(dialog).getByRole("button", { name: "Save changes" });
+    const original = (request as HTMLTextAreaElement).value;
+    expect(save).toBeDisabled();
+    fireEvent.click(save);
+    expect(api.updateEndpoint).not.toHaveBeenCalled();
+    const copyRequest = within(dialog).getByRole("button", { name: "Copy request" });
+    const copyCurl = within(dialog).getByRole("button", { name: "Copy cURL" });
+    expect(copyRequest.nextElementSibling).toBe(copyCurl);
+    expect(copyRequest).toHaveStyle({ border: "1px solid var(--st-accent-2)", color: "var(--st-accent-2)" });
+    expect(copyCurl.style.cssText).toBe(copyRequest.style.cssText);
+    const raw = "POST /changed HTTP/1.1\nHost: api.northwind.test";
+    fireEvent.change(request, { target: { value: raw } });
+    expect(save).not.toBeDisabled();
+    fireEvent.change(request, { target: { value: original } });
+    expect(save).toBeDisabled();
+    fireEvent.change(request, { target: { value: raw } });
+    fireEvent.click(save);
+    await waitFor(() => expect(api.updateEndpoint).toHaveBeenCalledWith(2, 11, 501, { request_raw: raw }));
+    await waitFor(() => expect(save).toBeDisabled());
+    expect(save).toBeInTheDocument();
+    expect(within(dialog).getByText("/changed")).toBeInTheDocument();
+  });
+
+  it("posts a real endpoint comment, keeps the request dialog open and reloads it after reopening", async () => {
+    const saved = { id: 901, endpoint_id: 501, user_id: 1, username: "admin", avatar_url: null, content: "Комментарий сохранён", created_at: "2026-11-11T12:00:00Z", updated_at: "2026-11-11T12:00:00Z" };
+    vi.mocked(api.createEndpointComment).mockResolvedValue(saved);
+    vi.mocked(api.listEndpointComments).mockResolvedValueOnce({ items: [], total: 0, page: 1, size: 50, pages: 1 })
+      .mockResolvedValueOnce({ items: [saved], total: 1, page: 1, size: 50, pages: 1 });
+    await openEndpointsView();
+    fireEvent.click(screen.getAllByText("api.northwind.test").find((node) => node.closest(".prow")) as HTMLElement);
+    const edit = screen.getByRole("button", { name: "Edit endpoint: GET /v1/orders" });
+    fireEvent.click(edit);
+    const dialog = screen.getByRole("dialog", { name: "Endpoint request" });
+    await within(dialog).findByText("No comments yet — start the discussion.");
+    fireEvent.change(within(dialog).getByRole("textbox", { name: "Endpoint comment" }), { target: { value: saved.content } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Post comment" }));
+    expect(await within(dialog).findByText(saved.content)).toBeInTheDocument();
+    expect(dialog).toBeInTheDocument();
+    expect(api.createEndpointComment).toHaveBeenCalledWith(2, 11, 501, saved.content);
+    fireEvent.click(dialog.parentElement!);
+    fireEvent.click(edit);
+    expect(await screen.findByText(saved.content)).toBeInTheDocument();
+    expect(api.listEndpointComments).toHaveBeenCalledTimes(2);
+  });
+
+  it("uploads Swagger only from the export page into both import fields without saving immediately", async () => {
+    await openEndpointsView();
+    expect(screen.queryByRole("button", { name: "Upload Swagger JSON" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: "Export" })[0]);
+    const upload = screen.getByRole("button", { name: "Upload Swagger JSON" });
+    expect(upload.parentElement?.lastElementChild).toBe(upload);
+    fireEvent.click(upload);
+    const dialog = screen.getByRole("dialog", { name: "Upload Swagger JSON" });
+    const file = new File([JSON.stringify({ swagger: "2.0", host: "api.northwind.test", basePath: "/api", paths: { "/pets": { head: {} } } })], "swagger.json");
+    fireEvent.drop(within(dialog).getByRole("button", { name: "Drop Swagger JSON here" }), { dataTransfer: { files: [file] } });
+    await waitFor(() => expect(screen.getByRole("textbox", { name: "Paste endpoints" })).toHaveValue("HEAD https://api.northwind.test/api/pets"));
+    expect(screen.getByRole("textbox", { name: "Will be imported" })).toHaveValue("HEAD https://api.northwind.test/api/pets");
+  });
+
+  it.each([{ host: "unknown", servers: [] }, { host: "newapi.test", servers: [{ url: "https://newapi.test" }] }])("creates one $host host from Swagger when it does not exist", async ({ host, servers }) => {
+    await openEndpointsView();
+    const base = await api.getHosts(2);
+    vi.mocked(api.createHost).mockResolvedValueOnce({ ...base.items[0], id: 900, hostname: host, ip_addresses: [], ip_address: null });
+    vi.mocked(api.createHost).mockClear();
+    vi.mocked(api.createEndpoint).mockClear();
+    fireEvent.click(screen.getAllByRole("button", { name: "Export" })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Upload Swagger JSON" }));
+    fireEvent.change(screen.getByLabelText("Swagger JSON files"), { target: { files: [new File([JSON.stringify({ openapi: "3.2.1", servers, paths: { "/first": { query: {} }, "/second": { options: {} } } })], "api.json")] } });
+    await screen.findByRole("textbox", { name: "Will be imported" });
+    expect(api.createHost).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Add endpoints" }));
+    await waitFor(() => expect(api.createEndpoint).toHaveBeenCalledWith(2, 900, { path: "/second", method: "OPTIONS" }));
+    expect(api.createHost).toHaveBeenCalledTimes(1);
+    expect(api.createHost).toHaveBeenCalledWith(2, { hostname: host });
+  });
+
   it("bulk-adds endpoints from a pasted URL list, matching hosts by name", async () => {
     await openHostsSection();
     await screen.findByText("api.northwind.test", { selector: ".hostname" });
@@ -603,6 +818,46 @@ describe("StormApp (design prototype port)", () => {
     expect(vi.mocked(api.createEndpoint)).toHaveBeenCalledWith(2, 11, { path: "/api/users", method: "POST" });
   });
 
+  it("places a grey deletion button beside each host count and requires confirmation", async () => {
+    await openHostsSection();
+    await screen.findByText("api.northwind.test", { selector: ".hostname" });
+    fireEvent.click(screen.getAllByText("Endpoints").find((n) => n.closest(".menu")) as HTMLElement);
+    const button = screen.getByRole("button", { name: "Delete endpoints: api.northwind.test" });
+    expect(button.previousElementSibling).toHaveAccessibleName("Edit host: api.northwind.test");
+    expect(button.parentElement?.previousElementSibling).toHaveTextContent("1");
+    expect(screen.queryByRole("button", { name: "Delete endpoints" })).not.toBeInTheDocument();
+    expect(button.parentElement).toHaveClass("endpoint-actions");
+    fireEvent.click(button);
+    expect(api.deleteEndpoint).not.toHaveBeenCalled();
+    let dialog = document.querySelector(".modalback.open") as HTMLElement;
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(api.deleteEndpoint).not.toHaveBeenCalled();
+    fireEvent.click(button);
+    dialog = document.querySelector(".modalback.open") as HTMLElement;
+    fireEvent.click(within(dialog).getByRole("button", { name: "Delete" }));
+    await waitFor(() => expect(api.deleteEndpoint).toHaveBeenCalledWith(2, 11, 501));
+    await waitFor(() => expect(useToastStore.getState().toasts).toEqual(expect.arrayContaining([
+      expect.objectContaining({ message: "Endpoints deleted: 1", severity: "success" }),
+    ])));
+  });
+
+  it("disables endpoint deletion for empty filters and reports API failures as toasts", async () => {
+    await openHostsSection();
+    await screen.findByText("api.northwind.test", { selector: ".hostname" });
+    fireEvent.click(screen.getAllByText("Endpoints").find((n) => n.closest(".menu")) as HTMLElement);
+    const filter = screen.getByPlaceholderText("Filter by endpoint…");
+    fireEvent.change(filter, { target: { value: "no-matching-endpoint" } });
+    expect(screen.queryByRole("button", { name: /Delete endpoints:/ })).not.toBeInTheDocument();
+    fireEvent.change(filter, { target: { value: "orders" } });
+    vi.mocked(api.deleteEndpoint).mockRejectedValueOnce(new Error("Server error"));
+    fireEvent.click(screen.getByRole("button", { name: "Delete endpoints: api.northwind.test" }));
+    const dialog = document.querySelector(".modalback.open") as HTMLElement;
+    fireEvent.click(within(dialog).getByRole("button", { name: "Delete" }));
+    await waitFor(() => expect(useToastStore.getState().toasts).toEqual(expect.arrayContaining([
+      expect.objectContaining({ message: "Couldn't delete endpoints: 1", severity: "error" }),
+    ])));
+  });
+
   it("imports a pasted host list through the probe farm (page + live banner)", async () => {
     await openHostsSection();
     await screen.findByText("api.northwind.test", { selector: ".hostname" });
@@ -619,7 +874,7 @@ describe("StormApp (design prototype port)", () => {
   });
 
   /* The IPs view: one row per address (however many hosts or names it has), a
-     Cloudflare column, and no Status column. */
+     no Cloudflare or Status columns. */
   const openIpsView = async () => {
     await openHostsSection();
     await screen.findByText("api.northwind.test", { selector: ".hostname" });
@@ -633,6 +888,20 @@ describe("StormApp (design prototype port)", () => {
     const jsItem = screen.getAllByText("JS").find((n) => n.closest(".menu"));
     fireEvent.click(jsItem as HTMLElement);
   };
+
+  it("has no JS delete-all button and confirms host deletion inside the app", async () => {
+    await openJsView();
+    const row = (await screen.findByText("api.northwind.test", { selector: ".hostname" })).closest(".prow") as HTMLElement;
+    expect(screen.queryByRole("button", { name: "Delete objects" })).not.toBeInTheDocument();
+    fireEvent.click(row.querySelector(".actbtn.del") as HTMLElement);
+    expect(api.deleteJsFilesForHost).not.toHaveBeenCalled();
+    const dialog = document.querySelector(".modalback.open") as HTMLElement;
+    fireEvent.click(within(dialog).getByRole("button", { name: "Delete" }));
+    await waitFor(() => expect(api.deleteJsFilesForHost).toHaveBeenCalledWith(2, 11));
+    await waitFor(() => expect(useToastStore.getState().toasts).toEqual(expect.arrayContaining([
+      expect.objectContaining({ message: "JS findings deleted", severity: "success" }),
+    ])));
+  });
 
   it("lists JS grouped by host, expands to files, and opens a file card with its findings", async () => {
     await openJsView();
@@ -675,6 +944,7 @@ describe("StormApp (design prototype port)", () => {
     expect(vi.mocked(api.startJsScan)).toHaveBeenCalledWith(2, expect.stringContaining("api.northwind.test"));
     // A running job shows the banner, then polling flips it to done and reloads.
     expect(await screen.findByText(/Scanning 1/)).toBeInTheDocument();
+    expect(screen.getByRole("status", { name: "Recon progress" }).previousElementSibling).toHaveTextContent("Total JS files");
     await waitFor(() => expect(vi.mocked(api.getJsScanJob)).toHaveBeenCalled(), { timeout: 3000 });
   });
 
@@ -740,16 +1010,16 @@ describe("StormApp (design prototype port)", () => {
     const activePill = (el: HTMLElement) => el.style.background === "var(--st-accent-2)";
     await openHostsSection();
     await screen.findByText("api.northwind.test", { selector: ".hostname" });
-    // Two groups on the hosts view too — Cloudflare and Status.
+    // Hosts only have the Status group.
     const hostsAll = screen.getAllByText("All").filter((n) => n.classList.contains("clk"));
-    expect(hostsAll).toHaveLength(2);
+    expect(hostsAll).toHaveLength(1);
     expect(hostsAll.every(activePill)).toBe(true);
 
     const ipsItem = screen.getAllByText("IPs").find((n) => n.closest(".menu"));
     fireEvent.click(ipsItem as HTMLElement);
-    // Two groups on this view — Status and Cloudflare — both resting on All.
+    // The IP view has only the Status group.
     const ipsAll = screen.getAllByText("All").filter((n) => n.classList.contains("clk"));
-    expect(ipsAll).toHaveLength(2);
+    expect(ipsAll).toHaveLength(1);
     expect(ipsAll.every(activePill)).toBe(true);
 
     const epItem = screen.getAllByText("Endpoints").find((n) => n.closest(".menu"));
@@ -759,50 +1029,22 @@ describe("StormApp (design prototype port)", () => {
     expect(activePill(epAll[0])).toBe(true);
   });
 
-  it("filters the IPs table by Cloudflare", async () => {
+  it("removes Cloudflare from the IPs table and its export filters", async () => {
     await openIpsView();
     await screen.findByText("104.16.132.229");
-    expect(screen.getByText("203.0.113.10")).toBeInTheDocument();
-
-    const cfGroup = screen.getByText("Cloudflare", { selector: "span" }).parentElement as HTMLElement;
-    fireEvent.click(within(cfGroup).getByText("true"));
-    // Only the CF address survives.
-    expect(screen.getByText("104.16.132.229")).toBeInTheDocument();
-    expect(screen.queryByText("203.0.113.10")).not.toBeInTheDocument();
-
-    fireEvent.click(within(cfGroup).getByText("false"));
-    expect(screen.queryByText("104.16.132.229")).not.toBeInTheDocument();
-    expect(screen.getByText("203.0.113.10")).toBeInTheDocument();
-
-    // Clicking the active pill again clears the filter.
-    fireEvent.click(within(cfGroup).getByText("false"));
-    expect(screen.getByText("104.16.132.229")).toBeInTheDocument();
-    expect(screen.getByText("203.0.113.10")).toBeInTheDocument();
+    expect(screen.queryByText("Cloudflare")).not.toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: "Export" })[0]);
+    expect(screen.queryByText("Cloudflare")).not.toBeInTheDocument();
   });
 
-  it("filters the hosts table by Cloudflare and carries it into the export", async () => {
+  it("removes Cloudflare from hosts and their export filters", async () => {
     await openHostsSection();
     await screen.findByText("api.northwind.test", { selector: ".hostname" });
-    const cfGroup = screen.getByText("Cloudflare", { selector: "span" }).parentElement as HTMLElement;
-
-    // None of the mocked hosts sits behind CF, so "true" empties the table…
-    fireEvent.click(within(cfGroup).getByText("true"));
-    expect(screen.queryByText("api.northwind.test", { selector: ".hostname" })).not.toBeInTheDocument();
-    // …and the export, which must reflect the same filters as the view.
+    expect(screen.queryByText("Cloudflare")).not.toBeInTheDocument();
     fireEvent.click(screen.getAllByText("Export").find((n) => n.closest("button")) as HTMLElement);
-    const exportArea = (await screen.findAllByRole("textbox")).pop() as HTMLTextAreaElement;
-    await waitFor(() => expect(exportArea).toHaveValue(""));
-  });
-
-  it("shows a Cloudflare column instead of Status in the IPs table", async () => {
-    await openIpsView();
-    const cf = await screen.findAllByText("104.16.132.229");
-    const row = cf[0].closest(".prow") as HTMLElement;
-    expect(within(row).getByText("true")).toBeInTheDocument();
-    // Header: Cloudflare present, Status gone.
-    const header = document.querySelector("main .route div[style*='grid']") as HTMLElement;
-    expect(within(header).getByText("Cloudflare")).toBeInTheDocument();
-    expect(within(header).queryByText("Status")).not.toBeInTheDocument();
+    const exportArea = await screen.findByRole("textbox", { name: "Will be exported" }) as HTMLTextAreaElement;
+    await waitFor(() => expect(exportArea.value).toContain("api.northwind.test"));
+    expect(screen.queryByText("Cloudflare")).not.toBeInTheDocument();
   });
 
   it("keeps IP-farm rows out of the hosts table", async () => {
@@ -935,6 +1177,41 @@ describe("StormApp (design prototype port)", () => {
     expect(screen.queryByText("203.0.113.10 (internal)")).not.toBeInTheDocument();
     // An UPDATE row has no details: the host name comes from the loaded hosts.
     expect(screen.getByText("api.northwind.test")).toBeInTheDocument();
+  });
+
+  it("loads finding host links from the list without fetching a card per row", async () => {
+    render(<MemoryRouter initialEntries={["/projects/2/vulns"]}><StormApp /></MemoryRouter>);
+    await screen.findByText("IDOR on GET /orders/{id}");
+    expect(vi.mocked(api.getVulnerabilities)).toHaveBeenCalledWith(2);
+    expect(vi.mocked(api.getVulnerability)).not.toHaveBeenCalled();
+    expect(screen.getAllByText("api.northwind.test").length).toBeGreaterThan(0);
+  });
+
+  it("hides details links for deleted findings and lists JS scan target hosts", async () => {
+    vi.mocked(api.getProjectActivity).mockResolvedValue([
+      { id: 1001, action: "DELETE", entity_type: "vulnerability", entity_id: 71, user_id: 1, username: "admin", title: null, severity: null, url: null, details: { title: "Removed finding", severity: "high" }, created_at: "2026-11-10T00:00:00Z" },
+      { id: 1002, action: "START", entity_type: "js_farm", entity_id: 5, user_id: 1, username: "admin", title: null, severity: null, url: null, details: { targets: ["api.northwind.test", "test.com"] }, created_at: "2026-11-10T00:00:00Z" },
+    ]);
+    render(<MemoryRouter initialEntries={["/projects/2/activity"]}><StormApp /></MemoryRouter>);
+    expect(await screen.findByText("Removed finding")).toBeInTheDocument();
+    expect(screen.queryByText("Show details")).not.toBeInTheDocument();
+    expect(screen.getByText("api.northwind.test, test.com")).toBeInTheDocument();
+  });
+
+  it("asks before revoking an invitation and removes the invitation hint", async () => {
+    vi.mocked(api.getInvitations).mockResolvedValueOnce([{ id: 44, email: "pending@example.com", full_name: null, role: "pentester", project_role: "pentester", status: "pending", is_expired: false, expires_at: "2026-12-01T00:00:00Z", invited_by: 1, created_at: "2026-11-10T00:00:00Z" }]);
+    vi.mocked(api.revokeInvitation).mockClear();
+    render(<MemoryRouter initialEntries={["/members"]}><StormApp /></MemoryRouter>);
+    fireEvent.click(await screen.findByTitle("Revoke invitation"));
+    expect(api.revokeInvitation).not.toHaveBeenCalled();
+    let dialog = document.querySelector(".modalback.open") as HTMLElement;
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(api.revokeInvitation).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTitle("Revoke invitation"));
+    dialog = document.querySelector(".modalback.open") as HTMLElement;
+    fireEvent.click(within(dialog).getByRole("button", { name: "Revoke invitation" }));
+    await waitFor(() => expect(api.revokeInvitation).toHaveBeenCalledWith(44));
+    expect(screen.queryByText(/Invite people by email/)).not.toBeInTheDocument();
   });
 
   // Activity → "Show details" → back must land on the findings list, not hang.

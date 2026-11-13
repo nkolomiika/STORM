@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 from pydantic import ValidationError as PydanticValidationError
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 from app.enums import ProjectRole, UserRole
 from app.exceptions import ConflictError, UnauthorizedError
@@ -49,6 +49,7 @@ def test_invitation_accept_allows_fio_username(fio: str) -> None:
 @pytest.mark.asyncio
 async def test_info_not_found_when_missing() -> None:
     db = AsyncMock()
+    db.add = MagicMock()  # AsyncSession.add is synchronous.
     db.scalar = AsyncMock(return_value=None)
     info = await UserService(db).get_invitation_info("tok")
     assert info == {"valid": False, "reason": "not_found"}
@@ -57,6 +58,7 @@ async def test_info_not_found_when_missing() -> None:
 @pytest.mark.asyncio
 async def test_info_used_for_accepted() -> None:
     db = AsyncMock()
+    db.add = MagicMock()  # AsyncSession.add is synchronous.
     db.scalar = AsyncMock(return_value=SimpleNamespace(status="accepted", is_expired=False, email="a@b.c", full_name=None))
     info = await UserService(db).get_invitation_info("tok")
     assert info == {"valid": False, "reason": "used"}
@@ -65,6 +67,7 @@ async def test_info_used_for_accepted() -> None:
 @pytest.mark.asyncio
 async def test_info_expired() -> None:
     db = AsyncMock()
+    db.add = MagicMock()  # AsyncSession.add is synchronous.
     db.scalar = AsyncMock(return_value=SimpleNamespace(status="pending", is_expired=True, email="a@b.c", full_name=None))
     info = await UserService(db).get_invitation_info("tok")
     assert info == {"valid": False, "reason": "expired"}
@@ -73,6 +76,7 @@ async def test_info_expired() -> None:
 @pytest.mark.asyncio
 async def test_info_revoked_looks_like_not_found() -> None:
     db = AsyncMock()
+    db.add = MagicMock()  # AsyncSession.add is synchronous.
     db.scalar = AsyncMock(return_value=SimpleNamespace(status="revoked", is_expired=False, email="a@b.c", full_name=None))
     info = await UserService(db).get_invitation_info("tok")
     assert info == {"valid": False, "reason": "not_found"}
@@ -81,6 +85,7 @@ async def test_info_revoked_looks_like_not_found() -> None:
 @pytest.mark.asyncio
 async def test_info_valid() -> None:
     db = AsyncMock()
+    db.add = MagicMock()  # AsyncSession.add is synchronous.
     db.scalar = AsyncMock(return_value=SimpleNamespace(status="pending", is_expired=False, email="a@b.c", full_name="Alice"))
     info = await UserService(db).get_invitation_info("tok")
     assert info == {"valid": True, "email": "a@b.c", "full_name": "Alice"}
@@ -91,6 +96,7 @@ async def test_info_valid() -> None:
 @pytest.mark.asyncio
 async def test_username_available_true_when_free() -> None:
     db = AsyncMock()
+    db.add = MagicMock()  # AsyncSession.add is synchronous.
     inv = SimpleNamespace(status="pending", is_expired=False)
     db.scalar = AsyncMock(side_effect=[inv, None])  # 1) load invite, 2) no user with that username
     assert await UserService(db).check_invitation_username_available("tok", "free.name") is True
@@ -99,6 +105,7 @@ async def test_username_available_true_when_free() -> None:
 @pytest.mark.asyncio
 async def test_username_available_false_when_taken() -> None:
     db = AsyncMock()
+    db.add = MagicMock()  # AsyncSession.add is synchronous.
     inv = SimpleNamespace(status="pending", is_expired=False)
     db.scalar = AsyncMock(side_effect=[inv, SimpleNamespace(id=1)])
     assert await UserService(db).check_invitation_username_available("tok", "admin") is False
@@ -107,6 +114,7 @@ async def test_username_available_false_when_taken() -> None:
 @pytest.mark.asyncio
 async def test_username_check_rejects_invalid_token() -> None:
     db = AsyncMock()
+    db.add = MagicMock()  # AsyncSession.add is synchronous.
     db.scalar = AsyncMock(return_value=None)
     with pytest.raises(UnauthorizedError):
         await UserService(db).check_invitation_username_available("tok", "any.name")
@@ -117,6 +125,7 @@ async def test_username_check_rejects_invalid_token() -> None:
 @pytest.mark.asyncio
 async def test_accept_rejects_invalid_token() -> None:
     db = AsyncMock()
+    db.add = MagicMock()  # AsyncSession.add is synchronous.
     db.scalar = AsyncMock(return_value=None)
     with pytest.raises(UnauthorizedError):
         await UserService(db).accept_invitation("tok", "some.user", "longenough1")
@@ -125,6 +134,7 @@ async def test_accept_rejects_invalid_token() -> None:
 @pytest.mark.asyncio
 async def test_accept_rejects_expired() -> None:
     db = AsyncMock()
+    db.add = MagicMock()  # AsyncSession.add is synchronous.
     db.scalar = AsyncMock(return_value=SimpleNamespace(status="pending", is_expired=True))
     with pytest.raises(UnauthorizedError):
         await UserService(db).accept_invitation("tok", "some.user", "longenough1")
@@ -133,6 +143,7 @@ async def test_accept_rejects_expired() -> None:
 @pytest.mark.asyncio
 async def test_accept_creates_user_from_invitation() -> None:
     db = AsyncMock()
+    db.add = MagicMock()  # AsyncSession.add is synchronous.
     inv = SimpleNamespace(
         id=1, status="pending", is_expired=False, email="invitee@example.com",
         full_name="Invited One", role=UserRole.ADMIN, project_role=ProjectRole.LEAD,
@@ -157,6 +168,7 @@ async def test_accept_creates_user_from_invitation() -> None:
 async def test_accept_sets_full_name_to_username_when_invite_has_none() -> None:
     """Локальный пользователь без ФИО в приглашении: full_name = заданный username (ФИО)."""
     db = AsyncMock()
+    db.add = MagicMock()  # AsyncSession.add is synchronous.
     inv = SimpleNamespace(
         id=1, status="pending", is_expired=False, email="invitee@example.com",
         full_name=None, role=UserRole.PENTESTER, project_role=ProjectRole.PENTESTER,
@@ -176,6 +188,7 @@ async def test_accept_sets_full_name_to_username_when_invite_has_none() -> None:
 async def test_accept_keeps_invite_full_name_when_present() -> None:
     """Если админ указал ФИО в приглашении — оно не перетирается username'ом."""
     db = AsyncMock()
+    db.add = MagicMock()  # AsyncSession.add is synchronous.
     inv = SimpleNamespace(
         id=1, status="pending", is_expired=False, email="invitee@example.com",
         full_name="Админ Указал ФИО", role=UserRole.PENTESTER, project_role=ProjectRole.PENTESTER,
@@ -195,6 +208,7 @@ async def test_accept_keeps_invite_full_name_when_present() -> None:
 @pytest.mark.asyncio
 async def test_create_invitation_conflicts_with_existing_user() -> None:
     db = AsyncMock()
+    db.add = MagicMock()  # AsyncSession.add is synchronous.
     db.scalar = AsyncMock(return_value=SimpleNamespace(id=1))  # пользователь с таким email уже есть
     with pytest.raises(ConflictError):
         await UserService(db).create_invitation({"email": "taken@example.com"}, actor_id=1)
@@ -203,6 +217,7 @@ async def test_create_invitation_conflicts_with_existing_user() -> None:
 @pytest.mark.asyncio
 async def test_create_invitation_conflicts_with_active_invite() -> None:
     db = AsyncMock()
+    db.add = MagicMock()  # AsyncSession.add is synchronous.
     db.scalar = AsyncMock(side_effect=[None, SimpleNamespace(id=9)])  # нет юзера, но есть активный invite
     with pytest.raises(ConflictError):
         await UserService(db).create_invitation({"email": "pending@example.com"}, actor_id=1)
@@ -211,6 +226,7 @@ async def test_create_invitation_conflicts_with_active_invite() -> None:
 @pytest.mark.asyncio
 async def test_create_invitation_happy_path() -> None:
     db = AsyncMock()
+    db.add = MagicMock()  # AsyncSession.add is synchronous.
     db.scalar = AsyncMock(side_effect=[None, None])  # нет ни юзера, ни активного invite
     svc = UserService(db)
     svc.audit.log = AsyncMock()

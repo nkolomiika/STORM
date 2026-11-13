@@ -43,6 +43,10 @@ vi.mock("../api", async (importOriginal) => {
   };
   return {
     ...actual,
+    getWorksConfig: vi.fn(async () => null),
+    getHiddenIps: vi.fn(async () => []),
+    getJsFilesPage: vi.fn(async () => ({ items: [], total: 0, page: 1, size: 200, pages: 0 })),
+    listProjectCredentials: vi.fn(async () => []),
     getProjects: vi.fn(async () => ({ items: projects, total: projects.length, page: 1, size: 100, pages: 1 })),
     // Without this the projects loader falls through to a real XHR.
     getProjectStats: vi.fn(async () =>
@@ -52,6 +56,7 @@ vi.mock("../api", async (importOriginal) => {
     getInvitations: vi.fn(async () => []),
     getProjectMembers: vi.fn(async (projectId: number) => membersByProject[projectId] ?? []),
     getHosts: vi.fn(async () => ({ items: [], total: 0, page: 1, size: 100, pages: 1 })),
+    getHostCreationTimes: vi.fn(async () => []),
     getVulnerabilities: vi.fn(async () => ({ items: [], total: 0, page: 1, size: 100, pages: 1 })),
     listProjectNotes: vi.fn(async () => []),
     getProjectActivity: vi.fn(async () => []),

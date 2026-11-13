@@ -40,6 +40,9 @@ export function StormReactivate() {
 
   useEffect(() => {
     let cancelled = false;
+    setInfo(null);
+    setLoading(true);
+    setSubmitting(false);
     if (!token) {
       setInfo({ valid: false, reason: "not_found" });
       setLoading(false);

@@ -57,6 +57,7 @@ async def test_update_comment_mentions_do_not_create_notifications(monkeypatch: 
     db.scalar = AsyncMock(return_value=comment)
     db.execute = AsyncMock()
     db.commit = AsyncMock()
+    db.flush = AsyncMock()
     db.refresh = AsyncMock()
     ws_manager = SimpleNamespace(broadcast=AsyncMock(), notify_user=AsyncMock())
     monkeypatch.setattr("app.services.ws_manager", ws_manager)
@@ -105,6 +106,7 @@ async def test_self_mention_creates_no_notification(monkeypatch: pytest.MonkeyPa
     monkeypatch.setattr("app.services.ws_manager", SimpleNamespace(broadcast=AsyncMock(), notify_user=AsyncMock()))
     actor = SimpleNamespace(id=7, username="alice", avatar_url=None)
     db = AsyncMock()
+    db.add = MagicMock()  # AsyncSession.add is synchronous.
     service = _comment_service(db, [actor])
 
     await service.create(project_id=1, vuln_id=1, content="@alice проверь", actor=actor)
@@ -122,6 +124,7 @@ async def test_mention_of_someone_else_creates_notification(monkeypatch: pytest.
     actor = SimpleNamespace(id=7, username="alice", avatar_url=None)
     other = SimpleNamespace(id=9, username="bob", avatar_url=None)
     db = AsyncMock()
+    db.add = MagicMock()  # AsyncSession.add is synchronous.
     service = _comment_service(db, [other])
 
     await service.create(project_id=1, vuln_id=1, content="@bob посмотри", actor=actor)

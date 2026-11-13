@@ -33,6 +33,20 @@ def _mock_db() -> MagicMock:
     return db
 
 
+@pytest.mark.asyncio
+async def test_create_job_logs_all_target_hosts_without_running_scan():
+    db = _mock_db()
+    db.refresh = AsyncMock()
+    service = JsFarmService(db)
+    service.audit.log = AsyncMock()
+    job = await service.create_job(1, "api.example.com\nadmin.example.com", 2)
+    assert job.targets_total == 2
+    event = service.audit.log.await_args
+    assert event.args == ("START",)
+    assert event.kwargs['details']['targets'] == ["api.example.com", "admin.example.com"]
+    assert event.kwargs['details']['project_id'] == '1'
+
+
 def _patch_resolve(monkeypatch: pytest.MonkeyPatch, blocked: bool = False) -> None:
     async def fake_resolve(domains: list[str]) -> dict[str, ResolvedHost]:
         return {

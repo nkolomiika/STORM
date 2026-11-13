@@ -116,6 +116,9 @@ async def get_agent_token_context(
     token_name = token.name
     scopes = set(token.scopes or [])
     all_projects = token.all_projects
+    creator = await db.scalar(select(User).where(User.id == created_by))
+    if creator is None or not creator.is_active or creator.is_locked:
+        raise UnauthorizedError("Владелец agent token не найден или деактивирован")
     project_ids = set(
         (
             await db.scalars(
@@ -127,10 +130,9 @@ async def get_agent_token_context(
     await db.commit()
     # Права создателя на момент запроса — токен не может их превышать. Если
     # создатель потерял доступ к проекту, токен тоже его теряет.
-    creator = await db.scalar(select(User).where(User.id == created_by))
-    creator_is_admin = creator is not None and creator.role == UserRole.ADMIN
+    creator_is_admin = creator.role == UserRole.ADMIN
     creator_project_ids: set[int] = set()
-    if creator is not None and not creator_is_admin:
+    if not creator_is_admin:
         creator_project_ids = set(
             (
                 await db.scalars(select(ProjectMember.project_id).where(ProjectMember.user_id == created_by))

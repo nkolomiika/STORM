@@ -15,6 +15,12 @@ export default defineConfig({
     setupFiles: "./src/setupTests.ts",
     /** Дубликаты компилированных *.test.js рядом с *.test.tsx давали двойной запуск одних и тех же тестов. */
     exclude: ["**/node_modules/**", "**/dist/**", "**/*.test.js"],
+    coverage: {
+      provider: "v8",
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: ["src/**/*.test.*", "src/setupTests.ts", "src/**/*.d.ts"],
+      reporter: ["text", "json", "json-summary", "html"],
+    },
   },
   server: {
     host: "0.0.0.0",

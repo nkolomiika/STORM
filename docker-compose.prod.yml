@@ -17,6 +17,7 @@ services:
   backend:
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     restart: unless-stopped
+    ports: !reset []
 
   mail-worker:
     restart: unless-stopped
@@ -29,9 +30,11 @@ services:
 
   db:
     restart: unless-stopped
+    ports: !reset []
 
   minio:
     restart: unless-stopped
+    ports: !reset []
 
   rabbitmq:
     restart: unless-stopped

@@ -1,0 +1,284 @@
+{
+  "label": "before-indexes",
+  "environment": {
+    "python": "3.12.14",
+    "machine": "aarch64",
+    "transport": "TCP HTTP, Uvicorn 1 worker, lifespan off",
+    "pool_size": 5,
+    "max_overflow": 10
+  },
+  "dataset": {
+    "hosts": 5000,
+    "ips": 5000,
+    "ports": 20000,
+    "services": 20000,
+    "endpoints": 100000,
+    "vulnerabilities": 5000,
+    "comments": 1000,
+    "notifications": 1000,
+    "js_files": 5000
+  },
+  "concurrency": 1,
+  "requests_per_scenario": 1,
+  "scenarios": {
+    "hosts_20": {
+      "p50_ms": 11.87,
+      "p95_ms": 11.87,
+      "rps": 84.06,
+      "queries_avg": 8.0,
+      "sql_ms_avg": 3.09,
+      "response_bytes_avg": 208436,
+      "statuses": {
+        "200": 1
+      }
+    },
+    "hosts_200": {
+      "p50_ms": 123.21,
+      "p95_ms": 123.21,
+      "rps": 8.11,
+      "queries_avg": 9.0,
+      "sql_ms_avg": 13.31,
+      "response_bytes_avg": 2096356,
+      "statuses": {
+        "200": 1
+      }
+    },
+    "ports": {
+      "p50_ms": 44.79,
+      "p95_ms": 44.79,
+      "rps": 22.31,
+      "queries_avg": 5.0,
+      "sql_ms_avg": 1.95,
+      "response_bytes_avg": 1432,
+      "statuses": {
+        "200": 1
+      }
+    },
+    "endpoints": {
+      "p50_ms": 44.28,
+      "p95_ms": 44.28,
+      "rps": 22.56,
+      "queries_avg": 4.0,
+      "sql_ms_avg": 0.65,
+      "response_bytes_avg": 8482,
+      "statuses": {
+        "200": 1
+      }
+    },
+    "comments_100": {
+      "p50_ms": 52.63,
+      "p95_ms": 52.63,
+      "rps": 18.97,
+      "queries_avg": 7.0,
+      "sql_ms_avg": 2.79,
+      "response_bytes_avg": 23739,
+      "statuses": {
+        "200": 1
+      }
+    },
+    "notifications_100": {
+      "p50_ms": 51.24,
+      "p95_ms": 51.24,
+      "rps": 19.49,
+      "queries_avg": 4.0,
+      "sql_ms_avg": 2.5,
+      "response_bytes_avg": 34647,
+      "statuses": {
+        "200": 1
+      }
+    },
+    "js_200": {
+      "p50_ms": 83.94,
+      "p95_ms": 83.94,
+      "rps": 11.91,
+      "queries_avg": 6.0,
+      "sql_ms_avg": 3.26,
+      "response_bytes_avg": 48330,
+      "statuses": {
+        "200": 1
+      }
+    },
+    "vulnerabilities_100": {
+      "p50_ms": 47.66,
+      "p95_ms": 47.66,
+      "rps": 20.96,
+      "queries_avg": 5.0,
+      "sql_ms_avg": 1.45,
+      "response_bytes_avg": 38539,
+      "statuses": {
+        "200": 1
+      }
+    },
+    "project_stats": {
+      "p50_ms": 45.5,
+      "p95_ms": 45.5,
+      "rps": 21.94,
+      "queries_avg": 2.0,
+      "sql_ms_avg": 1.75,
+      "response_bytes_avg": 98,
+      "statuses": {
+        "200": 1
+      }
+    }
+  },
+  "query_plans": {
+    "ports_by_host": [
+      {
+        "Plan": {
+          "Node Type": "Sort",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 437.04,
+          "Total Cost": 437.05,
+          "Plan Rows": 4,
+          "Plan Width": 44,
+          "Actual Startup Time": 0.468,
+          "Actual Total Time": 0.468,
+          "Actual Rows": 4,
+          "Actual Loops": 1,
+          "Sort Key": [
+            "port_number"
+          ],
+          "Sort Method": "quicksort",
+          "Sort Space Used": 25,
+          "Sort Space Type": "Memory",
+          "Shared Hit Blocks": 187,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Plans": [
+            {
+              "Node Type": "Seq Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Relation Name": "ports",
+              "Alias": "ports",
+              "Startup Cost": 0.0,
+              "Total Cost": 437.0,
+              "Plan Rows": 4,
+              "Plan Width": 44,
+              "Actual Startup Time": 0.003,
+              "Actual Total Time": 0.464,
+              "Actual Rows": 4,
+              "Actual Loops": 1,
+              "Filter": "(host_id = 1)",
+              "Rows Removed by Filter": 19996,
+              "Shared Hit Blocks": 187,
+              "Shared Read Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0,
+              "Local Hit Blocks": 0,
+              "Local Read Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Temp Written Blocks": 0
+            }
+          ]
+        },
+        "Planning": {
+          "Shared Hit Blocks": 53,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.108,
+        "Triggers": [],
+        "Execution Time": 0.476
+      }
+    ],
+    "services_for_host_page": [
+      {
+        "Plan": {
+          "Node Type": "Sort",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 469.73,
+          "Total Cost": 469.93,
+          "Plan Rows": 80,
+          "Plan Width": 65,
+          "Actual Startup Time": 0.811,
+          "Actual Total Time": 0.813,
+          "Actual Rows": 80,
+          "Actual Loops": 1,
+          "Sort Key": [
+            "name"
+          ],
+          "Sort Method": "quicksort",
+          "Sort Space Used": 30,
+          "Sort Space Type": "Memory",
+          "Shared Hit Blocks": 167,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Plans": [
+            {
+              "Node Type": "Seq Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Relation Name": "services",
+              "Alias": "services",
+              "Startup Cost": 0.2,
+              "Total Cost": 467.2,
+              "Plan Rows": 80,
+              "Plan Width": 65,
+              "Actual Startup Time": 0.005,
+              "Actual Total Time": 0.803,
+              "Actual Rows": 80,
+              "Actual Loops": 1,
+              "Filter": "(port_id = ANY ('{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80}'::integer[]))",
+              "Rows Removed by Filter": 19920,
+              "Shared Hit Blocks": 167,
+              "Shared Read Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0,
+              "Local Hit Blocks": 0,
+              "Local Read Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Temp Written Blocks": 0
+            }
+          ]
+        },
+        "Planning": {
+          "Shared Hit Blocks": 36,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.097,
+        "Triggers": [],
+        "Execution Time": 0.82
+      }
+    ]
+  },
+  "peak_rss_mb": 190.28,
+  "services_sha256": "dc5f2b484b408c7524e404326f27532b94511a18051b6e455fca5f6799e52cac"
+}

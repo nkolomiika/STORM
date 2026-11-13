@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.dependencies import enforce_csrf, get_current_user, require_project_access
 from app.models import User
+from app.http_headers import content_disposition
 from app.schemas import FileOut
 from app.services import FileService
 
@@ -48,7 +49,7 @@ async def download_file(
     """Отдаёт бинарный контент файла."""
     meta, content = await FileService(db).download(file_id, current_user)
     disposition = "inline" if meta.content_type.startswith("image/") else "attachment"
-    headers = {"Content-Disposition": f'{disposition}; filename="{meta.original_name}"'}
+    headers = {"Content-Disposition": content_disposition(meta.original_name, disposition)}
     return StreamingResponse(iter([content]), media_type=meta.content_type, headers=headers)
 
 

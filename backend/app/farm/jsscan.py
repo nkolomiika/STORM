@@ -65,7 +65,18 @@ def _snippet(text: str, start: int, end: int, width: int = 40) -> str:
     """Контекст вокруг совпадения, одной строкой, без переносов."""
     left = max(0, start - width)
     right = min(len(text), end + width)
-    return re.sub(r"\s+", " ", text[left:right]).strip()
+    return redact_context(re.sub(r"\s+", " ", text[left:right]).strip())
+
+
+def redact_context(text: str) -> str:
+    """Mask recognized secrets in context, including adjacent matches."""
+    for _, pattern, _ in _SECRET_PATTERNS:
+        def replace(match):
+            group = 1 if match.re.groups else 0
+            first, last = match.span(group)
+            return match.group(0)[:first - match.start()] + redact(match.group(group)) + match.group(0)[last - match.start():]
+        text = pattern.sub(replace, text)
+    return text
 
 
 def find_secrets(text: str) -> list[Secret]:

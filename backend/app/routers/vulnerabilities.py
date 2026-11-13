@@ -3,14 +3,16 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.enums import Severity, VulnerabilityStatus
 from app.dependencies import enforce_csrf, get_current_user, require_project_access
 from app.models import User
-from app.pagination import PageParams, to_paginated_response
+from app.pagination import PageParams, PaginatedResponse, to_paginated_response
 from app.schemas import (
     FileOut,
     VulnerabilityAssetCreate,
     VulnerabilityAssetOut,
     VulnerabilityCreate,
+    VulnerabilityListOut,
     VulnerabilityOut,
     VulnerabilityStatusPatch,
     VulnerabilityUpdate,
@@ -20,35 +22,38 @@ from app.services import VulnerabilityService
 router = APIRouter(tags=["vulnerabilities"])
 
 
-@router.get("/projects/{project_id}/vulnerabilities", response_model=dict)
+@router.get("/projects/{project_id}/vulnerabilities", response_model=PaginatedResponse[VulnerabilityListOut])
 async def list_vulnerabilities(
     project_id: int,
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=200),
-    severity: str | None = None,
-    status_filter: str | None = Query(None, alias="status"),
+    severity: Severity | None = None,
+    status_filter: VulnerabilityStatus | None = Query(None, alias="status"),
     _project=Depends(require_project_access),
     db: AsyncSession = Depends(get_db),
-) -> dict:
+) -> PaginatedResponse[VulnerabilityListOut]:
     """Возвращает список уязвимостей проекта."""
-    items, total = await VulnerabilityService(db).list(project_id, page, size, severity, status_filter)
-    return to_paginated_response([VulnerabilityOut.model_validate(it) for it in items], total, PageParams(page=page, size=size)).model_dump()
+    service = VulnerabilityService(db)
+    items, total = await service.list(project_id, page, size, severity, status_filter)
+    host_links = await service.host_links_for_page(items)
+    result = [VulnerabilityListOut.model_validate(item).model_copy(update={"affected_host_id": host_links.get(item.id)}) for item in items]
+    return to_paginated_response(result, total, PageParams(page=page, size=size))
 
 
-@router.get("/projects/{project_id}/hosts/{host_id}/vulnerabilities", response_model=dict)
+@router.get("/projects/{project_id}/hosts/{host_id}/vulnerabilities", response_model=PaginatedResponse[VulnerabilityOut])
 async def list_host_vulnerabilities(
     project_id: int,
     host_id: int,
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=200),
-    severity: str | None = None,
-    status_filter: str | None = Query(None, alias="status"),
+    severity: Severity | None = None,
+    status_filter: VulnerabilityStatus | None = Query(None, alias="status"),
     _project=Depends(require_project_access),
     db: AsyncSession = Depends(get_db),
-) -> dict:
+) -> PaginatedResponse[VulnerabilityOut]:
     """Возвращает список уязвимостей, привязанных к конкретному хосту."""
     items, total = await VulnerabilityService(db).list_for_host(project_id, host_id, page, size, severity, status_filter)
-    return to_paginated_response([VulnerabilityOut.model_validate(it) for it in items], total, PageParams(page=page, size=size)).model_dump()
+    return to_paginated_response([VulnerabilityOut.model_validate(it) for it in items], total, PageParams(page=page, size=size))
 
 
 @router.post("/projects/{project_id}/vulnerabilities", response_model=VulnerabilityOut, status_code=status.HTTP_201_CREATED)

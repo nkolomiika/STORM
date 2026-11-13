@@ -29,7 +29,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import set_committed_value
 
-from app.cloudflare import is_cloudflare_ip
 from app.config import get_settings
 from app.enums import (
     AssetType,
@@ -86,6 +85,7 @@ from app.mail import (
 )
 from app.messaging import publish_mail_job
 from app.netguard import is_disallowed_ip
+from app.input_safety import read_upload, validate_json_value
 from app.schemas import (
     CommentOut,
     ImportResult,
@@ -178,8 +178,9 @@ class AuditService:
         entity_id: int | None = None,
         details: dict | None = None,
         ip_address: str | None = None,
+        commit: bool = True,
     ) -> None:
-        """Создаёт запись аудита (хранится в Postgres-таблице audit_logs)."""
+        """Сохраняет аудит вместе с ожидающими изменениями; commit=False для нескольких записей одной операции."""
         created_at = datetime.now(UTC)
         self.db.add(
             AuditLog(
@@ -192,7 +193,10 @@ class AuditService:
                 created_at=created_at,
             )
         )
-        await self.db.commit()
+        if commit:
+            await self.db.commit()
+        else:
+            await self.db.flush()
 
 
 class AgentTokenService:
@@ -280,6 +284,10 @@ class AgentTokenService:
                 raise ForbiddenError(
                     f"Нет доступа к проектам: {', '.join(map(str, forbidden))} — токен не может превышать ваши права"
                 )
+        if not all_projects and project_ids:
+            existing_ids = set((await self.db.scalars(select(Project.id).where(Project.id.in_(project_ids)))).all())
+            if any(project_id not in existing_ids for project_id in project_ids):
+                raise ValidationError("Список project_ids содержит несуществующие проекты")
 
         raw_token = f"storm_{secrets.token_urlsafe(32)}"
         token = AgentApiToken(
@@ -296,7 +304,7 @@ class AgentTokenService:
         if not all_projects:
             for project_id in project_ids:
                 self.db.add(AgentApiTokenProjectGrant(token_id=token.id, project_id=project_id))
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(token)
         await self.audit.log("CREATE", user_id=actor.id, entity_type="agent_api_token", entity_id=token.id)
         return self._serialize_token(token, await self._project_ids_for_token(token.id)), raw_token
@@ -311,7 +319,7 @@ class AgentTokenService:
         # Физически удаляем токен: пользователь нажимает «удалить» и ожидает,
         # что запись исчезнет из списка. Grants подчищаются по ON DELETE CASCADE.
         await self.db.delete(token)
-        await self.db.commit()
+        await self.db.flush()
         await self.audit.log("DELETE", user_id=actor.id, entity_type="agent_api_token", entity_id=token_id)
 
 
@@ -1079,27 +1087,29 @@ class AuthService:
         refresh_hash = hash_refresh_token(refresh_token)
         expires_at = datetime.now(UTC) + timedelta(days=settings.jwt_refresh_token_expire_days)
         self.db.add(RefreshToken(user_id=user_id, token_hash=refresh_hash, expires_at=expires_at))
-        await self.db.commit()
+        await self.db.flush()
         return access_token, refresh_token
 
     async def issue_session_for_user(self, user_id: int) -> tuple[str, str]:
         """Выдаёт сессию без проверки пароля — для активации приглашения (пароль только что задан)."""
-        return await self._issue_session(user_id)
+        tokens = await self._issue_session(user_id)
+        await self.db.commit()
+        return tokens
 
     async def login_via_sso(self, identity: "OidcIdentity", ip_address: str | None = None) -> tuple[str, str, User]:
         """Вход по подтверждённой IdP-личности: находит/заводит пользователя и выдаёт сессию.
 
         Локальная 2FA при SSO не запрашивается — второй фактор обеспечивает сам
-        провайдер (IAM). Пользователь ищется по email, затем по username из токена.
+        провайдер (IAM). Пользователь ищется только по подтверждённому email.
         """
         email = (identity.email or "").strip().lower() or None
         claim_username = (identity.username or "").strip() or None
+        if not email or not identity.email_verified:
+            raise UnauthorizedError("IdP должен передать подтверждённый email")
 
         user: User | None = None
         if email:
             user = await self.db.scalar(select(User).where(func.lower(User.email) == email))
-        if user is None and claim_username:
-            user = await self.db.scalar(select(User).where(User.username == claim_username))
 
         if user is None:
             if not settings.sso_auto_create_users:
@@ -1134,7 +1144,7 @@ class AuthService:
             is_sso=True,
         )
         self.db.add(user)
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(user)
         await self.audit.log("USER_CREATED", user_id=user.id, details={"via": "sso"})
         return user
@@ -1211,7 +1221,7 @@ class AuthService:
                 .where(and_(RefreshToken.user_id == user_id, RefreshToken.revoked_at.is_(None)))
                 .values(revoked_at=now)
             )
-            await self.db.commit()
+            await self.db.flush()
             await self.audit.log("LOGOUT", user_id=user_id, ip_address=ip_address, details={"reason": "refresh_token_replay"})
             raise UnauthorizedError("Refresh token уже использован")
         if not existing or existing.expires_at <= now:
@@ -1234,7 +1244,7 @@ class AuthService:
             .where(and_(RefreshToken.user_id == user_id, RefreshToken.revoked_at.is_(None)))
             .values(revoked_at=datetime.now(UTC))
         )
-        await self.db.commit()
+        await self.db.flush()
         await self.audit.log("LOGOUT", user_id=user_id, ip_address=ip_address)
 
 
@@ -1245,7 +1255,6 @@ class UserService:
         self.db = db
         self.audit = AuditService(db)
         self.storage = MinioStorage()
-        self.storage.ensure_bucket()
 
     @staticmethod
     def _normalized_admin_email() -> str:
@@ -1425,7 +1434,7 @@ class UserService:
         if send_invite_email:
             await self.db.flush()
             mail_job = await self._enqueue_temporary_password_mail(user=user, temporary_password=temporary_password, actor_id=actor_id)
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(user)
         await self.audit.log(
             "CREATE",
@@ -1493,7 +1502,7 @@ class UserService:
         self.db.add(invitation)
         await self.db.flush()
         mail_job = await self._enqueue_invitation_mail(invitation=invitation, raw_token=raw_token, actor_id=actor_id)
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(invitation)
         await self.audit.log(
             "CREATE",
@@ -1532,7 +1541,7 @@ class UserService:
         invitation.status = "pending"
         invitation.expires_at = datetime.now(UTC) + timedelta(hours=settings.invite_token_expire_hours)
         mail_job = await self._enqueue_invitation_mail(invitation=invitation, raw_token=raw_token, actor_id=actor_id)
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(invitation)
         await self.audit.log(
             "UPDATE",
@@ -1551,7 +1560,7 @@ class UserService:
         if invitation.status == "accepted":
             raise ConflictError("Приглашение уже принято — отозвать нельзя")
         invitation.status = "revoked"
-        await self.db.commit()
+        await self.db.flush()
         await self.audit.log(
             "DELETE",
             user_id=actor_id,
@@ -1561,8 +1570,9 @@ class UserService:
             ip_address=ip_address,
         )
 
-    async def _load_invitation_by_token(self, raw_token: str) -> Invitation | None:
-        return await self.db.scalar(select(Invitation).where(Invitation.token_hash == hash_invitation_token(raw_token)))
+    async def _load_invitation_by_token(self, raw_token: str, *, for_update: bool = False) -> Invitation | None:
+        query = select(Invitation).where(Invitation.token_hash == hash_invitation_token(raw_token))
+        return await self.db.scalar(query.with_for_update() if for_update else query)
 
     async def get_invitation_info(self, raw_token: str) -> dict:
         """Публичные данные для страницы активации (email/имя) или причина отказа."""
@@ -1586,7 +1596,7 @@ class UserService:
 
     async def accept_invitation(self, raw_token: str, username: str, password: str, ip_address: str | None = None) -> User:
         """Активация: приглашённый задаёт username+пароль, создаётся пользователь."""
-        invitation = await self._load_invitation_by_token(raw_token)
+        invitation = await self._load_invitation_by_token(raw_token, for_update=True)
         if not invitation or invitation.status != "pending" or invitation.is_expired:
             raise UnauthorizedError("Приглашение недействительно или истекло")
         # Гонка: username/email могли занять между проверкой доступности и отправкой.
@@ -1608,7 +1618,7 @@ class UserService:
         invitation.status = "accepted"
         invitation.accepted_at = datetime.now(UTC)
         invitation.accepted_user_id = user.id
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(user)
         await self.audit.log(
             "CREATE",
@@ -1676,7 +1686,7 @@ class UserService:
             )
         )
         mail_job = await self._enqueue_password_reset_mail(user=user, raw_token=raw_token)
-        await self.db.commit()
+        await self.db.flush()
         await self.audit.log(
             "UPDATE",
             user_id=user.id,
@@ -1686,10 +1696,9 @@ class UserService:
         )
         await self._publish_mail_job(mail_job)
 
-    async def _load_reset_token(self, raw_token: str) -> PasswordResetToken | None:
-        return await self.db.scalar(
-            select(PasswordResetToken).where(PasswordResetToken.token_hash == hash_password_reset_token(raw_token))
-        )
+    async def _load_reset_token(self, raw_token: str, *, for_update: bool = False) -> PasswordResetToken | None:
+        query = select(PasswordResetToken).where(PasswordResetToken.token_hash == hash_password_reset_token(raw_token))
+        return await self.db.scalar(query.with_for_update() if for_update else query)
 
     async def get_password_reset_info(self, raw_token: str) -> dict:
         """Проверяет ссылку до показа формы нового пароля."""
@@ -1707,7 +1716,7 @@ class UserService:
 
     async def confirm_password_reset(self, raw_token: str, new_password: str, ip_address: str | None = None) -> User:
         """Ставит новый пароль по одноразовой ссылке и гасит все сессии."""
-        token = await self._load_reset_token(raw_token)
+        token = await self._load_reset_token(raw_token, for_update=True)
         if not token or not token.is_usable:
             raise UnauthorizedError("Ссылка недействительна или истекла")
         user = await self.db.scalar(select(User).where(User.id == token.user_id))
@@ -1724,7 +1733,7 @@ class UserService:
             .where(and_(RefreshToken.user_id == user.id, RefreshToken.revoked_at.is_(None)))
             .values(revoked_at=datetime.now(UTC))
         )
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(user)
         await self.audit.log(
             "UPDATE",
@@ -1785,7 +1794,7 @@ class UserService:
             )
         )
         mail_job = await self._enqueue_reactivation_mail(user=user, raw_token=raw_token)
-        await self.db.commit()
+        await self.db.flush()
         await self.audit.log(
             "UPDATE",
             user_id=actor_id,
@@ -1797,12 +1806,9 @@ class UserService:
         await self._publish_mail_job(mail_job)
         return mail_job
 
-    async def _load_reactivation_token(self, raw_token: str) -> AccountReactivationToken | None:
-        return await self.db.scalar(
-            select(AccountReactivationToken).where(
-                AccountReactivationToken.token_hash == hash_reactivation_token(raw_token)
-            )
-        )
+    async def _load_reactivation_token(self, raw_token: str, *, for_update: bool = False) -> AccountReactivationToken | None:
+        query = select(AccountReactivationToken).where(AccountReactivationToken.token_hash == hash_reactivation_token(raw_token))
+        return await self.db.scalar(query.with_for_update() if for_update else query)
 
     async def get_reactivation_info(self, raw_token: str) -> dict:
         """Публичная проверка ссылки-возврата до показа кнопки входа."""
@@ -1822,7 +1828,7 @@ class UserService:
     async def complete_reactivation(self, raw_token: str, ip_address: str | None = None) -> User:
         """Разблокирует аккаунт по одноразовой ссылке и возвращает пользователя
         (сессию выдаёт auth-роутер поверх этого)."""
-        token = await self._load_reactivation_token(raw_token)
+        token = await self._load_reactivation_token(raw_token, for_update=True)
         if not token or not token.is_usable:
             raise UnauthorizedError("Ссылка недействительна или истекла")
         user = await self.db.scalar(select(User).where(User.id == token.user_id))
@@ -1830,7 +1836,7 @@ class UserService:
             raise UnauthorizedError("Ссылка недействительна или истекла")
         user.is_locked = False
         token.used_at = datetime.now(UTC)
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(user)
         await self.audit.log(
             "UPDATE",
@@ -1856,7 +1862,7 @@ class UserService:
         for key, value in payload.items():
             if value is not None:
                 setattr(user, key, value)
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(user)
         await self.audit.log("UPDATE", user_id=actor_id, entity_type="user", entity_id=user.id, ip_address=ip_address)
         return user
@@ -1869,7 +1875,7 @@ class UserService:
         for key, value in payload.items():
             if value is not None:
                 setattr(user, key, value)
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(user)
         await self.audit.log("UPDATE", user_id=user_id, entity_type="user_profile", entity_id=user.id, ip_address=ip_address)
         return user
@@ -1892,7 +1898,7 @@ class UserService:
             .where(and_(RefreshToken.user_id == user.id, RefreshToken.revoked_at.is_(None)))
             .values(revoked_at=datetime.now(UTC))
         )
-        await self.db.commit()
+        await self.db.flush()
         await self.audit.log("DELETE", user_id=actor_id, entity_type="user", entity_id=user_id, ip_address=ip_address)
 
     async def reset_password(self, user_id: int, actor_id: int, ip_address: str | None = None) -> User:
@@ -1908,7 +1914,7 @@ class UserService:
             .values(revoked_at=datetime.now(UTC))
         )
         mail_job = await self._enqueue_temporary_password_mail(user=user, temporary_password=temporary_password, actor_id=actor_id)
-        await self.db.commit()
+        await self.db.flush()
         await self.audit.log(
             "UPDATE",
             user_id=actor_id,
@@ -1938,7 +1944,7 @@ class UserService:
             .where(and_(RefreshToken.user_id == user.id, RefreshToken.revoked_at.is_(None)))
             .values(revoked_at=datetime.now(UTC))
         )
-        await self.db.commit()
+        await self.db.flush()
         await self.audit.log("UPDATE", user_id=user.id, entity_type="user_password", entity_id=user.id, ip_address=ip_address)
         await self.db.refresh(user)
         return user
@@ -1967,7 +1973,7 @@ class UserService:
             raise ValidationError("Неверный код из приложения-аутентификатора")
         user.totp_enabled = True
         user.totp_confirmed_at = datetime.now(UTC)
-        await self.db.commit()
+        await self.db.flush()
         await self.audit.log("UPDATE", user_id=user.id, entity_type="user_2fa_enabled", entity_id=user.id, ip_address=ip_address)
         await self.db.refresh(user)
         return user
@@ -1981,7 +1987,7 @@ class UserService:
         user.totp_enabled = False
         user.totp_secret = None
         user.totp_confirmed_at = None
-        await self.db.commit()
+        await self.db.flush()
         await self.audit.log("UPDATE", user_id=user.id, entity_type="user_2fa_disabled", entity_id=user.id, ip_address=ip_address)
         await self.db.refresh(user)
         return user
@@ -1997,14 +2003,14 @@ class UserService:
             .where(and_(RefreshToken.user_id == user.id, RefreshToken.revoked_at.is_(None)))
             .values(revoked_at=datetime.now(UTC))
         )
-        await self.db.commit()
+        await self.db.flush()
         await self.audit.log("UPDATE", user_id=actor_id, entity_type="user_2fa_reset", entity_id=user_id, ip_address=ip_address)
         await self.db.refresh(user)
         return user
 
     async def upload_avatar(self, user_id: int, upload: UploadFile, ip_address: str | None = None) -> User:
         user = await self.get_user(user_id)
-        content = await upload.read()
+        content = await read_upload(upload, 5 * 1024 * 1024)
         if len(content) > 5 * 1024 * 1024:
             raise ValidationError("Размер аватара превышает 5 МБ")
         mime_type = magic.from_buffer(content, mime=True)
@@ -2013,12 +2019,13 @@ class UserService:
         if user.avatar_minio_key:
             await asyncio.to_thread(self.storage.delete, user.avatar_minio_key)
         safe_name = _sanitize_filename(upload.filename, fallback="avatar.bin")
+        await asyncio.to_thread(self.storage.ensure_bucket)
         object_key = await asyncio.to_thread(self.storage.upload_bytes, content, mime_type, safe_name)
         user.avatar_minio_bucket = settings.minio_bucket_name
         user.avatar_minio_key = object_key
         user.avatar_content_type = mime_type
         user.avatar_uploaded_at = datetime.now(UTC)
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(user)
         await self.audit.log("FILE_UPLOAD", user_id=user.id, entity_type="user_avatar", entity_id=user.id, ip_address=ip_address)
         return user
@@ -2082,7 +2089,7 @@ class ProjectService:
         payload["folder"] = self._normalize_project_folder(payload.get("folder"))
         project = Project(**payload, created_by=actor_id)
         self.db.add(project)
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(project)
         await self.audit.log("CREATE", user_id=actor_id, entity_type="project", entity_id=project.id, ip_address=ip_address)
         await ws_manager.broadcast_projects_index(
@@ -2112,13 +2119,9 @@ class ProjectService:
                 setattr(project, key, value)
             elif key == "timeline_frozen_at":
                 setattr(project, key, None)
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(project)
-        await self.audit.log("UPDATE", user_id=actor_id, entity_type="project", entity_id=project.id, ip_address=ip_address)
-        await ws_manager.broadcast(project.id, {"event": "updated", "entity": "project", "project_id": str(project.id), "data": {"id": str(project.id)}})
-        await ws_manager.broadcast_projects_index(
-            {"event": "updated", "entity": "project", "project_id": str(project.id), "data": {"id": str(project.id)}}
-        )
+        await self.audit.log("UPDATE", user_id=actor_id, entity_type="project", entity_id=project.id, ip_address=ip_address, commit=False)
         if payload.get("status") and payload["status"] != old_status:
             await self.audit.log(
                 "STATUS_CHANGE",
@@ -2127,7 +2130,14 @@ class ProjectService:
                 entity_id=project.id,
                 details={"old_status": old_status.value, "new_status": project.status.value},
                 ip_address=ip_address,
+                commit=False,
             )
+        await self.db.commit()
+        await ws_manager.broadcast(project.id, {"event": "updated", "entity": "project", "project_id": str(project.id), "data": {"id": str(project.id)}})
+        await ws_manager.broadcast_projects_index(
+            {"event": "updated", "entity": "project", "project_id": str(project.id), "data": {"id": str(project.id)}}
+        )
+        if payload.get("status") and payload["status"] != old_status:
             await self._notify_project_status_changed(project, actor_id)
         return project
 
@@ -2174,7 +2184,7 @@ class ProjectService:
         """Удаляет проект и связанные сущности."""
         project = await self.get_project(project_id)
         await self.db.delete(project)
-        await self.db.commit()
+        await self.db.flush()
         await self.audit.log("DELETE", user_id=actor_id, entity_type="project", entity_id=project_id, ip_address=ip_address)
         await ws_manager.broadcast(project_id, {"event": "deleted", "entity": "project", "project_id": str(project_id), "data": {"id": str(project_id)}})
         await ws_manager.broadcast_projects_index(
@@ -2190,6 +2200,7 @@ class ProjectService:
         """
         hosts_sq = (
             select(Host.project_id.label("project_id"), func.count().label("hosts_count"))
+            .where(Host.origin != "ip")
             .group_by(Host.project_id)
             .subquery()
         )
@@ -2312,7 +2323,7 @@ class ProjectService:
                     is_read=False,
                 )
             )
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(member)
         await self.audit.log(
             "CREATE",
@@ -2350,7 +2361,7 @@ class ProjectService:
         # Без username в активности осталось бы «удалил участника #17».
         username = await self.db.scalar(select(User.username).where(User.id == user_id))
         await self.db.delete(member)
-        await self.db.commit()
+        await self.db.flush()
         await self.audit.log(
             "DELETE",
             user_id=actor_id,
@@ -2444,7 +2455,7 @@ class ProjectService:
             raise ConflictError("Папка с таким путём уже существует")
         folder = ProjectFolder(name=segment, path=path, parent_id=parent_id, created_by=actor_id)
         self.db.add(folder)
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(folder)
         await self.audit.log("CREATE", user_id=actor_id, entity_type="project_folder", entity_id=folder.id, ip_address=ip_address)
         await ws_manager.broadcast_projects_index(
@@ -2506,7 +2517,7 @@ class ProjectService:
             suffix = project.folder[len(old_path) :]
             project.folder = f"{new_path}{suffix}"
 
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(folder)
         await self.audit.log(
             "UPDATE",
@@ -2554,7 +2565,7 @@ class ProjectService:
             await self.db.execute(delete(Project).where(Project.id.in_(subtree_project_ids)))
         if subtree_folder_ids:
             await self.db.execute(delete(ProjectFolder).where(ProjectFolder.id.in_(subtree_folder_ids)))
-        await self.db.commit()
+        await self.db.flush()
         summary = {
             "path": path,
             "deleted_folders": len(subtree_folder_ids),
@@ -2738,7 +2749,7 @@ class AssetService:
         if len(request_line) < 3:
             raise ValidationError("request_raw должен содержать request line вида 'METHOD /path HTTP/1.1'")
         method, path_value, http_part = request_line[0].upper(), request_line[1], request_line[2].upper()
-        allowed_methods = {"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"}
+        allowed_methods = {"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE", "QUERY"}
         if method not in allowed_methods:
             raise ValidationError("request_raw содержит неподдерживаемый HTTP-метод")
         if not http_part.startswith("HTTP/"):
@@ -2762,9 +2773,9 @@ class AssetService:
             if name.lower() == "content-type":
                 content_type = value.strip() or None
                 break
-        if ("request_body" not in payload or payload.get("request_body") is None) and body.strip():
-            payload["request_body"] = body
-        if ("request_content_type" not in payload or payload.get("request_content_type") is None) and content_type:
+        if "request_body" not in payload or payload.get("request_body") is None:
+            payload["request_body"] = body if body.strip() else None
+        if "request_content_type" not in payload or payload.get("request_content_type") is None:
             payload["request_content_type"] = content_type
         if "request_headers" not in payload or not payload.get("request_headers"):
             payload["request_headers"] = AssetService._sanitize_parsed_header_pairs(header_pairs)
@@ -2787,10 +2798,18 @@ class AssetService:
         if not endpoint.request_headers and endpoint_payload.get("request_headers"):
             endpoint.request_headers = endpoint_payload["request_headers"]
 
+    async def _ensure_host(self, project_id: int, host_id: int) -> None:
+        """Проверка принадлежности без загрузки IP, портов и всех эндпоинтов."""
+        if await self.db.scalar(select(Host.id).where(Host.id == host_id, Host.project_id == project_id)) is None:
+            raise NotFoundError("Хост не найден")
+
     async def _get_host(self, project_id: int, host_id: int) -> Host:
         host = await self.db.scalar(
             select(Host)
-            .options(selectinload(Host.ip_addresses).selectinload(HostIpAddress.ports).selectinload(Port.services))
+            .options(
+                selectinload(Host.ip_addresses).selectinload(HostIpAddress.ports).selectinload(Port.services),
+                selectinload(Host.endpoints),
+            )
             .where(and_(Host.id == host_id, Host.project_id == project_id))
         )
         if not host:
@@ -2863,18 +2882,13 @@ class AssetService:
                     ip_address=value,
                     label=entry.get("label"),
                     is_primary=bool(entry.get("is_primary")),
-                    # Ручное добавление не пробивает — CF знаем только по CIDR:
-                    # True если в диапазонах CF, иначе None (неизвестно), не False.
-                    is_cloudflare=is_cloudflare_ip(value) or None,
+
                 )
                 self.db.add(row)
             else:
                 row.label = entry.get("label")
                 row.is_primary = bool(entry.get("is_primary"))
-                # Переиспользуемая строка сохраняет hostnames. CF по CIDR: True если
-                # в диапазонах; иначе НЕ понижаем (пробив мог достоверно определить CF/не-CF).
-                if is_cloudflare_ip(value):
-                    row.is_cloudflare = True
+
             result_rows.append(row)
 
         host.ip_address = next(
@@ -2884,10 +2898,21 @@ class AssetService:
         set_committed_value(host, "ip_addresses", result_rows)
 
     async def _get_port(self, host_id: int, port_id: int) -> Port:
-        port = await self.db.scalar(select(Port).where(and_(Port.id == port_id, Port.host_id == host_id)))
+        port = await self.db.scalar(select(Port).options(selectinload(Port.services)).where(and_(Port.id == port_id, Port.host_id == host_id)))
         if not port:
             raise NotFoundError("Порт не найден")
         return port
+
+    async def list_host_creation_times(self, project_id: int) -> list[datetime]:
+        """Даты всех хостов проекта для графиков, включая служебные origin=ip.
+
+        Совпадает с created_at из list_hosts(origin=all) без загрузки ORM-деревьев.
+        Повторяющиеся даты сохраняются: каждая соответствует отдельному хосту.
+        Доступ к проекту проверяет dependency HTTP-маршрута.
+        """
+        return list((await self.db.scalars(
+            select(Host.created_at).where(Host.project_id == project_id).order_by(Host.created_at.desc())
+        )).all())
 
     async def list_hosts(
         self, project_id: int, page: int, size: int, status: str | None, origin: str = "host"
@@ -2924,7 +2949,7 @@ class AssetService:
         # (async SQLAlchemy: ленивый lazy-load здесь падает с MissingGreenlet).
         set_committed_value(host, "ip_addresses", [])
         await self._replace_host_ip_addresses(host, ip_entries)
-        await self.db.commit()
+        await self.db.flush()
         await self.audit.log("CREATE", user_id=actor_id, entity_type="host", entity_id=host.id)
         await ws_manager.broadcast(project_id, {"event": "created", "entity": "host", "project_id": str(project_id), "data": {"id": str(host.id)}})
         return await self._get_host(project_id, host.id)
@@ -2944,7 +2969,6 @@ class AssetService:
                     "label": ip.label,
                     "is_primary": ip.is_primary,
                     "hostnames": ip.hostnames or [],
-                    "is_cloudflare": ip.is_cloudflare,
                     "ports": [
                         {
                             "id": port.id,
@@ -3007,14 +3031,14 @@ class AssetService:
         raw_ip_entries = payload.pop("ip_addresses", None)
         primary_ip = payload.pop("ip_address", None)
         for key, value in payload.items():
-            if value is not None:
+            if value is not None or key == "notes":
                 setattr(host, key, value)
         if has_ip_payload:
             ip_entries = self._normalize_host_ip_entries(primary_ip, raw_ip_entries)
             if not ip_entries and not host.hostname:
                 raise ValidationError("Нужно указать хотя бы один IP-адрес или hostname")
             await self._replace_host_ip_addresses(host, ip_entries)
-        await self.db.commit()
+        await self.db.flush()
         await self.audit.log("UPDATE", user_id=actor_id, entity_type="host", entity_id=host.id)
         await ws_manager.broadcast(project_id, {"event": "updated", "entity": "host", "project_id": str(project_id), "data": {"id": str(host.id)}})
         return await self._get_host(project_id, host.id)
@@ -3024,7 +3048,7 @@ class AssetService:
         # Имя фиксируем до удаления: после него в активности остался бы «#12».
         details = {"project_id": str(project_id), "hostname": host.hostname, "ip_address": host.ip_address}
         await self.db.delete(host)
-        await self.db.commit()
+        await self.db.flush()
         await self.audit.log("DELETE", user_id=actor_id, entity_type="host", entity_id=host.id, details=details)
         await ws_manager.broadcast(project_id, {"event": "deleted", "entity": "host", "project_id": str(project_id), "data": {"id": str(host.id)}})
 
@@ -3063,7 +3087,7 @@ class AssetService:
         )
         if existing is None:
             self.db.add(ProjectHiddenIp(project_id=project_id, ip_address=ip, created_by=actor_id))
-        await self.db.commit()
+        await self.db.flush()
         await self.audit.log(
             "DELETE", user_id=actor_id, entity_type="ip_address", entity_id=None, details={"project_id": str(project_id), "ip_address": ip}
         )
@@ -3078,14 +3102,15 @@ class AssetService:
                 and_(ProjectHiddenIp.project_id == project_id, ProjectHiddenIp.ip_address == ip)
             )
         )
-        await self.db.commit()
+        await self.db.flush()
         await self.audit.log(
             "UPDATE", user_id=actor_id, entity_type="ip_address", entity_id=None, details={"project_id": str(project_id), "ip_address": ip, "unhidden": True}
         )
         await ws_manager.broadcast(project_id, {"event": "updated", "entity": "host", "project_id": str(project_id), "data": {"ip_address": ip}})
 
-    async def list_ports(self, host_id: int, ip_address_id: int | None = None) -> list[Port]:
-        query = select(Port).where(Port.host_id == host_id).order_by(Port.port_number)
+    async def list_ports(self, project_id: int, host_id: int, ip_address_id: int | None = None) -> list[Port]:
+        await self._ensure_host(project_id, host_id)
+        query = select(Port).options(selectinload(Port.services)).where(Port.host_id == host_id).order_by(Port.port_number)
         if ip_address_id is not None:
             query = query.where(Port.ip_address_id == ip_address_id)
         return list((await self.db.scalars(query)).all())
@@ -3101,7 +3126,7 @@ class AssetService:
         return ip
 
     async def create_port(self, project_id: int, host_id: int, payload: dict, actor_id: int) -> Port:
-        await self._get_host(project_id, host_id)
+        await self._ensure_host(project_id, host_id)
         ip_address_id = payload["ip_address_id"]
         await self._get_host_ip(host_id, ip_address_id)
         duplicate = await self.db.scalar(
@@ -3117,16 +3142,18 @@ class AssetService:
             raise ConflictError("Порт с таким номером и протоколом уже существует на этом IP")
         port = Port(host_id=host_id, **payload)
         self.db.add(port)
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(port)
         await self.audit.log("CREATE", user_id=actor_id, entity_type="port", entity_id=port.id)
         await ws_manager.broadcast(project_id, {"event": "created", "entity": "port", "project_id": str(project_id), "data": {"id": str(port.id)}})
-        return port
+        return await self._get_port(host_id, port.id)
 
-    async def get_port(self, host_id: int, port_id: int) -> Port:
+    async def get_port(self, project_id: int, host_id: int, port_id: int) -> Port:
+        await self._ensure_host(project_id, host_id)
         return await self._get_port(host_id, port_id)
 
     async def update_port(self, project_id: int, host_id: int, port_id: int, payload: dict, actor_id: int) -> Port:
+        await self._ensure_host(project_id, host_id)
         port = await self._get_port(host_id, port_id)
         next_port_number = payload.get("port_number", port.port_number)
         next_protocol = payload.get("protocol", port.protocol)
@@ -3148,28 +3175,31 @@ class AssetService:
         for key, value in payload.items():
             if value is not None:
                 setattr(port, key, value)
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(port)
         await self.audit.log("UPDATE", user_id=actor_id, entity_type="port", entity_id=port.id)
         await ws_manager.broadcast(project_id, {"event": "updated", "entity": "port", "project_id": str(project_id), "data": {"id": str(port.id)}})
-        return port
+        return await self._get_port(host_id, port.id)
 
     async def delete_port(self, project_id: int, host_id: int, port_id: int, actor_id: int) -> None:
+        await self._ensure_host(project_id, host_id)
         port = await self._get_port(host_id, port_id)
         await self.db.delete(port)
-        await self.db.commit()
+        await self.db.flush()
         await self.audit.log("DELETE", user_id=actor_id, entity_type="port", entity_id=port.id)
         await ws_manager.broadcast(project_id, {"event": "deleted", "entity": "port", "project_id": str(project_id), "data": {"id": str(port.id)}})
 
-    async def list_services(self, port_id: int) -> list[Service]:
+    async def list_services(self, project_id: int, host_id: int, port_id: int) -> list[Service]:
+        await self._ensure_host(project_id, host_id)
+        await self._get_port(host_id, port_id)
         return list((await self.db.scalars(select(Service).where(Service.port_id == port_id).order_by(Service.created_at.desc()))).all())
 
     async def create_service(self, project_id: int, host_id: int, port_id: int, payload: dict, actor_id: int) -> Service:
-        await self._get_host(project_id, host_id)
+        await self._ensure_host(project_id, host_id)
         await self._get_port(host_id, port_id)
         service = Service(port_id=port_id, **payload)
         self.db.add(service)
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(service)
         await self.audit.log("CREATE", user_id=actor_id, entity_type="service", entity_id=service.id)
         await ws_manager.broadcast(project_id, {"event": "created", "entity": "service", "project_id": str(project_id), "data": {"id": str(service.id)}})
@@ -3178,7 +3208,7 @@ class AssetService:
     async def update_service(
         self, project_id: int, host_id: int, port_id: int, service_id: int, payload: dict, actor_id: int
     ) -> Service:
-        await self._get_host(project_id, host_id)
+        await self._ensure_host(project_id, host_id)
         await self._get_port(host_id, port_id)
         service = await self.db.scalar(select(Service).where(and_(Service.id == service_id, Service.port_id == port_id)))
         if not service:
@@ -3186,22 +3216,25 @@ class AssetService:
         for key, value in payload.items():
             if value is not None:
                 setattr(service, key, value)
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(service)
         await self.audit.log("UPDATE", user_id=actor_id, entity_type="service", entity_id=service.id)
         await ws_manager.broadcast(project_id, {"event": "updated", "entity": "service", "project_id": str(project_id), "data": {"id": str(service.id)}})
         return service
 
-    async def delete_service(self, project_id: int, port_id: int, service_id: int, actor_id: int) -> None:
+    async def delete_service(self, project_id: int, host_id: int, port_id: int, service_id: int, actor_id: int) -> None:
+        await self._ensure_host(project_id, host_id)
+        await self._get_port(host_id, port_id)
         service = await self.db.scalar(select(Service).where(and_(Service.id == service_id, Service.port_id == port_id)))
         if not service:
             raise NotFoundError("Сервис не найден")
         await self.db.delete(service)
-        await self.db.commit()
+        await self.db.flush()
         await self.audit.log("DELETE", user_id=actor_id, entity_type="service", entity_id=service.id)
         await ws_manager.broadcast(project_id, {"event": "deleted", "entity": "service", "project_id": str(project_id), "data": {"id": str(service.id)}})
 
-    async def list_endpoints(self, host_id: int) -> list[Endpoint]:
+    async def list_endpoints(self, project_id: int, host_id: int) -> list[Endpoint]:
+        await self._ensure_host(project_id, host_id)
         return list((await self.db.scalars(select(Endpoint).where(Endpoint.host_id == host_id).order_by(Endpoint.created_at.desc()))).all())
 
     async def list_js_files(
@@ -3228,9 +3261,12 @@ class AssetService:
                 .limit(limit)
             )
         ).all()
+        host_ids = {file.host_id for file in files}
         host_names = dict(
-            (await self.db.execute(select(Host.id, Host.hostname).where(Host.project_id == project_id))).all()
-        )
+            (await self.db.execute(
+                select(Host.id, Host.hostname).where(Host.project_id == project_id, Host.id.in_(host_ids))
+            )).all()
+        ) if host_ids else {}
         items = [
             {
                 "id": f.id,
@@ -3269,7 +3305,7 @@ class AssetService:
         file_ids = select(JsFile.id).where(cond)
         await self.db.execute(delete(JsSecret).where(JsSecret.js_file_id.in_(file_ids)))
         res = await self.db.execute(delete(JsFile).where(cond))
-        await self.db.commit()
+        await self.db.flush()
         return int(res.rowcount or 0)
 
     async def delete_js_for_host(self, project_id: int, host_id: int, actor_id: int) -> int:
@@ -3313,7 +3349,7 @@ class AssetService:
         return deleted
 
     async def create_endpoint(self, project_id: int, host_id: int, payload: dict, actor_id: int) -> Endpoint:
-        await self._get_host(project_id, host_id)
+        await self._ensure_host(project_id, host_id)
         payload = self._apply_structured_request_payload(self._apply_raw_request_payload(dict(payload)))
         if payload.get("request_headers") is None:
             payload["request_headers"] = []
@@ -3328,21 +3364,21 @@ class AssetService:
         )
         if duplicate:
             self._merge_endpoint_fields(duplicate, payload)
-            await self.db.commit()
+            await self.db.flush()
             await self.db.refresh(duplicate)
             await self.audit.log("UPDATE", user_id=actor_id, entity_type="endpoint", entity_id=duplicate.id)
             await ws_manager.broadcast(project_id, {"event": "updated", "entity": "endpoint", "project_id": str(project_id), "data": {"id": str(duplicate.id)}})
             return duplicate
         endpoint = Endpoint(host_id=host_id, **payload)
         self.db.add(endpoint)
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(endpoint)
         await self.audit.log("CREATE", user_id=actor_id, entity_type="endpoint", entity_id=endpoint.id)
         await ws_manager.broadcast(project_id, {"event": "created", "entity": "endpoint", "project_id": str(project_id), "data": {"id": str(endpoint.id)}})
         return endpoint
 
     async def update_endpoint(self, project_id: int, host_id: int, endpoint_id: int, payload: dict, actor_id: int) -> Endpoint:
-        await self._get_host(project_id, host_id)
+        await self._ensure_host(project_id, host_id)
         payload = self._apply_structured_request_payload(self._apply_raw_request_payload(dict(payload)))
         endpoint = await self.db.scalar(select(Endpoint).where(and_(Endpoint.id == endpoint_id, Endpoint.host_id == host_id)))
         if not endpoint:
@@ -3364,19 +3400,20 @@ class AssetService:
         for key, value in payload.items():
             if key in {"description", "request_body", "request_content_type", "query_params", "request_headers"} or value is not None:
                 setattr(endpoint, key, value)
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(endpoint)
         await self.audit.log("UPDATE", user_id=actor_id, entity_type="endpoint", entity_id=endpoint.id)
         await ws_manager.broadcast(project_id, {"event": "updated", "entity": "endpoint", "project_id": str(project_id), "data": {"id": str(endpoint.id)}})
         return endpoint
 
     async def delete_endpoint(self, project_id: int, host_id: int, endpoint_id: int, actor_id: int) -> None:
+        await self._ensure_host(project_id, host_id)
         endpoint = await self.db.scalar(select(Endpoint).where(and_(Endpoint.id == endpoint_id, Endpoint.host_id == host_id)))
         if not endpoint:
             raise NotFoundError("Endpoint не найден")
         details = {"project_id": str(project_id), "endpoint": f"{endpoint.method.value if endpoint.method else ''} {endpoint.path}".strip()}
         await self.db.delete(endpoint)
-        await self.db.commit()
+        await self.db.flush()
         await self.audit.log("DELETE", user_id=actor_id, entity_type="endpoint", entity_id=endpoint.id, details=details)
         await ws_manager.broadcast(project_id, {"event": "deleted", "entity": "endpoint", "project_id": str(project_id), "data": {"id": str(endpoint.id)}})
 
@@ -3640,10 +3677,25 @@ class VulnerabilityService:
         if status:
             query = query.where(Vulnerability.status == status)
         total = await self.db.scalar(select(func.count()).select_from(query.subquery())) or 0
-        items = (await self.db.scalars(query.order_by(Vulnerability.created_at.desc()).offset((page - 1) * size).limit(size))).all()
+        items = (await self.db.scalars(query.order_by(Vulnerability.created_at.desc(), Vulnerability.id.desc()).offset((page - 1) * size).limit(size))).all()
         for item in items:
             self._hydrate_workflow_steps(item)
         return list(items), total
+
+    async def host_links_for_page(self, items: list[Vulnerability]) -> dict[int, int]:
+        """Первый связанный хост каждой находки текущей страницы, одним запросом."""
+        if not items:
+            return {}
+        rows = (await self.db.execute(
+            select(VulnerabilityAsset.vulnerability_id, VulnerabilityAsset.asset_id)
+            .where(VulnerabilityAsset.vulnerability_id.in_([item.id for item in items]),
+                   VulnerabilityAsset.asset_type == AssetType.HOST)
+            .order_by(VulnerabilityAsset.id)
+        )).all()
+        links: dict[int, int] = {}
+        for vulnerability_id, host_id in rows:
+            links.setdefault(vulnerability_id, host_id)
+        return links
 
     async def list_for_host(
         self, project_id: int, host_id: int, page: int, size: int, severity: str | None, status: str | None
@@ -3668,7 +3720,7 @@ class VulnerabilityService:
         if status:
             query = query.where(Vulnerability.status == status)
         total = await self.db.scalar(select(func.count()).select_from(query.subquery())) or 0
-        items = (await self.db.scalars(query.order_by(Vulnerability.created_at.desc()).offset((page - 1) * size).limit(size))).all()
+        items = (await self.db.scalars(query.order_by(Vulnerability.created_at.desc(), Vulnerability.id.desc()).offset((page - 1) * size).limit(size))).all()
         for item in items:
             self._hydrate_workflow_steps(item)
         return list(items), total
@@ -3690,7 +3742,7 @@ class VulnerabilityService:
         self.db.add(vuln)
         await self.db.flush()
         self.db.add(VulnerabilityAsset(vulnerability_id=vuln.id, asset_type=AssetType.HOST, asset_id=host_id))
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(vuln)
         await self.audit.log(
             "CREATE",
@@ -3734,7 +3786,7 @@ class VulnerabilityService:
                 setattr(vuln, key, value)
             elif key in clearable_fields or value is not None:
                 setattr(vuln, key, value)
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(vuln)
         await self.audit.log("UPDATE", user_id=actor_id, entity_type="vulnerability", entity_id=vuln.id)
         await ws_manager.broadcast(project_id, {"event": "updated", "entity": "vulnerability", "project_id": str(project_id), "data": {"id": str(vuln.id)}})
@@ -3746,7 +3798,7 @@ class VulnerabilityService:
         vuln = await self._get_vuln(project_id, vuln_id)
         old_status = vuln.status
         vuln.status = status
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(vuln)
         await self.audit.log(
             "STATUS_CHANGE",
@@ -3799,7 +3851,7 @@ class VulnerabilityService:
         vuln = await self._get_vuln(project_id, vuln_id)
         details = {"project_id": str(project_id), "title": vuln.title, "severity": vuln.severity.value}
         await self.db.delete(vuln)
-        await self.db.commit()
+        await self.db.flush()
         await self.audit.log("DELETE", user_id=actor_id, entity_type="vulnerability", entity_id=vuln_id, details=details)
         await ws_manager.broadcast(project_id, {"event": "deleted", "entity": "vulnerability", "project_id": str(project_id), "data": {"id": str(vuln_id)}})
 
@@ -3844,7 +3896,7 @@ class VulnerabilityService:
             raise ConflictError("Связь уже существует")
         link = VulnerabilityAsset(vulnerability_id=vuln_id, asset_type=asset_type, asset_id=asset_id)
         self.db.add(link)
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(link)
         await self.audit.log("CREATE", user_id=actor_id, entity_type="vulnerability_asset", entity_id=link.id)
         await ws_manager.broadcast(
@@ -3874,7 +3926,7 @@ class VulnerabilityService:
             if (host_links_count or 0) <= 1:
                 raise ValidationError("Уязвимость должна оставаться привязанной хотя бы к одному хосту")
         await self.db.delete(link)
-        await self.db.commit()
+        await self.db.flush()
         await self.audit.log("DELETE", user_id=actor_id, entity_type="vulnerability_asset", entity_id=link_id)
         await ws_manager.broadcast(
             project_id,
@@ -3894,7 +3946,6 @@ class FileService:
         self.db = db
         self.audit = AuditService(db)
         self.storage = storage or MinioStorage()
-        self.storage.ensure_bucket()
 
     async def _ensure_vuln(self, project_id: int, vuln_id: int) -> Vulnerability:
         vuln = await self.db.scalar(select(Vulnerability).where(and_(Vulnerability.id == vuln_id, Vulnerability.project_id == project_id)))
@@ -3908,13 +3959,14 @@ class FileService:
 
     async def upload(self, project_id: int, vuln_id: int, upload: UploadFile, actor_id: int) -> File:
         await self._ensure_vuln(project_id, vuln_id)
-        content = await upload.read()
+        content = await read_upload(upload, MAX_FILE_SIZE)
         if len(content) > MAX_FILE_SIZE:
             raise ValidationError("Размер файла превышает 50 МБ")
         mime_type = magic.from_buffer(content, mime=True)
         if mime_type not in ALLOWED_MIME_TYPES:
             raise ValidationError("Неподдерживаемый тип файла")
         safe_name = _sanitize_filename(upload.filename, fallback="file.bin")
+        await asyncio.to_thread(self.storage.ensure_bucket)
         object_key = await asyncio.to_thread(self.storage.upload_bytes, content, mime_type, safe_name)
         file_meta = File(
             vulnerability_id=vuln_id,
@@ -3926,7 +3978,7 @@ class FileService:
             uploaded_by=actor_id,
         )
         self.db.add(file_meta)
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(file_meta)
         await self.audit.log("FILE_UPLOAD", user_id=actor_id, entity_type="file", entity_id=file_meta.id)
         await ws_manager.broadcast(project_id, {"event": "created", "entity": "file", "project_id": str(project_id), "data": {"id": str(file_meta.id)}})
@@ -3958,7 +4010,7 @@ class FileService:
         if not file_meta:
             raise NotFoundError("Файл не найден")
         await self.db.delete(file_meta)
-        await self.db.commit()
+        await self.db.flush()
         await asyncio.to_thread(self.storage.delete, file_meta.minio_key)
         await self.audit.log("FILE_DELETE", user_id=actor_id, entity_type="file", entity_id=file_id)
         await ws_manager.broadcast(project_id, {"event": "deleted", "entity": "file", "project_id": str(project_id), "data": {"id": str(file_id)}})
@@ -4001,7 +4053,8 @@ class CommentService:
         ).all()
         return list(rows)
 
-    async def list(self, vuln_id: int, page: int, size: int) -> tuple[list[CommentOut], int]:
+    async def list(self, project_id: int, vuln_id: int, page: int, size: int) -> tuple[list[CommentOut], int]:
+        await self._ensure_vuln(project_id, vuln_id)
         total = await self.db.scalar(select(func.count()).select_from(Comment).where(Comment.vulnerability_id == vuln_id)) or 0
         rows = (
             await self.db.execute(
@@ -4013,16 +4066,19 @@ class CommentService:
                 .limit(size)
             )
         ).all()
-        result: list[CommentOut] = []
-        for comment, user in rows:
+        mentions_by_comment: dict[int, list[MentionOut]] = {}
+        if rows:
             mention_rows = (
                 await self.db.execute(
-                    select(CommentMention, User)
+                    select(CommentMention.comment_id, User.id, User.username)
                     .join(User, User.id == CommentMention.user_id)
-                    .where(CommentMention.comment_id == comment.id)
+                    .where(CommentMention.comment_id.in_([comment.id for comment, _ in rows]))
                 )
             ).all()
-            mentions = [MentionOut(user_id=u.id, username=u.username) for _, u in mention_rows]
+            for comment_id, user_id, username in mention_rows:
+                mentions_by_comment.setdefault(comment_id, []).append(MentionOut(user_id=user_id, username=username))
+        result: list[CommentOut] = []
+        for comment, user in rows:
             result.append(
                 CommentOut(
                     id=comment.id,
@@ -4031,7 +4087,7 @@ class CommentService:
                     username=user.username,
                     avatar_url=user.avatar_url,
                     content=comment.content,
-                    mentions=mentions,
+                    mentions=mentions_by_comment.get(comment.id, []),
                     created_at=comment.created_at,
                     updated_at=comment.updated_at,
                 )
@@ -4060,8 +4116,9 @@ class CommentService:
                     )
                 )
             mention_models.append(MentionOut(user_id=user.id, username=user.username))
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(comment)
+        await self.audit.log("CREATE", user_id=actor.id, entity_type="comment", entity_id=comment.id)
         for user in mentioned_users:
             if user.id == actor.id:
                 continue
@@ -4081,7 +4138,6 @@ class CommentService:
                     },
                 },
             )
-        await self.audit.log("CREATE", user_id=actor.id, entity_type="comment", entity_id=comment.id)
         await ws_manager.broadcast(project_id, {"event": "created", "entity": "comment", "project_id": str(project_id), "data": {"id": str(comment.id)}})
         return CommentOut(
             id=comment.id,
@@ -4111,7 +4167,7 @@ class CommentService:
         for user in mentioned_users:
             self.db.add(CommentMention(comment_id=comment.id, user_id=user.id))
             mention_models.append(MentionOut(user_id=user.id, username=user.username))
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(comment)
         await self.audit.log("UPDATE", user_id=actor.id, entity_type="comment", entity_id=comment.id)
         await ws_manager.broadcast(project_id, {"event": "updated", "entity": "comment", "project_id": str(project_id), "data": {"id": str(comment.id)}})
@@ -4137,7 +4193,7 @@ class CommentService:
         if comment.user_id != actor.id:
             raise ForbiddenError("Можно удалить только свой комментарий")
         await self.db.delete(comment)
-        await self.db.commit()
+        await self.db.flush()
         await self.audit.log("DELETE", user_id=actor.id, entity_type="comment", entity_id=comment.id)
         await ws_manager.broadcast(project_id, {"event": "deleted", "entity": "comment", "project_id": str(project_id), "data": {"id": str(comment.id)}})
 
@@ -4148,6 +4204,10 @@ class ProjectNoteService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
         self.audit = AuditService(db)
+
+    async def _lock_tree(self, project_id: int) -> None:
+        """Сериализует изменение структуры и названий заметок одного проекта."""
+        await self.db.scalar(select(Project.id).where(Project.id == project_id).with_for_update())
 
     async def _ensure_project(self, project_id: int) -> Project:
         project = await self.db.scalar(select(Project).where(Project.id == project_id))
@@ -4280,6 +4340,7 @@ class ProjectNoteService:
         return await self._get_note(project_id, note_id)
 
     async def create_note(self, project_id: int, payload: dict, actor_id: int) -> ProjectNote:
+        await self._lock_tree(project_id)
         await self._ensure_project(project_id)
         title = str(payload["title"]).strip()
         parent_id = payload.get("parent_id")
@@ -4296,7 +4357,7 @@ class ProjectNoteService:
             updated_by=actor_id,
         )
         self.db.add(note)
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(note)
         # project_id и title в details — нужны для post-факта журнала активности
         # уровня проекта (DELETE-записи без них нельзя было бы связать с проектом).
@@ -4314,6 +4375,7 @@ class ProjectNoteService:
         return note
 
     async def update_note(self, project_id: int, note_id: int, payload: dict, actor_id: int) -> ProjectNote:
+        await self._lock_tree(project_id)
         note = await self._get_note(project_id, note_id)
         next_title = payload.get("title")
         if next_title is not None:
@@ -4324,7 +4386,7 @@ class ProjectNoteService:
         if "content" in payload:
             note.content = payload.get("content")
         note.updated_by = actor_id
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(note)
         await self.audit.log(
             "UPDATE",
@@ -4340,6 +4402,7 @@ class ProjectNoteService:
         return note
 
     async def move_note(self, project_id: int, note_id: int, parent_id: int | None, actor_id: int) -> ProjectNote:
+        await self._lock_tree(project_id)
         note = await self._get_note(project_id, note_id)
         if parent_id == note.id:
             raise ValidationError("Нельзя переместить страницу в саму себя")
@@ -4349,7 +4412,7 @@ class ProjectNoteService:
         note.parent_id = parent_id
         note.sort_order = await self._next_sort_order(project_id, parent_id)
         note.updated_by = actor_id
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(note)
         await self.audit.log("UPDATE", user_id=actor_id, entity_type="project_note", entity_id=note.id, details={"action": "move"})
         await ws_manager.broadcast(
@@ -4359,6 +4422,7 @@ class ProjectNoteService:
         return note
 
     async def reorder_notes(self, project_id: int, parent_id: int | None, items: list[dict], actor_id: int) -> list[ProjectNote]:
+        await self._lock_tree(project_id)
         await self._ensure_parent(project_id, parent_id)
         siblings = (
             await self.db.scalars(
@@ -4378,7 +4442,7 @@ class ProjectNoteService:
             note = sibling_map[entry["id"]]
             note.sort_order = int(entry["sort_order"])
             note.updated_by = actor_id
-        await self.db.commit()
+        await self.db.flush()
         await self.audit.log(
             "UPDATE",
             user_id=actor_id,
@@ -4399,8 +4463,20 @@ class ProjectNoteService:
         return list(updated)
 
     async def delete_note(self, project_id: int, note_id: int, actor_id: int) -> None:
+        await self._lock_tree(project_id)
         note = await self._get_note(project_id, note_id)
         deleted_title = note.title  # запоминаем заголовок ДО удаления для журнала
+        # Serialize structural operations within a project. The same lock is
+        # taken by creation/move/title changes so the collision check cannot be
+        # invalidated by another writer between SELECT and promotion.
+        children = select(ProjectNote.title).where(ProjectNote.parent_id == note_id, ProjectNote.project_id == project_id)
+        duplicate = await self.db.scalar(select(ProjectNote.id).where(
+            ProjectNote.project_id == project_id,
+            ProjectNote.parent_id.is_(None) if note.parent_id is None else ProjectNote.parent_id == note.parent_id,
+            ProjectNote.title.in_(children),
+        ).limit(1))
+        if duplicate is not None:
+            raise ConflictError("Нельзя удалить страницу: после переноса дочерних страниц совпадут названия. Переименуйте страницы или переместите их перед удалением")
         # Перепривязываем прямых детей к родителю удаляемой заметки, иначе FK-каскад
         # (parent_id → project_notes.id, ondelete=CASCADE) снёс бы всё поддерево —
         # из-за чего удаление корневой заметки удаляло все остальные.
@@ -4410,7 +4486,7 @@ class ProjectNoteService:
             .values(parent_id=note.parent_id)
         )
         await self.db.delete(note)
-        await self.db.commit()
+        await self.db.flush()
         await self.audit.log(
             "DELETE",
             user_id=actor_id,
@@ -4492,8 +4568,9 @@ class ProjectNoteService:
                     is_read=False,
                 )
             )
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(comment)
+        await self.audit.log("CREATE", user_id=actor.id, entity_type="project_note_comment", entity_id=comment.id)
         for user in mentioned_users:
             await ws_manager.notify_user(
                 user.id,
@@ -4511,7 +4588,6 @@ class ProjectNoteService:
                     },
                 },
             )
-        await self.audit.log("CREATE", user_id=actor.id, entity_type="project_note_comment", entity_id=comment.id)
         await ws_manager.broadcast(
             project_id,
             {
@@ -4545,7 +4621,7 @@ class ProjectNoteService:
         if comment.user_id != actor.id:
             raise ForbiddenError("Можно редактировать только свой комментарий")
         comment.content = content
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(comment)
         await self.audit.log("UPDATE", user_id=actor.id, entity_type="project_note_comment", entity_id=comment.id)
         await ws_manager.broadcast(
@@ -4574,7 +4650,7 @@ class ProjectNoteService:
         if comment.user_id != actor.id:
             raise ForbiddenError("Можно удалить только свой комментарий")
         await self.db.delete(comment)
-        await self.db.commit()
+        await self.db.flush()
         await self.audit.log("DELETE", user_id=actor.id, entity_type="project_note_comment", entity_id=comment.id)
         await ws_manager.broadcast(
             project_id,
@@ -4649,7 +4725,7 @@ class ProjectCredentialService:
             created_by=actor_id,
         )
         self.db.add(credential)
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(credential)
         # В журнал пишем только метаданные (username/host для строки ленты) —
         # пароль в аудит не попадает.
@@ -4672,7 +4748,7 @@ class ProjectCredentialService:
         # не присылает существующий пароль обратно, чтобы его не логировать/светить.
         if payload.get("password"):
             credential.password_encrypted = encrypt_secret(str(payload["password"]))
-        await self.db.commit()
+        await self.db.flush()
         await self.db.refresh(credential)
         await self.audit.log(
             "UPDATE",
@@ -4688,7 +4764,7 @@ class ProjectCredentialService:
         username = credential.username
         host = credential.host
         await self.db.delete(credential)
-        await self.db.commit()
+        await self.db.flush()
         await self.audit.log(
             "DELETE",
             user_id=actor_id,
@@ -4704,37 +4780,75 @@ class NotificationService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
-    async def _context_for_event(self, item: Notification) -> NotificationContext | None:
-        """Контекст уведомлений, не связанных с комментарием.
-
-        Это добавление в проект и смены статусов: предмет записан прямо в
-        notification (project_id / vulnerability_id), названия и имя инициатора
-        подтягиваем здесь.
-        """
-        if item.project_id is None and item.vulnerability_id is None:
-            return None
-        actor_username = None
-        if item.actor_id:
-            actor_username = await self.db.scalar(select(User.username).where(User.id == item.actor_id))
-        project_id = item.project_id
-        vuln_title = None
-        if item.vulnerability_id:
-            row = (
-                await self.db.execute(
-                    select(Vulnerability.title, Vulnerability.project_id).where(Vulnerability.id == item.vulnerability_id)
+    async def _contexts(self, notifications: list[Notification]) -> dict[int, NotificationContext]:
+        """Контекст только текущей страницы, общими запросами для каждого типа."""
+        contexts: dict[int, NotificationContext] = {}
+        comment_ids = {item.comment_id for item in notifications if item.comment_id}
+        comment_contexts: dict[int, NotificationContext] = {}
+        if comment_ids:
+            # Тот же первый связанный хост, что и в карточке уведомления; индекс
+            # uq_vuln_asset обслуживает подзапрос без сканирования всей таблицы.
+            host_id = (select(VulnerabilityAsset.asset_id)
+                       .where(VulnerabilityAsset.vulnerability_id == Vulnerability.id,
+                              VulnerabilityAsset.asset_type == AssetType.HOST)
+                       .correlate(Vulnerability).limit(1).scalar_subquery())
+            rows = (await self.db.execute(
+                select(Comment.id, Vulnerability.id, Vulnerability.title,
+                       Vulnerability.project_id, User.username, host_id)
+                .join(Vulnerability, Vulnerability.id == Comment.vulnerability_id)
+                .join(User, User.id == Comment.user_id)
+                .where(Comment.id.in_(comment_ids))
+            )).all()
+            for comment_id, vuln_id, title, project_id, username, linked_host_id in rows:
+                comment_contexts[comment_id] = NotificationContext(
+                    vulnerability_id=vuln_id, vulnerability_title=title,
+                    project_id=project_id, host_id=linked_host_id, commenter_username=username,
                 )
-            ).first()
-            if row:
-                vuln_title, project_id = row
-        project_name = await self.db.scalar(select(Project.name).where(Project.id == project_id)) if project_id else None
-        return NotificationContext(
-            vulnerability_id=item.vulnerability_id,
-            vulnerability_title=vuln_title,
-            project_id=project_id,
-            project_name=project_name,
-            commenter_username=actor_username,
-            status=item.status,
-        )
+        note_comment_ids = {item.note_comment_id for item in notifications if not item.comment_id and item.note_comment_id}
+        note_contexts: dict[int, NotificationContext] = {}
+        if note_comment_ids:
+            rows = (await self.db.execute(
+                select(ProjectNoteComment.id, ProjectNote.id, ProjectNote.title,
+                       ProjectNote.project_id, User.username)
+                .join(ProjectNote, ProjectNote.id == ProjectNoteComment.note_id)
+                .join(User, User.id == ProjectNoteComment.user_id)
+                .where(ProjectNoteComment.id.in_(note_comment_ids))
+            )).all()
+            for comment_id, note_id, title, project_id, username in rows:
+                note_contexts[comment_id] = NotificationContext(
+                    note_id=note_id, note_title=title, project_id=project_id,
+                    commenter_username=username,
+                )
+        event_ids = [item.id for item in notifications
+                     if not item.comment_id and not item.note_comment_id
+                     and (item.project_id is not None or item.vulnerability_id is not None)]
+        if event_ids:
+            # При наличии находки проект берётся из неё, иначе из уведомления.
+            project_id = func.coalesce(Vulnerability.project_id, Notification.project_id)
+            rows = (await self.db.execute(
+                select(Notification.id, Notification.vulnerability_id, Vulnerability.title,
+                       project_id, Project.name, User.username, Notification.status)
+                .outerjoin(Vulnerability, Vulnerability.id == Notification.vulnerability_id)
+                .outerjoin(Project, Project.id == project_id)
+                .outerjoin(User, User.id == Notification.actor_id)
+                .where(Notification.id.in_(event_ids))
+            )).all()
+            for notification_id, vuln_id, title, linked_project_id, name, username, status in rows:
+                contexts[notification_id] = NotificationContext(
+                    vulnerability_id=vuln_id, vulnerability_title=title,
+                    project_id=linked_project_id, project_name=name,
+                    commenter_username=username, status=status,
+                )
+        for item in notifications:
+            if item.comment_id:
+                context = comment_contexts.get(item.comment_id)
+                if context is not None:
+                    contexts[item.id] = context
+            elif item.note_comment_id:
+                context = note_contexts.get(item.note_comment_id)
+                if context is not None:
+                    contexts[item.id] = context
+        return contexts
 
     async def list(self, user_id: int, page: int, size: int, is_read: bool | None) -> tuple[list[NotificationOut], int]:
         query = select(Notification).where(Notification.user_id == user_id)
@@ -4744,60 +4858,10 @@ class NotificationService:
         notifications = (
             await self.db.scalars(query.order_by(Notification.created_at.desc()).offset((page - 1) * size).limit(size))
         ).all()
+        contexts = await self._contexts(notifications)
         result: list[NotificationOut] = []
         for item in notifications:
-            context = None
-            if item.comment_id:
-                host_id = await self.db.scalar(
-                    select(VulnerabilityAsset.asset_id)
-                    .join(Vulnerability, Vulnerability.id == VulnerabilityAsset.vulnerability_id)
-                    .where(
-                        and_(
-                            VulnerabilityAsset.asset_type == AssetType.HOST,
-                            Vulnerability.id
-                            == select(Comment.vulnerability_id).where(Comment.id == item.comment_id).scalar_subquery(),
-                        )
-                    )
-                    .limit(1)
-                )
-                row = await self.db.execute(
-                    select(Comment, Vulnerability, User)
-                    .join(Vulnerability, Vulnerability.id == Comment.vulnerability_id)
-                    .join(User, User.id == Comment.user_id)
-                    .where(Comment.id == item.comment_id)
-                )
-                data = row.first()
-                if data:
-                    comment, vuln, commenter = data
-                    context = NotificationContext(
-                        vulnerability_id=vuln.id,
-                        vulnerability_title=vuln.title,
-                        project_id=vuln.project_id,
-                        host_id=host_id,
-                        commenter_username=commenter.username,
-                    )
-            elif item.note_comment_id:
-                # Контекст для упоминания в комментарии заметки: подгружаем сам комментарий,
-                # заметку (для названия) и автора (для commenter_username).
-                row = await self.db.execute(
-                    select(ProjectNoteComment, ProjectNote, User)
-                    .join(ProjectNote, ProjectNote.id == ProjectNoteComment.note_id)
-                    .join(User, User.id == ProjectNoteComment.user_id)
-                    .where(ProjectNoteComment.id == item.note_comment_id)
-                )
-                data = row.first()
-                if data:
-                    note_comment, note, commenter = data
-                    context = NotificationContext(
-                        note_id=note.id,
-                        note_title=note.title,
-                        project_id=note.project_id,
-                        commenter_username=commenter.username,
-                    )
-            else:
-                # Уведомления о проекте и статусах: предмет лежит прямо на записи,
-                # названия подтягиваем сейчас, чтобы фронт не ходил за ними отдельно.
-                context = await self._context_for_event(item)
+            context = contexts.get(item.id)
             result.append(
                 NotificationOut(
                     id=item.id,
@@ -5082,6 +5146,10 @@ class ImportService:
             parsed = json.loads(raw_text)
         except Exception:
             try:
+                # Alias graphs can expand exponentially or be recursive even
+                # when a YAML file is tiny. OpenAPI references use $ref instead.
+                if any(isinstance(token, yaml.tokens.AliasToken) for token in yaml.scan(raw_text)):
+                    raise ValidationError("YAML aliases не поддерживаются; используйте $ref")
                 parsed = yaml.safe_load(raw_text)
             except Exception as exc:
                 try:
@@ -5090,6 +5158,10 @@ class ImportService:
                     raise ValidationError("Swagger/OpenAPI файл должен быть валидным JSON или YAML") from exc
         if not isinstance(parsed, dict):
             raise ValidationError("Swagger/OpenAPI документ должен быть объектом")
+        try:
+            validate_json_value(parsed)
+        except ValueError as exc:
+            raise ValidationError(str(exc)) from exc
         return parsed
 
     @staticmethod
@@ -5366,7 +5438,7 @@ class ImportService:
                 f"В спецификации указан host '{spec_host}', но импорт выполнен в текущий хост '{host.hostname or host.ip_address}'."
             )
 
-        supported_methods = {"get", "post", "put", "patch", "delete", "head", "options"}
+        supported_methods = {"get", "post", "put", "patch", "delete", "head", "options", "trace", "query"}
         path_prefix = self._extract_openapi_path_prefix(document)
 
         try:
@@ -5440,7 +5512,7 @@ class ImportService:
             if result.endpoints_created == 0 and result.endpoints_skipped == 0:
                 raise ValidationError("В Swagger/OpenAPI документе не найдено методов для импорта")
 
-            await self.db.commit()
+            await self.db.flush()
         except Exception:
             await self.db.rollback()
             raise
@@ -5581,10 +5653,18 @@ class ImportService:
                         )
                     ).all()
                 )
+                if host.ip_address and not any(ip.ip_address == host.ip_address for ip in host_ips):
+                    ip = HostIpAddress(
+                        host_id=host.id, ip_address=host.ip_address,
+                        is_primary=not host_ips,
+                    )
+                    self.db.add(ip)
+                    await self.db.flush()
+                    host_ips.append(ip)
                 primary_ip = next(
                     (ip for ip in host_ips if ip.is_primary), host_ips[0] if host_ips else None
                 )
-                if primary_ip is None:
+                if host_data.ports and primary_ip is None:
                     raise ValidationError(
                         "Невозможно импортировать порты: у хоста нет IP-адресов"
                     )
@@ -5676,7 +5756,7 @@ class ImportService:
                     else:
                         self._merge_endpoint_fields(endpoint, endpoint_payload)
 
-            await self.db.commit()
+            await self.db.flush()
         except Exception:
             await self.db.rollback()
             raise

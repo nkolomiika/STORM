@@ -498,11 +498,6 @@ class HostIpAddress(Base, TimestampMixin):
     # NB: обычная JSON-колонка не отслеживает мутацию на месте — присваивать
     # список целиком, не .append().
     hostnames: Mapped[list | None] = mapped_column(JSON, nullable=True)
-    # За адресом Cloudflare. Трёхзначно: True — виден CF (CIDR или заголовки/детект
-    # пробива), False — достоверно НЕ CF (хост ответил, сигнала нет), NULL — неизвестно
-    # (ещё пробится / не ответил). Пересчитывается при каждой записи, но True в NULL/False
-    # без достоверного отрицательного сигнала не понижается (см. farm._ensure_ips).
-    is_cloudflare: Mapped[bool | None] = mapped_column(Boolean, nullable=True, default=None)
 
     host: Mapped[Host] = relationship("Host", back_populates="ip_addresses")
     ports: Mapped[list["Port"]] = relationship(
@@ -523,7 +518,7 @@ class Port(Base, TimestampMixin):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    host_id: Mapped[int] = mapped_column(Integer, ForeignKey("hosts.id", ondelete="CASCADE"), nullable=False)
+    host_id: Mapped[int] = mapped_column(Integer, ForeignKey("hosts.id", ondelete="CASCADE"), nullable=False, index=True)
     ip_address_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("host_ip_addresses.id", ondelete="CASCADE"),
@@ -578,7 +573,7 @@ class Service(Base, TimestampMixin):
     __tablename__ = "services"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    port_id: Mapped[int] = mapped_column(Integer, ForeignKey("ports.id", ondelete="CASCADE"), nullable=False)
+    port_id: Mapped[int] = mapped_column(Integer, ForeignKey("ports.id", ondelete="CASCADE"), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     version: Mapped[str | None] = mapped_column(String(100), nullable=True)
     banner: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -639,6 +634,17 @@ class Endpoint(Base, TimestampMixin):
     request_body: Mapped[str | None] = mapped_column(Text, nullable=True)
     request_content_type: Mapped[str | None] = mapped_column(String(127), nullable=True)
     request_headers: Mapped[list[dict] | None] = mapped_column(JSON, nullable=True)
+
+
+class EndpointComment(Base, TimestampMixin):
+    """Постоянное обсуждение эндпоинта; удаляется вместе с ним."""
+
+    __tablename__ = "endpoint_comments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    endpoint_id: Mapped[int] = mapped_column(Integer, ForeignKey("endpoints.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
 
 
 class JsFile(Base, TimestampMixin):

@@ -1,4 +1,4 @@
-import { defaultUrlTransform, type UrlTransform } from "react-markdown";
+import { defaultUrlTransform } from "react-markdown";
 
 const SAFE_IMAGE_DATA_URL_RE = /^data:image\/(png|jpe?g|gif|webp|avif|bmp);base64,[A-Za-z0-9+/=]+$/i;
 
@@ -6,7 +6,7 @@ const SAFE_IMAGE_DATA_URL_RE = /^data:image\/(png|jpe?g|gif|webp|avif|bmp);base6
  * Разрешает data:image (вставка картинок в Markdown) и ведёт себя как {@link defaultUrlTransform} для остальных URL.
  * Whitelist: только base64-кодированные image/* с известными типами. data:text/html и любые иные mime отсекаются.
  */
-export const markdownUrlTransform: UrlTransform = (url) => {
+export const markdownUrlTransform = (url: string): string => {
   const trimmed = url.trim();
   if (trimmed.toLowerCase().startsWith("data:")) {
     return SAFE_IMAGE_DATA_URL_RE.test(trimmed) ? trimmed : "";

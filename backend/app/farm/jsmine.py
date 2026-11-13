@@ -43,7 +43,7 @@ def _ready(enabled: bool, bin_name: str) -> bool:
 
 
 def _norm_severity(s: str) -> str:
-    low = (s or "").strip().lower()
+    low = s.strip().lower() if isinstance(s, str) else ""
     if low == "critical":
         return "critical"
     if low == "high":
@@ -113,11 +113,13 @@ def _parse_trufflehog(out: bytes) -> list[Secret]:
             m = json.loads(line)
         except ValueError:
             continue
+        if not isinstance(m, dict):
+            continue
         name = m.get("DetectorName") or ""
         value = m.get("Raw") or ""
-        if not name or not value:
+        if not isinstance(name, str) or not isinstance(value, str) or not name or not value:
             continue
-        verified = bool(m.get("Verified"))
+        verified = m.get("Verified") is True
         kind = f"trufflehog:{name}"
         severity = "high"
         snippet = "unverified"
@@ -146,15 +148,21 @@ def _parse_jsluice_secrets(out: bytes) -> list[Secret]:
             m = json.loads(line)
         except ValueError:
             continue
+        if not isinstance(m, dict) or not isinstance(m.get("data"), dict):
+            continue
         data = m.get("data") or {}
         value = " ".join(str(v) for v in data.values() if isinstance(v, str) and v)
         if not value:
             continue
         context = m.get("context") or {}
         snippet = json.dumps(context, ensure_ascii=False) if context else ""
+        for raw_value in data.values():
+            if isinstance(raw_value, str) and raw_value:
+                snippet = snippet.replace(json.dumps(raw_value, ensure_ascii=False)[1:-1], jsscan.redact(raw_value))
+        snippet = jsscan.redact_context(snippet)
         res.append(
             Secret(
-                kind="jsluice:" + (m.get("kind") or "secret"),
+                kind="jsluice:" + (m["kind"] if isinstance(m.get("kind"), str) else "secret"),
                 match_preview=jsscan.redact(value)[:255],
                 snippet=snippet[:255],
                 severity=_norm_severity(m.get("severity") or ""),
@@ -173,8 +181,10 @@ def _parse_jsluice_urls(out: bytes) -> list[str]:
             m = json.loads(line)
         except ValueError:
             continue
+        if not isinstance(m, dict):
+            continue
         url = m.get("url") or ""
-        if url:
+        if isinstance(url, str) and url:
             res.append(url)
     return res
 

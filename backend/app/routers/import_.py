@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.dependencies import enforce_csrf, get_current_user, require_project_access
 from app.exceptions import ValidationError
+from app.input_safety import read_upload
 from app.models import User
 from app.schemas import ImportResult, OpenApiImportResult
 from app.services import ImportService
@@ -23,7 +24,7 @@ async def import_project_data(
     db: AsyncSession = Depends(get_db),
 ) -> ImportResult:
     """Импортирует JSON-структуру активов в проект."""
-    payload = await file.read()
+    payload = await read_upload(file, 50 * 1024 * 1024)
     return await ImportService(db).import_json(project_id, payload, current_user.id)
 
 
@@ -40,7 +41,7 @@ async def import_openapi_file(
     """Импортирует OpenAPI/Swagger JSON/YAML в endpoint-структуру конкретного хоста."""
     if not file.filename:
         raise ValidationError("Нужно выбрать Swagger/OpenAPI файл")
-    payload = await file.read()
+    payload = await read_upload(file, 2 * 1024 * 1024)
     return await ImportService(db).import_openapi(project_id, host_id, payload, current_user.id)
 
 
