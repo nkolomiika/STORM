@@ -6,7 +6,7 @@
 
 ## chaptersForRole
 
-[frontend/src/storm/docs/index.ts:76](../../../../../../frontend/src/storm/docs/index.ts#L76)
+[frontend/src/storm/docs/index.ts:75](../../../../../../frontend/src/storm/docs/index.ts#L75)
 
 ```typescript
 chaptersForRole(isAdmin: boolean) => DocChapter[]

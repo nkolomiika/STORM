@@ -13,6 +13,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import { markdownUrlTransform, normalizeMarkdownForRender } from "../markdownUrlTransform";
 import { Icon } from "./icons";
+import { t as translate } from "./i18n";
 import { DOC_GROUPS, chaptersForRole, type DocChapter } from "./docs";
 
 interface Props {
@@ -22,6 +23,11 @@ interface Props {
 }
 
 const ACCENT = "var(--st-accent)";
+
+/** Документация всегда русская, независимо от языка остального интерфейса. */
+function t(source: string, values?: Record<string, string | number>): string {
+  return translate(source, values, "ru");
+}
 
 /** Русское склонение: 1 страница / 2 страницы / 5 страниц. */
 function pagesWord(n: number): string {
@@ -72,7 +78,7 @@ function highlight(text: string, q: string): ReactNode {
 }
 
 export function StormDocs({ isAdmin, onNavigateWorkspace }: Props) {
-  const visible = useMemo(() => chaptersForRole(isAdmin), [isAdmin]);
+  const visible = useMemo(() => chaptersForRole(isAdmin).map((chapter) => ({ ...chapter, title: t(chapter.title) })), [isAdmin]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -104,10 +110,10 @@ export function StormDocs({ isAdmin, onNavigateWorkspace }: Props) {
     : [];
 
   return (
-    <div className="route stdoc" style={{ display: "flex", alignItems: "flex-start", width: "100%", minHeight: "100%" }}>
+    <div lang="ru" className="route stdoc" style={{ display: "flex", alignItems: "flex-start", width: "100%", minHeight: "100%" }}>
       <style>{`
         .stdoc-nav { transition: background .12s ease, color .12s ease; }
-        .stdoc-nav:hover { background: var(--st-elevated); }
+
         .stdoc-card { transition: border-color .14s ease, box-shadow .14s ease, transform .14s ease; }
         .stdoc-card:hover { border-color: var(--st-border-strong); box-shadow: 0 6px 18px var(--st-shadow); transform: translateY(-1px); }
         .stdoc-search:focus-within { border-color: var(--st-focus-border); box-shadow: 0 0 0 3px var(--st-focus-ring); background: var(--st-surface); }
@@ -135,9 +141,9 @@ export function StormDocs({ isAdmin, onNavigateWorkspace }: Props) {
         }}
       >
         {/* заголовок */}
-        <div className="stdoc-nav clk" onClick={goHome} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 6px", borderRadius: 9, marginBottom: 14 }}>
+        <div className="stdoc-nav listitem clk" onClick={goHome} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 6px", borderRadius: 9, marginBottom: 14 }}>
           <Icon name="doc" size={20} color={ACCENT} sw={2} />
-          <span style={{ font: "800 15px Inter,sans-serif", color: "var(--st-text)", letterSpacing: "-.2px" }}>Docs</span>
+          <span style={{ font: "800 15px Inter,sans-serif", color: "var(--st-text)", letterSpacing: "-.2px" }}>{t("Docs")}</span>
         </div>
 
         {/* поиск */}
@@ -146,7 +152,7 @@ export function StormDocs({ isAdmin, onNavigateWorkspace }: Props) {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Поиск по Docs…"
+            placeholder={t("Search Docs…")}
             style={{ flex: 1, border: "none", outline: "none", background: "transparent", font: "500 13px Inter,sans-serif", color: "var(--st-text)" }}
           />
         </label>
@@ -157,7 +163,7 @@ export function StormDocs({ isAdmin, onNavigateWorkspace }: Props) {
           return (
             <div key={g.audience} style={{ marginBottom: 6 }}>
               <div
-                className="stdoc-nav clk"
+                className="stdoc-nav listitem clk"
                 onClick={goHome}
                 style={{ display: "flex", alignItems: "center", gap: 9, padding: "8px 8px", borderRadius: 9, cursor: "pointer" }}
               >
@@ -170,7 +176,7 @@ export function StormDocs({ isAdmin, onNavigateWorkspace }: Props) {
                   <Icon name="chevron-down" size={14} color="var(--st-text-faint)" sw={2.4} style={{ transition: "transform .24s ease", transform: isCollapsed ? "rotate(-90deg)" : "none" }} />
                 </span>
                 <Icon name="folder" size={17} color={ACCENT} sw={2} style={{ flex: "none" }} />
-                <span style={{ font: "700 13px Inter,sans-serif", color: "var(--st-text)" }}>{g.title}</span>
+                <span style={{ font: "700 13px Inter,sans-serif", color: "var(--st-text)" }}>{t(g.title)}</span>
               </div>
               {/* Плавное сворачивание: grid-rows 1fr↔0fr анимирует высоту без замера. */}
               <div style={{ display: "grid", gridTemplateRows: isCollapsed ? "0fr" : "1fr", transition: "grid-template-rows .24s ease" }}>
@@ -181,7 +187,7 @@ export function StormDocs({ isAdmin, onNavigateWorkspace }: Props) {
                       return (
                         <div
                           key={c.id}
-                          className={on ? "clk" : "stdoc-nav clk"}
+                          className="stdoc-nav listitem clk"
                           onClick={() => setActiveId(c.id)}
                           style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 9px", borderRadius: 8, cursor: "pointer", font: `${on ? 600 : 500} 13px Inter,sans-serif`, color: on ? ACCENT : "var(--st-text-2)", background: on ? "var(--st-accent-soft)" : undefined }}
                         >
@@ -196,7 +202,7 @@ export function StormDocs({ isAdmin, onNavigateWorkspace }: Props) {
             </div>
           );
         })}
-        {groups.length === 0 && <div style={{ padding: "8px 8px", color: "var(--st-text-faint)", fontSize: 12.5 }}>Ничего не найдено.</div>}
+        {groups.length === 0 && <div style={{ padding: "8px 8px", color: "var(--st-text-faint)", fontSize: 12.5 }}>{t("Nothing found.")}</div>}
       </aside>
 
       {/* ------- контент ------- */}
@@ -208,16 +214,16 @@ export function StormDocs({ isAdmin, onNavigateWorkspace }: Props) {
             <div className="mono" style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18, fontSize: 11, letterSpacing: 1.2, textTransform: "uppercase", color: "var(--st-text-faint)", fontWeight: 700, flexWrap: "wrap" }}>
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: ACCENT, flex: "none" }} />
               {onNavigateWorkspace ? (
-                <span className="stdoc-crumb clk" onClick={onNavigateWorkspace}>Workspace</span>
+                <span className="stdoc-crumb clk" onClick={onNavigateWorkspace}>WORKSPACE</span>
               ) : (
-                <span>Workspace</span>
+                <span>WORKSPACE</span>
               )}
               <span>/</span>
-              <span className="stdoc-crumb clk" onClick={goHome}>Docs</span>
+              <span className="stdoc-crumb clk" onClick={goHome}>{t("Docs")}</span>
               {activeGroup && (
                 <>
                   <span>/</span>
-                  <span className="stdoc-crumb clk" onClick={() => openCategory(active.audience)}>{activeGroup.title}</span>
+                  <span className="stdoc-crumb clk" onClick={() => openCategory(active.audience)}>{t(activeGroup.title)}</span>
                 </>
               )}
               <span>/</span>
@@ -230,18 +236,18 @@ export function StormDocs({ isAdmin, onNavigateWorkspace }: Props) {
         ) : q ? (
           // результаты поиска на лендинге
           <div style={{ maxWidth: 900 }}>
-            <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, letterSpacing: "-.6px", color: "var(--st-text)" }}>Результаты поиска</h1>
-            <div style={{ fontSize: 13.5, color: "var(--st-text-3)", marginTop: 6 }}>{pagesWord(searchResults.length)} по запросу «{query.trim()}».</div>
+            <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, letterSpacing: "-.6px", color: "var(--st-text)" }}>{t("Search results")}</h1>
+            <div style={{ fontSize: 13.5, color: "var(--st-text-3)", marginTop: 6 }}>{pagesWord(searchResults.length)} {t("for “{query}”", { query: query.trim() })}.</div>
             <div style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 10, maxWidth: 760 }}>
               {searchResults.map((c) => {
                 const group = DOC_GROUPS.find((g) => g.audience === c.audience);
                 const snippet = bodySnippet(c.body, q);
                 return (
-                  <div key={c.id} className="stdoc-card clk" onClick={() => setActiveId(c.id)} style={{ background: "var(--st-surface)", border: "1px solid var(--st-divider)", borderRadius: 12, padding: "14px 18px", cursor: "pointer" }}>
+                  <div key={c.id} className="stdoc-card listitem clk" onClick={() => setActiveId(c.id)} style={{ background: "var(--st-surface)", border: "1px solid var(--st-divider)", borderRadius: 12, padding: "14px 18px", cursor: "pointer" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
                       <Icon name="doc" size={16} color={ACCENT} sw={2} style={{ flex: "none" }} />
                       <div style={{ font: "700 14px Inter,sans-serif", color: "var(--st-text)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{highlight(c.title, q)}</div>
-                      <div style={{ fontSize: 11.5, color: "var(--st-text-faint)", marginLeft: "auto", flex: "none" }}>{group?.title}</div>
+                      <div style={{ fontSize: 11.5, color: "var(--st-text-faint)", marginLeft: "auto", flex: "none" }}>{group ? t(group.title) : ""}</div>
                     </div>
                     {snippet && <div style={{ marginTop: 7, fontSize: 12.5, color: "var(--st-text-3)", lineHeight: 1.55 }}>{highlight(snippet, q)}</div>}
                   </div>
@@ -258,12 +264,12 @@ export function StormDocs({ isAdmin, onNavigateWorkspace }: Props) {
             <div className="mono" style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, fontSize: 11, letterSpacing: 1.2, textTransform: "uppercase", color: "var(--st-text-faint)", fontWeight: 700, flexWrap: "wrap" }}>
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: ACCENT, flex: "none" }} />
               {onNavigateWorkspace ? (
-                <span className="stdoc-crumb clk" onClick={onNavigateWorkspace}>Workspace</span>
+                <span className="stdoc-crumb clk" onClick={onNavigateWorkspace}>WORKSPACE</span>
               ) : (
-                <span>Workspace</span>
+                <span>WORKSPACE</span>
               )}
               <span>/</span>
-              <span style={{ color: "var(--st-text-3)" }}>Docs</span>
+              <span style={{ color: "var(--st-text-3)" }}>{t("Docs")}</span>
             </div>
             {/* Справочник API (Swagger) — визуально отделён от проектной документации
                 ниже, чтобы не путать фронтовый раздел /docs с интерактивной докой API.
@@ -275,23 +281,23 @@ export function StormDocs({ isAdmin, onNavigateWorkspace }: Props) {
                   <Icon name="server" size={20} color={ACCENT} sw={2} />
                 </div>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ font: "700 15px Inter,sans-serif", color: "var(--st-text)", letterSpacing: "-.2px" }}>Справочник API (Swagger)</div>
+                  <div style={{ font: "700 15px Inter,sans-serif", color: "var(--st-text)", letterSpacing: "-.2px" }}>{t("API reference (Swagger)")}</div>
                   <div style={{ fontSize: 12.5, color: "var(--st-text-3)", marginTop: 4 }}>
-                    Интерактивная документация эндпоинтов — отдельно от этой проектной документации. Две самостоятельные схемы: API приложения и агентский API. Нужна активная сессия Storm.
+                    {t("Interactive endpoint documentation: separate application and agent API schemas. An active STORM session is required.")}
                   </div>
                 </div>
               </div>
               <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
-                <a className="stdoc-apilink" href="/api/v1/docs" target="_blank" rel="noopener noreferrer">API приложения ↗</a>
-                <a className="stdoc-apilink" href="/api/v2/docs" target="_blank" rel="noopener noreferrer">Агентский API ↗</a>
+                <a className="stdoc-apilink" href="/api/v1/docs" target="_blank" rel="noopener noreferrer">{t("Application API")} ↗</a>
+                <a className="stdoc-apilink" href="/api/v2/docs" target="_blank" rel="noopener noreferrer">{t("Agent API")} ↗</a>
               </div>
             </div>
-            <div style={{ fontSize: 12, color: "var(--st-text-faint)", fontWeight: 600, letterSpacing: .3, textTransform: "uppercase", marginTop: 26, marginBottom: 2 }}>Документация проекта</div>
+            <div style={{ fontSize: 12, color: "var(--st-text-faint)", fontWeight: 600, letterSpacing: .3, textTransform: "uppercase", marginTop: 26, marginBottom: 2 }}>{t("Project documentation")}</div>
             <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: 16, maxWidth: 760 }}>
               {groups.map((g) => (
-                <div key={g.audience} className="stdoc-card clk" onClick={() => openCategory(g.audience)} style={{ background: "var(--st-surface)", border: "1px solid var(--st-divider)", borderRadius: 14, padding: "20px 20px 18px", cursor: "pointer" }}>
+                <div key={g.audience} className="stdoc-card listitem clk" onClick={() => openCategory(g.audience)} style={{ background: "var(--st-surface)", border: "1px solid var(--st-divider)", borderRadius: 14, padding: "20px 20px 18px", cursor: "pointer" }}>
                   <Icon name="folder" size={24} color={ACCENT} sw={2} />
-                  <div style={{ font: "700 15.5px Inter,sans-serif", color: "var(--st-text)", marginTop: 12, letterSpacing: "-.2px" }}>{g.title}</div>
+                  <div style={{ font: "700 15.5px Inter,sans-serif", color: "var(--st-text)", marginTop: 12, letterSpacing: "-.2px" }}>{t(g.title)}</div>
                   <div style={{ fontSize: 12, color: "var(--st-text-faint)", marginTop: 10 }}>{pagesWord(g.chapters.length)}</div>
                 </div>
               ))}

@@ -6,13 +6,13 @@
 
 ## StormSelect
 
-[frontend/src/storm/StormSelect.tsx:26](../../../../../frontend/src/storm/StormSelect.tsx#L26)
+[frontend/src/storm/StormSelect.tsx:27](../../../../../frontend/src/storm/StormSelect.tsx#L27)
 
 ```typescript
 StormSelect({ value, options, onChange, id, placeholder }: StormSelectProps) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
 ```
 
-В теле вызывает `options.find`, `options.map`, `useEffect`, `useRef`, `useState`.
+В теле вызывает `options.find`, `options.map`, `t`, `useEffect`, `useLangStore`, `useRef`, `useState`.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -25,7 +25,9 @@ StormSelect({ value, options, onChange, id, placeholder }: StormSelectProps) => 
 
 - `options.find`
 - `options.map`
+- `t`
 - `useEffect`
+- `useLangStore`
 - `useRef`
 - `useState`
 
@@ -33,7 +35,7 @@ StormSelect({ value, options, onChange, id, placeholder }: StormSelectProps) => 
 
 ## StormSelect.onDown
 
-[frontend/src/storm/StormSelect.tsx:35](../../../../../frontend/src/storm/StormSelect.tsx#L35)
+[frontend/src/storm/StormSelect.tsx:37](../../../../../frontend/src/storm/StormSelect.tsx#L37)
 
 ```typescript
 onDown(e: MouseEvent) => void
@@ -57,7 +59,7 @@ onDown(e: MouseEvent) => void
 
 ## StormSelect.onKey
 
-[frontend/src/storm/StormSelect.tsx:38](../../../../../frontend/src/storm/StormSelect.tsx#L38)
+[frontend/src/storm/StormSelect.tsx:40](../../../../../frontend/src/storm/StormSelect.tsx#L40)
 
 ```typescript
 onKey(e: KeyboardEvent) => void

@@ -26,6 +26,7 @@ from app.enums import (
     HostStatus,
     HttpMethod,
     NotificationType,
+    OsType,
     PortState,
     ProjectRole,
     ProjectStatus,
@@ -35,6 +36,7 @@ from app.enums import (
     VulnerabilityStatus,
 )
 from app.models import (
+    AccountReactivationToken,
     AgentApiToken,
     AgentApiTokenProjectGrant,
     AuditLog,
@@ -43,21 +45,39 @@ from app.models import (
     Endpoint,
     File,
     Host,
+    HostFarmJob,
     HostIpAddress,
+    Invitation,
+    JsFile,
+    JsSecret,
+    MailJob,
     Notification,
+    PasswordResetToken,
     Port,
     Project,
     ProjectCredential,
     ProjectFolder,
+    ProjectHiddenIp,
     ProjectMember,
     ProjectNote,
     ProjectNoteComment,
+    RefreshToken,
     Service,
     User,
     Vulnerability,
     VulnerabilityAsset,
+    WorksIssueLink,
 )
-from app.security import encrypt_secret, hash_agent_token, hash_password
+from app.security import (
+    encrypt_secret,
+    generate_totp_secret,
+    hash_agent_token,
+    hash_invitation_token,
+    hash_password,
+    hash_password_reset_token,
+    hash_reactivation_token,
+    hash_refresh_token,
+)
 from app.services import UserService
 from app.storage.minio_client import MinioStorage
 
@@ -94,16 +114,22 @@ async def create_users() -> dict[str, User]:
             raise RuntimeError("Admin user was not created")
         users["admin"] = admin
 
-        # (username, email, аккаунтная роль, проектная роль). Проектная роль
-        # глобальная: лид — обычный юзер, но с доп. возможностями в своих проектах.
+        # (username, email, ФИО, аккаунтная роль, проектная роль, is_sso, totp,
+        # is_locked). Проектная роль глобальная: лид — обычный юзер, но с доп.
+        # возможностями в своих проектах. Заполняем ВСЕ поля профиля, чтобы демо
+        # покрывало SSO-аккаунты (пароль меняется только в IdM), включённую 2FA
+        # (TOTP-секрет шифруется Fernet) и мягко удалённого (is_locked) юзера, на
+        # которого навешивается токен реактивации.
+        now = datetime.now(UTC)
         demo_users = [
-            ("alice", "alice@example.com", UserRole.PENTESTER, ProjectRole.LEAD),
-            ("bob", "bob@example.com", UserRole.PENTESTER, ProjectRole.LEAD),
-            ("charlie", "charlie@example.com", UserRole.PENTESTER, ProjectRole.PENTESTER),
-            ("diana", "diana@example.com", UserRole.PENTESTER, ProjectRole.PENTESTER),
-            ("eve", "eve@example.com", UserRole.PENTESTER, ProjectRole.PENTESTER),
+            ("alice", "alice@example.com", "Алиса Иванова Сергеевна", UserRole.PENTESTER, ProjectRole.LEAD, False, True, False),
+            ("bob", "bob@example.com", "Борис Петров Николаевич", UserRole.PENTESTER, ProjectRole.LEAD, False, False, False),
+            ("charlie", "charlie@example.com", "Чарли Сидоров Олегович", UserRole.PENTESTER, ProjectRole.PENTESTER, False, False, False),
+            ("diana", "diana@example.com", "Диана Кузнецова Павловна", UserRole.PENTESTER, ProjectRole.PENTESTER, True, False, False),
+            ("eve", "eve@example.com", "Ева Смирнова Андреевна", UserRole.PENTESTER, ProjectRole.PENTESTER, False, False, False),
+            ("frank", "frank@example.com", "Франк Волков Дмитриевич", UserRole.PENTESTER, ProjectRole.PENTESTER, False, False, True),
         ]
-        for username, email, role, project_role in demo_users:
+        for username, email, full_name, role, project_role, is_sso, totp_on, is_locked in demo_users:
             user = await db.scalar(select(User).where(User.username == username))
             if not user:
                 user = await db.scalar(select(User).where(User.email == email))
@@ -111,13 +137,34 @@ async def create_users() -> dict[str, User]:
                 user = User(
                     username=username,
                     email=email,
-                    password_hash=hash_password("admin"),
-                    role=role,
-                    project_role=project_role,
-                    is_active=True,
+                    # У SSO-пользователя локального пароля нет: ставим unusable-хэш.
+                    # Пароль существующих юзеров не трогаем — только профиль ниже.
+                    password_hash=hash_password("admin") if not is_sso else hash_password(uuid4().hex),
                 )
                 db.add(user)
-                await db.flush()
+
+            # Демо-профиль применяем и к новым, и к уже существующим пользователям:
+            # пользователей reset_and_seed сохраняет, поэтому без явного апдейта
+            # старые записи остались бы с пустыми full_name/is_sso/totp и т.п.
+            user.email = email
+            user.full_name = full_name
+            user.is_sso = is_sso
+            # SSO-профиль не показывает смену пароля → password_changed_at пустой.
+            user.password_changed_at = None if is_sso else now - timedelta(days=30)
+            if totp_on:
+                if not user.totp_secret:
+                    user.totp_secret = encrypt_secret(generate_totp_secret())
+                user.totp_enabled = True
+                user.totp_confirmed_at = now - timedelta(days=20)
+            else:
+                user.totp_secret = None
+                user.totp_enabled = False
+                user.totp_confirmed_at = None
+            user.role = role
+            user.project_role = project_role
+            user.is_active = True
+            user.is_locked = is_locked
+            await db.flush()
             users[username] = user
         await db.commit()
     return users
@@ -136,19 +183,28 @@ async def clear_domain_data_preserve_users() -> list[str]:
                     project_note_comments,
                     project_notes,
                     vulnerability_assets,
+                    works_issue_links,
                     project_credentials,
                     files,
+                    js_secrets,
+                    js_files,
                     vulnerabilities,
                     services,
                     ports,
                     endpoints,
                     host_ip_addresses,
+                    host_farm_jobs,
+                    project_hidden_ips,
                     hosts,
                     project_members,
                     agent_api_token_project_grants,
                     agent_api_tokens,
                     projects,
                     project_folders,
+                    invitations,
+                    password_reset_tokens,
+                    account_reactivation_tokens,
+                    refresh_tokens,
                     mail_jobs,
                     audit_logs
                 RESTART IDENTITY CASCADE
@@ -220,6 +276,8 @@ async def seed_demo_data() -> None:
         if not admin:
             raise RuntimeError("Admin user is missing")
 
+
+
         folders_by_path: dict[str, ProjectFolder] = {}
         for folder_name, parent_path in folder_specs:
             path = f"{parent_path}/{folder_name}" if parent_path else folder_name
@@ -237,10 +295,10 @@ async def seed_demo_data() -> None:
         project_specs = [
             ("Acme External API", "External Audits/API", ProjectStatus.ACTIVE, [users["alice"], users["bob"], users["diana"]]),
             ("Contoso Mobile", "External Audits/Mobile", ProjectStatus.ACTIVE, [users["alice"], users["eve"]]),
-            ("Intranet Review", "Internal/Infrastructure", ProjectStatus.ACTIVE, [users["bob"], users["charlie"]]),
-            ("Red Team Alpha", "Red Team/Phase 1", ProjectStatus.ACTIVE, [users["alice"], users["charlie"], users["diana"]]),
+            ("Intranet Review", "Internal/Infrastructure", ProjectStatus.FREEZE, [users["bob"], users["charlie"]]),
+            ("Red Team Alpha", "Red Team/Phase 1", ProjectStatus.VULNERABILITY_RECHECK, [users["alice"], users["charlie"], users["diana"]]),
             ("Red Team Bravo", "Red Team/Phase 2", ProjectStatus.COMPLETED, [users["bob"], users["eve"]]),
-            ("Partner Portal", "", ProjectStatus.ACTIVE, [users["alice"], users["bob"]]),
+            ("Partner Portal", "", ProjectStatus.HANDOVER_TO_DEVELOPMENT, [users["alice"], users["bob"]]),
             ("Legacy ERP", "", ProjectStatus.ARCHIVED, [users["charlie"], users["diana"]]),
             ("Corporate SSO", "Internal", ProjectStatus.COMPLETED, [users["alice"], users["eve"]]),
         ]
@@ -282,7 +340,6 @@ async def seed_demo_data() -> None:
             project = Project(
                 name=project_name,
                 folder=folder_path,
-                description=f"Тестовый проект '{project_name}' с набором активов, уязвимостей и совместной работы.",
                 start_date=start_date,
                 end_date=end_date,
                 status=project_statuses[(project_index - 1) % len(project_statuses)] if project_status is None else project_status,
@@ -452,21 +509,29 @@ async def seed_demo_data() -> None:
             )
             db.add(note_comment_extra)
 
+            # Первый доменный хост проекта — на него вешаем JS-файлы фермы.
+            first_host: Host | None = None
+
             for host_index in range(1, 4):
                 primary_ip = f"10.{project_index}.{host_index}.10"
                 # 3 хоста → 25% / 50% / 75% окна проекта: график хостов растёт ступеньками.
                 host_time = added_at(host_index / 4.0)
+                host_os = [OsType.LINUX, OsType.WINDOWS, OsType.FREEBSD][(host_index - 1) % 3]
                 host = Host(
                     project_id=project.id,
                     ip_address=primary_ip,
                     hostname=f"{project_name.lower().replace(' ', '-')}-host-{host_index}.demo.local",
                     status=HostStatus.UP if host_index != 2 else HostStatus.UNKNOWN,
+                    os_type=host_os,
+                    origin="host",
                     notes=f"Описание тестового хоста {host_index} для проекта {project_name}.",
                     created_at=host_time,
                     updated_at=host_time,
                 )
                 db.add(host)
                 await db.flush()
+                if first_host is None:
+                    first_host = host
 
                 # Сид пишет audit и для инвентаря — иначе созданные хосты/IP/порты
                 # не попадут в ленту активности проекта.
@@ -485,16 +550,37 @@ async def seed_demo_data() -> None:
 
                 # Несколько IP у хоста (внутренний/внешний/management) — проверка таблицы host_ip_addresses.
                 host_ip_rows: dict[str, HostIpAddress] = {}
-                for ip_suffix, label, is_primary in [
-                    (primary_ip, "external", True),
-                    (f"10.{project_index}.{host_index}.20", "internal", False),
-                    (f"172.16.{project_index}.{host_index}", "mgmt", False),
+                # (ip, label, is_primary, hostnames-JSON, is_cloudflare). hostnames —
+                # список {hostname, source, confirmed}: ptr — PTR-запись адреса,
+                # project — имя известного хоста проекта. is_cloudflare трёхзначно:
+                # True за CF, False достоверно не CF, None — ещё не пробит.
+                for ip_suffix, label, is_primary, ip_hostnames, ip_cf in [
+                    (
+                        primary_ip,
+                        "external",
+                        True,
+                        [
+                            {"hostname": host.hostname, "source": "project", "confirmed": True},
+                            {"hostname": f"www.{host.hostname}", "source": "ptr", "confirmed": False},
+                        ],
+                        True,
+                    ),
+                    (
+                        f"10.{project_index}.{host_index}.20",
+                        "internal",
+                        False,
+                        [{"hostname": host.hostname, "source": "project", "confirmed": True}],
+                        False,
+                    ),
+                    (f"172.16.{project_index}.{host_index}", "mgmt", False, None, None),
                 ]:
                     ip_row = HostIpAddress(
                         host_id=host.id,
                         ip_address=ip_suffix,
                         label=label,
                         is_primary=is_primary,
+                        hostnames=ip_hostnames,
+                        is_cloudflare=ip_cf,
                         created_at=host_time,
                         updated_at=host_time,
                     )
@@ -516,11 +602,19 @@ async def seed_demo_data() -> None:
                     )
 
                 ports_for_host: list[Port] = []
-                for port_number, protocol, state, service_name, version, ip_label in [
-                    (22, Protocol.TCP, PortState.OPEN, "ssh", "OpenSSH_9.6", "mgmt"),
-                    (80, Protocol.TCP, PortState.OPEN, "http", "nginx/1.25", "external"),
-                    (443, Protocol.TCP, PortState.OPEN, "https", "nginx/1.25", "external"),
-                    (8080, Protocol.TCP, PortState.FILTERED if host_index == 3 else PortState.OPEN, "tomcat", "10.1", "internal"),
+                for port_number, protocol, state, service_name, version, ip_label, http_status in [
+                    (22, Protocol.TCP, PortState.OPEN, "ssh", "OpenSSH_9.6", "mgmt", None),
+                    (80, Protocol.TCP, PortState.OPEN, "http", "nginx/1.25", "external", 301),
+                    (443, Protocol.TCP, PortState.OPEN, "https", "nginx/1.25", "external", 200),
+                    (
+                        8080,
+                        Protocol.TCP,
+                        PortState.FILTERED if host_index == 3 else PortState.OPEN,
+                        "tomcat",
+                        "10.1",
+                        "internal",
+                        None if host_index == 3 else 403,
+                    ),
                 ]:
                     target_ip = host_ip_rows[ip_label]
                     port = Port(
@@ -529,6 +623,7 @@ async def seed_demo_data() -> None:
                         port_number=port_number,
                         protocol=protocol,
                         state=state,
+                        http_status=http_status,
                         created_at=host_time,
                         updated_at=host_time,
                     )
@@ -563,16 +658,47 @@ async def seed_demo_data() -> None:
                     )
 
                 endpoints: list[Endpoint] = []
-                for method, path_suffix, description in [
-                    (HttpMethod.GET, "/api/health", "Проверка состояния сервиса"),
-                    (HttpMethod.POST, "/api/login", "Точка входа пользователей"),
-                    (HttpMethod.GET, "/api/users", "Получение списка пользователей"),
+                for method, path_suffix, description, q_params, body, body_ct, req_headers in [
+                    (
+                        HttpMethod.GET,
+                        "/api/health",
+                        "Проверка состояния сервиса",
+                        [{"name": "verbose", "value": "true"}],
+                        None,
+                        None,
+                        [{"name": "Accept", "value": "application/json"}],
+                    ),
+                    (
+                        HttpMethod.POST,
+                        "/api/login",
+                        "Точка входа пользователей",
+                        None,
+                        '{"username": "admin", "password": "example"}',
+                        "application/json",
+                        [
+                            {"name": "Content-Type", "value": "application/json"},
+                            {"name": "X-Requested-With", "value": "XMLHttpRequest"},
+                        ],
+                    ),
+                    (
+                        HttpMethod.GET,
+                        "/api/users",
+                        "Получение списка пользователей",
+                        [{"name": "page", "value": "1"}, {"name": "limit", "value": "50"}],
+                        None,
+                        None,
+                        [{"name": "Authorization", "value": "Bearer <token>"}],
+                    ),
                 ]:
                     endpoint = Endpoint(
                         host_id=host.id,
                         path=path_suffix,
                         method=method,
                         description=f"{description} ({project_name})",
+                        query_params=q_params,
+                        request_body=body,
+                        request_content_type=body_ct,
+                        request_headers=req_headers,
                         created_at=host_time,
                         updated_at=host_time,
                     )
@@ -636,6 +762,43 @@ async def seed_demo_data() -> None:
                     if endpoints:
                         db.add(VulnerabilityAsset(vulnerability_id=vuln.id, asset_type=AssetType.ENDPOINT, asset_id=endpoints[0].id))
 
+                    # === Тикеты: связь находки с Works (bug_appsec) и Task Tracker ===
+                    # Обе таблицы — одна запись на уязвимость (unique). Разносим по
+                    # vuln_index, чтобы ни одна находка не получила два линка одного
+                    # типа и чтобы обе таблицы были заполнены в демо.
+                    if vuln_index == 1:
+                        works_key = f"APPSEC-{5000 + project_index * 10 + host_index}"
+                        db.add(
+                            WorksIssueLink(
+                                vulnerability_id=vuln.id,
+                                works_key=works_key,
+                                works_url=(
+                                    "https://portal.works.prod.sbt/swtr/units/current/unit/"
+                                    f"{works_key}?space=APPSEC&tenant=default"
+                                ),
+                                # Статус тикета в Works, синкается «on open»; разносим по
+                                # хостам, чтобы были и открытые, и в работе, и закрытые.
+                                works_status=["Открыт", "В работе", "Требует информации", "Закрыт"][
+                                    (project_index + host_index) % 4
+                                ],
+                                created_by=members[0].id if members else admin.id,
+                            )
+                        )
+                    # Уведомление автору о смене статуса его находки (actor — админ),
+                    # кроме только что открытых (OPEN): его присылает set-status.
+                    if vuln.status != VulnerabilityStatus.OPEN:
+                        db.add(
+                            Notification(
+                                user_id=vuln.created_by,
+                                type=NotificationType.VULN_STATUS_CHANGED,
+                                vulnerability_id=vuln.id,
+                                actor_id=admin.id,
+                                status=vuln.status.value,
+                                is_read=False,
+                                created_at=vuln_time,
+                            )
+                        )
+
                     file_counter += 1
                     png_bytes = DEMO_PNG_BYTES
                     png_key = storage.upload_bytes(png_bytes, "image/png", f"evidence-{project_index}-{host_index}-{vuln_index}.png")
@@ -690,6 +853,149 @@ async def seed_demo_data() -> None:
                         }
                     )
 
+            # === IP-импорт: служебный host origin='ip' + его адрес ===
+            # Так в проекте есть и доменные хосты (origin='host'), и «голые» IP,
+            # импортированные через ферму IP (в списке хостов не показываются).
+            imported_ip = f"203.0.{project_index}.{10 + project_index}"
+            ip_host = Host(
+                project_id=project.id,
+                ip_address=imported_ip,
+                hostname=None,
+                status=HostStatus.UP,
+                os_type=OsType.UNKNOWN,
+                origin="ip",
+                notes=None,
+                created_at=p_start_dt,
+                updated_at=p_start_dt,
+            )
+            db.add(ip_host)
+            await db.flush()
+            db.add(
+                HostIpAddress(
+                    host_id=ip_host.id,
+                    ip_address=imported_ip,
+                    label="imported",
+                    is_primary=True,
+                    hostnames=[{"hostname": f"ptr-{project_index}.isp.example", "source": "ptr", "confirmed": False}],
+                    is_cloudflare=False,
+                    created_at=p_start_dt,
+                    updated_at=p_start_dt,
+                )
+            )
+
+            # === Скрытые IP: адрес «удалён» из вкладки IP, но привязка к хосту цела ===
+            db.add(
+                ProjectHiddenIp(
+                    project_id=project.id,
+                    ip_address=f"172.16.{project_index}.254",
+                    created_by=admin.id,
+                    created_at=p_start_dt,
+                )
+            )
+
+            # === Задачи рекон-фермы: done (hosts), done (js), failed (ips) ===
+            db.add(
+                HostFarmJob(
+                    project_id=project.id,
+                    created_by=members[0].id if members else admin.id,
+                    kind="hosts",
+                    status="done",
+                    targets_total=2,
+                    raw=f"host-a.{project_name.lower().replace(' ', '-')}.demo.local\nhost-b.demo.local",
+                    result={"added": 2, "skipped": 0, "hosts": ["host-a.demo.local", "host-b.demo.local"]},
+                    error=None,
+                    attempts=1,
+                    published_at=p_start_dt,
+                    finished_at=p_start_dt + timedelta(minutes=2),
+                    skipped_targets=[],
+                )
+            )
+            db.add(
+                HostFarmJob(
+                    project_id=project.id,
+                    created_by=members[0].id if members else admin.id,
+                    kind="js",
+                    status="done",
+                    targets_total=1,
+                    raw=f"https://{first_host.hostname}/app.js" if first_host else "https://demo.local/app.js",
+                    result={"files": 1, "secrets": 2},
+                    error=None,
+                    attempts=1,
+                    published_at=p_start_dt,
+                    finished_at=p_start_dt + timedelta(minutes=5),
+                    skipped_targets=[],
+                )
+            )
+            db.add(
+                HostFarmJob(
+                    project_id=project.id,
+                    created_by=members[0].id if members else admin.id,
+                    kind="ips",
+                    status="failed",
+                    targets_total=3,
+                    raw="198.51.100.1\n198.51.100.2\n198.51.100.3",
+                    result=None,
+                    error="resolve timeout",
+                    attempts=3,
+                    published_at=p_start_dt,
+                    last_error="resolve timeout after 3 attempts",
+                    finished_at=p_start_dt + timedelta(minutes=1),
+                    skipped_targets=None,
+                )
+            )
+
+            # === JS-файлы фермы + найденные в них секреты ===
+            if first_host is not None:
+                js_file = JsFile(
+                    project_id=project.id,
+                    host_id=first_host.id,
+                    url=f"https://{first_host.hostname}/static/app.bundle.js",
+                    sha256=uuid4().hex + uuid4().hex,
+                    size_bytes=184320,
+                    content_type="application/javascript",
+                    status="ok",
+                    error=None,
+                    secret_count=2,
+                    endpoint_count=3,
+                    endpoints=["/api/v1/login", "/api/v1/users", "/internal/metrics"],
+                    fetched_at=p_start_dt + timedelta(minutes=5),
+                )
+                db.add(js_file)
+                await db.flush()
+                db.add(
+                    JsSecret(
+                        js_file_id=js_file.id,
+                        kind="aws_access_key",
+                        match_preview="AKIA************XMPL",
+                        snippet='const KEY = "AKIAIOSFODNN7EXAMPLE";',
+                        severity="high",
+                    )
+                )
+                db.add(
+                    JsSecret(
+                        js_file_id=js_file.id,
+                        kind="jwt",
+                        match_preview="eyJhbGciOiJIUzI1NiIsIn…",
+                        snippet='Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+                        severity="medium",
+                    )
+                )
+
+            # === Уведомление участникам о смене статуса проекта (не для ACTIVE) ===
+            if project_status != ProjectStatus.ACTIVE:
+                for member in members:
+                    db.add(
+                        Notification(
+                            user_id=member.id,
+                            type=NotificationType.PROJECT_STATUS_CHANGED,
+                            project_id=project.id,
+                            actor_id=admin.id,
+                            status=project_status.value,
+                            is_read=False,
+                            created_at=p_end_dt,
+                        )
+                    )
+
         # === API-токены агента: 2 шт. — один на все проекты, один на конкретный ===
         all_proj_token_raw = "demo-agent-token-allprojects-0001"
         all_proj_token = AgentApiToken(
@@ -699,8 +1005,26 @@ async def seed_demo_data() -> None:
             scopes=["projects:read", "assets:read", "notes:read", "vulns:read"],
             all_projects=True,
             created_by=admin.id,
+            expires_at=now + timedelta(days=90),
+            last_used_at=now - timedelta(hours=3),
         )
         db.add(all_proj_token)
+
+        # Третий токен — отозванный и просроченный (для демо-состояний в списке).
+        revoked_token_raw = "demo-agent-token-revoked-0003"
+        db.add(
+            AgentApiToken(
+                name="Demo: отозванный токен",
+                token_hash=hash_agent_token(revoked_token_raw),
+                token_prefix=revoked_token_raw[:8],
+                scopes=["projects:read"],
+                all_projects=False,
+                created_by=admin.id,
+                expires_at=now - timedelta(days=1),
+                revoked_at=now - timedelta(days=2),
+                last_used_at=now - timedelta(days=5),
+            )
+        )
 
         first_project = await db.scalar(select(Project).order_by(Project.created_at.asc()))
         scoped_token_raw = "demo-agent-token-scoped-0002"
@@ -716,6 +1040,158 @@ async def seed_demo_data() -> None:
         await db.flush()
         if first_project:
             db.add(AgentApiTokenProjectGrant(token_id=scoped_token.id, project_id=first_project.id))
+
+        # === Пользователи для токенов/писем: берём созданных в create_users ===
+        alice = await db.scalar(select(User).where(User.username == "alice"))
+        bob = await db.scalar(select(User).where(User.username == "bob"))
+        frank = await db.scalar(select(User).where(User.username == "frank"))
+
+        # === Refresh-токены: активный у alice + отозванный у bob (хранятся хэшами).
+        if alice:
+            db.add(
+                RefreshToken(
+                    user_id=alice.id,
+                    token_hash=hash_refresh_token(f"demo-refresh-active-{uuid4().hex}"),
+                    expires_at=now + timedelta(days=14),
+                    created_at=now - timedelta(days=1),
+                )
+            )
+        if bob:
+            db.add(
+                RefreshToken(
+                    user_id=bob.id,
+                    token_hash=hash_refresh_token(f"demo-refresh-revoked-{uuid4().hex}"),
+                    expires_at=now + timedelta(days=14),
+                    created_at=now - timedelta(days=7),
+                    revoked_at=now - timedelta(days=2),
+                )
+            )
+
+        # === Приглашения: pending / accepted / revoked / expired ===
+        db.add(
+            Invitation(
+                email="newbie@example.com",
+                full_name="Новый Пользователь Иванович",
+                role=UserRole.PENTESTER,
+                project_role=ProjectRole.PENTESTER,
+                token_hash=hash_invitation_token(f"demo-invite-pending-{uuid4().hex}"),
+                status="pending",
+                expires_at=now + timedelta(days=7),
+                invited_by=admin.id,
+            )
+        )
+        db.add(
+            Invitation(
+                email="expired-invite@example.com",
+                full_name="Протухшее Приглашение",
+                role=UserRole.PENTESTER,
+                project_role=ProjectRole.PENTESTER,
+                token_hash=hash_invitation_token(f"demo-invite-expired-{uuid4().hex}"),
+                status="pending",
+                expires_at=now - timedelta(days=1),
+                invited_by=admin.id,
+            )
+        )
+        db.add(
+            Invitation(
+                email="revoked-invite@example.com",
+                full_name="Отозванное Приглашение",
+                role=UserRole.PENTESTER,
+                project_role=ProjectRole.PENTESTER,
+                token_hash=hash_invitation_token(f"demo-invite-revoked-{uuid4().hex}"),
+                status="revoked",
+                expires_at=now + timedelta(days=7),
+                invited_by=admin.id,
+            )
+        )
+        if alice:
+            db.add(
+                Invitation(
+                    email="alice-invite@example.com",
+                    full_name=alice.full_name,
+                    role=UserRole.PENTESTER,
+                    project_role=ProjectRole.LEAD,
+                    token_hash=hash_invitation_token(f"demo-invite-accepted-{uuid4().hex}"),
+                    status="accepted",
+                    expires_at=now - timedelta(days=20),
+                    invited_by=admin.id,
+                    accepted_at=now - timedelta(days=25),
+                    accepted_user_id=alice.id,
+                )
+            )
+
+        # === Задания на письма: sent / pending / failed ===
+        db.add(
+            MailJob(
+                user_id=admin.id,
+                created_by=admin.id,
+                recipient_email=admin.email,
+                subject="Отчёт по проекту готов",
+                template="report_ready",
+                payload={"project": "Acme External API", "url": "https://storm.demo.local/projects/1"},
+                status="sent",
+                attempts=1,
+                published_at=now - timedelta(hours=2),
+                sent_at=now - timedelta(hours=2, minutes=-1),
+            )
+        )
+        db.add(
+            MailJob(
+                user_id=None,
+                created_by=admin.id,
+                recipient_email="newbie@example.com",
+                subject="Приглашение в STORM",
+                template="invitation",
+                payload={"invited_by": admin.username, "link": "https://storm.demo.local/invite/xxx"},
+                status="pending",
+                attempts=0,
+            )
+        )
+        db.add(
+            MailJob(
+                user_id=bob.id if bob else None,
+                created_by=admin.id,
+                recipient_email="bob@example.com",
+                subject="Сброс пароля",
+                template="password_reset",
+                payload={"link": "https://storm.demo.local/reset/yyy"},
+                status="failed",
+                attempts=3,
+                published_at=now - timedelta(hours=6),
+                last_error="SMTP 554: relay access denied",
+            )
+        )
+
+        # === Токены сброса пароля: использованный + активный (хэши в БД) ===
+        if alice:
+            db.add(
+                PasswordResetToken(
+                    user_id=alice.id,
+                    token_hash=hash_password_reset_token(f"demo-reset-used-{uuid4().hex}"),
+                    expires_at=now - timedelta(hours=1),
+                    used_at=now - timedelta(hours=2),
+                    created_at=now - timedelta(hours=3),
+                )
+            )
+            db.add(
+                PasswordResetToken(
+                    user_id=alice.id,
+                    token_hash=hash_password_reset_token(f"demo-reset-active-{uuid4().hex}"),
+                    expires_at=now + timedelta(hours=1),
+                    created_at=now - timedelta(minutes=10),
+                )
+            )
+
+        # === Токен реактивации для мягко удалённого (is_locked) пользователя frank.
+        if frank:
+            db.add(
+                AccountReactivationToken(
+                    user_id=frank.id,
+                    token_hash=hash_reactivation_token(f"demo-reactivate-{uuid4().hex}"),
+                    expires_at=now + timedelta(days=3),
+                    created_at=now - timedelta(days=1),
+                )
+            )
 
         for row in audit_rows:
             db.add(

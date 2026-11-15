@@ -854,6 +854,28 @@
   },
   "components": {
     "schemas": {
+      "AppSecVersionRef": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "name"
+        ],
+        "title": "AppSecVersionRef"
+      },
       "CvssVersion": {
         "type": "string",
         "enum": [
@@ -1048,17 +1070,6 @@
             "type": "string",
             "title": "Folder"
           },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
-          },
           "start_date": {
             "anyOf": [
               {
@@ -1146,6 +1157,13 @@
             ],
             "title": "Appsec Version Name"
           },
+          "appsec_versions": {
+            "items": {
+              "$ref": "#/components/schemas/AppSecVersionRef"
+            },
+            "type": "array",
+            "title": "Appsec Versions"
+          },
           "appsec_assignee": {
             "anyOf": [
               {
@@ -1156,6 +1174,17 @@
               }
             ],
             "title": "Appsec Assignee"
+          },
+          "appsec_assignee_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appsec Assignee Name"
           },
           "appsec_ticket_url": {
             "anyOf": [
@@ -1195,7 +1224,6 @@
           "id",
           "name",
           "folder",
-          "description",
           "start_date",
           "end_date",
           "timeline_frozen_at",
@@ -1253,13 +1281,6 @@
           "type": {
             "type": "string",
             "title": "Error Type"
-          },
-          "input": {
-            "title": "Input"
-          },
-          "ctx": {
-            "type": "object",
-            "title": "Context"
           }
         },
         "type": "object",

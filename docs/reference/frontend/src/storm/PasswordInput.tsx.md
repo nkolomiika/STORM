@@ -6,13 +6,13 @@
 
 ## PasswordInput
 
-[frontend/src/storm/PasswordInput.tsx:19](../../../../../frontend/src/storm/PasswordInput.tsx#L19)
+[frontend/src/storm/PasswordInput.tsx:20](../../../../../frontend/src/storm/PasswordInput.tsx#L20)
 
 ```typescript
 PasswordInput({ id, value, onChange, placeholder, autoComplete, autoFocus, style }: PasswordInputProps) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
 ```
 
-В теле вызывает `useState`.
+В теле вызывает `t`, `useLangStore`, `useState`.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -23,6 +23,8 @@ PasswordInput({ id, value, onChange, placeholder, autoComplete, autoFocus, style
 <details>
 <summary>Прямые вызовы в теле</summary>
 
+- `t`
+- `useLangStore`
 - `useState`
 
 </details>

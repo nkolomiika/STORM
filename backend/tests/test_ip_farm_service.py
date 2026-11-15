@@ -12,6 +12,13 @@ from app.schemas import HostFarmResult, IpFarmResult
 # --------------------------------------------------------------------- parse
 
 
+def test_bare_ipv6_is_canonicalized_for_rename_refresh_jobs() -> None:
+    targets, errors = IpFarmService.parse_ip_targets('2001:0db8:0:0:0:0:0:1\n2001:db8::1')
+    assert errors == []
+    assert list(targets) == ['2001:db8::1']
+    assert targets['2001:db8::1'].is_ip and not targets['2001:db8::1'].has_explicit
+
+
 def test_parse_accepts_ips_with_and_without_ports() -> None:
     raw = "1.2.3.4\n1.2.3.4:8443\nhttps://5.6.7.8:443\n[2001:db8::1]:8443"
     targets, errors = IpFarmService.parse_ip_targets(raw)

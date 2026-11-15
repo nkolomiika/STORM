@@ -2,6 +2,7 @@
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app import notification_events
 from app.exceptions import NotFoundError
 from app.models import AuditLog, Endpoint, EndpointComment, Host, User
 from app.schemas import EndpointCommentOut
@@ -46,10 +47,12 @@ class EndpointCommentService:
         comment = EndpointComment(endpoint_id=endpoint_id, user_id=actor.id, content=content)
         self.db.add(comment)
         await self.db.flush()
+        events = await notification_events.queue_mentions(self.db, project_id, content, actor.id, {"endpoint_id": endpoint_id, "host_id": host_id})
         self.db.add(AuditLog(
             action="CREATE", user_id=actor.id, entity_type="endpoint_comment", entity_id=comment.id,
             details={"project_id": str(project_id), "host_id": str(host_id), "endpoint_id": str(endpoint_id)},
         ))
         await self.db.commit()
         await self.db.refresh(comment)
+        await notification_events.publish(events)
         return self._out(comment, actor)

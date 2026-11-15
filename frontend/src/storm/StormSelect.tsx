@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState } from "react";
 import "./storm.css";
 import { Icon } from "./icons";
+import { t, useLangStore } from "./i18n";
 
 export interface StormSelectOption {
   value: string;
@@ -24,6 +25,7 @@ interface StormSelectProps {
 }
 
 export function StormSelect({ value, options, onChange, id, placeholder }: StormSelectProps) {
+  useLangStore((s) => s.lang);
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const selected = options.find((o) => o.value === value) ?? null;
@@ -78,7 +80,7 @@ export function StormSelect({ value, options, onChange, id, placeholder }: Storm
       >
         {selected?.dot && <span style={{ width: 9, height: 9, borderRadius: "50%", flex: "none", background: selected.dot }} />}
         <span style={{ flex: 1, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {selected ? selected.label : placeholder ?? "Select…"}
+          {selected ? selected.label : placeholder ?? t("Select…")}
         </span>
         <Icon
           name="chevron-down"

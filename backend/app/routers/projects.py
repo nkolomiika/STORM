@@ -46,7 +46,7 @@ async def create_project(
     db: AsyncSession = Depends(get_db),
 ) -> ProjectOut:
     """Создаёт проект."""
-    project = await ProjectService(db).create_project(payload.model_dump(), admin.id, get_client_ip(request))
+    project = await ProjectService(db).create_project(payload.model_dump(exclude_unset=True), admin.id, get_client_ip(request))
     return ProjectOut.model_validate(project)
 
 
@@ -129,7 +129,7 @@ async def update_project(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectOut:
-    """Обновляет карточку проекта: название, описание, сроки.
+    """Обновляет карточку проекта: название, статус, сроки и привязку APPSEC.
 
     Доступно админу, лиду проекта или его создателю (удаление — только админу).
     """

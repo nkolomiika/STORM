@@ -5,6 +5,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "./icons";
+import { t, useLangStore } from "./i18n";
 
 interface Props {
   value: string; // "yyyy-mm-dd" or ""
@@ -15,8 +16,7 @@ interface Props {
   id?: string;
 }
 
-const WEEKDAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
-const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const WEEKDAYS = { en: ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"], ru: ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"] };
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const toISO = (y: number, m: number, d: number) => `${y}-${pad(m + 1)}-${pad(d)}`;
@@ -27,6 +27,7 @@ const toDisplay = (iso: string) => {
 };
 
 export function StormDatePicker({ value, onChange, min, max, placeholder = "Select date", id }: Props) {
+  const lang = useLangStore((s) => s.lang);
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -89,12 +90,12 @@ export function StormDatePicker({ value, onChange, min, max, placeholder = "Sele
         onClick={() => setOpen((o) => !o)}
         style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, cursor: "pointer", textAlign: "left", background: "var(--st-surface)" }}
       >
-        <span style={{ color: value ? "var(--st-text)" : "var(--st-text-faint)", font: "600 13.5px Inter,sans-serif" }}>{value ? toDisplay(value) : placeholder}</span>
+        <span style={{ color: value ? "var(--st-text)" : "var(--st-text-faint)", font: "600 13.5px Inter,sans-serif" }}>{value ? toDisplay(value) : t(placeholder)}</span>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
           {value && (
             <span
               role="button"
-              aria-label="Clear date"
+              aria-label={t("Clear date")}
               onClick={(e) => {
                 e.stopPropagation();
                 onChange("");
@@ -127,18 +128,18 @@ export function StormDatePicker({ value, onChange, min, max, placeholder = "Sele
         >
           {/* month nav */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-            <button type="button" className="clk" onClick={prevMonth} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, border: "1px solid var(--st-border-light)", borderRadius: 9, background: "var(--st-surface)", cursor: "pointer", color: "var(--st-text-2)" }}>
+            <button type="button" className="listitem clk" aria-label={t("Previous month")} onClick={prevMonth} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, border: "1px solid var(--st-border-light)", borderRadius: 9, background: "var(--st-surface)", cursor: "pointer", color: "var(--st-text-2)" }}>
               <Icon name="chevron-left" size={16} sw={2.2} />
             </button>
-            <div style={{ font: "700 13.5px Inter,sans-serif", color: "var(--st-text)" }}>{MONTHS[view.m]} {view.y}</div>
-            <button type="button" className="clk" onClick={nextMonth} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, border: "1px solid var(--st-border-light)", borderRadius: 9, background: "var(--st-surface)", cursor: "pointer", color: "var(--st-text-2)" }}>
+            <div style={{ font: "700 13.5px Inter,sans-serif", color: "var(--st-text)" }}>{new Intl.DateTimeFormat(lang, { month: "long" }).format(new Date(view.y, view.m, 1))} {view.y}</div>
+            <button type="button" className="listitem clk" aria-label={t("Next month")} onClick={nextMonth} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, border: "1px solid var(--st-border-light)", borderRadius: 9, background: "var(--st-surface)", cursor: "pointer", color: "var(--st-text-2)" }}>
               <Icon name="chevron-right" size={16} sw={2.2} />
             </button>
           </div>
 
           {/* weekday header */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 2, marginBottom: 4 }}>
-            {WEEKDAYS.map((w) => (
+            {WEEKDAYS[lang].map((w) => (
               <div key={w} style={{ textAlign: "center", font: "700 10.5px Inter,sans-serif", letterSpacing: ".3px", color: "var(--st-text-faint)", textTransform: "uppercase", padding: "4px 0" }}>{w}</div>
             ))}
           </div>
@@ -160,7 +161,7 @@ export function StormDatePicker({ value, onChange, min, max, placeholder = "Sele
                     onChange(iso);
                     setOpen(false);
                   }}
-                  className={off ? undefined : "clk"}
+                  className={off ? undefined : "listitem clk"}
                   style={{
                     height: 32,
                     borderRadius: 9,
@@ -190,7 +191,7 @@ export function StormDatePicker({ value, onChange, min, max, placeholder = "Sele
               }}
               style={{ border: "none", background: "transparent", font: "700 12px Inter,sans-serif", color: disabled(todayISO) ? "var(--st-border-strong)" : "var(--st-accent)", cursor: disabled(todayISO) ? "not-allowed" : "pointer" }}
             >
-              Today
+              {t("Today")}
             </button>
             <button
               type="button"
@@ -201,7 +202,7 @@ export function StormDatePicker({ value, onChange, min, max, placeholder = "Sele
               }}
               style={{ border: "none", background: "transparent", font: "700 12px Inter,sans-serif", color: "var(--st-text-3)", cursor: "pointer" }}
             >
-              Clear
+              {t("Clear")}
             </button>
           </div>
         </div>

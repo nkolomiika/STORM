@@ -2,30 +2,11 @@
 
 Сгенерировано из объявлений кода. [Правила чтения](../../../METHODS.md).
 
-Методов и именованных функций: **12**.
-
-## Settings.jira_configured
-
-[backend/app/config.py:281](../../../../backend/app/config.py#L281)
-
-```python
-def jira_configured(self) -> bool
-```
-
-Заданы ли все обязательные параметры подключения к Jira.
-
-Возвращает: `bool`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `bool`
-
-</details>
+Методов и именованных функций: **11**.
 
 ## Settings._parse_sso_verify_tls
 
-[backend/app/config.py:287](../../../../backend/app/config.py#L287)
+[backend/app/config.py:255](../../../../backend/app/config.py#L255)
 
 ```python
 def _parse_sso_verify_tls(cls, v) -> не аннотирован
@@ -50,7 +31,7 @@ def _parse_sso_verify_tls(cls, v) -> не аннотирован
 
 ## Settings.sso_discovery_url
 
-[backend/app/config.py:300](../../../../backend/app/config.py#L300)
+[backend/app/config.py:268](../../../../backend/app/config.py#L268)
 
 ```python
 def sso_discovery_url(self) -> str
@@ -71,7 +52,7 @@ def sso_discovery_url(self) -> str
 
 ## Settings.sso_configured
 
-[backend/app/config.py:308](../../../../backend/app/config.py#L308)
+[backend/app/config.py:276](../../../../backend/app/config.py#L276)
 
 ```python
 def sso_configured(self) -> bool
@@ -90,7 +71,7 @@ def sso_configured(self) -> bool
 
 ## Settings.sso_scope_list
 
-[backend/app/config.py:313](../../../../backend/app/config.py#L313)
+[backend/app/config.py:281](../../../../backend/app/config.py#L281)
 
 ```python
 def sso_scope_list(self) -> list[str]
@@ -111,7 +92,7 @@ def sso_scope_list(self) -> list[str]
 
 ## Settings.sso_redirect_uri
 
-[backend/app/config.py:318](../../../../backend/app/config.py#L318)
+[backend/app/config.py:286](../../../../backend/app/config.py#L286)
 
 ```python
 def sso_redirect_uri(self) -> str
@@ -131,7 +112,7 @@ def sso_redirect_uri(self) -> str
 
 ## Settings.validate_secret_key
 
-[backend/app/config.py:325](../../../../backend/app/config.py#L325)
+[backend/app/config.py:293](../../../../backend/app/config.py#L293)
 
 ```python
 def validate_secret_key(cls, value: str) -> str
@@ -161,7 +142,7 @@ ValueError('JWT_SECRET_KEY должен содержать минимум 32 с�
 
 ## Settings.cors_origins
 
-[backend/app/config.py:332](../../../../backend/app/config.py#L332)
+[backend/app/config.py:300](../../../../backend/app/config.py#L300)
 
 ```python
 def cors_origins(self) -> list[str]
@@ -181,7 +162,7 @@ def cors_origins(self) -> list[str]
 
 ## Settings.csrf_origins
 
-[backend/app/config.py:337](../../../../backend/app/config.py#L337)
+[backend/app/config.py:305](../../../../backend/app/config.py#L305)
 
 ```python
 def csrf_origins(self) -> list[str]
@@ -201,7 +182,7 @@ def csrf_origins(self) -> list[str]
 
 ## Settings.works_configured
 
-[backend/app/config.py:342](../../../../backend/app/config.py#L342)
+[backend/app/config.py:310](../../../../backend/app/config.py#L310)
 
 ```python
 def works_configured(self) -> bool
@@ -222,7 +203,7 @@ def works_configured(self) -> bool
 
 ## Settings.works_cookies_dict
 
-[backend/app/config.py:347](../../../../backend/app/config.py#L347)
+[backend/app/config.py:315](../../../../backend/app/config.py#L315)
 
 ```python
 def works_cookies_dict(self) -> dict[str, str]
@@ -244,7 +225,7 @@ def works_cookies_dict(self) -> dict[str, str]
 
 ## get_settings
 
-[backend/app/config.py:359](../../../../backend/app/config.py#L359)
+[backend/app/config.py:327](../../../../backend/app/config.py#L327)
 
 ```python
 def get_settings() -> Settings

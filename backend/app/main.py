@@ -1,9 +1,12 @@
+import asyncio
+from contextlib import suppress
+
 from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.responses import JSONResponse
-from sqlalchemy import text
+from sqlalchemy import inspect, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import models  # noqa: F401
@@ -22,7 +25,6 @@ from app.routers import (
     files,
     images,
     import_,
-    jira,
     notifications,
     projects,
     project_credentials,
@@ -34,10 +36,12 @@ from app.routers import (
     v2_agent,
     websocket,
     works,
+    task_tracker,
 )
 from app.services import UserService
 from app.storage.minio_client import MinioStorage
 from app.input_safety import SecurityHeadersMiddleware, validate_request_parameters
+from app.notification_events import deadline_loop
 
 settings = get_settings()
 
@@ -108,7 +112,7 @@ def _register_routes() -> None:
     app.include_router(endpoint_comments.router, prefix=prefix)
     app.include_router(notifications.router, prefix=prefix)
     app.include_router(import_.router, prefix=prefix)
-    app.include_router(jira.router, prefix=prefix)
+    app.include_router(task_tracker.router, prefix=prefix)
     app.include_router(works.router, prefix=prefix)
     app.include_router(reports.router, prefix=prefix)
     app.include_router(audit_logs.router, prefix=prefix)
@@ -194,7 +198,14 @@ async def startup() -> None:
     """Инициализирует БД, MinIO и стартового администратора."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        project_columns = await conn.run_sync(lambda connection: {column['name'] for column in inspect(connection).get_columns('projects')})
+        if 'description' in project_columns:
+            await conn.execute(text('ALTER TABLE projects DROP COLUMN description'))
         if conn.dialect.name == "postgresql":
+            await conn.execute(text("ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'PROJECT_DEADLINE'"))
+            await conn.execute(text("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS context_data JSON"))
+            await conn.execute(text("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS dedupe_key VARCHAR(255)"))
+            await conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_notifications_dedupe_key ON notifications (dedupe_key)"))
             await conn.execute(text("ALTER TYPE vuln_severity ADD VALUE IF NOT EXISTS 'UNREALIZED'"))
             # Статусы находок приведены к workflow Works «BUG APPSEC» — добавляем новые
             # метки. Старые (FIXED/WONT_FIX/ACCEPTED_RISK) остаются висяками в типе; данные
@@ -221,7 +232,10 @@ async def startup() -> None:
             await conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS appsec_component_name VARCHAR(255)"))
             await conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS appsec_version_code VARCHAR(64)"))
             await conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS appsec_version_name VARCHAR(255)"))
+            await conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS appsec_versions JSON NOT NULL DEFAULT '[]'"))
+            await conn.execute(text("UPDATE projects SET appsec_versions = json_build_array(json_build_object('code', appsec_version_code, 'name', COALESCE(appsec_version_name, appsec_version_code))) WHERE json_array_length(appsec_versions) = 0 AND appsec_version_code IS NOT NULL"))
             await conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS appsec_assignee VARCHAR(255)"))
+            await conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS appsec_assignee_name VARCHAR(255)"))
             await conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS appsec_ticket_url VARCHAR(1024)"))
             await conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS appsec_ticket_key VARCHAR(64)"))
             await conn.execute(text("ALTER TABLE projects ALTER COLUMN folder SET DEFAULT ''"))
@@ -288,12 +302,16 @@ async def startup() -> None:
                     "appsec_component_name": "appsec_component_name VARCHAR(255)",
                     "appsec_version_code": "appsec_version_code VARCHAR(64)",
                     "appsec_version_name": "appsec_version_name VARCHAR(255)",
+                    "appsec_versions": "appsec_versions JSON NOT NULL DEFAULT '[]'",
                     "appsec_assignee": "appsec_assignee VARCHAR(255)",
+                    "appsec_assignee_name": "appsec_assignee_name VARCHAR(255)",
                     "appsec_ticket_url": "appsec_ticket_url VARCHAR(1024)",
                     "appsec_ticket_key": "appsec_ticket_key VARCHAR(64)",
                 },
             )
             await add_missing("users", {"is_locked": "is_locked BOOLEAN NOT NULL DEFAULT 0", "is_sso": "is_sso BOOLEAN NOT NULL DEFAULT 0"})
+            await add_missing("notifications", {"context_data": "context_data JSON", "dedupe_key": "dedupe_key VARCHAR(255)"})
+            await conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_notifications_dedupe_key ON notifications (dedupe_key)"))
             await add_missing("hosts", {"origin": "origin VARCHAR(16) NOT NULL DEFAULT 'host'"})
             await add_missing(
                 "host_ip_addresses",
@@ -324,6 +342,16 @@ async def startup() -> None:
     async with SessionLocal() as db:
         service = UserService(db)
         await service.bootstrap_admin()
+    app.state.deadline_notifications = asyncio.create_task(deadline_loop(SessionLocal))
+
+
+@app.on_event("shutdown")
+async def shutdown_notifications() -> None:
+    task = getattr(app.state, "deadline_notifications", None)
+    if task is not None:
+        task.cancel()
+        with suppress(asyncio.CancelledError):
+            await task
 
 
 @app.get("/health")

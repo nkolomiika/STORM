@@ -20,13 +20,13 @@ vi.mock("../api", () => ({
   findWorksComponents: vi.fn(async (q: string) =>
     q.toLowerCase().includes("seg") ? [{ code: "c-uuid", name: "SEGR" }] : [{ code: "c-uuid", name: "SEGR" }]
   ),
-  findWorksVersions: vi.fn(async () => [{ code: "v-uuid", name: "Platform V Stack 1.0.2" }]),
+  findWorksVersions: vi.fn(async () => [{ code: "v-uuid", name: "Platform V Stack 1.0.2" }, { code: "v-uuid-2", name: "Platform V Stack 2.0" }]),
   getTasks: vi.fn(async () => ({
     items: [
       {
-        key: "STS-100",
-        url: "https://works.example/STS-100",
-        summary: "Fix SQL injection",
+        key: "APPSEC-100",
+        url: "https://works.example/APPSEC-100",
+        summary: "Security assessment",
         status: "Open",
         status_category: "todo",
         issue_type: "Bug",
@@ -44,8 +44,8 @@ vi.mock("../api", () => ({
 const EMPTY: AppSecFieldsValue = {
   appsec_component_code: null,
   appsec_component_name: null,
-  appsec_version_code: null,
-  appsec_version_name: null,
+  appsec_versions: [],
+  appsec_assignee_name: null,
   appsec_assignee: null,
   appsec_ticket_url: null,
   appsec_ticket_key: null,
@@ -89,7 +89,7 @@ describe("StormAppSecFields", () => {
     await userEvent.setup().click(option);
 
     // onChange carries the username, not the display name.
-    expect(onChange).toHaveBeenCalledWith({ appsec_assignee: "alice" });
+    expect(onChange).toHaveBeenCalledWith({ appsec_assignee: "alice", appsec_assignee_name: "Alice Anderson" });
   });
 
   it("component typeahead resolves a name to its Works code", async () => {
@@ -128,10 +128,51 @@ describe("StormAppSecFields", () => {
     const onChange = vi.fn();
     render(<Harness onChange={onChange} />);
     const ticket = screen.getByPlaceholderText("Paste a URL or start typing a ticket…");
-    await type(ticket, "STS");
-    const option = await screen.findByText("Fix SQL injection");
+    await type(ticket, "APPSEC");
+    const option = await screen.findByText("Security assessment");
     const { default: userEvent } = await import("@testing-library/user-event");
     await userEvent.setup().click(option);
-    expect(onChange).toHaveBeenCalledWith({ appsec_ticket_url: "https://works.example/STS-100", appsec_ticket_key: "STS-100" });
+    expect(onChange).toHaveBeenCalledWith({ appsec_ticket_url: "https://works.example/APPSEC-100", appsec_ticket_key: "APPSEC-100" });
+  });
+
+  it("allows saving a project with no ticket", () => {
+    render(<StormAppSecFields value={EMPTY} onChange={vi.fn()} works={false} t={(s) => s} />);
+    const input = screen.getByRole("textbox", { name: "AppSec ticket" });
+    expect(input).not.toBeRequired();
+    expect(input).not.toHaveAttribute("aria-invalid", "true");
+  });
+
+  it("invalidates a selected ticket when its text is edited without erasing the draft", async () => {
+    const onChange = vi.fn();
+    render(<Harness onChange={onChange} />);
+    const input = screen.getByPlaceholderText("Paste a URL or start typing a ticket…");
+    await type(input, "APPSEC");
+    const { default: userEvent } = await import("@testing-library/user-event");
+    const user = userEvent.setup();
+    await user.click(await screen.findByText("Security assessment"));
+    await user.click(input);
+    await user.keyboard("x");
+    expect(input).toHaveValue("APPSEC-100x");
+    expect(onChange).toHaveBeenLastCalledWith({ appsec_ticket_url: null, appsec_ticket_key: null });
+  });
+
+  it("keeps multiple selected versions, prevents duplicates and removes only one item", async () => {
+    const onChange = vi.fn();
+    render(<Harness onChange={onChange} />);
+    const { default: userEvent } = await import("@testing-library/user-event");
+    const user = userEvent.setup();
+    const input = screen.getByPlaceholderText("Start typing a version…");
+    await user.click(input);
+    await user.click(await screen.findByText("Platform V Stack 1.0.2"));
+    await user.click(input);
+    await user.click(await screen.findByText("Platform V Stack 2.0"));
+    expect(onChange).toHaveBeenLastCalledWith({ appsec_versions: [{ code: "v-uuid", name: "Platform V Stack 1.0.2" }, { code: "v-uuid-2", name: "Platform V Stack 2.0" }] });
+    const calls = onChange.mock.calls.length;
+    await user.click(input);
+    const duplicates = await screen.findAllByText("Platform V Stack 1.0.2");
+    await user.click(duplicates.find((item) => item.classList.contains("prow"))!);
+    expect(onChange).toHaveBeenCalledTimes(calls);
+    await user.click(screen.getByRole("button", { name: "Remove version: Platform V Stack 1.0.2" }));
+    expect(onChange).toHaveBeenLastCalledWith({ appsec_versions: [{ code: "v-uuid-2", name: "Platform V Stack 2.0" }] });
   });
 });

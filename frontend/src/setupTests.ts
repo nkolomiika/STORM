@@ -62,3 +62,13 @@ if (!Element.prototype.getClientRects || Element.prototype.getClientRects.call(d
 if (!document.elementFromPoint) {
   document.elementFromPoint = () => null;
 }
+
+// Unit tests must not open real WebSocket connections. Dedicated live-update
+// tests dispatch events on their own controllable socket implementation.
+class UnitWebSocket extends EventTarget {
+  readonly url: string;
+  constructor(url: string | URL) { super(); this.url = String(url); }
+  close() {}
+  send() {}
+}
+Object.defineProperty(globalThis, "WebSocket", { configurable: true, writable: true, value: UnitWebSocket });

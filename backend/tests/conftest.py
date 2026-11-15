@@ -9,6 +9,7 @@ import os
 import datetime
 import sys
 import types
+import pytest
 
 
 REQUIRED_TEST_ENV = {
@@ -32,3 +33,10 @@ if "magic" not in sys.modules:
     magic_stub = types.ModuleType("magic")
     magic_stub.from_buffer = lambda _content, mime=True: "application/octet-stream"
     sys.modules["magic"] = magic_stub
+
+
+@pytest.fixture(autouse=True)
+def disable_local_tracker_demo(monkeypatch):
+    """Local UI fixtures must never replace network mocks in regression tests."""
+    from app.config import get_settings
+    monkeypatch.setattr(get_settings(), 'works_tasks_demo_file', '')

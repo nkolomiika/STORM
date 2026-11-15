@@ -473,7 +473,7 @@ WorksError('Не удалось загрузить файл в Works.', str(exc)
 [backend/app/works.py:248](../../../../backend/app/works.py#L248)
 
 ```python
-async def create_bug_appsec(self, *, summary: str, description_text: str | None, assigned_to: str, reporter: str, priority: str, component: dict[str, str] | None, version: dict[str, str] | None, drafts_info: list[dict[str, str]] | None=None) -> dict[str, Any]
+async def create_bug_appsec(self, *, summary: str, description_text: str | None, assigned_to: str, reporter: str, priority: str, component: dict[str, str] | None, versions: list[dict[str, str]], drafts_info: list[dict[str, str]] | None=None) -> dict[str, Any]
 ```
 
 Создаёт тикет bug_appsec в space STS. Возвращает JSON ответа Works.
@@ -486,7 +486,7 @@ async def create_bug_appsec(self, *, summary: str, description_text: str | None,
 | `reporter` | `str` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
 | `priority` | `str` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
 | `component` | `dict[str, str] \| None` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-| `version` | `dict[str, str] \| None` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
+| `versions` | `list[dict[str, str]]` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
 | `drafts_info` | `list[dict[str, str]] \| None` | `None` | Определяется именем/типом и контрактом вызывающего кода. |
 
 Возвращает: `dict[str, Any]`.
@@ -559,7 +559,7 @@ WorksError('Не удалось создать связь тикетов в Work
 [backend/app/works.py:335](../../../../backend/app/works.py#L335)
 
 ```python
-def works_issue_url(key: str) -> str
+def works_issue_url(key: str, *, space: str | None=None) -> str
 ```
 
 Ссылка на тикет Works в UI.
@@ -567,6 +567,7 @@ def works_issue_url(key: str) -> str
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
 | `key` | `str` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
+| `space` | `str \| None` | `None` | Определяется именем/типом и контрактом вызывающего кода. |
 
 Возвращает: `str`.
 

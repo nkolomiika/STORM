@@ -9,6 +9,8 @@
 
 ## Диаграмма связей (ERD)
 
+Дополнение миграции 0024 к `projects`: `appsec_versions JSON NOT NULL DEFAULT '[]'` хранит **все** ссылки версий `{code,name}`; `appsec_assignee_name VARCHAR(255) NULL` — отображаемое имя исполнителя, отдельно от логина `appsec_assignee`. Старые `appsec_version_code/name` остаются представлением первого элемента для совместимости. Миграция переносит прежнюю версию в массив из одного элемента. Названия и коды не сокращаются; формат отчёта не меняет данные проекта.
+
 ```mermaid
 erDiagram
     users ||--o{ refresh_tokens : "имеет"
@@ -111,12 +113,13 @@ erDiagram
 
 ### `projects` — Пентест-проекты
 
+Миграция 0025 удаляет колонку `description`; API и формы проектов больше не содержат это поле. Остальные поля проекта и описания других сущностей сохраняются.
+
 | Колонка     | Тип          | Ограничения                   | Описание                      |
 |-------------|--------------|-------------------------------|-------------------------------|
 | id          | INTEGER         | PK                            | Первичный ключ                |
 | name        | VARCHAR(255) | NOT NULL                      | Название проекта              |
 | folder      | VARCHAR(255) | NOT NULL, DEFAULT ''          | Папка/группа проекта в интерфейсе |
-| description | TEXT         | NULLABLE                      | Описание                      |
 | start_date  | DATE         | NULLABLE                      | Дата начала                   |
 | end_date    | DATE         | NULLABLE                      | Дата окончания                |
 | timeline_frozen_at | TIMESTAMPTZ | NULLABLE                | Время фиксации таймлайна проекта |
@@ -350,9 +353,9 @@ erDiagram
 
 ### `notifications` — In-app уведомления
 
-Уведомления создаются ровно по четырём поводам (`NotificationType`), других нет:
-упоминание `@username`, добавление в проект, смена статуса своей находки и смена
-статуса проекта. Инициатора события никогда не уведомляем.
+Уведомления создаются по пяти поводам (`NotificationType`): упоминание,
+добавление в проект, смена статуса своей находки, смена статуса проекта и
+дедлайн проекта в ближайшие два дня (UTC). Инициатора события не уведомляем.
 
 Предмет уведомления лежит на самой записи: у упоминаний это комментарий
 (`comment_id` **либо** `note_comment_id`), у остальных — `project_id` /
@@ -362,17 +365,21 @@ erDiagram
 |------------------|------------------------------|----------------------------------------|-----------------------------------------------------|
 | id               | INTEGER                      | PK                                     | Первичный ключ                                      |
 | user_id          | INTEGER                      | NOT NULL, FK → users.id                | Получатель уведомления                              |
-| type             | ENUM('mention','project_member_added','vuln_status_changed','project_status_changed') | NOT NULL | Повод |
+| type             | ENUM('mention','project_member_added','vuln_status_changed','project_status_changed','project_deadline') | NOT NULL | Повод |
 | comment_id       | INTEGER                      | NULLABLE, FK → comments.id             | Упоминание в комментарии к находке                  |
 | note_comment_id  | INTEGER                      | NULLABLE, FK → project_note_comments.id| Упоминание в комментарии к заметке                  |
 | project_id       | INTEGER                      | NULLABLE, FK → projects.id (CASCADE)   | Проект — для добавления в проект и смены его статуса |
 | vulnerability_id | INTEGER                      | NULLABLE, FK → vulnerabilities.id (CASCADE) | Находка — для смены её статуса                 |
 | actor_id         | INTEGER                      | NULLABLE, FK → users.id (SET NULL)     | Кто инициировал событие                             |
 | status           | VARCHAR(50)                  | NULLABLE                               | Выставленный статус (для смен статуса)              |
+| context_data     | JSON                         | NULLABLE                               | Серверный снимок контекста текстового упоминания или дедлайна |
+| dedupe_key       | VARCHAR(255)                 | NULLABLE, UNIQUE                       | Дедупликация напоминания: проект/дата/получатель     |
 | is_read          | BOOLEAN                      | NOT NULL, DEFAULT FALSE                | Прочитано ли                                        |
 | created_at       | TIMESTAMPTZ                  | NOT NULL, DEFAULT now()                | Дата создания                                       |
 
 **Индексы:** `user_id`, `(user_id, is_read)` (для счётчика непрочитанных)
+
+Миграция 0022 добавляет `context_data`, `dedupe_key` и тип дедлайна. Миграция 0023 сохраняет старые таблицы интеграции под именами `retired_tracker_configs`, `retired_project_tracker_links`, `retired_tracker_issue_links`; активных ORM-моделей для них нет. Текущая интеграция использует `works_issue_links` и поля `projects.appsec_ticket_*`: [контракты STS/APPSEC](TASK_TRACKER.md).
 
 ---
 ## Иерархия активов

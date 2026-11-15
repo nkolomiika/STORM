@@ -28,7 +28,7 @@
 - Pydantic v2 / pydantic-settings
 - JWT через `python-jose`, bcrypt через `passlib`
 - `python-magic` (детекция MIME), Pillow (обработка изображений)
-- `cvss` (вычисление CVSS), `httpx` (HTTP-клиент для Jira)
+- `cvss` (вычисление CVSS), `httpx` (HTTP-клиент для Task Tracker/Works)
 - `minio` (SDK MinIO)
 - `aio-pika` (RabbitMQ), `aiosmtplib` (SMTP в worker)
 
@@ -64,7 +64,7 @@ backend/
 │   ├── models.py                  # ВСЕ ORM-модели одним файлом: User, RefreshToken,
 │   │                              # AgentApiToken, AgentApiTokenProjectGrant, MailJob,
 │   │                              # Project, ProjectFolder, ProjectMember,
-│   │                              # JiraInstance, ProjectJiraLink, JiraIssueLink,
+│   │                              # WorksIssueLink,
 │   │                              # ProjectNote, ProjectNoteComment,
 │   │                              # Host, HostIpAddress, Port, Service, Endpoint,
 │   │                              # Vulnerability, VulnerabilityAsset,
@@ -72,7 +72,7 @@ backend/
 │   │                              # Notification, AuditLog
 │   ├── schemas.py                 # ВСЕ Pydantic-схемы (request/response) одним файлом
 │   ├── services.py                # ВСЕ сервисные классы одним файлом:
-│   │                              #   AuditService, AgentTokenService, JiraIntegrationService,
+│   │                              #   AuditService, AgentTokenService, WorksService,
 │   │                              #   AuthService, UserService, ProjectService, AssetService,
 │   │                              #   VulnerabilityService, FileService, CommentService,
 │   │                              #   ProjectNoteService, NotificationService,
@@ -101,8 +101,8 @@ backend/
 │   │   ├── comments.py            # комментарии к уязвимостям + @mention
 │   │   ├── notifications.py       # список, unread-count, mark-read, read-all
 │   │   ├── import_.py             # импорт STORM JSON, импорт/экспорт OpenAPI для хоста
-│   │   ├── jira.py                # /jira/config (admin), /projects/{id}/jira-link,
-│   │   │                          # экспорт уязвимости в Jira issue
+│   │   ├── task_tracker.py        # Tasks: чтение задач APPSEC
+│   │   ├── works.py               # экспорт находок STS и связь STS → APPSEC
 │   │   ├── reports.py             # генерация Word-отчётов: ПП и СЗИ
 │   │   ├── audit_logs.py          # чтение audit-логов из PostgreSQL (full-text + фильтры)
 │   │   ├── agent_tokens.py        # /agent-tokens — управление Bearer-токенами для AI агентов
@@ -125,7 +125,7 @@ backend/
 │       ├── 20260430_0004_create_project_notes.py
 │       ├── 20260512_0005_create_host_ip_addresses.py
 │       ├── 20260513_0006_create_agent_api_tokens.py
-│       └── 20260513_0007_create_jira_integration.py
+│       └── 20261114_0023_retire_legacy_tracker_tables.py
 ├── scripts/
 │   └── reset_and_seed.py          # сброс и заполнение БД для dev-окружения
 ├── tests/                         # pytest + pytest-asyncio (94+ тестов)
@@ -172,7 +172,7 @@ frontend/src/
 │   ├── ProfilePage.tsx
 │   ├── UsersAdminPage.tsx
 │   ├── AuditLogsPage.tsx
-│   └── AiAgentIntegrationPage.tsx # управление agent tokens и Jira config (admin)
+│   └── AiAgentIntegrationPage.tsx # управление agent tokens (admin)
 ├── test/
 │   └── renderWithProviders.tsx
 ├── tsconfig*.json
@@ -190,7 +190,7 @@ frontend/src/
 | MinIO       | хранилище файлов (avatars, vulnerability evidence)           | `app/storage/minio_client.py` (`MinioStorage`)             |
 | RabbitMQ    | очередь `storm.mail` для асинхронной отправки писем            | publish — `app/messaging.py`, consume — `app/worker/`      |
 | SMTP        | отправка писем через внешний SMTP (по умолчанию выключено)   | `app/worker/mail_worker.py` (aiosmtplib)                   |
-| Jira REST   | (опционально) экспорт уязвимостей в Jira issues              | `JiraIntegrationService` (httpx), backend-only             |
+| Task Tracker/Works | экспорт находок STS, чтение задач APPSEC | `WorksService`, `TaskTrackerService`, backend-only |
 
 ---
 
@@ -250,7 +250,7 @@ frontend/src/
   - Sanitization имени файла: `basename` + удаление управляющих символов.
   - Лимит размера: `CHECK size_bytes <= 50 MiB` на уровне БД.
 - **Аватары пользователей**: только `image/png|jpeg|webp|gif` (без SVG — антиXSS).
-- **SSRF-защита Jira `base_url`**: запрет схем кроме `https`, отказ от `localhost`/loopback/private/link-local IP.
+- **Task Tracker URL**: базовый адрес задаётся администратором через env; пользовательский URL тикета сохраняется как данные и сервером не загружается.
 - **Audit log**: единое хранилище — PostgreSQL-таблица `audit_logs` (`AuditService.log()` пишет один раз и сразу коммитит). Чтение через `GET /api/v1/audit-logs` с фильтрами и full-text-поиском по action/entity_type/ip/username/details.
 - **Markdown XSS**: `react-markdown` с `urlTransform` whitelist — `http/https/mailto` + только `data:image/...;base64,...` (см. `markdownUrlTransform.ts`).
 
@@ -303,7 +303,7 @@ frontend/src/
 - **Markdown-редактор**: TipTap с `tiptap-markdown` (round-trip Markdown ↔ ProseMirror), поддержка изображений в `data:` URL.
 - **Hosts с несколькими IP**: модель `Host` хранит «основной» IP (`Host.ip_address`) для обратной совместимости + полная таблица `HostIpAddress` (с флагом `is_primary`).
 - **Project notes**: иерархическое дерево (`parent_id`, `sort_order`), уникальность `(project_id, parent_id, title)`, отдельные комментарии (`ProjectNoteComment`).
-- **Jira integration**: backend-only, выполняется синхронно в HTTP-запросе (без отдельной очереди и jira-worker). Глобальная конфигурация (`JiraInstance`) + per-project link (`ProjectJiraLink`) + per-vulnerability link (`JiraIssueLink`).
+- **Task Tracker**: backend-only, настройки `WORKS_*`. Уязвимости экспортируются в STS (`WorksIssueLink`); Tasks и привязка проекта — APPSEC. Контракты и ограничения: [TASK_TRACKER.md](TASK_TRACKER.md).
 - **Frontend state**: zustand вместо Redux; для уведомлений и list-обновлений — WebSocket вместо polling.
 
 ---
@@ -324,8 +324,8 @@ frontend/src/
 | `/api/v1/projects/{id}/vulnerabilities/*`       | CRUD, status, workflow steps, assets-привязки                  |
 | `/api/v1/projects/{id}/vulnerabilities/{vid}/files`    | загрузка/скачивание/удаление evidence-файлов            |
 | `/api/v1/projects/{id}/vulnerabilities/{vid}/comments` | комментарии + @mention                                  |
-| `/api/v1/projects/{id}/vulnerabilities/{vid}/jira/*`   | export уязвимости в Jira issue, чтение связи             |
-| `/api/v1/projects/{id}/jira-link`               | привязка проекта к Jira project key                            |
+| `/api/v1/projects/{id}/vulnerabilities/{vid}/works` и `/works/export` | связь находки с STS и экспорт |
+| `/api/v1/tasks` и `/tasks/{key}` | чтение задач APPSEC и поиск для привязки проекта |
 | `/api/v1/projects/{id}/import`                  | импорт результатов сканеров (STORM JSON)                         |
 | `/api/v1/projects/{id}/hosts/{hid}/import-openapi`     | импорт endpoints из OpenAPI                              |
 | `/api/v1/projects/{id}/hosts/{hid}/export-openapi`     | экспорт endpoints в OpenAPI                              |
@@ -333,7 +333,7 @@ frontend/src/
 | `/api/v1/projects/{id}/reports/pp`              | генерация Word-отчёта ПП                                       |
 | `/api/v1/notifications/*`                       | список, unread-count, mark-read, read-all                      |
 | `/api/v1/audit-logs`                            | чтение audit-логов из PostgreSQL (admin)                       |
-| `/api/v1/jira/config`                           | глобальная конфигурация Jira (admin)                           |
+| `/api/v1/works/config` | доступность интеграции Task Tracker |
 | `/api/v1/agent-tokens/*`                        | управление API-токенами агентов (admin)                        |
 
 ### Машинный API `/api/v2` (Bearer auth)

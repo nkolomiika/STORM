@@ -84,7 +84,7 @@ yyyy-mm-dd -> dd.mm.yyyy for display (matches the rest of the app).
 StormDatePicker({ value, onChange, min, max, placeholder = "Select date", id }: Props) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
 ```
 
-В теле вызывает `WEEKDAYS.map`, `cells.map`, `disabled`, `toDisplay`, `toISO`, `today.getDate`, `today.getFullYear`, `today.getMonth`; полный список ниже.
+В теле вызывает `WEEKDAYS[lang].map`, `cells.map`, `disabled`, `new Intl.DateTimeFormat(lang, { month: "long" }).format`, `t`, `toDisplay`, `toISO`, `today.getDate`; полный список ниже.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -95,15 +95,18 @@ StormDatePicker({ value, onChange, min, max, placeholder = "Select date", id }: 
 <details>
 <summary>Прямые вызовы в теле</summary>
 
-- `WEEKDAYS.map`
+- `WEEKDAYS[lang].map`
 - `cells.map`
 - `disabled`
+- `new Intl.DateTimeFormat(lang, { month: "long" }).format`
+- `t`
 - `toDisplay`
 - `toISO`
 - `today.getDate`
 - `today.getFullYear`
 - `today.getMonth`
 - `useEffect`
+- `useLangStore`
 - `useMemo`
 - `useRef`
 - `useState`
@@ -112,7 +115,7 @@ StormDatePicker({ value, onChange, min, max, placeholder = "Select date", id }: 
 
 ## StormDatePicker.onDown
 
-[frontend/src/storm/StormDatePicker.tsx:54](../../../../../frontend/src/storm/StormDatePicker.tsx#L54)
+[frontend/src/storm/StormDatePicker.tsx:55](../../../../../frontend/src/storm/StormDatePicker.tsx#L55)
 
 ```typescript
 onDown(e: MouseEvent) => void
@@ -136,7 +139,7 @@ onDown(e: MouseEvent) => void
 
 ## StormDatePicker.onKey
 
-[frontend/src/storm/StormDatePicker.tsx:57](../../../../../frontend/src/storm/StormDatePicker.tsx#L57)
+[frontend/src/storm/StormDatePicker.tsx:58](../../../../../frontend/src/storm/StormDatePicker.tsx#L58)
 
 ```typescript
 onKey(e: KeyboardEvent) => void
@@ -159,7 +162,7 @@ onKey(e: KeyboardEvent) => void
 
 ## StormDatePicker.disabled
 
-[frontend/src/storm/StormDatePicker.tsx:78](../../../../../frontend/src/storm/StormDatePicker.tsx#L78)
+[frontend/src/storm/StormDatePicker.tsx:79](../../../../../frontend/src/storm/StormDatePicker.tsx#L79)
 
 ```typescript
 disabled(iso: string) => boolean
@@ -175,7 +178,7 @@ disabled(iso: string) => boolean
 
 ## StormDatePicker.prevMonth
 
-[frontend/src/storm/StormDatePicker.tsx:79](../../../../../frontend/src/storm/StormDatePicker.tsx#L79)
+[frontend/src/storm/StormDatePicker.tsx:80](../../../../../frontend/src/storm/StormDatePicker.tsx#L80)
 
 ```typescript
 prevMonth() => void
@@ -194,7 +197,7 @@ prevMonth() => void
 
 ## StormDatePicker.nextMonth
 
-[frontend/src/storm/StormDatePicker.tsx:80](../../../../../frontend/src/storm/StormDatePicker.tsx#L80)
+[frontend/src/storm/StormDatePicker.tsx:81](../../../../../frontend/src/storm/StormDatePicker.tsx#L81)
 
 ```typescript
 nextMonth() => void

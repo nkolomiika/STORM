@@ -11,7 +11,8 @@
     "type-check": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "check:i18n": "node scripts/audit-localization.mjs"
   },
   "dependencies": {
     "@rohit_coder/cvss": "^1.0.5",

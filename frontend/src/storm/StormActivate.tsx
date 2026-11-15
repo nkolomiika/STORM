@@ -1,3 +1,4 @@
+import { t, useLangStore } from "./i18n";
 /* STORM invitation activation screen. Public (no session): the invitee opens the
    link from the email, picks a username (checked for availability) and a password.
    On success the backend auto-logs them in; we refresh the session and StormRoot
@@ -36,6 +37,7 @@ const card: React.CSSProperties = {
 };
 
 export function StormActivate() {
+  useLangStore((s) => s.lang);
   const [params] = useSearchParams();
   const token = params.get("token") ?? "";
   const refreshUser = useAuthStore((s) => s.refreshUser);
@@ -128,12 +130,12 @@ export function StormActivate() {
     setSubmitting(true);
     try {
       await acceptInvitation(token, { username: username.trim(), password });
-      pushToast("Account activated. Welcome!", "success");
+      pushToast(t("Account activated. Welcome!"), "success");
       // Бэкенд уже выдал сессию (cookie) — подхватываем её; StormRoot покажет приложение.
       await refreshUser();
     } catch (err) {
       setSubmitting(false);
-      pushToast(getApiErrorMessage(err, "Couldn't activate the invitation"), "error");
+      pushToast(t(getApiErrorMessage(err, "Couldn't activate the invitation")), "error");
     }
   };
 
@@ -147,67 +149,65 @@ export function StormActivate() {
           </div>
 
           {loadingInfo ? (
-            <div style={{ ...card, textAlign: "center", color: "var(--st-text-3)", fontSize: 14 }}>Checking the link…</div>
+            <div style={{ ...card, textAlign: "center", color: "var(--st-text-3)", fontSize: 14 }}>{t("Checking the link…")}</div>
           ) : !info?.valid ? (
             <div style={card}>
-              <h1 style={{ margin: "0 0 12px", fontSize: 24, fontWeight: 800, letterSpacing: "-.5px", color: "var(--st-text)" }}>Invalid link</h1>
+              <h1 style={{ margin: "0 0 12px", fontSize: 24, fontWeight: 800, letterSpacing: "-.5px", color: "var(--st-text)" }}>{t("Invalid link")}</h1>
               <p style={{ margin: "0 0 22px", fontSize: 13.5, color: "var(--st-text-2)", lineHeight: 1.55 }}>
-                {REASON_TEXT[info?.reason ?? "not_found"] ?? REASON_TEXT.not_found}
+                {t(REASON_TEXT[info?.reason ?? "not_found"] ?? REASON_TEXT.not_found)}
               </p>
               <a
                 href="/login"
                 className="clk"
                 style={{ display: "inline-flex", alignItems: "center", gap: 8, height: 44, padding: "0 20px", borderRadius: 12, background: "var(--st-accent)", color: "var(--st-on-accent)", font: "700 14px Inter,sans-serif", textDecoration: "none" }}
-              >
-                Go to sign in
-                <Icon name="chevron-right" size={16} color="var(--st-on-accent)" sw={2.4} />
+              >{t("Go to sign in")} <Icon name="chevron-right" size={16} color="var(--st-on-accent)" sw={2.4} />
               </a>
             </div>
           ) : (
             <form onSubmit={handleSubmit} style={card}>
-              <h1 style={{ margin: "0 0 22px", fontSize: 26, fontWeight: 800, letterSpacing: "-.6px", color: "var(--st-text)" }}>Complete your registration</h1>
+              <h1 style={{ margin: "0 0 22px", fontSize: 26, fontWeight: 800, letterSpacing: "-.6px", color: "var(--st-text)" }}>{t("Complete your registration")}</h1>
 
               <div style={{ marginBottom: 15 }}>
-                <label className="flabel">Email</label>
+                <label className="flabel">{t("Email")}</label>
                 <input className="finp" value={info.email ?? ""} readOnly disabled style={{ background: "var(--st-elevated)", color: "var(--st-text-2)" }} />
               </div>
 
               <div style={{ marginBottom: 15 }}>
-                <label className="flabel" htmlFor="act-user">Full name</label>
+                <label className="flabel" htmlFor="act-user">{t("Full name")}</label>
                 <input
                   id="act-user"
                   className="finp"
                   autoComplete="username"
                   autoFocus
-                  placeholder="Иванов Иван Иванович"
+                  placeholder={t("Your full name")}
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                 />
-                {usernameHint && <div style={{ marginTop: 6, fontSize: 12, fontWeight: 600, color: usernameHint.color }}>{usernameHint.text}</div>}
+                {usernameHint && <div style={{ marginTop: 6, fontSize: 12, fontWeight: 600, color: usernameHint.color }}>{t(usernameHint.text)}</div>}
               </div>
 
               <div style={{ marginBottom: 15 }}>
-                <label className="flabel" htmlFor="act-pass">Password</label>
+                <label className="flabel" htmlFor="act-pass">{t("Password")}</label>
                 <PasswordInput
                   id="act-pass"
                   autoComplete="new-password"
-                  placeholder="••••••••"
+                  placeholder={t("••••••••")}
                   value={password}
                   onChange={setPassword}
                 />
               </div>
 
               <div style={{ marginBottom: 22 }}>
-                <label className="flabel" htmlFor="act-confirm">Confirm password</label>
+                <label className="flabel" htmlFor="act-confirm">{t("Confirm password")}</label>
                 <PasswordInput
                   id="act-confirm"
                   autoComplete="new-password"
-                  placeholder="••••••••"
+                  placeholder={t("••••••••")}
                   value={confirm}
                   onChange={setConfirm}
                 />
                 {confirm.length > 0 && !confirmValid && (
-                  <div style={{ marginTop: 6, fontSize: 12, fontWeight: 600, color: "var(--st-danger)" }}>Passwords don't match</div>
+                  <div style={{ marginTop: 6, fontSize: 12, fontWeight: 600, color: "var(--st-danger)" }}>{t("Passwords don't match")}</div>
                 )}
               </div>
 
@@ -231,7 +231,7 @@ export function StormActivate() {
                   boxShadow: "0 6px 18px rgba(46,95,191,.28)",
                 }}
               >
-                {submitting ? "Activating…" : "Activate and sign in"}
+                {submitting ? t("Activating…") : t("Activate and sign in")}
                 {!submitting && <Icon name="chevron-right" size={16} color="var(--st-on-accent)" sw={2.4} />}
               </button>
             </form>
@@ -242,7 +242,7 @@ export function StormActivate() {
       <footer style={{ flex: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: 16, fontSize: 12.5, color: "var(--st-text-faint)", flexWrap: "wrap" }}>
         <span style={{ fontWeight: 700, color: "var(--st-text-3)" }}>STORM</span>
         <span>·</span>
-        <span>Licensed to SberTech · Copyright © 2026. All rights reserved.</span>
+        <span>{t("Licensed to SberTech · Copyright © 2026. All rights reserved.")}</span>
       </footer>
     </div>
   );

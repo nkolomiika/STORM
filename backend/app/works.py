@@ -254,7 +254,7 @@ class WorksClient:
         reporter: str,
         priority: str,
         component: dict[str, str] | None,
-        version: dict[str, str] | None,
+        versions: list[dict[str, str]],
         drafts_info: list[dict[str, str]] | None = None,
     ) -> dict[str, Any]:
         """Создаёт тикет bug_appsec в space STS. Возвращает JSON ответа Works."""
@@ -270,7 +270,7 @@ class WorksClient:
             "exclusion_from_sla_calculation": "noo",
             # Компонент и затронутая версия — обязательные справочные поля.
             "sber_component": [_unit_ref(component.get("code"), component.get("name"))] if component else None,
-            "affects_version_s_crpv": [_unit_ref(version.get("code"), version.get("name"))] if version else None,
+            "affects_version_s_crpv": [_unit_ref(version.get("code"), version.get("name")) for version in versions] or None,
             # Остальные поля из образца создаём пустыми (Works подставит дефолты).
             "label": None,
             "affects_version": None,
@@ -332,6 +332,6 @@ class WorksClient:
             return {"raw": resp.text}
 
 
-def works_issue_url(key: str) -> str:
+def works_issue_url(key: str, *, space: str | None = None) -> str:
     """Ссылка на тикет Works в UI."""
-    return settings.works_issue_url_template.format(key=key, space=settings.works_space)
+    return settings.works_issue_url_template.format(key=key, space=space or settings.works_space)

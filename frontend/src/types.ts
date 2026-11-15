@@ -121,7 +121,6 @@ export interface Project {
   id: number;
   name: string;
   folder: string;
-  description: string | null;
   start_date: string | null;
   end_date: string | null;
   timeline_frozen_at: string | null;
@@ -135,7 +134,9 @@ export interface Project {
   appsec_component_name: string | null;
   appsec_version_code: string | null;
   appsec_version_name: string | null;
+  appsec_versions?: WorksRef[];
   appsec_assignee: string | null;
+  appsec_assignee_name?: string | null;
   // Связанный AppSec-тикет из раздела Tasks (или вручную введённый URL) — идёт в отчёт.
   appsec_ticket_url: string | null;
   appsec_ticket_key: string | null;
@@ -456,6 +457,13 @@ export interface JsFarmJob {
 }
 
 /** Та же таблица задач, что у HostFarmJob, но result другой формы (kind=ips). */
+export interface IpAddressChangeResult {
+  old_ip_address: string;
+  ip_address: string;
+  updated_hosts: number;
+  job: IpFarmJob;
+}
+
 export interface IpFarmJob {
   id: number;
   project_id: number;
@@ -610,7 +618,8 @@ export type NotificationKind =
   /** Изменился статус находки, которую он завёл. */
   | "vuln_status_changed"
   /** Изменился статус проекта, в котором он состоит. */
-  | "project_status_changed";
+  | "project_status_changed"
+  | "project_deadline";
 
 export interface Notification {
   id: number;
@@ -620,6 +629,11 @@ export interface Notification {
   is_read: boolean;
   created_at: string;
   context: {
+    endpoint_id?: number | null;
+    endpoint_path?: string | null;
+    endpoint_method?: string | null;
+    hostname?: string | null;
+    deadline_date?: string | null;
     vulnerability_id: number | null;
     vulnerability_title: string | null;
     note_id: number | null;
@@ -661,72 +675,52 @@ export interface AuditLog {
   created_at: string;
 }
 
-/** Связь уязвимости с задачей в Jira (одна на уязвимость). */
-export interface JiraIssueLink {
+/** Связь уязвимости с задачей в TaskTracker (одна на уязвимость). */
+export interface TaskTrackerIssueLink {
   id: number;
   vulnerability_id: number;
   /** Ключ задачи, напр. "SEC-123"; пусто, пока экспорт не завершён. */
-  jira_issue_key: string;
-  /** Ссылка на задачу в Jira; пусто, пока экспорт не завершён. */
-  jira_issue_url: string;
+  task_tracker_issue_key: string;
+  /** Ссылка на задачу в TaskTracker; пусто, пока экспорт не завершён. */
+  task_tracker_issue_url: string;
   status: "pending" | "linked" | "error";
   last_error: string | null;
   created_at: string;
   updated_at: string;
 }
 
-/** Глобальная конфигурация Jira (одна на воркспейс), настраивает админ. api_token не возвращается. */
-export interface JiraConfig {
-  id: number;
-  name: string;
-  base_url: string;
-  email: string;
-  default_issue_type: string;
-  is_enabled: boolean;
-  created_by: number;
-  created_at: string;
-  updated_at: string;
-}
-
-/** Привязка проекта STORM к проекту Jira (ключ), настраивает админ. */
-export interface ProjectJiraLink {
-  id: number;
-  project_id: number;
-  jira_project_key: string;
-  created_by: number;
-  created_at: string;
-  updated_at: string;
-}
-
-/* ── Jira «Tasks» (раздел Tasks) ─────────────────────────────────────────────
-   Read-only проекция задач Jira-проекта STS. Бэкенд ходит в Jira и отдаёт эти
+/* ── TaskTracker «Tasks» (раздел Tasks) ─────────────────────────────────────────────
+   Read-only проекция задач TaskTracker-проекта STS. Бэкенд ходит в TaskTracker и отдаёт эти
    поля; статус сворачивается в одну из четырёх категорий. */
-export type JiraTaskCategory = "todo" | "inprogress" | "done" | "unknown";
+export type TaskTrackerTaskCategory = "todo" | "inprogress" | "done" | "unknown";
 
-export interface JiraTask {
+export interface TaskTrackerTask {
   key: string;
   /** Ссылка на тикет в трекере (для связывания с проектом). */
   url: string | null;
   summary: string;
   status: string;
-  status_category: JiraTaskCategory;
+  status_category: TaskTrackerTaskCategory;
   issue_type: string;
   priority: string | null;
   assignee: string | null;
+  assignee_username?: string | null;
+  affected_versions?: WorksRef[];
+  is_demo?: boolean;
   updated: string;
   created: string;
 }
 
-export interface JiraTaskDetail extends JiraTask {
+export interface TaskTrackerTaskDetail extends TaskTrackerTask {
   reporter: string | null;
   description: string;
   labels: string[];
   url: string;
 }
 
-/* Jira Cloud перешла на токенную пагинацию (/search/jql): total не отдаётся. */
-export interface JiraTaskList {
-  items: JiraTask[];
+/* Метаданные страницы задач Task Tracker/Works. */
+export interface TaskTrackerTaskList {
+  items: TaskTrackerTask[];
   next_page_token: string | null;
   is_last: boolean;
 }

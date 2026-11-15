@@ -1,9 +1,11 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, vi } from "vitest";
 import { MemoryRouter, useLocation, useNavigate } from "react-router-dom";
 import { StormApp } from "./StormApp";
 import { useAuthStore, useToastStore } from "../store";
 import * as api from "../api";
+import { useLangStore } from "./i18n";
+import type { TaskTrackerTaskDetail } from "../types";
 
 // The rich-text steps/impact/remediation editors are TipTap (ProseMirror), which
 // doesn't expose a real `placeholder` attribute in jsdom. Mock it with a plain
@@ -18,7 +20,7 @@ vi.mock("./StormMarkdownEditor", () => {
 vi.mock("../api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../api")>();
   const mk = (id: number, name: string, status: string) => ({
-    id, name, folder: "", description: `${name} — assessment`, start_date: "2026-04-27",
+    id, name, folder: "", start_date: "2026-04-27",
     end_date: "2026-07-27", timeline_frozen_at: null, status, created_by: 1,
     created_at: "2026-01-01T00:00:00Z", updated_at: "2026-07-10T00:00:00Z",
   });
@@ -140,6 +142,8 @@ vi.mock("../api", async (importOriginal) => {
     getHiddenIps: vi.fn(async () => []),
     listVulnerabilityFiles: vi.fn(async () => []),
     getProject: vi.fn(async (_id: number) => projects.find((p) => p.id === _id)!),
+    getTasks: vi.fn(async () => ({ items: [], next_page_token: null, is_last: true })),
+    getTask: vi.fn(async () => { throw new Error("Task not configured"); }),
     getProjects: vi.fn(async () => ({ items: projects, total: projects.length, page: 1, size: 100, pages: 1 })),
     getUsers: vi.fn(async () => ({ items: users, total: users.length, page: 1, size: 200, pages: 1 })),
     getInvitations: vi.fn(async () => []),
@@ -218,6 +222,10 @@ vi.mock("../api", async (importOriginal) => {
     updateEndpoint: vi.fn(async (_pid: number, _hostId: number, id: number, _payload: { request_raw?: string }) => ({ id, host_id: 11, method: "POST", path: "/changed", query_params: [], request_headers: [], request_content_type: null, request_body: null, description: null, ...ts })),
     createHost: vi.fn(async () => hosts[1]),
     updateHost: vi.fn(async () => hosts[0]),
+    changeIpAddress: vi.fn(async (_pid: number, previous: string, address: string) => ({
+      old_ip_address: previous, ip_address: address, updated_hosts: 2,
+      job: { id: 903, project_id: 2, kind: "ips", status: "pending", targets_total: 1, result: null, error: null, created_at: "2026-11-15T00:00:00Z" },
+    })),
     deleteHost: vi.fn(async () => undefined),
     deleteEndpoint: vi.fn(async () => undefined),
     createEndpoint: vi.fn(async (_pid: number, hostId: number, payload: { path: string; method: string }) => ({
@@ -281,7 +289,10 @@ describe("StormApp (design prototype port)", () => {
   // StormApp only ever renders behind auth, and admin-only surfaces (the
   // workspace Members page) key off the signed-in user — so sign one in.
   beforeEach(() => {
+    useLangStore.getState().setLang("en");
     vi.clearAllMocks();
+    vi.mocked(api.getTasks).mockReset().mockResolvedValue({ items: [], next_page_token: null, is_last: true });
+    vi.mocked(api.getTask).mockReset().mockRejectedValue(new Error("Task not configured"));
     vi.mocked(api.listEndpointComments).mockReset().mockResolvedValue({ items: [], total: 0, page: 1, size: 50, pages: 1 });
     vi.mocked(api.createEndpointComment).mockReset();
     vi.mocked(api.getHosts).mockReset().mockImplementation(defaultGetHosts);
@@ -302,6 +313,7 @@ describe("StormApp (design prototype port)", () => {
     vi.mocked(api.listNotifications).mockResolvedValue({ items: [], total: 0, page: 1, size: 20, pages: 1 });
   });
   afterEach(() => {
+    useLangStore.getState().setLang("en");
     useAuthStore.setState({ user: null, isInitialized: false });
   });
 
@@ -311,6 +323,18 @@ describe("StormApp (design prototype port)", () => {
     expect(screen.getByText("Northwind API")).toBeInTheDocument();
     expect(screen.getAllByText("STORM").length).toBeGreaterThan(0);
     expect(screen.queryByText("My Tasks")).not.toBeInTheDocument();
+  });
+
+  it("translates already loaded project timestamps without another API request", async () => {
+    render(<MemoryRouter><StormApp /></MemoryRouter>);
+    await screen.findByText("Northwind API");
+    const calls = vi.mocked(api.getProjects).mock.calls.length;
+    expect(screen.getAllByText(/(?:min|h|days|mo) ago/).length).toBeGreaterThan(0);
+    act(() => useLangStore.getState().setLang("ru"));
+    expect(screen.getByPlaceholderText("Фильтр проектов…")).toBeInTheDocument();
+    expect(screen.getAllByText(/назад/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/(?:min|h|days|mo) ago/)).not.toBeInTheDocument();
+    expect(vi.mocked(api.getProjects)).toHaveBeenCalledTimes(calls);
   });
 
   it("loads only host timestamps for project charts, without downloading host trees", async () => {
@@ -609,8 +633,135 @@ describe("StormApp (design prototype port)", () => {
     await screen.findByText("Acme Corp — External Perimeter");
     fireEvent.click(screen.getByRole("button", { name: /New project/i }));
     fireEvent.change(screen.getByPlaceholderText("e.g. Acme Corp — External Perimeter"), { target: { value: "Initech Web App" } });
+    const modal = screen.getByRole("heading", { name: "New project" }).closest(".modalcard") as HTMLElement;
+    expect(within(modal).queryByText("Description")).not.toBeInTheDocument();
+    fireEvent.change(within(modal).getByPlaceholderText("Paste a URL or start typing a ticket…"), { target: { value: "https://tracker.example/APPSEC-1" } });
     fireEvent.click(screen.getByRole("button", { name: "Create project" }));
     expect(vi.mocked(api.createProject)).toHaveBeenCalledWith(expect.objectContaining({ name: "Initech Web App" }));
+    expect(vi.mocked(api.createProject).mock.calls[0][0]).not.toHaveProperty("description");
+  });
+
+  const trackerCard = (): TaskTrackerTaskDetail => ({
+    key: "APPSEC-701", url: "https://tracker.example/swtr/units/current/unit/APPSEC-701?space=APPSEC",
+    summary: "Native APPSEC assessment", status: "Open", status_category: "todo", issue_type: "Assessment",
+    priority: "High", assignee: "Мария Петрова", assignee_username: "m.petrova",
+    affected_versions: [{ code: "v1", name: "Platform 1.0" }, { code: "v2", name: "Platform 2.0" }],
+    created: "2026-11-01T00:00:00Z", updated: "2026-11-15T00:00:00Z",
+    reporter: "admin", description: "Native card body", labels: [], is_demo: true,
+  });
+
+  it("creates a project with the assignee login and all versions from the full task card", async () => {
+    const detail = trackerCard();
+    vi.mocked(api.getTasks).mockResolvedValue({ items: [{ ...detail, assignee: "Stale row", affected_versions: [] }], next_page_token: null, is_last: true });
+    vi.mocked(api.getTask).mockResolvedValue(detail);
+    render(<MemoryRouter initialEntries={["/tasks"]}><StormApp /></MemoryRouter>);
+    await screen.findByText(detail.summary);
+    expect(screen.getByText("Demo data")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Create project from this ticket" }));
+    await screen.findByDisplayValue("Мария Петрова");
+    expect(api.getTask).toHaveBeenCalledWith("APPSEC-701");
+    const modal = screen.getByRole("heading", { name: "New project" }).closest(".modalcard") as HTMLElement;
+    expect(within(modal).getByText("Platform 1.0")).toBeInTheDocument();
+    expect(within(modal).getByText("Platform 2.0")).toBeInTheDocument();
+    expect(within(modal).getByRole("textbox", { name: "AppSec ticket" })).toHaveValue("APPSEC-701");
+    fireEvent.change(within(modal).getByPlaceholderText("e.g. Acme Corp — External Perimeter"), { target: { value: "Created from APPSEC" } });
+    fireEvent.click(within(modal).getByRole("button", { name: "Create project" }));
+    expect(api.createProject).toHaveBeenCalledWith(expect.objectContaining({ appsec_ticket_key: "APPSEC-701", appsec_assignee: "m.petrova", appsec_assignee_name: "Мария Петрова", appsec_versions: detail.affected_versions }));
+  });
+
+  it("opens a task without assignee or versions with empty optional project fields", async () => {
+    const detail = { ...trackerCard(), assignee: null, assignee_username: null, affected_versions: [] };
+    vi.mocked(api.getTasks).mockResolvedValue({ items: [detail], next_page_token: null, is_last: true });
+    vi.mocked(api.getTask).mockResolvedValue(detail);
+    render(<MemoryRouter initialEntries={["/tasks"]}><StormApp /></MemoryRouter>);
+    await screen.findByText(detail.summary);
+    fireEvent.click(screen.getByRole("button", { name: "Create project from this ticket" }));
+    const modal = screen.getByRole("heading", { name: "New project" }).closest(".modalcard") as HTMLElement;
+    await waitFor(() => expect(modal.closest(".modalback")).toHaveClass("open"));
+    expect(within(modal).getByPlaceholderText("Start typing a name…")).toHaveValue("");
+    expect(within(modal).queryAllByRole("button", { name: /Remove version/ })).toHaveLength(0);
+  });
+
+  it.each(["cancel", "escape", "backdrop"])("clears a cancelled task draft before normal project creation (%s)", async (method) => {
+    vi.mocked(api.getTasks).mockResolvedValue({ items: [trackerCard()], next_page_token: null, is_last: true });
+    vi.mocked(api.getTask).mockResolvedValue(trackerCard());
+    render(<MemoryRouter initialEntries={["/tasks"]}><StormApp /></MemoryRouter>);
+    await screen.findByText("Native APPSEC assessment");
+    fireEvent.click(screen.getByRole("button", { name: "Create project from this ticket" }));
+    await screen.findByDisplayValue("Мария Петрова");
+    const modal = screen.getByRole("heading", { name: "New project" }).closest(".modalcard") as HTMLElement;
+    fireEvent.change(within(modal).getByPlaceholderText("e.g. Acme Corp — External Perimeter"), { target: { value: "Cancelled draft" } });
+    if (method === "cancel") fireEvent.click(within(modal).getByRole("button", { name: "Cancel" }));
+    else if (method === "escape") fireEvent.keyDown(document.body, { key: "Escape" });
+    else fireEvent.click(modal.closest(".modalback")!);
+    expect(modal.closest(".modalback")).not.toHaveClass("open");
+    fireEvent.click(screen.getByText("Projects"));
+    await screen.findByText("Acme Corp — External Perimeter");
+    fireEvent.click(screen.getByRole("button", { name: /New project/i }));
+    expect(within(modal).getByPlaceholderText("e.g. Acme Corp — External Perimeter")).toHaveValue("");
+    expect(within(modal).getByRole("textbox", { name: "AppSec ticket" })).toHaveValue("");
+    expect(within(modal).getByPlaceholderText("Start typing a name…")).toHaveValue("");
+    expect(within(modal).queryAllByRole("button", { name: /Remove version/ })).toHaveLength(0);
+    expect(api.createProject).not.toHaveBeenCalled();
+  });
+
+  it("shows missing project fields in an error toast when exporting findings", async () => {
+    render(<MemoryRouter initialEntries={["/projects/2/vulns"]}><StormApp /></MemoryRouter>);
+    const button = await screen.findByRole("button", { name: "Export all to Task Tracker" });
+    fireEvent.click(button);
+    await waitFor(() => expect(useToastStore.getState().toasts).toEqual(expect.arrayContaining([
+      expect.objectContaining({ severity: "error", message: "Fill in project details. Missing: AppSec ticket, Assignee, Affected versions" }),
+    ])));
+    expect(screen.queryByRole("button", { name: "Start export" })).not.toBeInTheDocument();
+  });
+
+  it("checks incomplete project data before exporting an individual finding", async () => {
+    render(<MemoryRouter initialEntries={["/projects/2/vulns/72"]}><StormApp /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole("button", { name: "Export to Task Tracker" }));
+    await waitFor(() => expect(useToastStore.getState().toasts.some((toast) => toast.severity === "error" && toast.message.includes("AppSec ticket, Assignee, Affected versions"))).toBe(true));
+    expect(screen.getByRole("heading", { name: "Export to Task Tracker" }).closest(".modalback")).not.toHaveClass("open");
+  });
+
+  it("shows a task loading error without opening a partially populated project form", async () => {
+    vi.mocked(api.getTasks).mockResolvedValue({ items: [trackerCard()], next_page_token: null, is_last: true });
+    vi.mocked(api.getTask).mockRejectedValue(new Error("Tracker offline"));
+    render(<MemoryRouter initialEntries={["/tasks"]}><StormApp /></MemoryRouter>);
+    await screen.findByText("Native APPSEC assessment");
+    fireEvent.click(screen.getByRole("button", { name: "Create project from this ticket" }));
+    await waitFor(() => expect(useToastStore.getState().toasts.some((toast) => toast.message.includes("Tracker offline"))).toBe(true));
+    expect(screen.getByRole("heading", { name: "New project" }).closest(".modalback")).not.toHaveClass("open");
+  });
+
+  it("ignores a late task response after leaving Tasks", async () => {
+    let finish!: (value: TaskTrackerTaskDetail) => void;
+    vi.mocked(api.getTasks).mockResolvedValue({ items: [trackerCard()], next_page_token: null, is_last: true });
+    vi.mocked(api.getTask).mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+    render(<MemoryRouter initialEntries={["/tasks"]}><StormApp /></MemoryRouter>);
+    await screen.findByText("Native APPSEC assessment");
+    fireEvent.click(screen.getByRole("button", { name: "Create project from this ticket" }));
+    fireEvent.click(screen.getByText("Projects"));
+    await screen.findByText("Acme Corp — External Perimeter");
+    await act(async () => { finish(trackerCard()); });
+    expect(screen.getByRole("heading", { name: "New project" }).closest(".modalback")).not.toHaveClass("open");
+  });
+
+  it("renders every affected version in the task card", async () => {
+    vi.mocked(api.getTask).mockResolvedValue(trackerCard());
+    render(<MemoryRouter initialEntries={["/tasks/APPSEC-701"]}><StormApp /></MemoryRouter>);
+    await screen.findByText("Native card body");
+    const sidebar = document.querySelector(".task-detail-side") as HTMLElement;
+    expect(within(sidebar).getByText("Мария Петрова")).toBeInTheDocument();
+    expect(within(sidebar).getByText("Platform 1.0")).toBeInTheDocument();
+    expect(within(sidebar).getByText("Platform 2.0")).toBeInTheDocument();
+  });
+
+  it("creates a project without an APPSEC ticket", async () => {
+    render(<MemoryRouter><StormApp /></MemoryRouter>);
+    await screen.findByText("Acme Corp — External Perimeter");
+    fireEvent.click(screen.getByRole("button", { name: /New project/i }));
+    fireEvent.change(screen.getByPlaceholderText("e.g. Acme Corp — External Perimeter"), { target: { value: "Required ticket" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create project" }));
+    await waitFor(() => expect(api.createProject).toHaveBeenCalledWith(expect.objectContaining({ name: "Required ticket", appsec_ticket_key: null, appsec_ticket_url: null })));
   });
 
   it("closes an open modal when Escape is pressed", async () => {
@@ -621,6 +772,14 @@ describe("StormApp (design prototype port)", () => {
     expect(back).toHaveClass("open");
     fireEvent.keyDown(document.body, { key: "Escape" });
     expect(back).not.toHaveClass("open");
+  });
+
+  it("does not render a description column in the project list", async () => {
+    render(<MemoryRouter><StormApp /></MemoryRouter>);
+    await screen.findByText("Acme Corp — External Perimeter");
+    const projects = screen.getByRole("heading", { name: "Projects" }).closest(".route") as HTMLElement;
+    expect(within(projects).queryByText("Description")).not.toBeInTheDocument();
+    expect(within(projects).getByText("Findings")).toBeInTheDocument();
   });
 
   // "API keys" are the backend's agent tokens; only their prefix is ever shown.
@@ -767,10 +926,10 @@ describe("StormApp (design prototype port)", () => {
     expect(api.listEndpointComments).toHaveBeenCalledTimes(2);
   });
 
-  it("uploads Swagger only from the export page into both import fields without saving immediately", async () => {
+  it.each(["Add endpoints", "Export"])("uploads Swagger from %s into both import fields without saving immediately", async (entry) => {
     await openEndpointsView();
     expect(screen.queryByRole("button", { name: "Upload Swagger JSON" })).not.toBeInTheDocument();
-    fireEvent.click(screen.getAllByRole("button", { name: "Export" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: entry })[0]);
     const upload = screen.getByRole("button", { name: "Upload Swagger JSON" });
     expect(upload.parentElement?.lastElementChild).toBe(upload);
     fireEvent.click(upload);
@@ -888,6 +1047,36 @@ describe("StormApp (design prototype port)", () => {
     const jsItem = screen.getAllByText("JS").find((n) => n.closest(".menu"));
     fireEvent.click(jsItem as HTMLElement);
   };
+
+  it("edits an actual IP from its card and queues a refresh without changing the hostname", async () => {
+    await openIpsView();
+    fireEvent.click((await screen.findAllByText("203.0.113.10"))[0]);
+    fireEvent.click(await screen.findByRole("button", { name: "Edit IP" }));
+    const modal = screen.getByRole("heading", { name: "Edit IP address" }).closest(".modalcard") as HTMLElement;
+    expect(within(modal).queryByText("Hostname")).not.toBeInTheDocument();
+    expect(within(modal).getByRole("button", { name: "Save changes" })).toBeDisabled();
+    const input = within(modal).getByDisplayValue("203.0.113.10");
+    fireEvent.change(input, { target: { value: "203.0.113.20" } });
+    fireEvent.click(within(modal).getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(api.changeIpAddress).toHaveBeenCalledWith(2, "203.0.113.10", "203.0.113.20"));
+    expect(api.updateHost).not.toHaveBeenCalled();
+    await waitFor(() => expect(modal.closest(".modalback")).not.toHaveClass("open"));
+    expect(useToastStore.getState().toasts).toEqual(expect.arrayContaining([expect.objectContaining({ message: "IP updated. Refreshing its information…", severity: "success" })]));
+  });
+
+  it("keeps a rejected IP change editable and displays an error", async () => {
+    vi.mocked(api.changeIpAddress).mockRejectedValueOnce(new Error("IP already exists"));
+    await openIpsView();
+    const row = (await screen.findAllByText("203.0.113.10"))[0].closest(".prow") as HTMLElement;
+    fireEvent.click(within(row).getByRole("button", { name: "Edit IP: 203.0.113.10" }));
+    const modal = screen.getByRole("heading", { name: "Edit IP address" }).closest(".modalcard") as HTMLElement;
+    fireEvent.change(within(modal).getByDisplayValue("203.0.113.10"), { target: { value: "203.0.113.11" } });
+    fireEvent.click(within(modal).getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(useToastStore.getState().toasts.some((toast) => toast.message === "IP already exists")).toBe(true));
+    expect(modal.closest(".modalback")).toHaveClass("open");
+    expect(within(modal).getByDisplayValue("203.0.113.11")).toBeInTheDocument();
+    expect(within(modal).getByRole("button", { name: "Save changes" })).not.toBeDisabled();
+  });
 
   it("has no JS delete-all button and confirms host deletion inside the app", async () => {
     await openJsView();
@@ -1090,10 +1279,13 @@ describe("StormApp (design prototype port)", () => {
     const main = document.querySelector("main") as HTMLElement;
     fireEvent.click(within(main).getByRole("button", { name: /Edit/i }));
     const modal = screen.getByText("Edit project").closest(".modalcard") as HTMLElement;
+    expect(within(modal).queryByText("Description")).not.toBeInTheDocument();
     const nameInput = within(modal).getByDisplayValue("Northwind API");
     fireEvent.change(nameInput, { target: { value: "Northwind API v2" } });
+    fireEvent.change(within(modal).getByPlaceholderText("Paste a URL or start typing a ticket…"), { target: { value: "https://tracker.example/APPSEC-2" } });
     fireEvent.click(within(modal).getByRole("button", { name: "Save" }));
     expect(vi.mocked(api.updateProject)).toHaveBeenCalledWith(2, expect.objectContaining({ name: "Northwind API v2" }));
+    expect(vi.mocked(api.updateProject).mock.calls[0][1]).not.toHaveProperty("description");
   });
 
   // Report generation is backed by the two Word templates the backend already has:
@@ -1141,6 +1333,34 @@ describe("StormApp (design prototype port)", () => {
       total: 4, page: 1, size: 20, pages: 1,
     });
   };
+
+  it("shows deadline reminders and opens the related project", async () => {
+    vi.mocked(api.listNotifications).mockResolvedValue({ items: [{
+      id: 90, type: "project_deadline", comment_id: null, note_comment_id: null, is_read: false,
+      created_at: "2026-11-14T00:00:00Z",
+      context: { vulnerability_id: null, vulnerability_title: null, note_id: null, note_title: null,
+        project_id: 2, project_name: "Northwind API", host_id: null, commenter_username: null, status: null, deadline_date: "2026-11-16" },
+    }], total: 1, page: 1, size: 20, pages: 1 });
+    render(<MemoryRouter><StormApp /></MemoryRouter>);
+    fireEvent.click(await screen.findByText("Project deadline: 16.11.2026"));
+    await waitFor(() => expect(api.markNotificationRead).toHaveBeenCalledWith(90));
+    expect(await screen.findByText("Engagement timeline")).toBeInTheDocument();
+  });
+
+  it("opens the endpoint request from a mention notification", async () => {
+    vi.mocked(api.listNotifications).mockResolvedValue({ items: [{
+      id: 91, type: "mention", comment_id: null, note_comment_id: null, is_read: false,
+      created_at: "2026-11-14T00:00:00Z",
+      context: { vulnerability_id: null, vulnerability_title: null, note_id: null, note_title: null,
+        project_id: 2, project_name: "Northwind API", host_id: 11, commenter_username: "alice", status: null,
+        endpoint_id: 501, endpoint_path: "/v1/orders", endpoint_method: "GET", hostname: "api.northwind.test" },
+    }], total: 1, page: 1, size: 20, pages: 1 });
+    render(<MemoryRouter><StormApp /></MemoryRouter>);
+    fireEvent.click(await screen.findByText("GET /v1/orders"));
+    const dialog = await screen.findByRole("dialog", { name: "Endpoint request" });
+    expect((within(dialog).getByRole("textbox", { name: "HTTP request" }) as HTMLTextAreaElement).value).toContain("GET /v1/orders");
+    await waitFor(() => expect(api.markNotificationRead).toHaveBeenCalledWith(91));
+  });
 
   /* There are exactly four reasons to be notified, and each reads as its own
      sentence — not everything is "mentioned you in". */

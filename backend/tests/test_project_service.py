@@ -5,7 +5,7 @@ _ids = _id_count(1)
 
 import pytest
 from app.enums import NotificationType, ProjectRole, ProjectStatus
-from app.exceptions import ForbiddenError
+from app.exceptions import ForbiddenError, ValidationError
 from app.models import Notification, UserRole
 from app.services import ProjectService
 from unittest.mock import AsyncMock, MagicMock
@@ -15,6 +15,22 @@ def _make_scalars_result(items: list[object]) -> MagicMock:
     result = MagicMock()
     result.all.return_value = items
     return result
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('method', ['create', 'update'])
+async def test_removed_description_is_rejected_before_database_operations(method):
+    db = AsyncMock()
+    db.add = MagicMock()
+    service = ProjectService(db)
+    with pytest.raises(ValidationError, match='description'):
+        if method == 'create':
+            await service.create_project({'name': 'Removed field', 'description': 'Old payload'}, 1)
+        else:
+            await service.update_project(1, {'description': 'Old payload'}, 1)
+    db.add.assert_not_called()
+    db.scalar.assert_not_awaited()
+    db.commit.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -122,7 +138,7 @@ async def test_update_project_freezes_timeline_on_first_non_active_status() -> N
         folder="",
         status=ProjectStatus.ACTIVE,
         timeline_frozen_at=None,
-    )
+     name="Project", )
     service.get_project = AsyncMock(return_value=project)  # type: ignore[method-assign]
     service.audit.log = AsyncMock()  # type: ignore[method-assign]
 
@@ -155,7 +171,7 @@ async def test_update_project_keeps_existing_frozen_timestamp_for_non_active_tra
         folder="",
         status=ProjectStatus.HANDOVER_TO_DEVELOPMENT,
         timeline_frozen_at=frozen_at,
-    )
+     name="Project", )
     service.get_project = AsyncMock(return_value=project)  # type: ignore[method-assign]
     service.audit.log = AsyncMock()  # type: ignore[method-assign]
 
@@ -186,7 +202,7 @@ async def test_update_project_unfreezes_timeline_when_reactivated() -> None:
         folder="",
         status=ProjectStatus.VULNERABILITY_RECHECK,
         timeline_frozen_at=object(),
-    )
+     name="Project", )
     service.get_project = AsyncMock(return_value=project)  # type: ignore[method-assign]
     service.audit.log = AsyncMock()  # type: ignore[method-assign]
 
@@ -317,7 +333,7 @@ async def test_project_status_change_notifies_members_except_actor(monkeypatch: 
     service = ProjectService(db)
     project = SimpleNamespace(
         id=1, start_date=None, end_date=None, folder="", status=ProjectStatus.ACTIVE, timeline_frozen_at=None
-    )
+    , name="Project", )
     service.get_project = AsyncMock(return_value=project)  # type: ignore[method-assign]
     service.audit.log = AsyncMock()  # type: ignore[method-assign]
 
@@ -340,7 +356,7 @@ async def test_project_update_without_status_change_notifies_nobody(monkeypatch:
     service = ProjectService(db)
     project = SimpleNamespace(
         id=1, start_date=None, end_date=None, folder="", status=ProjectStatus.ACTIVE, timeline_frozen_at=None, name="old"
-    )
+    , )
     service.get_project = AsyncMock(return_value=project)  # type: ignore[method-assign]
     service.audit.log = AsyncMock()  # type: ignore[method-assign]
 

@@ -15,6 +15,7 @@ htmlcov/
 coverage/
 
 backend/.venv/
+backend/.local/
 frontend/node_modules/
 frontend/dist/
 

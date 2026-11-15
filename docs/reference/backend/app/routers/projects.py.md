@@ -307,7 +307,7 @@ router.get('/{project_id}', response_model=ProjectOut)
 async def update_project(project_id: int, payload: ProjectUpdate, request: Request, _: None=Depends(enforce_csrf), current_user: User=Depends(get_current_user), db: AsyncSession=Depends(get_db)) -> ProjectOut
 ```
 
-Обновляет карточку проекта: название, описание, сроки.
+Обновляет карточку проекта: название, статус, сроки и привязку APPSEC.
 
 Доступно админу, лиду проекта или его создателю (удаление — только админу).
 

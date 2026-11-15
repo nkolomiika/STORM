@@ -195,8 +195,8 @@
 | POST | `/vulnerabilities/{vid}/comments` | Добавить комментарий с `@mention` | participant |
 | PUT | `/vulnerabilities/comments/{comment_id}` | Изменить комментарий | автор |
 | DELETE | `/vulnerabilities/comments/{comment_id}` | Удалить комментарий | автор / admin |
-| POST | `/vulnerabilities/{vid}/jira/export` | Экспорт уязвимости в Jira issue | participant |
-| GET | `/vulnerabilities/{vid}/jira` | Информация о связи с Jira | participant |
+| POST | `/vulnerabilities/{vid}/works/export` | Экспорт уязвимости в STS Task Tracker | participant |
+| GET | `/vulnerabilities/{vid}/works` | Связь с тикетом STS | participant |
 
 ### 3.7. Импорт и отчёты
 
@@ -221,15 +221,15 @@
 |-------|------|------------|------|
 | GET | `/audit-logs` | Чтение журнала с фильтрами + full-text-поиск | admin |
 
-### 3.10. Интеграция с Jira (`/api/v1/jira`)
+### 3.10. Task Tracker / Works
 
-| Метод | Путь | Назначение | Роли |
-|-------|------|------------|------|
-| GET | `/jira/config` | Текущая конфигурация Jira | admin |
-| PUT | `/jira/config` | Создать/обновить конфигурацию | admin |
-| DELETE | `/jira/config` | Удалить конфигурацию | admin |
-| PUT | `/projects/{id}/jira-link` | Привязать проект к Jira-проекту | admin |
-| DELETE | `/projects/{id}/jira-link` | Отвязать проект от Jira | admin |
+| Метод | Путь | Назначение | Доступ |
+| --- | --- | --- | --- |
+| GET | `/works/config` | Доступность интеграции | authenticated |
+| GET | `/tasks`, `/tasks/{key}` | Задачи пространства APPSEC | authenticated |
+| GET | `/works/components`, `/works/versions` | Справочники экспорта | authenticated |
+
+Привязка APPSEC хранится в полях `appsec_ticket_key` и `appsec_ticket_url` обычного CRUD проекта. Глобальные настройки интеграции задаются через `WORKS_*`, отдельного API конфигурации нет.
 
 ### 3.11. Agent-токены (`/api/v1/agent-tokens`)
 
@@ -725,52 +725,11 @@ flowchart TD
     I --> Z([200 ImportResult])
 ```
 
-### Процесс 13. Экспорт уязвимости в Jira
+### Процесс 13. Экспорт уязвимости в STS и привязка к APPSEC
 
-**Назначение.** Создать issue в Jira с описанием уязвимости и привязать его к записи.
+После проверки доступа и настроек проекта WorksService вызывает нативный `create_bug_appsec` с пространством STS. Вложения предварительно загружаются в draft. Затем, если задан APPSEC-тикет проекта, создаётся связь с source=ключ созданного STS и destination=ключ APPSEC из проекта. Ключ и URL STS сохраняются в `works_issue_links`.
 
-**Используемые endpoints.**
-- `PUT /api/v1/jira/config` (один раз — admin)
-- `PUT /api/v1/projects/{id}/jira-link`
-- `POST /api/v1/projects/{id}/vulnerabilities/{vid}/jira/export`
-- `GET .../vulnerabilities/{vid}/jira`
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant U as Пентестер
-    participant B as Backend
-    participant DB as PostgreSQL
-    participant J as Jira REST
-
-    U->>B: POST /vulnerabilities/{vid}/jira/export
-    B->>B: require_project_access
-    B->>DB: SELECT vulnerability, project, project_jira_link, jira_instance
-    B->>B: Проверить SSRF (base_url: https, не localhost, не private IP)
-    B->>B: Расшифровать api_token
-    B->>J: POST /rest/api/3/issue\n{ project_key, summary, description, issuetype }
-    alt 2xx
-        J-->>B: 201 issue { key, self }
-        B->>DB: UPSERT jira_issue_link\n(status='linked', jira_issue_key, jira_issue_url)
-        B->>DB: INSERT audit_logs (UPDATE)
-        B-->>U: 200 JiraExportResult
-    else 4xx/5xx
-        J-->>B: error
-        B->>DB: UPSERT jira_issue_link\n(status='error', last_error)
-        B-->>U: 502 JiraError
-    end
-```
-
-```mermaid
-flowchart TD
-    A([База: jira_instance + project_jira_link]) --> B{Конфиг есть?}
-    B -- "нет" --> X1([400: Jira не настроена])
-    B -- "да" --> C{base_url валидный<br/>не SSRF?}
-    C -- "нет" --> X2([400: SSRF-нарушение])
-    C -- "да" --> D{api_token есть?}
-    D -- "нет" --> X3([400: токен не задан])
-    D -- "да" --> E([Готово к экспорту])
-```
+Ошибка создания тикета прерывает экспорт. Ошибка создания связи сейчас только журналируется; тикет STS остаётся созданным. Это ограничение, а не подтверждённая успешная привязка. Точные настройки, HTTP-контракты и тесты: [TASK_TRACKER.md](TASK_TRACKER.md).
 
 ### Процесс 14. Генерация Word-отчётов
 
@@ -929,12 +888,12 @@ sequenceDiagram
 |----------|------------------|
 | `enforce_csrf` (Origin whitelist) | Все state-changing методы `/api/v1` |
 | `get_current_user` (JWT cookie) | Все `/api/v1` кроме `/auth/login` и `/auth/refresh` |
-| `require_admin` | Управление пользователями, agent-токенами, конфигом Jira, чтение audit-logs |
+| `require_admin` | Управление пользователями, agent-токенами, чтение audit-logs |
 | `require_project_access` | Все эндпоинты под `/projects/{id}/...` |
 | `get_agent_token_context` + `require_agent_scope` | Все `/api/v2/...` |
 | `require_agent_project_access` | Все `/api/v2/projects/{id}/...` |
 | MIME-whitelist + size-check + filename sanitize | Все upload-эндпоинты файлов |
-| SSRF-валидация | Конфигурация Jira `base_url` |
+| Сетевые ограничения | Проверки целей сканирования в `netguard.py`; Task Tracker URL — deployment env |
 | Markdown URL whitelist (http/https/mailto + data:image) | `MarkdownEditor` и рендер на фронте |
 | `audit_logs` запись | Все мутирующие операции и события аутентификации |
 

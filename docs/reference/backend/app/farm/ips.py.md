@@ -276,7 +276,7 @@ ValidationError(f'Слишком много IP: {len(targets)} (максимум
 [backend/app/farm/ips.py:293](../../../../../backend/app/farm/ips.py#L293)
 
 ```python
-async def create_job(self, project_id: int, raw: str, actor_id: int) -> HostFarmJob
+async def create_job(self, project_id: int, raw: str, actor_id: int, *, force: bool=False, commit: bool=True) -> HostFarmJob
 ```
 
 В теле вызывает `HostFarmJob`, `IpFarmResult`, `IpFarmResult(ips_skipped=len(existing)).model_dump`, `ProjectHiddenIp.ip_address.in_`, `ValidationError`, `and_`, `datetime.now`, `delete`; полный список ниже.
@@ -286,10 +286,12 @@ async def create_job(self, project_id: int, raw: str, actor_id: int) -> HostFarm
 | `project_id` | `int` | `обязательный` | ID проекта; доступ проверяет dependency маршрута, принадлежность ресурса — сервис. |
 | `raw` | `str` | `обязательный` | Исходное значение до нормализации/разбора. |
 | `actor_id` | `int` | `обязательный` | ID инициатора для аудита и уведомлений. |
+| `force` | `bool` | `False` | Определяется именем/типом и контрактом вызывающего кода. |
+| `commit` | `bool` | `True` | Определяется именем/типом и контрактом вызывающего кода. |
 
 Возвращает: `HostFarmJob`.
 
-Прямые операции с БД: `self.db.add`, `self.db.commit`, `self.db.execute`, `self.db.refresh`.
+Прямые операции с БД: `self.db.add`, `self.db.commit`, `self.db.execute`, `self.db.flush`, `self.db.refresh`.
 
 Явные raise в теле (исключения вызываемых методов могут добавляться):
 
@@ -316,8 +318,10 @@ ValidationError(f'Слишком много IP: {len(targets)} (максимум
 - `self.db.add`
 - `self.db.commit`
 - `self.db.execute`
+- `self.db.flush`
 - `self.db.refresh`
 - `self.parse_ip_targets`
+- `set`
 - `sorted`
 - `targets.keys`
 

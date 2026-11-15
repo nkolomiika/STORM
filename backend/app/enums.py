@@ -128,6 +128,7 @@ class NotificationType(str, enum.Enum):
     VULN_STATUS_CHANGED = "vuln_status_changed"
     #: Изменился статус проекта, в котором состоит пользователь.
     PROJECT_STATUS_CHANGED = "project_status_changed"
+    PROJECT_DEADLINE = "project_deadline"
 
 
 class ReconJobKind(str, enum.Enum):

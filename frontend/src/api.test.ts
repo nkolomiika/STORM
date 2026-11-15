@@ -114,6 +114,10 @@ describe("refresh and retry", () => {
 });
 
 describe("note and endpoint contracts", () => {
+  it("allows project creation without an APPSEC ticket", async () => {
+    await api.createProject({ name: "Optional ticket" });
+    expect(adapter.mock.calls[0][0]).toMatchObject({ method: "post", url: "/projects", data: '{"name":"Optional ticket"}' });
+  });
   it("sends an empty note body to clear content, but rejects blank titles locally", async () => {
     await api.updateProjectNote(7, 11, { content: "" });
     expect(adapter.mock.calls[0][0]).toMatchObject({ method: "put", url: "/projects/7/notes/11", data: '{"content":""}' });

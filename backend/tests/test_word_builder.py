@@ -9,6 +9,7 @@ _ids = _id_count(1)
 
 import pytest
 from docx import Document
+from docx.enum.text import WD_COLOR_INDEX
 
 from app.enums import AssetType, CvssVersion, ProjectStatus, Severity, VulnerabilityStatus
 from app.models import Host, Project, Vulnerability, VulnerabilityAsset
@@ -20,7 +21,6 @@ def _make_project(name: str = "DemoApp") -> Project:
     project.id = next(_ids)
     project.name = name
     project.folder = ""
-    project.description = "Описание"
     project.start_date = date(2026, 1, 10)
     project.end_date = date(2026, 1, 20)
     project.status = ProjectStatus.ACTIVE
@@ -140,6 +140,69 @@ def test_word_builder_returns_non_empty_docx(builder) -> None:
     assert "SQL injection in login form" in text
     assert "Verbose error messages" in text
     assert "10.0.0.1" in text or "api.demo.local" in text
+
+
+def test_word_report_formats_versions_and_keeps_original_project_versions():
+    from copy import deepcopy
+    data, indexes = _build_payload()
+    versions = [{'code': 'v1', 'name': 'Platform V Stack 1.0.2'}, {'code': 'v2', 'name': 'Platform V Stack 2.0.1-beta.2'}]
+    project = data['project']
+    project.appsec_versions = deepcopy(versions)
+    project.appsec_version_name = versions[0]['name']
+    content = build_szi(data, indexes, image_bytes_by_id={})
+    text = _doc_text(content)
+    assert '1.0.2, 2.0.1-beta.2' in text
+    assert versions[0]['name'] not in text
+    assert versions[1]['name'] not in text
+    assert project.appsec_versions == versions
+    assert project.appsec_version_name == 'Platform V Stack 1.0.2'
+
+
+def test_expected_result_in_each_test_card_has_yellow_fill_instruction():
+    data, indexes = _build_payload()
+    content = build_szi(data, indexes, image_bytes_by_id={})
+    document = Document(BytesIO(content))
+    paragraphs = document.paragraphs
+    expected_headers = [index for index, paragraph in enumerate(paragraphs) if paragraph.text.strip().startswith('Ожидаемый результат:')]
+    assert len(expected_headers) == len(data['vulnerabilities'])
+    for index in expected_headers:
+        result = paragraphs[index + 1]
+        assert result.text == 'Заполните ожидаемый результат'
+        assert all(run.font.highlight_color == WD_COLOR_INDEX.YELLOW for run in result.runs if run.text)
+    assert 'Фактический результат:' in _doc_text(content)
+
+
+def test_architecture_and_threat_model_results_have_yellow_fill_instructions():
+    data, indexes = _build_payload()
+    document = Document(BytesIO(build_szi(data, indexes, image_bytes_by_id={})))
+    paragraphs = document.paragraphs
+    for prefix, prompt in [
+        ('Результаты анализа архитектуры ПП', 'Заполните результаты анализа архитектуры ПП'),
+        ('Результаты анализа модели угроз ПП', 'Заполните результаты анализа модели угроз ПП'),
+    ]:
+        headings = [index for index, paragraph in enumerate(paragraphs) if paragraph.text.startswith(prefix)]
+        assert len(headings) == 1
+        content = paragraphs[headings[0] + 1]
+        assert content.text == prompt
+        assert all(run.font.highlight_color == WD_COLOR_INDEX.YELLOW for run in content.runs if run.text)
+    surface = next(index for index, paragraph in enumerate(paragraphs) if paragraph.text.startswith('Результаты анализа поверхности атаки ПП'))
+    assert paragraphs[surface + 1].text.startswith('Был выполнен анализ следующих документов')
+
+
+def test_analysis_prompts_preserve_filled_content_and_other_sections():
+    from app.reports.word_builder import _fill_analysis_result_placeholders
+    document = Document()
+    document.add_heading('Результаты анализа архитектуры ПП «Example»', level=3)
+    architecture = document.add_paragraph('Анализ уже заполнен... Сохранить этот текст.')
+    document.add_heading('Результаты анализа поверхности атаки ПП «Example»', level=3)
+    surface = document.add_paragraph('...')
+    document.add_heading('Результаты анализа модели угроз ПП «Example»', level=3)
+    threats = document.add_paragraph('…')
+    _fill_analysis_result_placeholders(document)
+    assert architecture.text == 'Анализ уже заполнен... Сохранить этот текст.'
+    assert surface.text == '...'
+    assert threats.text == 'Заполните результаты анализа модели угроз ПП'
+    assert threats.runs[0].font.highlight_color == WD_COLOR_INDEX.YELLOW
 
 
 def test_word_builder_splits_vulnerabilities_and_weaknesses() -> None:

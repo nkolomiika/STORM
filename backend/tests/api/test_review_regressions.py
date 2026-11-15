@@ -90,7 +90,7 @@ async def test_note_delete_promotes_children_when_names_do_not_conflict(api):
 
 
 @pytest.mark.parametrize("resource,payload", [
-    ("projects", {"name": "Must roll back"}),
+    ("projects", {"name": "Must roll back", "appsec_ticket_key": "APPSEC-1"}),
     ("projects/{project}/hosts", {"hostname": "rollback.example"}),
     ("projects/{project}/hosts/{host}/ports", {"ip_address_id": "IP", "port_number": 3333}),
     ("projects/{project}/hosts/{host}/ports/{port}/services", {"name": "rollback"}),

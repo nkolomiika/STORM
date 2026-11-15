@@ -78,7 +78,7 @@ def _cf_from_headers(headers) -> bool:
 
 
 class ProbeTransport(httpx.AsyncHTTPTransport):
-    """Как _SafeJiraTransport: повторно резолвит host и отклоняет приватные IP
+    """Повторно резолвит host и отклоняет приватные IP
     (защита от DNS-rebinding между нашим резолвом и реальным подключением)."""
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
@@ -109,6 +109,13 @@ def resolve_scheme(existing: str | None, new: str | None, port: int) -> str:
 
 def parse_token(token: str) -> tuple[str, bool, int | None, str | None] | None:
     """(hostname, is_ip, port|None, scheme|None) или None, если токен невалиден."""
+    # Голый IPv6 — литерал, а не URL host:port. Сначала канонизируем
+    # адрес, иначе urlsplit ошибочно принимает часть IPv6 за номер порта.
+    if '%' not in token:
+        try:
+            return str(ipaddress.ip_address(token)), True, None, None
+        except ValueError:
+            pass
     try:
         split = urlsplit(token if "://" in token else f"//{token}")
     except ValueError:

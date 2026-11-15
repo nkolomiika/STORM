@@ -1,3 +1,4 @@
+import { subscribeNotificationUpdates } from "./notificationUpdates";
 /* STORM — Offensive Security Research & Management Console.
    React port of the design prototype (STORM.dc.html). Every collection it renders
    is loaded from the backend; data.ts carries the view shapes only. */
@@ -36,8 +37,9 @@ import { useAuthStore, useToastStore } from "../store";
 import { useThemeStore } from "./theme";
 import { StormSelect } from "./StormSelect";
 import { PasswordInput } from "./PasswordInput";
-import { StormAppSecFields, type AppSecFieldsValue } from "./StormAppSecFields";
-import { t, useLangStore } from "./i18n";
+import { StormAppSecFields, emptyAppsecFields, type AppSecFieldsValue } from "./StormAppSecFields";
+import { missingStsProjectFields } from "./projectExport";
+import { t, useLangStore, formatRelativeTime as relTime, activityNoun, activityVerb } from "./i18n";
 import { markdownUrlTransform } from "../markdownUrlTransform";
 import {
   getApiErrorMessage as rawGetApiErrorMessage,
@@ -66,6 +68,7 @@ import {
   getHost as apiGetHost,
   createHost as apiCreateHost,
   updateHost as apiUpdateHost,
+  changeIpAddress as apiChangeIpAddress,
   deleteHost as apiDeleteHost,
   startHostFarm as apiStartHostFarm,
   getHostFarmJob as apiGetHostFarmJob,
@@ -116,8 +119,8 @@ import {
   confirmTwoFactor as apiConfirmTwoFactor,
   disableTwoFactor as apiDisableTwoFactor,
   changeMyPassword as apiChangeMyPassword,
-  exportVulnerabilityToJira as apiExportVulnerabilityToJira,
-  getVulnerabilityJiraLink as apiGetVulnerabilityJiraLink,
+  exportVulnerabilityToTaskTracker as apiExportVulnerabilityToTaskTracker,
+  getVulnerabilityTaskTrackerLink as apiGetVulnerabilityTaskTrackerLink,
   getTasks as apiGetTasks,
   getTask as apiGetTask,
 } from "../api";
@@ -140,11 +143,11 @@ import type {
   Port as ApiPort,
   Service as ApiService,
   Vulnerability as ApiVulnerability,
-  JiraIssueLink,
+  TaskTrackerIssueLink,
   WorksIssueLink as ApiWorksLink,
-  JiraTask,
-  JiraTaskDetail,
-  JiraTaskCategory,
+  TaskTrackerTask,
+  TaskTrackerTaskDetail,
+  TaskTrackerTaskCategory,
   Invitation as ApiInvitation,
   VulnerabilityFile as ApiVulnFile,
 } from "../types";
@@ -193,8 +196,8 @@ import {
    `detail` (or an English fallback); t() maps our canonical English messages to the
    active locale — English in the English locale, Russian in RU. Backend messages not
    yet migrated to an English source key have no entry and pass through unchanged, so
-   this is safe to wrap every error toast in. (Login lives outside this component and
-   keeps calling api.ts directly, so it stays English-only.) */
+   this is safe to wrap every error toast in. Public account screens translate
+   their messages at the point where they are displayed or queued. */
 const getApiErrorMessage = (error: unknown, fallback: string): string =>
   t(rawGetApiErrorMessage(error, fallback));
 
@@ -385,6 +388,7 @@ interface StormState {
   editorMode: "add" | "edit";
   editorIndex: number;
   editorForm: Record<string, string | string[]>;
+  ipEditBusy: boolean;
   tagDrafts: Record<string, string>;
   /** Key of the combo field whose suggestion list is open, if any. */
   comboOpen: string | null;
@@ -400,7 +404,6 @@ interface StormState {
   worksEnabled: boolean;
   newName: string;
   newNameError: boolean;
-  newDesc: string;
   newStart: string;
   newEnd: string;
   newAppsec: AppSecFieldsValue;
@@ -408,7 +411,6 @@ interface StormState {
   openProjectId: number | null;
   projEditOpen: boolean;
   projEditName: string;
-  projEditDesc: string;
   projEditStart: string;
   projEditEnd: string;
   projEditStatus: ProjectStatus;
@@ -466,20 +468,21 @@ interface StormState {
   vulnFilterStatuses: VStatus[];
   vulnFilterSeverities: Severity[];
   vulnFilterHost: string;
-  /* ── Раздел Tasks (Jira-проект STS, read-only) ────────────────────────────
+  /* ── Раздел Tasks (Task Tracker пространство APPSEC, read-only) ────────────────────────────
      Список грузится при входе в раздел; поиск по имени и фильтр по категории
      статуса применяются на клиенте (как у списка уязвимостей). */
-  tasksRows: JiraTask[] | null;
+  tasksRows: TaskTrackerTask[] | null;
   tasksLoading: boolean;
   tasksError: string | null;
   tasksQuery: string;
   tasksTab: "active" | "closed";
   tasksSort: "last" | "first";
-  /** Открытый ключ задачи (напр. "STS-123") — часть URL /tasks/{key}. */
+  /** Открытый ключ задачи (напр. "APPSEC-123") — часть URL /tasks/{key}. */
   tasksOpenKey: string | null;
-  tasksDetail: JiraTaskDetail | null;
+  tasksDetail: TaskTrackerTaskDetail | null;
   tasksDetailLoading: boolean;
   tasksDetailError: string | null;
+  tasksCreatingKey: string | null;
   /** Real backend vulnerability id (not a list index) — it is part of the URL. */
   openVulnId: number | null;
   vulnDetailForm: VulnDetailForm;
@@ -492,24 +495,24 @@ interface StormState {
   vulnFileDrag: boolean;
   /** Attachment opened in the preview modal, or null. */
   filePreview: ApiVulnFile | null;
-  // ---- Jira export modal ----
-  jiraExportOpen: boolean;
-  jiraExportVulnId: number | null;
-  jiraExportChecking: boolean; // идёт начальная проверка (уже экспортировано? проект привязан?)
-  jiraExportBusy: boolean; // идёт сам экспорт
-  jiraExportLink: JiraIssueLink | null; // существующая/созданная связь с задачей
-  jiraExportError: string | null;
-  // ---- Bulk Jira export (все уязвимости раздела) ----
-  jiraBulkOpen: boolean;
-  jiraBulkRunning: boolean;
-  jiraBulkDone: number;
-  jiraBulkTotal: number;
-  jiraBulkCreated: number;
-  jiraBulkSkipped: number;
-  jiraBulkFailed: number;
-  jiraBulkFinished: boolean;
-  /** Ссылка на Jira-проект — выводится из URL созданной задачи, для кнопки «Open Task Tracker». */
-  jiraBulkProjectUrl: string | null;
+  // ---- TaskTracker export modal ----
+  taskTrackerExportOpen: boolean;
+  taskTrackerExportVulnId: number | null;
+  taskTrackerExportChecking: boolean; // идёт начальная проверка (уже экспортировано? проект привязан?)
+  taskTrackerExportBusy: boolean; // идёт сам экспорт
+  taskTrackerExportLink: TaskTrackerIssueLink | null; // существующая/созданная связь с задачей
+  taskTrackerExportError: string | null;
+  // ---- Bulk TaskTracker export (все уязвимости раздела) ----
+  taskTrackerBulkOpen: boolean;
+  taskTrackerBulkRunning: boolean;
+  taskTrackerBulkDone: number;
+  taskTrackerBulkTotal: number;
+  taskTrackerBulkCreated: number;
+  taskTrackerBulkSkipped: number;
+  taskTrackerBulkFailed: number;
+  taskTrackerBulkFinished: boolean;
+  /** Ссылка на TaskTracker-проект — выводится из URL созданной задачи, для кнопки «Open Task Tracker». */
+  taskTrackerBulkProjectUrl: string | null;
 }
 
 const initialState: StormState = {
@@ -613,6 +616,7 @@ const initialState: StormState = {
   editorMode: "add",
   editorIndex: -1,
   editorForm: {},
+  ipEditBusy: false,
   tagDrafts: {},
   comboOpen: null,
   comboHi: 0,
@@ -625,19 +629,17 @@ const initialState: StormState = {
   worksEnabled: false,
   newName: "",
   newNameError: false,
-  newDesc: "",
   newStart: "",
   newEnd: "",
-  newAppsec: { appsec_component_code: null, appsec_component_name: null, appsec_version_code: null, appsec_version_name: null, appsec_assignee: null, appsec_ticket_url: null, appsec_ticket_key: null },
+  newAppsec: { appsec_component_code: null, appsec_component_name: null, appsec_versions: [], appsec_assignee: null, appsec_assignee_name: null, appsec_ticket_url: null, appsec_ticket_key: null },
   view: "list",
   openProjectId: null,
   projEditOpen: false,
   projEditName: "",
-  projEditDesc: "",
   projEditStart: "",
   projEditEnd: "",
   projEditStatus: "active",
-  projEditAppsec: { appsec_component_code: null, appsec_component_name: null, appsec_version_code: null, appsec_version_name: null, appsec_assignee: null, appsec_ticket_url: null, appsec_ticket_key: null },
+  projEditAppsec: { appsec_component_code: null, appsec_component_name: null, appsec_versions: [], appsec_assignee: null, appsec_assignee_name: null, appsec_ticket_url: null, appsec_ticket_key: null },
   section: "overview",
   expanded: [],
   profileTab: "account",
@@ -689,6 +691,7 @@ const initialState: StormState = {
   tasksDetail: null,
   tasksDetailLoading: false,
   tasksDetailError: null,
+  tasksCreatingKey: null,
   openVulnId: null,
   vulnDetailForm: {},
   vulnFiles: [],
@@ -697,21 +700,21 @@ const initialState: StormState = {
   worksExportBusy: false,
   vulnFileDrag: false,
   filePreview: null,
-  jiraExportOpen: false,
-  jiraExportVulnId: null,
-  jiraExportChecking: false,
-  jiraExportBusy: false,
-  jiraExportLink: null,
-  jiraExportError: null,
-  jiraBulkOpen: false,
-  jiraBulkRunning: false,
-  jiraBulkDone: 0,
-  jiraBulkTotal: 0,
-  jiraBulkCreated: 0,
-  jiraBulkSkipped: 0,
-  jiraBulkFailed: 0,
-  jiraBulkFinished: false,
-  jiraBulkProjectUrl: null,
+  taskTrackerExportOpen: false,
+  taskTrackerExportVulnId: null,
+  taskTrackerExportChecking: false,
+  taskTrackerExportBusy: false,
+  taskTrackerExportLink: null,
+  taskTrackerExportError: null,
+  taskTrackerBulkOpen: false,
+  taskTrackerBulkRunning: false,
+  taskTrackerBulkDone: 0,
+  taskTrackerBulkTotal: 0,
+  taskTrackerBulkCreated: 0,
+  taskTrackerBulkSkipped: 0,
+  taskTrackerBulkFailed: 0,
+  taskTrackerBulkFinished: false,
+  taskTrackerBulkProjectUrl: null,
 };
 
 const CARD: CSSProperties = { background: "var(--st-surface)", border: "1px solid var(--st-border-light)", borderRadius: 16 };
@@ -875,21 +878,6 @@ const fmtDateTime = (s?: string | null): string => {
   return `${p(dt.getDate())}.${p(dt.getMonth() + 1)}.${dt.getFullYear()}, ${p(dt.getHours())}:${p(dt.getMinutes())}`;
 };
 
-/** Relative "time ago" from an ISO timestamp. */
-function relTime(iso?: string | null): string {
-  if (!iso) return "";
-  const s = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
-  if (s < 60) return "just now";
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m} min ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h} h ago`;
-  const d = Math.floor(h / 24);
-  if (d === 1) return "Yesterday";
-  if (d < 30) return `${d} days ago`;
-  return `${Math.floor(d / 30)} mo ago`;
-}
-
 /** Build the URL path that represents the current navigation state.
  *
  * The open vulnerability is part of the path (`…/vulns/{id}`) so that a finding
@@ -928,7 +916,7 @@ function pathFor(s: {
     if (s.section === "notes" && s.openNoteId != null) return `${base}/notes/${s.openNoteId}`;
     return `${base}/${s.section}`;
   }
-  // Открытая задача Jira — последний сегмент, карточка deep-linkable (/tasks/STS-123).
+  // Открытая задача TaskTracker — последний сегмент, карточка deep-linkable (/tasks/APPSEC-123).
   if (s.nav === "tasks") return s.tasksOpenKey ? `/tasks/${encodeURIComponent(s.tasksOpenKey)}` : "/tasks";
   return ({ projects: "/projects", tasks: "/tasks", docs: "/docs", members: "/members" } as Record<NavId, string>)[s.nav] || "/projects";
 }
@@ -987,7 +975,6 @@ function navStateFromPath(path: string): Partial<StormState> {
 interface ApiProjectRow {
   id: number;
   name: string;
-  description: string;
   status: ProjectStatus;
   startISO: string;
   endISO: string;
@@ -1220,17 +1207,19 @@ function isFarmJobInFlight(status: string): boolean {
 }
 
 /** Ports live under each IP on the backend; Storm shows them flat per host. */
+function toStormPort(p: ApiPortWithServices): Host["ports"][number] {
+  return {
+    n: p.port_number,
+    proto: p.protocol,
+    state: p.state,
+    svc: p.services?.[0]?.name ?? "",
+    techs: (p.services ?? []).map((s) => ({ name: s.name, version: s.version })),
+    http: p.http_status ?? null,
+  };
+}
+
 function toStormPorts(h: ApiHost): Host["ports"] {
-  return h.ip_addresses
-    .flatMap((ip) => ip.ports as ApiPortWithServices[])
-    .map((p) => ({
-      n: p.port_number,
-      proto: p.protocol,
-      state: p.state,
-      svc: p.services?.[0]?.name ?? "",
-      techs: (p.services ?? []).map((s) => ({ name: s.name, version: s.version })),
-      http: p.http_status ?? null,
-    }));
+  return h.ip_addresses.flatMap((ip) => (ip.ports as ApiPortWithServices[]).map(toStormPort));
 }
 
 function toStormHost(h: ApiHost, endpoints: Endpoint[] = []): Host {
@@ -1241,6 +1230,7 @@ function toStormHost(h: ApiHost, endpoints: Endpoint[] = []): Host {
     ips: h.ip_addresses.map((a) => a.ip_address),
     ipEntries: h.ip_addresses.map((a) => ({
       ip: a.ip_address,
+      ports: (a.ports as ApiPortWithServices[]).map(toStormPort),
       hostnames: a.hostnames ?? [],
     })),
     origin: h.origin === "ip" ? "ip" : "host",
@@ -1262,7 +1252,7 @@ function toStormVuln(v: ApiVulnerability, hostName: string): Vuln {
     status: v.status,
     host: hostName,
     author: v.created_by_username || "—",
-    updated: relTime(v.updated_at),
+    updated: v.updated_at,
     created: v.created_at,
     // Keep steps and their screenshot ids index-aligned (don't drop empties, or
     // a text-less screenshot-only step would lose its images). Trailing fully-
@@ -1422,9 +1412,9 @@ function activityLine(a: ProjectActivityItem, resolve: ActivityResolver): Activi
     case "project_credential": {
       // The audit event carries username + host (never the password) — the feed
       // line reads "{username} for {host}", with the +/−/~ marker from the action.
-      const who = actDetail(a, "username") || "credential";
+      const who = actDetail(a, "username") || t("credential");
       const host = actDetail(a, "host");
-      return { ...base, text: host ? `${who} for ${host}` : who };
+      return { ...base, text: host ? t("{user} for {host}", { user: who, host }) : who };
     }
     case "js_farm": {
       const targets = Array.isArray(a.details?.targets) ? a.details.targets.filter((value): value is string => typeof value === "string") : [];
@@ -1443,7 +1433,8 @@ function activityLine(a: ProjectActivityItem, resolve: ActivityResolver): Activi
 /** What the action applied to, straight after the verb: "3 IP addresses", "finding". */
 function activitySubject(type: string, n: number): string {
   const noun = ACT_NOUN[type] ?? [type.replace(/_/g, " "), `${type.replace(/_/g, " ")}s`];
-  return n === 1 ? noun[0] : `${n} ${noun[1]}`;
+  const translated = activityNoun(noun[0], noun[1], n);
+  return n === 1 ? translated : `${n} ${translated}`;
 }
 
 /* One card per action *per entity type*: adding hosts, IPs and endpoints are
@@ -1471,7 +1462,7 @@ function groupActivity(items: ProjectActivityItem[], resolve: ActivityResolver =
     groups.push({
       key: `g${first.id}`,
       actor: first.username || "System",
-      verb,
+      verb: activityVerb(verb),
       subject: activitySubject(type, bucket.length),
       tone,
       time: relTime(first.created_at),
@@ -1509,6 +1500,11 @@ function elapsedPct(startISO: string, endISO: string): number {
 
 export function StormApp() {
   const [state, setStateRaw] = useState<StormState>(initialState);
+  const taskProjectRequest = useRef(0);
+  useEffect(() => {
+    setStateRaw((s) => s.tasksCreatingKey ? { ...s, tasksCreatingKey: null } : s);
+    return () => { taskProjectRequest.current += 1; };
+  }, [state.nav, state.view, state.tasksOpenKey]);
   const [vulnerabilityRows, setVulnerabilityRows] = useState<ApiVulnerability[] | null>(null);
   const [pendingDelete, setPendingDelete] = useState<(() => Promise<void>) | null>(null);
   const [pendingDeleteLabel, setPendingDeleteLabel] = useState<string | null>(null);
@@ -1566,11 +1562,11 @@ export function StormApp() {
     e.target.value = ""; // позволяет выбрать тот же файл повторно после ошибки
     if (!file) return;
     if (!AVATAR_TYPES.includes(file.type)) {
-      pushToast("Avatar must be a PNG, JPEG, WEBP or GIF image", "error");
+      pushToast(t("Avatar must be a PNG, JPEG, WEBP or GIF image"), "error");
       return;
     }
     if (file.size > AVATAR_MAX_BYTES) {
-      pushToast("Avatar exceeds the 5 MB limit", "error");
+      pushToast(t("Avatar exceeds the 5 MB limit"), "error");
       return;
     }
     setAvatarFile(file);
@@ -1587,7 +1583,7 @@ export function StormApp() {
       const updated = await apiUploadMyAvatar(avatarFile);
       setUser(updated); // avatar_url меняется → круги по всему интерфейсу обновятся
       clearAvatarPick();
-      pushToast("Avatar updated", "success");
+      pushToast(t("Avatar updated"), "success");
     } catch (err) {
       pushToast(getApiErrorMessage(err, "Couldn't upload avatar"), "error");
     } finally {
@@ -1659,12 +1655,11 @@ export function StormApp() {
           return {
             id: p.id,
             name: p.name,
-            description: p.description || "No description yet",
             status: p.status,
             startISO: p.start_date || "",
             endISO: p.end_date || "",
             createdISO: p.created_at || "",
-            updated: relTime(p.updated_at),
+            updated: p.updated_at,
             createdBy: p.created_by,
             openFindings: st?.open_findings ?? 0,
             totalFindings: st?.total_findings ?? 0,
@@ -2110,21 +2105,14 @@ export function StormApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.openProjectId, state.credsTick]);
 
-  // ================= notifications: load from backend =================
+  // ================= notifications: live updates and reconnect catch-up =================
   useEffect(() => {
     let cancelled = false;
-    void (async () => {
-      try {
-        const res = await apiListNotifications();
-        if (!cancelled) setStateRaw((s) => ({ ...s, notifs: res.items }));
-      } catch {
-        // Best-effort: an empty bell beats breaking the shell.
-        if (!cancelled) setStateRaw((s) => ({ ...s, notifs: [] }));
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    const stop = subscribeNotificationUpdates(async () => {
+      const res = await apiListNotifications();
+      if (!cancelled) setStateRaw((s) => ({ ...s, notifs: res.items }));
+    });
+    return () => { cancelled = true; stop(); };
   }, []);
 
   // ================= current project detail =================
@@ -2135,7 +2123,6 @@ export function StormApp() {
   const projName = projRow?.name ?? "";
   const d: ProjectDetail = {
     status: projRow && (projRow.status === "archived" || projRow.status === "completed") ? "archived" : "active",
-    desc: projRow?.description === "No description yet" ? "" : projRow?.description ?? "",
     start: toDispDate(projRow?.startISO),
     end: toDispDate(projRow?.endISO),
     progress: elapsedPct(projRow?.startISO ?? "", projRow?.endISO ?? ""),
@@ -2272,7 +2259,7 @@ export function StormApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.view, state.nav, state.openProjectId, state.section, state.reconView, state.profileTab, state.openVulnId, state.openNoteId, state.openHostId, state.openIp, state.openJsFileId, state.tasksOpenKey, location.pathname]);
 
-  /* ── Раздел Tasks (Jira-проект STS) ──────────────────────────────────────
+  /* ── Раздел Tasks (Task Tracker пространство APPSEC) ──────────────────────────────────────
      Список грузится один раз при входе в раздел (кэшируется в state); кнопка
      «Refresh» перезапрашивает. Поиск по имени и фильтр по категории статуса —
      на клиенте, как у списка уязвимостей. */
@@ -2393,6 +2380,16 @@ export function StormApp() {
   const datesInvalid = (startISO: string, endISO: string) => !!startISO && !!endISO && endISO < startISO;
   const DATES_ERROR = "Start date can't be after end date";
 
+  const emptyProjectDraft = () => ({ newName: "", newStart: "", newEnd: "", newNameError: false, newAppsec: emptyAppsecFields() });
+  const openNewProject = () => {
+    taskProjectRequest.current += 1;
+    setState({ ...emptyProjectDraft(), modalOpen: true });
+  };
+  const closeNewProject = () => {
+    taskProjectRequest.current += 1;
+    setState({ ...emptyProjectDraft(), modalOpen: false });
+  };
+
   const createProject = async () => {
     const name = state.newName.trim();
     if (!name) {
@@ -2402,21 +2399,19 @@ export function StormApp() {
       return;
     }
     if (datesInvalid(state.newStart, state.newEnd)) {
-      pushToast(DATES_ERROR, "error");
+      pushToast(t(DATES_ERROR), "error");
       return;
     }
     try {
       const created = await apiCreateProject({
         name,
-        description: state.newDesc.trim() || undefined,
         start_date: state.newStart || undefined,
         end_date: state.newEnd || undefined,
         ...state.newAppsec,
       });
       // Сброс формы + редирект на страницу созданного проекта.
       setState({
-        modalOpen: false, newName: "", newDesc: "", newStart: "", newEnd: "", newNameError: false,
-        newAppsec: { appsec_component_code: null, appsec_component_name: null, appsec_version_code: null, appsec_version_name: null, appsec_assignee: null, appsec_ticket_url: null, appsec_ticket_key: null },
+        ...emptyProjectDraft(), modalOpen: false,
         tab: "active", nav: "projects", view: "detail", openProjectId: created.id, section: "overview",
         expanded: [], openVulnId: null, openNoteId: null, accessDenied: false,
       });
@@ -2438,8 +2433,8 @@ export function StormApp() {
           projEditAppsec: {
             appsec_component_code: p.appsec_component_code,
             appsec_component_name: p.appsec_component_name,
-            appsec_version_code: p.appsec_version_code,
-            appsec_version_name: p.appsec_version_name,
+            appsec_versions: p.appsec_versions?.length ? p.appsec_versions : p.appsec_version_code ? [{ code: p.appsec_version_code, name: p.appsec_version_name || p.appsec_version_code }] : [],
+            appsec_assignee_name: p.appsec_assignee_name ?? null,
             appsec_assignee: p.appsec_assignee,
             appsec_ticket_url: p.appsec_ticket_url,
             appsec_ticket_key: p.appsec_ticket_key,
@@ -2448,13 +2443,12 @@ export function StormApp() {
       )
       .catch(() => {});
   };
-  const EMPTY_APPSEC: AppSecFieldsValue = { appsec_component_code: null, appsec_component_name: null, appsec_version_code: null, appsec_version_name: null, appsec_assignee: null, appsec_ticket_url: null, appsec_ticket_key: null };
+  const EMPTY_APPSEC: AppSecFieldsValue = { appsec_component_code: null, appsec_component_name: null, appsec_versions: [], appsec_assignee: null, appsec_assignee_name: null, appsec_ticket_url: null, appsec_ticket_key: null };
   const openProjEditRow = (row: ApiProjectRow) => {
     setState({
       projEditOpen: true,
       projEditId: row.id,
       projEditName: row.name,
-      projEditDesc: row.description === "No description yet" ? "" : row.description,
       projEditStart: row.startISO,
       projEditEnd: row.endISO,
       projEditStatus: row.status,
@@ -2468,7 +2462,6 @@ export function StormApp() {
       projEditOpen: true,
       projEditId: state.openProjectId,
       projEditName: projRow?.name ?? "",
-      projEditDesc: d.desc,
       projEditStart: projRow?.startISO ?? "",
       projEditEnd: projRow?.endISO ?? "",
       projEditStatus: projRow?.status ?? "active",
@@ -2484,13 +2477,12 @@ export function StormApp() {
       return;
     }
     if (datesInvalid(state.projEditStart, state.projEditEnd)) {
-      pushToast(DATES_ERROR, "error");
+      pushToast(t(DATES_ERROR), "error");
       return;
     }
     try {
       await apiUpdateProject(state.projEditId, {
         name,
-        description: state.projEditDesc.trim(),
         start_date: state.projEditStart || undefined,
         end_date: state.projEditEnd || undefined,
         status: state.projEditStatus,
@@ -2656,13 +2648,28 @@ export function StormApp() {
     }
   };
 
-  // ================= Jira export =================
+  // ================= TaskTracker export =================
+  const checkProjectForSts = async (projectId: number): Promise<boolean> => {
+    try {
+      const project = await apiGetProject(projectId);
+      const missing = missingStsProjectFields(project);
+      if (missing.length) {
+        pushToast(t("Fill in project details. Missing: {fields}", { fields: missing.map((field) => t(field)).join(", ") }), "error");
+        return false;
+      }
+      return true;
+    } catch (error) {
+      pushToast(getApiErrorMessage(error, "Couldn't load project"), "error");
+      return false;
+    }
+  };
   // Экспорт находки в AppSec (Works): создаёт тикет bug_appsec в STS. Исполнитель,
   // компонент и версия берутся из настроек проекта; статус потом подтянется (Stage 4).
   const exportToWorks = async () => {
     const pid = state.openProjectId;
     const vid = state.openVulnId;
     if (pid == null || vid == null || state.worksExportBusy) return;
+    if (!await checkProjectForSts(pid)) return;
     setState({ worksExportBusy: true });
     try {
       const link = await apiExportVulnToWorks(pid, vid);
@@ -2674,67 +2681,70 @@ export function StormApp() {
     }
   };
 
-  const openJiraExport = (vulnId: number) => {
+  const openTaskTrackerExport = async (vulnId: number) => {
     const pid = state.openProjectId;
     if (pid == null) return;
+    if (!await checkProjectForSts(pid)) return;
     setState({
-      jiraExportOpen: true,
-      jiraExportVulnId: vulnId,
-      jiraExportChecking: true,
-      jiraExportBusy: false,
-      jiraExportLink: null,
-      jiraExportError: null,
+      taskTrackerExportOpen: true,
+      taskTrackerExportVulnId: vulnId,
+      taskTrackerExportChecking: true,
+      taskTrackerExportBusy: false,
+      taskTrackerExportLink: null,
+      taskTrackerExportError: null,
     });
-    // Jira настроена на уровне деплоя — проверяем только, не экспортирована ли уже находка.
-    void apiGetVulnerabilityJiraLink(pid, vulnId)
+    // TaskTracker настроена на уровне деплоя — проверяем только, не экспортирована ли уже находка.
+    void apiGetVulnerabilityTaskTrackerLink(pid, vulnId)
       .catch(() => null)
-      .then((link) => setState({ jiraExportChecking: false, jiraExportLink: link }));
+      .then((link) => setState({ taskTrackerExportChecking: false, taskTrackerExportLink: link }));
   };
-  const closeJiraExport = () => setState({ jiraExportOpen: false });
-  const doJiraExport = async () => {
+  const closeTaskTrackerExport = () => setState({ taskTrackerExportOpen: false });
+  const doTaskTrackerExport = async () => {
     const pid = state.openProjectId;
-    const vid = state.jiraExportVulnId;
+    const vid = state.taskTrackerExportVulnId;
     if (pid == null || vid == null) return;
-    setState({ jiraExportBusy: true, jiraExportError: null });
+    setState({ taskTrackerExportBusy: true, taskTrackerExportError: null });
     try {
-      const link = await apiExportVulnerabilityToJira(pid, vid);
-      setState({ jiraExportBusy: false, jiraExportLink: link });
-      pushToast(`Exported to Task Tracker: ${link.jira_issue_key || "issue created"}`, "success");
+      const link = await apiExportVulnerabilityToTaskTracker(pid, vid);
+      setState({ taskTrackerExportBusy: false, taskTrackerExportLink: link });
+      pushToast(t("Exported to Task Tracker: {issue}", { issue: link.task_tracker_issue_key || t("issue created") }), "success");
     } catch (e) {
       const msg = getApiErrorMessage(e, "Couldn't export to Task Tracker");
-      setState({ jiraExportBusy: false, jiraExportError: msg });
+      setState({ taskTrackerExportBusy: false, taskTrackerExportError: msg });
       pushToast(msg, "error");
     }
   };
 
   // ---- Bulk export: every vulnerability currently listed (respecting filters) ----
-  const openBulkJira = () => {
+  const openBulkTaskTracker = async () => {
     const pid = state.openProjectId;
     if (pid == null) return;
+    if (!await checkProjectForSts(pid)) return;
     setState({
-      jiraBulkOpen: true,
-      jiraBulkRunning: false,
-      jiraBulkFinished: false,
-      jiraBulkDone: 0,
-      jiraBulkTotal: 0,
-      jiraBulkCreated: 0,
-      jiraBulkSkipped: 0,
-      jiraBulkFailed: 0,
-      jiraBulkProjectUrl: null,
+      taskTrackerBulkOpen: true,
+      taskTrackerBulkRunning: false,
+      taskTrackerBulkFinished: false,
+      taskTrackerBulkDone: 0,
+      taskTrackerBulkTotal: 0,
+      taskTrackerBulkCreated: 0,
+      taskTrackerBulkSkipped: 0,
+      taskTrackerBulkFailed: 0,
+      taskTrackerBulkProjectUrl: null,
     });
   };
-  const closeBulkJira = () => {
-    if (!state.jiraBulkRunning) setState({ jiraBulkOpen: false });
+  const closeBulkTaskTracker = () => {
+    if (!state.taskTrackerBulkRunning) setState({ taskTrackerBulkOpen: false });
   };
-  const doBulkJiraExport = async () => {
+  const doBulkTaskTrackerExport = async () => {
     const pid = state.openProjectId;
     if (pid == null) return;
+    if (!await checkProjectForSts(pid)) return;
     const ids = vulns.map((v) => v.id);
-    setState({ jiraBulkRunning: true, jiraBulkFinished: false, jiraBulkTotal: ids.length, jiraBulkDone: 0, jiraBulkCreated: 0, jiraBulkSkipped: 0, jiraBulkFailed: 0 });
+    setState({ taskTrackerBulkRunning: true, taskTrackerBulkFinished: false, taskTrackerBulkTotal: ids.length, taskTrackerBulkDone: 0, taskTrackerBulkCreated: 0, taskTrackerBulkSkipped: 0, taskTrackerBulkFailed: 0 });
     let created = 0;
     let skipped = 0;
     let failed = 0;
-    // Ссылку на Jira-проект выводим из URL любой задачи: .../browse/STORM-29 -> .../browse/STORM
+    // Ссылку на TaskTracker-проект выводим из URL любой задачи: .../browse/STORM-29 -> .../browse/STORM
     let projectUrl: string | null = null;
     const rememberProjectUrl = (issueUrl?: string) => {
       if (projectUrl || !issueUrl) return;
@@ -2743,24 +2753,24 @@ export function StormApp() {
     };
     for (const id of ids) {
       try {
-        const existing = await apiGetVulnerabilityJiraLink(pid, id).catch(() => null);
-        if (existing && existing.status === "linked" && existing.jira_issue_key) {
+        const existing = await apiGetVulnerabilityTaskTrackerLink(pid, id).catch(() => null);
+        if (existing && existing.status === "linked" && existing.task_tracker_issue_key) {
           skipped++;
-          rememberProjectUrl(existing.jira_issue_url);
+          rememberProjectUrl(existing.task_tracker_issue_url);
         } else {
-          const link = await apiExportVulnerabilityToJira(pid, id);
+          const link = await apiExportVulnerabilityToTaskTracker(pid, id);
           created++;
-          rememberProjectUrl(link.jira_issue_url);
+          rememberProjectUrl(link.task_tracker_issue_url);
         }
       } catch {
         failed++;
       }
-      setState((s) => ({ jiraBulkDone: s.jiraBulkDone + 1, jiraBulkCreated: created, jiraBulkSkipped: skipped, jiraBulkFailed: failed }));
+      setState((s) => ({ taskTrackerBulkDone: s.taskTrackerBulkDone + 1, taskTrackerBulkCreated: created, taskTrackerBulkSkipped: skipped, taskTrackerBulkFailed: failed }));
     }
-    setState({ jiraBulkProjectUrl: projectUrl });
-    setState({ jiraBulkRunning: false, jiraBulkFinished: true });
+    setState({ taskTrackerBulkProjectUrl: projectUrl });
+    setState({ taskTrackerBulkRunning: false, taskTrackerBulkFinished: true });
     reloadVulns();
-    pushToast(`Task Tracker export finished — ${created} created, ${skipped} already linked, ${failed} failed`, failed ? "warning" : "success");
+    pushToast(t("Task Tracker export finished — {created} created, {skipped} already linked, {failed} failed", { created, skipped, failed }), failed ? "warning" : "success");
   };
 
   // ================= detail: hosts / recon =================
@@ -2849,11 +2859,11 @@ export function StormApp() {
     if (endpoint.request_content_type) headers.unshift(`Content-Type: ${endpoint.request_content_type}`);
     return [`${endpoint.method ?? "GET"} ${target} HTTP/1.1`, `Host: ${host}`, ...headers, "", endpoint.request_body ?? ""].join("\n").trimEnd();
   };
-  const openEndpoint = (ep: { method: Method; path: string; host: string; hostId: number; endpointId: number }) => {
+  const openEndpoint = (ep: { method: Method; path: string; host: string; hostId: number; endpointId: number }, projectId = state.openProjectId) => {
     const version = ++endpointRequestVersion.current;
     const raw = `${ep.method} ${ep.path} HTTP/1.1\nHost: ${ep.host}`;
     setState({ epOpen: true, epData: ep, epRequest: raw, epRequestOriginal: raw, epLoading: true, epSaving: false });
-    const pid = state.openProjectId;
+    const pid = projectId;
     if (pid == null) return;
     void (async () => {
       try {
@@ -2892,7 +2902,7 @@ export function StormApp() {
     try {
       if (!navigator.clipboard) throw new Error("Clipboard unavailable");
       await navigator.clipboard.writeText(text);
-      pushToast(`${what} copied to clipboard`, "success");
+      pushToast(t("{item} copied to clipboard", { item: t(what) }), "success");
     } catch { pushToast(t("Clipboard unavailable"), "error"); }
   };
   const copyEndpointCurl = () => {
@@ -2960,6 +2970,10 @@ export function StormApp() {
         const e = hosts[index];
         if (!e) return;
         form = { host: e.host };
+      } else if (type === "ip") {
+        const row = ipsRows[index];
+        if (!row) return;
+        form = { ip: row.ip, originalIp: row.ip };
       } else if (type === "vuln") {
         const e = d.vulns[index];
         if (!e) return;
@@ -3153,6 +3167,13 @@ export function StormApp() {
   };
   const openEpImport = () => setState({ epImportOpen: true, epImportRaw: "", epImportPreview: "", epImportBusy: false, epImportSwaggerHosts: [] });
   const closeEpImport = () => setState({ epImportOpen: false, epImportRaw: "", epImportPreview: "", epImportBusy: false, epImportSwaggerHosts: [] });
+  const importSwaggerEndpoints = (lines: string[]) => setState((s) => ({
+    exportPageOpen: false,
+    epImportOpen: true,
+    epImportSwaggerHosts: [...new Set([...(s.epImportOpen ? s.epImportSwaggerHosts : []), ...lines.map(parseEpLine).filter((endpoint) => endpoint != null).map((endpoint) => endpoint.host)])],
+    epImportRaw: [...new Set([...(s.epImportOpen ? s.epImportRaw.split(/\r?\n/).filter(Boolean) : []), ...lines])].join("\n"),
+    epImportPreview: normalizeEpList([...(s.epImportOpen ? s.epImportPreview.split(/\r?\n/).filter(Boolean) : []), ...lines].join("\n")),
+  }));
   const submitEpImport = async () => {
     const pid = state.openProjectId;
     const parsed = state.epImportPreview
@@ -3243,7 +3264,7 @@ export function StormApp() {
         const typedHost = fstr(f.host).trim();
         const host = resolveProjectHost(typedHost);
         if (!host) {
-          pushToast(typedHost ? `Host “${typedHost}” not found` : "Select the host this finding belongs to", "error");
+          pushToast(typedHost ? t("Host “{host}” not found", { host: typedHost }) : t("Select the host this finding belongs to"), "error");
           return;
         }
         // Add asks only for Title + Host; severity/status default here and the
@@ -3328,6 +3349,29 @@ export function StormApp() {
     const pid = state.openProjectId;
     const f = state.editorForm;
     if (pid == null) return;
+    if (state.editorMode === "edit") {
+      if (state.ipEditBusy) return;
+      const address = fstr(f.ip).trim();
+      const previous = fstr(f.originalIp);
+      if (!address || address === previous) return;
+      setState({ ipEditBusy: true });
+      try {
+        const result = await apiChangeIpAddress(pid, previous, address);
+        setState((s) => ({
+          editorOpen: false, ipEditBusy: false,
+          openIp: s.openIp === previous ? result.ip_address : s.openIp,
+          ipQuery: "", ipFilters: [],
+          hiddenIps: s.hiddenIps.filter((ip) => ip !== previous && ip !== result.ip_address),
+          ipFarmJob: result.job,
+        }));
+        reloadHosts();
+        pushToast(t("IP updated. Refreshing its information…"), "success");
+      } catch (error) {
+        setState({ ipEditBusy: false });
+        pushToast(getApiErrorMessage(error, "Couldn't update IP address"), "error");
+      }
+      return;
+    }
     const host = hosts.find((h) => h.host === fstr(f.hostName));
     const ip = fstr(f.ip).trim();
     if (!host || !ip) {
@@ -3337,7 +3381,7 @@ export function StormApp() {
     try {
       const current = await apiGetHost(pid, host.id);
       if (current.ip_addresses.some((a) => a.ip_address === ip)) {
-        pushToast("This host already has that IP", "error");
+        pushToast(t("This host already has that IP"), "error");
         return;
       }
       /* There is no per-IP status: the IPs view renders the parent host's, so the
@@ -3395,7 +3439,7 @@ export function StormApp() {
     if (typedHost) {
       const h = resolveProjectHost(typedHost);
       if (!h) {
-        pushToast(`Host “${typedHost}” not found`, "error");
+        pushToast(t("Host “{host}” not found", { host: typedHost }), "error");
         return;
       }
       host = h.host;
@@ -3403,7 +3447,7 @@ export function StormApp() {
     try {
       if (mode === "add") {
         if (!password.trim()) {
-          pushToast("Enter the password", "error");
+          pushToast(t("Enter the password"), "error");
           return;
         }
         await apiCreateProjectCredential(pid, { username: username || null, password, host });
@@ -3473,10 +3517,10 @@ export function StormApp() {
       }
       return;
     }
-    const { confirmType: t, confirmIndex: i } = state;
+    const { confirmType: entityType, confirmIndex: i } = state;
     const pid = state.openProjectId;
     setState({ confirmOpen: false });
-    if (!t || pid == null) return;
+    if (!entityType || pid == null) return;
     // Every collection is backend-backed: delete through the API, then reload.
     const targets: Record<EditorType, { id: number | undefined; call: (id: number) => Promise<void>; reload: () => void; err: string }> = {
       host: { id: hosts[i]?.id, call: (id) => apiDeleteHost(pid, id), reload: reloadHosts, err: "Couldn't delete host" },
@@ -3503,12 +3547,12 @@ export function StormApp() {
           }
           selProjects();
           reloadProjects();
-          pushToast("You left the project — it's no longer in your list", "success");
+          pushToast(t("You left the project — it's no longer in your list"), "success");
         },
         err: "Couldn't remove member",
       },
     };
-    const target = targets[t];
+    const target = targets[entityType];
     if (target.id == null) return;
     try {
       await target.call(target.id);
@@ -3791,12 +3835,12 @@ export function StormApp() {
     if (!name) return;
     const scopes = API_SCOPES.filter((s) => state.apiKeyScopes[s]);
     if (!scopes.length) {
-      pushToast("Select at least one scope", "error");
+      pushToast(t("Select at least one scope"), "error");
       return;
     }
     // Явный список проектов не может быть пустым — иначе токен ни к чему не даёт доступ.
     if (!state.apiKeyAllProjects && state.apiKeyProjectIds.length === 0) {
-      pushToast("Select projects or enable “All my projects”", "error");
+      pushToast(t("Select projects or enable “All my projects”"), "error");
       return;
     }
     // Пусто = бессрочный; иначе конец выбранного дня.
@@ -3811,7 +3855,7 @@ export function StormApp() {
       });
       setState({ apiKeyModalOpen: false });
       // The token is shown once and never again — the backend keeps only its hash.
-      pushToast(`Token created — copy it now: ${created.token}`, "success");
+      pushToast(t("Token created — copy it now: {token}", { token: created.token }), "success");
       reloadApiKeys();
     } catch (e) {
       pushToast(getApiErrorMessage(e, "Couldn't create token"), "error");
@@ -3854,10 +3898,10 @@ export function StormApp() {
         const res = await apiCreateInvitation({ email, role, project_role: projectRole });
         if (res.activation_url) {
           try { await navigator.clipboard.writeText(res.activation_url); } catch { /* clipboard may be blocked */ }
-          pushToast(`Invitation created for ${res.email_sent_to} — activation link copied: ${res.activation_url}`, "success");
+          pushToast(t("Invitation created for {email} — activation link copied: {url}", { email: res.email_sent_to, url: res.activation_url }), "success");
         } else {
-          const preview = res.mail_preview_url ? ` (email preview: ${res.mail_preview_url})` : "";
-          pushToast(`Invitation sent to ${res.email_sent_to}${preview}`, "success");
+          const preview = res.mail_preview_url ? t(" (email preview: {url})", { url: res.mail_preview_url }) : "";
+          pushToast(t("Invitation sent to {email}{preview}", { email: res.email_sent_to, preview }), "success");
         }
       } else {
         const u = state.workspaceUsers[state.wsUserIndex];
@@ -3887,7 +3931,7 @@ export function StormApp() {
     if (!u) return;
     try {
       const res = await apiReactivateUser(u.id);
-      const preview = res.mail_preview_url ? ` (email preview: ${res.mail_preview_url})` : "";
+      const preview = res.mail_preview_url ? t(" (email preview: {url})", { url: res.mail_preview_url }) : "";
       pushToast(`${t("Reactivation link sent to")} ${res.email_sent_to}${preview}`, "success");
       reloadUsers();
     } catch (e) {
@@ -3899,10 +3943,10 @@ export function StormApp() {
       const res = await apiResendInvitation(id);
       if (res.activation_url) {
         try { await navigator.clipboard.writeText(res.activation_url); } catch { /* clipboard may be blocked */ }
-        pushToast(`Activation link copied: ${res.activation_url}`, "success");
+        pushToast(t("Activation link copied: {url}", { url: res.activation_url }), "success");
       } else {
-        const preview = res.mail_preview_url ? ` (email preview: ${res.mail_preview_url})` : "";
-        pushToast(`Invitation re-sent to ${res.email_sent_to}${preview}`, "success");
+        const preview = res.mail_preview_url ? t(" (email preview: {url})", { url: res.mail_preview_url }) : "";
+        pushToast(t("Invitation re-sent to {email}{preview}", { email: res.email_sent_to, preview }), "success");
       }
       reloadUsers();
     } catch (e) {
@@ -3942,7 +3986,7 @@ export function StormApp() {
       await apiConfirmTwoFactor(state.twoFACode.trim());
       await refreshUser();
       setState({ twoFASetupOpen: false, twoFACode: "", twoFAQr: null, twoFASecret: null, twoFABusy: false });
-      pushToast("Two-factor authentication enabled", "success");
+      pushToast(t("Two-factor authentication enabled"), "success");
     } catch (e) {
       setState({ twoFABusy: false });
       pushToast(getApiErrorMessage(e, "Invalid code — try again"), "error");
@@ -3957,7 +4001,7 @@ export function StormApp() {
       await apiDisableTwoFactor(state.twoFADisablePassword);
       await refreshUser();
       setState({ twoFADisableOpen: false, twoFADisablePassword: "", twoFABusy: false });
-      pushToast("Two-factor authentication disabled", "success");
+      pushToast(t("Two-factor authentication disabled"), "success");
     } catch (e) {
       setState({ twoFABusy: false });
       pushToast(getApiErrorMessage(e, "Couldn't disable 2FA"), "error");
@@ -4001,7 +4045,7 @@ export function StormApp() {
     });
     // Land on whatever the notification is actually about: the finding, the note,
     // or — for "added to project" / project status — the project itself.
-    const section: SectionId = vid != null ? "vulns" : nid != null ? "notes" : "overview";
+    const section: SectionId = vid != null ? "vulns" : nid != null ? "notes" : n.context?.host_id != null ? "hosts" : "overview";
     setStateRaw((s) => ({
       ...s,
       notifs: s.notifs.map((x) => (x.id === n.id ? { ...x, is_read: true } : x)),
@@ -4013,6 +4057,8 @@ export function StormApp() {
             nav: "projects" as const,
             openProjectId: pid,
             section,
+            openHostId: n.context?.endpoint_id == null && vid == null && nid == null ? n.context?.host_id ?? null : null,
+            ...(n.context?.endpoint_id != null ? { reconView: "endpoints" as const } : {}),
             expanded: [],
             openVulnId: vid,
             openNoteId: nid,
@@ -4020,7 +4066,10 @@ export function StormApp() {
             accessDenied: false,
           }),
     }));
-    if (pid == null) pushToast("Notification isn't linked to a project", "error");
+    if (pid != null && n.context?.endpoint_id != null && n.context.host_id != null) {
+      openEndpoint({ method: (n.context.endpoint_method || "GET") as Method, path: n.context.endpoint_path || "/", host: n.context.hostname || "unknown", hostId: n.context.host_id, endpointId: n.context.endpoint_id }, pid);
+    }
+    if (pid == null) pushToast(t("Notification isn't linked to a project"), "error");
   };
 
   const markAllNotifsRead = () => {
@@ -4080,27 +4129,31 @@ export function StormApp() {
     const statusLabel = ctx?.status ? VSTATUS_LABEL[ctx.status as VStatus] ?? PROJ_STATUS[ctx.status]?.label ?? ctx.status : "";
     const row = { action: "", subject: "" };
     switch (n.type) {
+      case "project_deadline":
+        row.action = t("Project deadline: {date}", { date: toDispDate(ctx?.deadline_date || "") });
+        row.subject = project;
+        break;
       case "project_member_added":
-        row.action = "added you to";
+        row.action = t("added you to");
         row.subject = project;
         break;
       case "vuln_status_changed":
-        row.action = `set your finding to ${statusLabel} —`;
+        row.action = t("set your finding to {status} —", { status: t(statusLabel) });
         row.subject = ctx?.vulnerability_title || "";
         break;
       case "project_status_changed":
-        row.action = `changed the project status to ${statusLabel} —`;
+        row.action = t("changed the project status to {status} —", { status: t(statusLabel) });
         row.subject = project;
         break;
       default:
-        row.action = "mentioned you in";
-        row.subject = ctx?.vulnerability_title || ctx?.note_title || "";
+        row.action = t("mentioned you in");
+        row.subject = ctx?.vulnerability_title || ctx?.note_title || (ctx?.endpoint_id != null ? `${ctx.endpoint_method || "GET"} ${ctx.endpoint_path || "/"}` : project);
     }
     return {
       key: n.id,
       initials: initialsOf(who),
       avBg: NOTIF_AVATAR_COLORS[n.id % NOTIF_AVATAR_COLORS.length],
-      user: `@${who}`,
+      user: who === "System" ? t("System") : `@${who}`,
       action: row.action,
       where: row.subject,
       // The project is already the subject of project-level events; don't repeat it.
@@ -4254,7 +4307,7 @@ export function StormApp() {
      scanned as an IP. The Hosts view keeps showing the domain probe, so the two no
      longer overwrite each other. */
   type IpBucket = { ports: Host["ports"]; status: Host["status"] };
-  const mergeBucket = (into: IpBucket | null, h: Host): IpBucket => {
+  const mergeBucket = (into: IpBucket | null, h: IpBucket): IpBucket => {
     if (into === null) return { ports: [...h.ports], status: h.status };
     const seen = new Set(into.ports.map((p) => `${p.n}/${p.proto}`));
     return {
@@ -4264,9 +4317,9 @@ export function StormApp() {
   };
   const ipRowsByAddr = new Map<
     string,
-    { ip: string; hostIdx: number; names: IpRowNames; ipMeas: IpBucket | null; domainMeas: IpBucket | null }
+    { ip: string; names: IpRowNames; ipMeas: IpBucket | null; domainMeas: IpBucket | null }
   >();
-  hosts.forEach((h, idx) => {
+  hosts.forEach((h) => {
     h.ipEntries.forEach((entry) => {
       if (!entry.ip || entry.ip === "—") return;
       // A host's own name counts as a name for its address even when the address
@@ -4276,16 +4329,14 @@ export function StormApp() {
       const acc =
         ipRowsByAddr.get(entry.ip) ??
         (() => {
-          const fresh = { ip: entry.ip, hostIdx: idx, names: [] as IpRowNames, ipMeas: null as IpBucket | null, domainMeas: null as IpBucket | null };
+          const fresh = { ip: entry.ip, names: [] as IpRowNames, ipMeas: null as IpBucket | null, domainMeas: null as IpBucket | null };
           ipRowsByAddr.set(entry.ip, fresh);
           return fresh;
         })();
       acc.names.push(...entry.hostnames, ...own);
-      // Prefer a real host as the row's edit/delete target over the IP farm's
-      // nameless parent — that is the row a user means when they click edit.
-      if (h.origin === "host" && hosts[acc.hostIdx]?.origin === "ip") acc.hostIdx = idx;
-      if (h.origin === "ip") acc.ipMeas = mergeBucket(acc.ipMeas, h);
-      else acc.domainMeas = mergeBucket(acc.domainMeas, h);
+      const measurement = { ports: entry.ports ?? [], status: h.status };
+      if (h.origin === "ip") acc.ipMeas = mergeBucket(acc.ipMeas, measurement);
+      else acc.domainMeas = mergeBucket(acc.domainMeas, measurement);
     });
   });
   const ipsRows = [...ipRowsByAddr.values()]
@@ -4326,7 +4377,7 @@ export function StormApp() {
       ...row,
       onEdit: (e: ReactMouseEvent) => {
         e.stopPropagation();
-        openEditor("host", "edit", row.hostIdx);
+        openEditor("ip", "edit", i);
       },
       onDelete: (e: ReactMouseEvent) => {
         e.stopPropagation();
@@ -4538,6 +4589,7 @@ export function StormApp() {
   if (state.editorType === "ip" || state.editorType === "endpoint") {
     efCfg = efCfg.map((f) => (f.k === "hostName" ? { ...f, opts: hosts.map((h) => h.host) } : f));
   }
+  if (state.editorType === "ip" && state.editorMode === "edit") efCfg = efCfg.filter((field) => field.k === "ip");
   // Cred host binds to a project host — same validated picker as members (the
   // save resolves the typed value against the project's hosts).
   if (state.editorType === "cred") {
@@ -4554,7 +4606,7 @@ export function StormApp() {
       value: o,
       // Selects title-case their options (up → Up); combos (hosts, usernames)
       // show the value verbatim — capitalising a hostname would misrepresent it.
-      label: f.type === "select" ? cap(o) : o,
+      label: f.type === "select" ? t(cap(o)) : o,
       sub: f.k === "userKey" ? state.workspaceUsers.find((u) => u.key === o)?.email ?? "" : "",
     }));
     const typed = fstr(state.editorForm[f.k]);
@@ -4680,7 +4732,7 @@ export function StormApp() {
             {isActive ? `${t("Showing active projects")} · ${activeCount} ${t("active")}` : `${t("Showing archived projects")} · ${archivedCount} ${t("archived")}`}
           </div>
         </div>
-        <button className="clk" onClick={() => setState({ modalOpen: true, newNameError: false })} style={{ display: "flex", alignItems: "center", gap: 9, height: 46, padding: "0 22px", border: "none", borderRadius: 13, background: "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 14px Inter,sans-serif" }}>
+        <button className="clk" onClick={openNewProject} style={{ display: "flex", alignItems: "center", gap: 9, height: 46, padding: "0 22px", border: "none", borderRadius: 13, background: "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 14px Inter,sans-serif" }}>
           <Icon name="plus" size={17} sw={2.4} />
           {t("New project")}
         </button>
@@ -4742,10 +4794,9 @@ export function StormApp() {
       {/* table */}
       <div style={{ ...CARD, overflow: "hidden" }}>
         {projRows.length > 0 && (
-          <div style={{ display: "grid", gridTemplateColumns: "48px minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) 150px 70px", padding: "13px 22px", borderBottom: "1px solid var(--st-divider)", font: "700 11px Inter,sans-serif", letterSpacing: ".6px", color: "var(--st-text-faint)", textTransform: "uppercase" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "48px minmax(0,2fr) minmax(0,1fr) 150px 70px", padding: "13px 22px", borderBottom: "1px solid var(--st-divider)", font: "700 11px Inter,sans-serif", letterSpacing: ".6px", color: "var(--st-text-faint)", textTransform: "uppercase" }}>
             <div>#</div>
             <div>{t("Project")}</div>
-            <div>{t("Description")}</div>
             <div>{t("Findings")}</div>
             <div>{t("Last updated")}</div>
             <div style={{ textAlign: "right" }}>{t("Actions")}</div>
@@ -4755,19 +4806,18 @@ export function StormApp() {
           const fsev = r.openFindings === 0 ? FINDING_SEV.none : r.openFindings >= 3 ? FINDING_SEV.high : FINDING_SEV.med;
           const findingsLabel = r.openFindings === 0 ? (r.totalFindings > 0 ? t("No open") : t("No findings")) : `${r.openFindings} ${t("open")}`;
           return (
-            <div key={r.id} className="prow clk" onClick={() => openProject(r.id)} style={{ display: "grid", gridTemplateColumns: "48px minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) 150px 70px", alignItems: "center", padding: "11px 22px", borderBottom: "1px solid var(--st-divider)" }}>
+            <div key={r.id} className="prow clk" onClick={() => openProject(r.id)} style={{ display: "grid", gridTemplateColumns: "48px minmax(0,2fr) minmax(0,1fr) 150px 70px", alignItems: "center", padding: "11px 22px", borderBottom: "1px solid var(--st-divider)" }}>
               <div className="mono" style={{ color: "var(--st-text-faint)", fontSize: 13, fontWeight: 600 }}>{String(i + 1).padStart(2, "0")}</div>
               <div style={{ minWidth: 0, paddingRight: 12 }}>
                 <div style={{ font: "700 14.5px Inter,sans-serif", color: "var(--st-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</div>
               </div>
-              <div style={{ fontSize: 13, color: "var(--st-text-3)", paddingRight: 16, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.description}</div>
               <div>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 8, background: fsev.fBg, color: fsev.fColor, font: "600 12px Inter,sans-serif" }}>
                   <span style={{ width: 7, height: 7, borderRadius: "50%", background: fsev.fDot }} />
                   {findingsLabel}
                 </span>
               </div>
-              <div style={{ fontSize: 13, color: "var(--st-text-3)" }}>{r.updated}</div>
+              <div style={{ fontSize: 13, color: "var(--st-text-3)" }}>{relTime(r.updated)}</div>
               {/* Edit: admin / creator / lead. Delete: admin only — both mirror the backend. */}
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 4 }}>
                 {canEditProjectRow(r) && (
@@ -4787,10 +4837,10 @@ export function StormApp() {
     </div>
   );
 
-  // ---------- Tasks (Jira-проект STS, read-only) ----------
+  // ---------- Tasks (Task Tracker пространство APPSEC, read-only) ----------
   // Категория статуса → подпись и цвет точки/чипа (одинаково в списке и карточке).
   // Категории Task Tracker (Works): ожидание — серый, в работе — синий, завершено — зелёный.
-  const TASK_CAT: Record<JiraTaskCategory, { label: string; color: string }> = {
+  const TASK_CAT: Record<TaskTrackerTaskCategory, { label: string; color: string }> = {
     todo: { label: "Waiting", color: "var(--st-text-3)" },
     inprogress: { label: "In progress", color: "var(--st-accent-2)" },
     done: { label: "Done", color: "var(--st-success)" },
@@ -4803,32 +4853,53 @@ export function StormApp() {
     const k = (raw || "").trim().toLowerCase().replace(/\s+/g, "_");
     return (VSTATUS_ORDER as string[]).includes(k) ? (k as VStatus) : null;
   };
-  const TASK_COLS = "110px minmax(0,2fr) minmax(0,150px) 100px minmax(0,150px) 120px 64px";
+  const TASK_COLS = "110px minmax(0,2fr) minmax(0,150px) 90px minmax(0,140px) minmax(0,170px) 120px 64px";
+
+  const createProjectFromTask = async (task: TaskTrackerTask) => {
+    const request = ++taskProjectRequest.current;
+    setState({ tasksCreatingKey: task.key });
+    try {
+      // Use the same full AS21 unit as the task card, rather than a partial list row.
+      const detail = await apiGetTask(task.key);
+      if (request !== taskProjectRequest.current) return;
+      if (detail.key !== task.key) throw new Error(t("Couldn't load this task"));
+      setState({ ...emptyProjectDraft(), modalOpen: true, newAppsec: {
+        ...EMPTY_APPSEC,
+        appsec_ticket_url: detail.url || task.url,
+        appsec_ticket_key: detail.key,
+        appsec_assignee: detail.assignee_username ?? null,
+        appsec_assignee_name: detail.assignee_username ? detail.assignee : null,
+        appsec_versions: detail.affected_versions ?? [],
+      } });
+    } catch (error) {
+      if (request === taskProjectRequest.current) pushToast(getApiErrorMessage(error, "Couldn't load this task"), "error");
+    } finally {
+      if (request === taskProjectRequest.current) setState({ tasksCreatingKey: null });
+    }
+  };
 
   const renderTasks = () => {
     if (state.tasksOpenKey) return renderTaskDetail();
     const rows = state.tasksRows ?? [];
     const q = state.tasksQuery.trim().toLowerCase();
     // «Закрытые» = завершённые статусы + на паузе (по просьбе — paused тоже в Closed).
-    const isDone = (r: JiraTask) => r.status_category === "done" || taskStatusVs(r.status) === "paused";
+    const isDone = (r: TaskTrackerTask) => r.status_category === "done" || taskStatusVs(r.status) === "paused";
     const searched = rows.filter((r) => q === "" || r.summary.toLowerCase().includes(q) || r.key.toLowerCase().includes(q));
     const activeCount = searched.filter((r) => !isDone(r)).length;
     const closedCount = searched.filter((r) => isDone(r)).length;
     const isActive = state.tasksTab === "active";
-    const ts = (r: JiraTask) => Date.parse(r.updated || "") || 0;
+    const ts = (r: TaskTrackerTask) => Date.parse(r.updated || "") || 0;
     const filtered = searched
       .filter((r) => (isActive ? !isDone(r) : isDone(r)))
       .sort((a, b) => (state.tasksSort === "first" ? ts(a) - ts(b) : ts(b) - ts(a)));
     const firstLoad = state.tasksLoading && state.tasksRows === null;
-    // Создать проект из тикета: открыть модалку с заранее заполненным полем тикета.
-    const createProjectFromTask = (task: JiraTask) =>
-      setState({ modalOpen: true, newAppsec: { ...EMPTY_APPSEC, appsec_ticket_url: task.url ?? null, appsec_ticket_key: task.key } });
     return (
       <div className="route" style={{ padding: "40px 48px 36px", width: "100%" }}>
         {eyebrow([{ label: "Workspace", onClick: selProjects }, { label: "Tasks", muted: true }])}
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
           <div>
             <h1 style={{ margin: 0, fontSize: 30, fontWeight: 800, letterSpacing: "-.7px", color: "var(--st-text)" }}>{t("Tasks")}</h1>
+            {rows.some((task) => task.is_demo) && <div style={{ marginTop: 6, fontSize: 12, color: "var(--st-text-faint)" }}>{t("Demo data")}</div>}
           </div>
           <button
             className="clk"
@@ -4860,7 +4931,7 @@ export function StormApp() {
         <div style={{ ...CARD, overflow: "hidden" }}>
           {filtered.length > 0 && (
             <div style={{ display: "grid", gridTemplateColumns: TASK_COLS, gap: 10, padding: "13px 20px", borderBottom: "1px solid var(--st-divider)", font: "700 11px Inter,sans-serif", letterSpacing: ".5px", color: "var(--st-text-faint)", textTransform: "uppercase" }}>
-              <div>{t("Key")}</div><div>{t("Summary")}</div><div>{t("Status")}</div><div>{t("Priority")}</div><div>{t("Assignee")}</div><div>{t("Updated")}</div><div style={{ textAlign: "center" }}>{t("Actions")}</div>
+              <div>{t("Key")}</div><div>{t("Summary")}</div><div>{t("Status")}</div><div>{t("Priority")}</div><div>{t("Assignee")}</div><div>{t("Affected versions")}</div><div>{t("Updated")}</div><div style={{ textAlign: "center" }}>{t("Actions")}</div>
             </div>
           )}
           {firstLoad && <div style={{ padding: 52, textAlign: "center", color: "var(--st-text-faint)", fontSize: 14 }}>{t("Loading tasks…")}</div>}
@@ -4881,12 +4952,13 @@ export function StormApp() {
                 <div style={{ display: "flex", alignItems: "center", gap: 7, font: "600 12px Inter,sans-serif", color: stColor, overflow: "hidden" }}><span style={{ width: 6, height: 6, flex: "none", borderRadius: "50%", background: stColor }} /><span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{stText}</span></div>
                 <div style={{ fontSize: 12.5, color: "var(--st-text-2)" }}>{task.priority || "—"}</div>
                 <div style={{ fontSize: 12.5, color: "var(--st-text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{task.assignee || "—"}</div>
+                <div title={(task.affected_versions ?? []).map((version) => version.name).join(", ")} style={{ fontSize: 12.5, color: "var(--st-text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{(task.affected_versions ?? []).map((version) => version.name).join(", ") || "—"}</div>
                 <div className="mono" style={{ fontSize: 11.5, color: "var(--st-text-faint)" }}>{relTime(task.updated)}</div>
                 <div style={{ display: "flex", justifyContent: "center" }}>
                   {linkedProject ? (
-                    <div className="actbtn" title={`${t("Open linked project")}: ${linkedProject.name}`} onClick={(e) => { e.stopPropagation(); setState({ nav: "projects", view: "detail", openProjectId: linkedProject.id, section: "overview", expanded: [], openVulnId: null, openNoteId: null, accessDenied: false }); }}><Icon name="folder" size={15} color="var(--st-accent-2)" /></div>
+                    <Tip label={`${t("Open linked project")}: ${linkedProject.name}`}><button type="button" className="actbtn" aria-label={`${t("Open linked project")}: ${linkedProject.name}`} onClick={(e) => { e.stopPropagation(); setState({ nav: "projects", view: "detail", openProjectId: linkedProject.id, section: "overview", expanded: [], openVulnId: null, openNoteId: null, accessDenied: false }); }}><Icon name="folder" size={15} color="var(--st-accent-2)" /></button></Tip>
                   ) : (
-                    <div className="actbtn" title={t("Create project from this ticket")} onClick={(e) => { e.stopPropagation(); createProjectFromTask(task); }}><Icon name="plus" size={15} /></div>
+                    <Tip label={t("Create project from this ticket")}><button type="button" className="actbtn" aria-label={t("Create project from this ticket")} disabled={Boolean(state.tasksCreatingKey)} aria-busy={state.tasksCreatingKey === task.key} onClick={(e) => { e.stopPropagation(); void createProjectFromTask(task); }}><Icon name="plus" size={15} /></button></Tip>
                   )}
                 </div>
               </div>
@@ -4940,13 +5012,13 @@ export function StormApp() {
         {!state.tasksDetailLoading && !state.tasksDetailError && d && (
           <div style={{ ...CARD, overflow: "hidden" }}>
             <div className="task-detail-grid" style={{ display: "grid" }}>
-              {/* Основная колонка: ключ, статус, заголовок, описание (как в Jira — слева). */}
+              {/* Основная колонка: ключ, статус, заголовок, описание (как в TaskTracker — слева). */}
               <div style={{ padding: "26px 30px", minWidth: 0 }}>
                 <h1 style={{ margin: "0 0 22px", fontSize: 25, fontWeight: 800, letterSpacing: "-.5px", color: "var(--st-text)", lineHeight: 1.2 }}>{d.summary}</h1>
                 <div className="mono" style={{ fontSize: 10.5, letterSpacing: 1, color: "var(--st-text-faint)", fontWeight: 700, textTransform: "uppercase" }}>{t("Description")}</div>
                 <div style={{ marginTop: 10, whiteSpace: "pre-wrap", font: "400 14px/1.7 Inter,sans-serif", color: "var(--st-text-2)", wordBreak: "break-word" }}>{(d.description || "").trim() || t("No description.")}</div>
               </div>
-              {/* Сайдбар деталей (как в Jira — справа). */}
+              {/* Сайдбар деталей (как в TaskTracker — справа). */}
               <div className="task-detail-side" style={{ borderLeft: "1px solid var(--st-divider)", background: "var(--st-elevated)", padding: "24px" }}>
                 <div style={{ font: "800 13px Inter,sans-serif", color: "var(--st-text)", marginBottom: 4 }}>{t("Details")}</div>
                 {sideRow(t("Key"), <a className="clk mono keylink" href={d.url} target="_blank" rel="noreferrer" title={t("Open in Task Tracker")} style={{ fontSize: 12.5, fontWeight: 700, color: "var(--st-accent-2)", textDecoration: "none" }}>{d.key}</a>)}
@@ -4954,6 +5026,7 @@ export function StormApp() {
                 {sideRow(t("Type"), d.issue_type || "—")}
                 {sideRow(t("Priority"), d.priority || "—")}
                 {sideRow(t("Assignee"), d.assignee || "—")}
+                {sideRow(t("Affected versions"), (d.affected_versions ?? []).length ? <div style={{ display: "grid", gap: 5 }}>{d.affected_versions!.map((version) => <span key={version.code}>{version.name}</span>)}</div> : "—")}
                 {sideRow(t("Reporter"), d.reporter || "—")}
                 {sideRow(t("Created"), fmtDateTime(d.created))}
                 {sideRow(t("Updated"), fmtDateTime(d.updated))}
@@ -4983,12 +5056,12 @@ export function StormApp() {
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 22, flexWrap: "wrap" }}>
         <div className="tab" onClick={() => setState({ wsUserTab: "active" })} style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 15px", borderRadius: 11, font: "700 13.5px Inter,sans-serif", background: state.wsUserTab === "active" ? "var(--st-surface)" : undefined, border: `1px solid ${state.wsUserTab === "active" ? "var(--st-border)" : "transparent"}`, color: state.wsUserTab === "active" ? "var(--st-text)" : "var(--st-text-3)" }}>
           <Icon name="unlock" size={15} sw={2.2} />
-          {lang === "ru" ? "Активные" : "Active"}
+          {lang === "ru" ? "Активные" : t("Active")}
           <span className="mono" style={{ minWidth: 20, height: 20, padding: "0 5px", borderRadius: 6, background: state.wsUserTab === "active" ? "var(--st-accent-2)" : "var(--st-accent-soft)", color: state.wsUserTab === "active" ? "var(--st-on-accent)" : "var(--st-accent-2)", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{state.workspaceUsers.filter((u) => !u.locked).length}</span>
         </div>
         <div className="tab" onClick={() => setState({ wsUserTab: "archived" })} style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 15px", borderRadius: 11, font: "700 13.5px Inter,sans-serif", background: state.wsUserTab === "archived" ? "var(--st-surface)" : undefined, border: `1px solid ${state.wsUserTab === "archived" ? "var(--st-border)" : "transparent"}`, color: state.wsUserTab === "archived" ? "var(--st-text)" : "var(--st-text-3)" }}>
           <Icon name="lock" size={15} sw={2.2} />
-          {lang === "ru" ? "Заблокированные" : "Blocked"}
+          {lang === "ru" ? "Заблокированные" : t("Blocked")}
           <span className="mono" style={{ minWidth: 20, height: 20, padding: "0 5px", borderRadius: 6, background: state.wsUserTab === "archived" ? "var(--st-accent-2)" : "var(--st-accent-soft)", color: state.wsUserTab === "archived" ? "var(--st-on-accent)" : "var(--st-accent-2)", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{state.workspaceUsers.filter((u) => u.locked).length}</span>
         </div>
         <div style={{ flex: 1 }} />
@@ -5024,7 +5097,7 @@ export function StormApp() {
                 <span style={{ width: 32, height: 32, flex: "none", borderRadius: "50%", background: "var(--st-divider)", color: "var(--st-text-3)", display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name="mail" size={15} color="var(--st-text-3)" /></span>
                 <div style={{ minWidth: 0 }}>
                   <div className="mono" style={{ fontSize: 12.5, color: "var(--st-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{inv.email}</div>
-                  <div style={{ fontSize: 11, color: inv.is_expired ? "var(--st-danger)" : "var(--st-text-3)", fontWeight: 600, marginTop: 2 }}>{inv.is_expired ? "Link expired — resend it" : "Pending activation"}</div>
+                  <div style={{ fontSize: 11, color: inv.is_expired ? "var(--st-danger)" : "var(--st-text-3)", fontWeight: 600, marginTop: 2 }}>{inv.is_expired ? t("Link expired — resend it") : t("Pending activation")}</div>
                 </div>
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -5179,7 +5252,6 @@ export function StormApp() {
                   {t(stCh.label)}
                 </span>
               </div>
-              <div style={{ fontSize: 14, color: "var(--st-text-3)", marginTop: 8 }}>{d.desc}</div>
             </div>
             <div style={{ display: "flex", gap: 10, flex: "none" }}>
               <button className="clk" onClick={openExportModal} style={{ height: 42, padding: "0 16px", border: "1px solid var(--st-border)", borderRadius: 10, background: "var(--st-surface)", font: "700 13px Inter,sans-serif", color: "var(--st-accent-2)", display: "inline-flex", alignItems: "center", gap: 7 }}>
@@ -5234,10 +5306,10 @@ export function StormApp() {
                   </button>
                 </>
               )}
-              {/* The IP card edits the host the address belongs to. */}
+              {/* Редактируется адрес во всех привязках проекта, затем обновляются замеры. */}
               {sec === "hosts" && rv === "ips" && _ipd && (
-                <button className="addbtn clk" onClick={() => openEditor("host", "edit", _ipd.hostIdx)} style={{ height: 42 }}>
-                  <Icon name="edit" size={15} color="var(--st-on-accent)" sw={2.4} />{t("Edit host")}
+                <button className="addbtn clk" onClick={() => openEditor("ip", "edit", ipsRows.findIndex((row) => row.ip === _ipd.ip))} style={{ height: 42 }}>
+                  <Icon name="edit" size={15} color="var(--st-on-accent)" sw={2.4} />{t("Edit IP")}
                 </button>
               )}
               {sec === "hosts" && rv === "endpoints" && !state.epImportOpen && (
@@ -5266,7 +5338,7 @@ export function StormApp() {
               )}
               {sec === "vulns" && state.openVulnId == null && (
                 <>
-                  <button className="clk" onClick={openBulkJira} style={{ height: 42, padding: "0 16px", border: "1px solid var(--st-border)", borderRadius: 10, background: "var(--st-surface)", font: "700 13px Inter,sans-serif", color: "var(--st-accent-2)", display: "inline-flex", alignItems: "center", gap: 7 }}>
+                  <button className="clk" onClick={openBulkTaskTracker} style={{ height: 42, padding: "0 16px", border: "1px solid var(--st-border)", borderRadius: 10, background: "var(--st-surface)", font: "700 13px Inter,sans-serif", color: "var(--st-accent-2)", display: "inline-flex", alignItems: "center", gap: 7 }}>
                     <Icon name="upload" size={15} sw={2.2} color="var(--st-accent-2)" />{t("Export all to Task Tracker")}
                   </button>
                   <button className="addbtn clk" onClick={() => openEditor("vuln", "add", -1)} style={{ height: 42 }}><Icon name="plus" size={15} color="var(--st-on-accent)" sw={2.6} />{t("Add issue")}</button>
@@ -5284,7 +5356,7 @@ export function StormApp() {
                       <Icon name="upload" size={15} color="var(--st-accent-2)" sw={2.2} />{state.worksExportBusy ? t("Exporting…") : t("Export to AppSec")}
                     </button>
                   ))}
-                  <button className="addbtn clk" onClick={() => state.openVulnId != null && openJiraExport(state.openVulnId)} style={{ height: 42 }}>
+                  <button className="addbtn clk" onClick={() => state.openVulnId != null && openTaskTrackerExport(state.openVulnId)} style={{ height: 42 }}>
                     <Icon name="upload" size={15} color="var(--st-on-accent)" sw={2.4} />{t("Export to Task Tracker")}
                   </button>
                 </>
@@ -5421,10 +5493,10 @@ export function StormApp() {
         <div style={{ ...CARD, padding: "20px 22px", marginBottom: 18 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
             <div style={{ font: "700 14px Inter,sans-serif", color: "var(--st-text)" }}>{t("Team")}</div>
-            <span className="clk" onClick={() => setSection("members")} style={{ font: "600 12px Inter,sans-serif", color: "var(--st-accent-2)" }}>{canManageMembers ? "Manage →" : "View all →"}</span>
+            <span className="clk" onClick={() => setSection("members")} style={{ font: "600 12px Inter,sans-serif", color: "var(--st-accent-2)" }}>{canManageMembers ? t("Manage →") : t("View all →")}</span>
           </div>
           {d.members.map((m, i) => (
-            <div key={m.name + i} style={{ display: "flex", alignItems: "center", gap: 11, padding: "7px 0", borderTop: "1px solid var(--st-divider)" }}>
+            <div key={m.name + i} className="listitem" style={{ display: "flex", alignItems: "center", gap: 11, padding: "7px 0", borderTop: "1px solid var(--st-divider)" }}>
               <span className="mono" style={{ width: 30, height: 30, flex: "none", borderRadius: "50%", background: m.color, color: "var(--st-on-accent)", display: "flex", alignItems: "center", justifyContent: "center", font: "700 11px 'JetBrains Mono',monospace" }}>{m.initials}</span>
               <div style={{ minWidth: 0 }}>
                 <div style={{ font: "600 13px Inter,sans-serif", color: "var(--st-text)" }}>{m.name}</div>
@@ -5458,7 +5530,7 @@ export function StormApp() {
       })}
       {/* A down host with no probed ports still shows a "down" chip in the ports column. */}
       {hostDown && ports.length === 0 && (
-        <span className="mono" style={{ fontSize: 11, fontWeight: 700, borderRadius: 6, padding: "2px 8px", background: "var(--st-danger-soft)", color: "var(--st-danger)" }}>down</span>
+        <span className="mono" style={{ fontSize: 11, fontWeight: 700, borderRadius: 6, padding: "2px 8px", background: "var(--st-danger-soft)", color: "var(--st-danger)" }}>{t("down")}</span>
       )}
     </div>
   );
@@ -5509,6 +5581,7 @@ export function StormApp() {
     preview: string;
     busy: boolean;
     submitLabel?: string;
+    headerAction?: ReactNode;
     busyLabel?: string;
     onRaw: (v: string) => void;
     onPreview: (v: string) => void;
@@ -5524,6 +5597,7 @@ export function StormApp() {
         <div style={{ flex: "none", display: "flex", alignItems: "center", gap: 10, padding: "16px 22px", borderBottom: "1px solid var(--st-divider)" }}>
           <span className="clk" onClick={cfg.onCancel} style={{ display: "flex", color: "var(--st-text-3)", cursor: "pointer" }}><Icon name="chevron-left" size={20} /></span>
           <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "var(--st-text)" }}>{cfg.title}</h2>
+          {cfg.headerAction && <div style={{ marginLeft: "auto" }}>{cfg.headerAction}</div>}
         </div>
         <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", padding: "18px 22px 20px" }}>
           <div style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
@@ -5578,6 +5652,7 @@ export function StormApp() {
   const renderEpImport = () =>
     renderImportPage({
       title: t("Add endpoints"),
+      headerAction: <SwaggerEndpointImport disabled={state.epImportBusy} onParsed={importSwaggerEndpoints} />,
       pasteLabel: t("Paste endpoints"),
       placeholder: "https://api.example.com/v1/login\nhttps://example.com/admin\nPOST https://example.com/api/users",
       previewPlaceholder: t("parsed endpoints appear here…"),
@@ -5694,7 +5769,7 @@ export function StormApp() {
           <div style={{ flex: "none", display: "flex", alignItems: "center", gap: 10, padding: "16px 22px", borderBottom: "1px solid var(--st-divider)" }}>
             <span className="clk" onClick={closeReconExport} style={{ display: "flex", color: "var(--st-text-3)", cursor: "pointer" }}><Icon name="chevron-left" size={20} /></span>
             <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "var(--st-text)" }}>{title}</h2>
-            <div style={{ marginLeft: "auto" }}>{scope === "endpoints" && <SwaggerEndpointImport disabled={state.epImportBusy} onParsed={(lines) => setState((s) => ({ exportPageOpen: false, epImportOpen: true, epImportSwaggerHosts: [...new Set([...(s.epImportOpen ? s.epImportSwaggerHosts : []), ...lines.map(parseEpLine).filter((ep) => ep != null).map((ep) => ep.host)])], epImportRaw: [...new Set([...(s.epImportOpen ? s.epImportRaw.split(/\r?\n/).filter(Boolean) : []), ...lines])].join("\n"), epImportPreview: normalizeEpList([...(s.epImportOpen ? s.epImportPreview.split(/\r?\n/).filter(Boolean) : []), ...lines].join("\n")) }))} />}</div>
+            <div style={{ marginLeft: "auto" }}>{scope === "endpoints" && <SwaggerEndpointImport disabled={state.epImportBusy} onParsed={importSwaggerEndpoints} />}</div>
           </div>
           <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", padding: "18px 22px 20px" }}>
             <div style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
@@ -5962,7 +6037,7 @@ export function StormApp() {
                 <div style={{ minWidth: 0 }} title={i.names.map((n) => n.hostname).join(", ")}>{hostnamePills(i.names)}</div>
                 <div style={{ minWidth: 0 }}>{portPills(i.ports, i.status === "down")}</div>
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
-                  <div className="actbtn" onClick={i.onEdit}><Icon name="edit" size={15} /></div>
+                  <button type="button" className="actbtn" title={t("Edit IP")} aria-label={`${t("Edit IP")}: ${i.ip}`} onClick={i.onEdit}><Icon name="edit" size={15} /></button>
                   <div className="actbtn del" onClick={i.onDelete}><Icon name="trash" size={15} /></div>
                 </div>
               </div>
@@ -6209,7 +6284,7 @@ export function StormApp() {
               ) : (
                 <span className="mono" style={{ fontSize: 12.5, color: "var(--st-text-faint)" }}>{t("unknown")}</span>
               )}
-              <span className="mono" style={{ fontSize: 12.5, fontWeight: 700, color: h.status === "down" ? "var(--st-danger)" : p.http != null ? httpStatusColor(p.http) : "var(--st-text-faint)" }}>{h.status === "down" ? "down" : p.http != null ? p.http : "—"}</span>
+              <span className="mono" style={{ fontSize: 12.5, fontWeight: 700, color: h.status === "down" ? "var(--st-danger)" : p.http != null ? httpStatusColor(p.http) : "var(--st-text-faint)" }}>{h.status === "down" ? t("down") : p.http != null ? p.http : "—"}</span>
               <span className="mono" style={{ justifySelf: "start", fontSize: 11, fontWeight: 700, borderRadius: 6, padding: "3px 9px", ...(PORT[p.state] ?? PORT.closed) }}>{p.state}</span>
             </div>
           ))}
@@ -6289,7 +6364,7 @@ export function StormApp() {
               ) : (
                 <span className="mono" style={{ fontSize: 12.5, color: "var(--st-text-faint)" }}>{t("unknown")}</span>
               )}
-              <span className="mono" style={{ fontSize: 12.5, fontWeight: 700, color: row.status === "down" ? "var(--st-danger)" : p.http != null ? httpStatusColor(p.http) : "var(--st-text-faint)" }}>{row.status === "down" ? "down" : p.http != null ? p.http : "—"}</span>
+              <span className="mono" style={{ fontSize: 12.5, fontWeight: 700, color: row.status === "down" ? "var(--st-danger)" : p.http != null ? httpStatusColor(p.http) : "var(--st-text-faint)" }}>{row.status === "down" ? t("down") : p.http != null ? p.http : "—"}</span>
               <span className="mono" style={{ justifySelf: "start", fontSize: 11, fontWeight: 700, borderRadius: 6, padding: "3px 9px", ...(PORT[p.state] ?? PORT.closed) }}>{p.state}</span>
             </div>
           ))}
@@ -6346,9 +6421,9 @@ export function StormApp() {
               <div style={{ display: "flex", alignItems: "center", gap: 7, font: "600 12px Inter,sans-serif", color: VSTATUS[v.status] ?? "var(--st-text-3)" }}><span style={{ width: 6, height: 6, flex: "none", borderRadius: "50%", background: VSTATUS[v.status] ?? "var(--st-text-3)" }} />{t(VSTATUS_LABEL[v.status] ?? v.status)}</div>
               <span style={{ justifySelf: "start", font: "700 10.5px Inter,sans-serif", textTransform: "uppercase", letterSpacing: ".5px", borderRadius: 7, padding: "4px 9px", background: SEV[v.sev].bg, color: SEV[v.sev].color }}>{v.sev}</span>
               <div className="mono" style={{ fontSize: 12, color: "var(--st-text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.author}</div>
-              <div className="mono" style={{ fontSize: 11.5, color: "var(--st-text-faint)" }}>{v.updated}</div>
+              <div className="mono" style={{ fontSize: 11.5, color: "var(--st-text-faint)" }}>{relTime(v.updated)}</div>
               <div style={{ display: "flex", justifyContent: "center", gap: 2 }}>
-                <div className="actbtn" title={t("Export to Task Tracker")} onClick={(e) => { e.stopPropagation(); openJiraExport(v.id); }}><Icon name="upload" size={15} /></div>
+                <div className="actbtn" title={t("Export to Task Tracker")} onClick={(e) => { e.stopPropagation(); openTaskTrackerExport(v.id); }}><Icon name="upload" size={15} /></div>
                 <div className="actbtn del" onClick={v.onDelete}><Icon name="trash" size={15} /></div>
               </div>
             </div>
@@ -6524,7 +6599,7 @@ export function StormApp() {
             {state.vulnFiles.length > 0 && (
               <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10 }}>
                 {state.vulnFiles.map((f) => (
-                  <div key={f.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", border: "1px solid var(--st-divider)", borderRadius: 10, background: "var(--st-surface)" }}>
+                  <div key={f.id} className="listitem" style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", border: "1px solid var(--st-divider)", borderRadius: 10, background: "var(--st-surface)" }}>
                     <Icon name="doc" size={15} color="var(--st-text-3)" />
                     <span className="mono clk" title={t("Click to preview")} onClick={() => setState({ filePreview: f })} style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: "var(--st-accent-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer" }}>{f.original_name}</span>
                     <span className="mono" style={{ flex: "none", fontSize: 11, color: "var(--st-text-faint)" }}>{kb(f.size_bytes)}</span>
@@ -6548,7 +6623,7 @@ export function StormApp() {
             </Suspense>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 22, fontSize: 12, color: "var(--st-text-faint)" }}>
-            <span>{t("Reported by")} <b style={{ color: "var(--st-text-3)" }}>{original?.author}</b> · {original?.updated}</span>
+            <span>{t("Reported by")} <b style={{ color: "var(--st-text-3)" }}>{original?.author}</b> · {relTime(original?.updated)}</span>
             <div style={{ display: "flex", gap: 10 }}>
               <button className="clk" onClick={closeVulnDetail} style={{ height: 40, padding: "0 18px", border: "1px solid var(--st-border)", borderRadius: 10, background: "var(--st-surface)", font: "700 13px Inter,sans-serif", color: "var(--st-text-2)" }}>{t("Cancel")}</button>
               <button className="clk" onClick={saveVulnDetail} style={{ height: 40, padding: "0 20px", border: "none", borderRadius: 10, background: "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13px Inter,sans-serif" }}>{t("Save changes")}</button>
@@ -6647,7 +6722,7 @@ export function StormApp() {
         return (
           // Клик по своей заметке открывает её сразу в редакторе (как карточка уязвимости);
           // чужую — только на просмотр (read-only).
-          <div key={n.id} className="statc clk" onClick={() => (mine ? openNoteEditor("edit", idx) : openNoteViewer(n.id))} style={{ ...CARD, padding: "18px 20px" }}>
+          <div key={n.id} className="statc listitem clk" onClick={() => (mine ? openNoteEditor("edit", idx) : openNoteViewer(n.id))} style={{ ...CARD, padding: "18px 20px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
               <div style={{ font: "700 15px Inter,sans-serif", color: "var(--st-text)" }}>{n.title}</div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, flex: "none" }}>
@@ -6860,7 +6935,7 @@ export function StormApp() {
           const hidden = g.lines.length - ACT_LINE_LIMIT;
           const shown = hidden > 0 ? g.lines.slice(0, ACT_LINE_LIMIT) : g.lines;
           return (
-            <div key={g.key} style={{ ...CARD, padding: "16px 18px", display: "flex", gap: 13 }}>
+            <div key={g.key} className="listitem" style={{ ...CARD, padding: "16px 18px", display: "flex", gap: 13 }}>
               <span
                 className="mono"
                 style={{ width: 32, height: 32, flex: "none", borderRadius: "50%", background: g.actor === "System" ? "var(--st-accent-soft)" : "var(--st-accent)", color: g.actor === "System" ? "var(--st-accent-2)" : "var(--st-on-accent)", display: "flex", alignItems: "center", justifyContent: "center", font: "700 11px 'JetBrains Mono',monospace" }}
@@ -6872,7 +6947,7 @@ export function StormApp() {
                     than as a separate badge repeating what the list already shows. */}
                 <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
                   <div style={{ fontSize: 13.5, color: "var(--st-text-2)", lineHeight: 1.5, flex: 1, minWidth: 0 }}>
-                    <b className="mono" style={{ color: "var(--st-text)" }}>{g.actor}</b> {g.verb} <b style={{ color: "var(--st-text)" }}>{g.subject}</b>
+                    <b className="mono" style={{ color: "var(--st-text)" }}>{g.actor === "System" ? t("System") : g.actor}</b> {t(g.verb)} <b style={{ color: "var(--st-text)" }}>{g.subject}</b>
                   </div>
                   <span className="mono" style={{ flex: "none", fontSize: 11.5, color: "var(--st-text-faint)" }}>{g.time}</span>
                 </div>
@@ -6911,7 +6986,7 @@ export function StormApp() {
     <div className="route" style={{ padding: "40px 48px 36px", width: "100%" }}>
       {eyebrow([{ label: "Account", muted: true }, { label: "Profile settings", muted: true }])}
       <h1 style={{ margin: 0, fontSize: 30, fontWeight: 800, letterSpacing: "-.7px", color: "var(--st-text)" }}>{t("Profile Settings")}</h1>
-      <div style={{ fontSize: 13.5, color: "var(--st-text-3)", marginTop: 6 }}>{t("Signed in as")} <b style={{ color: "var(--st-text-2)" }}>{me}</b> · manage your account, security, integrations &amp; automation</div>
+      <div style={{ fontSize: 13.5, color: "var(--st-text-3)", marginTop: 6 }}>{t("Signed in as")} <b style={{ color: "var(--st-text-2)" }}>{me}</b> · {t("manage your account, security, integrations & automation")}</div>
 
       <div style={{ display: "grid", gridTemplateColumns: "260px 1fr", gap: 22, alignItems: "start", marginTop: 26 }}>
         <div style={{ ...CARD, padding: 8 }}>
@@ -6919,17 +6994,17 @@ export function StormApp() {
             {meAvatar(44, 17, meInitials)}
             <div style={{ minWidth: 0 }}>
               <div style={{ font: "700 14px Inter,sans-serif", color: "var(--st-text)" }}>{meDisplay}</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 3, font: "600 11.5px Inter,sans-serif", color: "var(--st-success)" }}><Icon name="shield-check" size={12} sw={2.2} />{t("Active")}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 3, font: "600 11.5px Inter,sans-serif", color: "var(--st-success)" }}><Icon name="shield-check" size={12} sw={2.2} />{t("Active account")}</div>
             </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <div className="clk" onClick={() => setState({ profileTab: "account" })} style={{ display: "flex", alignItems: "center", gap: 11, padding: "10px 12px", borderRadius: 10, cursor: "pointer", font: "600 13.5px Inter,sans-serif", ...pfNav("account") }}><Icon name="user1" size={17} />{t("Account")}</div>
-            <div className="clk" onClick={() => setState({ profileTab: "security" })} style={{ display: "flex", alignItems: "center", gap: 11, padding: "10px 12px", borderRadius: 10, cursor: "pointer", font: "600 13.5px Inter,sans-serif", ...pfNav("security") }}>
+            <div className="listitem clk" onClick={() => setState({ profileTab: "account" })} style={{ display: "flex", alignItems: "center", gap: 11, padding: "10px 12px", borderRadius: 10, cursor: "pointer", font: "600 13.5px Inter,sans-serif", ...pfNav("account") }}><Icon name="user1" size={17} />{t("Account")}</div>
+            <div className="listitem clk" onClick={() => setState({ profileTab: "security" })} style={{ display: "flex", alignItems: "center", gap: 11, padding: "10px 12px", borderRadius: 10, cursor: "pointer", font: "600 13.5px Inter,sans-serif", ...pfNav("security") }}>
               <Icon name="lock" size={17} /><span style={{ flex: 1 }}>{t("Security")}</span>
               {twoFAEnabled && <span className="mono" style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: ".5px", color: "var(--st-success)", background: "var(--st-success-soft)", borderRadius: 6, padding: "2px 6px" }}>{t("2FA")}</span>}
             </div>
-            <div className="clk" onClick={() => setState({ profileTab: "api" })} style={{ display: "flex", alignItems: "center", gap: 11, padding: "10px 12px", borderRadius: 10, cursor: "pointer", font: "600 13.5px Inter,sans-serif", ...pfNav("api") }}><Icon name="plug" size={17} />API &amp; Automation</div>
-            <div className="clk" onClick={() => setState({ profileTab: "customizing" })} style={{ display: "flex", alignItems: "center", gap: 11, padding: "10px 12px", borderRadius: 10, cursor: "pointer", font: "600 13.5px Inter,sans-serif", ...pfNav("customizing") }}><Icon name={theme === "dark" ? "moon" : "sun"} size={17} />{t("Customizing")}</div>
+            <div className="listitem clk" onClick={() => setState({ profileTab: "api" })} style={{ display: "flex", alignItems: "center", gap: 11, padding: "10px 12px", borderRadius: 10, cursor: "pointer", font: "600 13.5px Inter,sans-serif", ...pfNav("api") }}><Icon name="plug" size={17} />{t("API & Automation")}</div>
+            <div className="listitem clk" onClick={() => setState({ profileTab: "customizing" })} style={{ display: "flex", alignItems: "center", gap: 11, padding: "10px 12px", borderRadius: 10, cursor: "pointer", font: "600 13.5px Inter,sans-serif", ...pfNav("customizing") }}><Icon name={theme === "dark" ? "moon" : "sun"} size={17} />{t("Customizing")}</div>
           </div>
         </div>
 
@@ -6947,7 +7022,7 @@ export function StormApp() {
     <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 14, marginBottom: 18 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <div style={{ width: 38, height: 38, flex: "none", borderRadius: 10, background: "var(--st-accent-soft)", color: "var(--st-accent)", display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name={icon} size={19} /></div>
-        <div><div style={{ font: "700 15px Inter,sans-serif", color: "var(--st-text)" }}>{title}</div><div style={{ fontSize: 12.5, color: "var(--st-text-3)", marginTop: 2 }}>{sub}</div></div>
+        <div><div style={{ font: "700 15px Inter,sans-serif", color: "var(--st-text)" }}>{t(title)}</div><div style={{ fontSize: 12.5, color: "var(--st-text-3)", marginTop: 2 }}>{t(sub)}</div></div>
       </div>
       {right}
     </div>
@@ -6963,7 +7038,7 @@ export function StormApp() {
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <input id="pfFileInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif" style={{ display: "none" }} onChange={onAvatarPick} />
               <label htmlFor="pfFileInput" className="clk" style={{ display: "inline-flex", alignItems: "center", gap: 8, height: 42, padding: "0 18px", border: "1px solid var(--st-border)", borderRadius: 11, background: "var(--st-surface)", font: "700 13px Inter,sans-serif", color: "var(--st-text-2)", cursor: "pointer" }}><Icon name="image" size={15} />{t("Choose file")}</label>
-              <button className="clk" disabled={!avatarFile || avatarUploading} onClick={submitAvatar} style={{ display: "inline-flex", alignItems: "center", gap: 8, height: 42, padding: "0 18px", border: "none", borderRadius: 11, background: !avatarFile || avatarUploading ? "var(--st-accent-muted)" : "var(--st-accent)", color: "var(--st-on-accent)", font: "700 13px Inter,sans-serif", cursor: !avatarFile || avatarUploading ? "not-allowed" : "pointer" }}><Icon name="upload" size={15} color="var(--st-on-accent)" />{avatarUploading ? "Uploading…" : "Upload"}</button>
+              <button className="clk" disabled={!avatarFile || avatarUploading} onClick={submitAvatar} style={{ display: "inline-flex", alignItems: "center", gap: 8, height: 42, padding: "0 18px", border: "none", borderRadius: 11, background: !avatarFile || avatarUploading ? "var(--st-accent-muted)" : "var(--st-accent)", color: "var(--st-on-accent)", font: "700 13px Inter,sans-serif", cursor: !avatarFile || avatarUploading ? "not-allowed" : "pointer" }}><Icon name="upload" size={15} color="var(--st-on-accent)" />{avatarUploading ? t("Uploading…") : t("Upload")}</button>
               {avatarFile && !avatarUploading && (
                 <button className="clk" onClick={clearAvatarPick} style={{ display: "inline-flex", alignItems: "center", height: 42, padding: "0 14px", border: "1px solid var(--st-border)", borderRadius: 11, background: "var(--st-surface)", font: "700 13px Inter,sans-serif", color: "var(--st-text-3)", cursor: "pointer" }}>{t("Cancel")}</button>
               )}
@@ -6980,7 +7055,7 @@ export function StormApp() {
       </div>
 
       <div style={{ ...CARD, padding: "22px 24px" }}>
-        {cardHeader("idcard", "Account identity", "Read-only — managed by your administrator", <span style={{ font: "700 11px Inter,sans-serif", color: "var(--st-text-2)", background: "var(--st-hover)", border: "1px solid var(--st-border-light)", borderRadius: 8, padding: "5px 11px" }}>{t("Active")}</span>)}
+        {cardHeader("idcard", "Account identity", "Read-only — managed by your administrator", <span style={{ font: "700 11px Inter,sans-serif", color: "var(--st-text-2)", background: "var(--st-hover)", border: "1px solid var(--st-border-light)", borderRadius: 8, padding: "5px 11px" }}>{t("Active account")}</span>)}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", border: "1px solid var(--st-divider)", borderRadius: 12, overflow: "hidden" }}>
           {[
             { label: "Username", value: me, mono: true, color: "var(--st-text)" },
@@ -6989,7 +7064,7 @@ export function StormApp() {
             { label: "User ID", value: String(meId), mono: true, color: "var(--st-accent-2)", last: true },
           ].map((c, i) => (
             <div key={i} style={{ padding: "15px 18px", borderRight: c.last ? "none" : "1px solid var(--st-divider)" }}>
-              <div className="mono" style={{ fontSize: 10, letterSpacing: ".8px", color: "var(--st-text-faint)", fontWeight: 700, textTransform: "uppercase" }}>{c.label}</div>
+              <div className="mono" style={{ fontSize: 10, letterSpacing: ".8px", color: "var(--st-text-faint)", fontWeight: 700, textTransform: "uppercase" }}>{t(c.label)}</div>
               <div className={c.mono ? "mono" : undefined} style={{ fontSize: c.small ? 13 : 14, color: c.color, fontWeight: c.mono ? 600 : 700, marginTop: 7, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", ...(c.mono ? {} : { font: "700 13px Inter,sans-serif" }) }}>{c.value}</div>
             </div>
           ))}
@@ -7003,7 +7078,7 @@ export function StormApp() {
     const tile = (key: string, active: boolean, onClick: () => void, icon: Parameters<typeof Icon>[0]["name"], title: string, desc: string) => (
       <div
         key={key}
-        className="clk"
+        className="listitem clk"
         onClick={onClick}
         style={{
           display: "flex",
@@ -7062,7 +7137,7 @@ export function StormApp() {
             <div style={{ font: "600 13px Inter,sans-serif", color: "var(--st-text)", marginBottom: 12 }}>{t("Confirm your account password to disable 2FA")}</div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <input className="finp" type="password" autoComplete="current-password" placeholder={t("Account password")} value={state.twoFADisablePassword} onChange={(e) => setState({ twoFADisablePassword: e.target.value })} style={{ maxWidth: 240 }} />
-              <button className="clk" onClick={disableTwoFA} disabled={!state.twoFADisablePassword || state.twoFABusy} style={{ height: 44, padding: "0 18px", border: "none", borderRadius: 11, background: !state.twoFADisablePassword || state.twoFABusy ? "var(--st-danger-muted)" : "var(--st-danger)", color: "var(--st-on-accent)", font: "700 13px Inter,sans-serif", cursor: !state.twoFADisablePassword || state.twoFABusy ? "not-allowed" : "pointer" }}>{state.twoFABusy ? "Disabling…" : "Disable 2FA"}</button>
+              <button className="clk" onClick={disableTwoFA} disabled={!state.twoFADisablePassword || state.twoFABusy} style={{ height: 44, padding: "0 18px", border: "none", borderRadius: 11, background: !state.twoFADisablePassword || state.twoFABusy ? "var(--st-danger-muted)" : "var(--st-danger)", color: "var(--st-on-accent)", font: "700 13px Inter,sans-serif", cursor: !state.twoFADisablePassword || state.twoFABusy ? "not-allowed" : "pointer" }}>{state.twoFABusy ? t("Disabling…") : t("Disable 2FA")}</button>
               <button className="clk" onClick={cancelDisableTwoFA} style={{ height: 44, padding: "0 16px", border: "1px solid var(--st-border)", borderRadius: 11, background: "var(--st-surface)", font: "700 13px Inter,sans-serif", color: "var(--st-text-2)", cursor: "pointer" }}>{t("Cancel")}</button>
             </div>
           </div>
@@ -7077,7 +7152,7 @@ export function StormApp() {
           <div style={{ font: "600 13px Inter,sans-serif", color: "var(--st-text)", marginBottom: 14 }}>{t("1. Scan this QR in your authenticator app")}</div>
           <div style={{ display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap" }}>
             {state.twoFAQr ? (
-              <img src={state.twoFAQr} alt="TOTP QR code" width={120} height={120} style={{ flex: "none", borderRadius: 10, border: "1px solid var(--st-divider)", imageRendering: "pixelated" }} />
+              <img src={state.twoFAQr} alt={t("TOTP QR code")} width={120} height={120} style={{ flex: "none", borderRadius: 10, border: "1px solid var(--st-divider)", imageRendering: "pixelated" }} />
             ) : (
               <div style={{ width: 120, height: 120, flex: "none", borderRadius: 10, background: "var(--st-hover)", border: "1px solid var(--st-divider)" }} />
             )}
@@ -7089,14 +7164,14 @@ export function StormApp() {
           <div style={{ font: "600 13px Inter,sans-serif", color: "var(--st-text)", margin: "18px 0 10px" }}>{t("2. Enter the 6-digit code")}</div>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <input className="finp" inputMode="numeric" maxLength={6} placeholder="000000" value={state.twoFACode} onChange={(e) => setState({ twoFACode: e.target.value.replace(/\D/g, "") })} style={{ maxWidth: 160, font: "700 16px 'JetBrains Mono',monospace", letterSpacing: 4, textAlign: "center" }} />
-            <button className="clk" onClick={confirmTwoFA} disabled={state.twoFACode.trim().length < 6 || state.twoFABusy} style={{ height: 44, padding: "0 18px", border: "none", borderRadius: 11, background: state.twoFACode.trim().length < 6 || state.twoFABusy ? "var(--st-accent-muted)" : "var(--st-accent)", color: "var(--st-on-accent)", font: "700 13px Inter,sans-serif", cursor: state.twoFACode.trim().length < 6 || state.twoFABusy ? "not-allowed" : "pointer" }}>{state.twoFABusy ? "Verifying…" : "Verify & enable"}</button>
+            <button className="clk" onClick={confirmTwoFA} disabled={state.twoFACode.trim().length < 6 || state.twoFABusy} style={{ height: 44, padding: "0 18px", border: "none", borderRadius: 11, background: state.twoFACode.trim().length < 6 || state.twoFABusy ? "var(--st-accent-muted)" : "var(--st-accent)", color: "var(--st-on-accent)", font: "700 13px Inter,sans-serif", cursor: state.twoFACode.trim().length < 6 || state.twoFABusy ? "not-allowed" : "pointer" }}>{state.twoFABusy ? t("Verifying…") : t("Verify & enable")}</button>
             <button className="clk" onClick={cancelTwoFA} style={{ height: 44, padding: "0 16px", border: "1px solid var(--st-border)", borderRadius: 11, background: "var(--st-surface)", font: "700 13px Inter,sans-serif", color: "var(--st-text-2)", cursor: "pointer" }}>{t("Cancel")}</button>
           </div>
         </div>
       ) : (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, border: "1px solid var(--st-divider)", borderRadius: 12, padding: "14px 16px" }}>
           <span style={{ font: "600 13.5px Inter,sans-serif", color: "var(--st-text-2)" }}>{t("Two-factor authentication is currently disabled.")}</span>
-          <button className="clk" onClick={startTwoFA} disabled={state.twoFABusy} style={{ height: 38, padding: "0 16px", border: "none", borderRadius: 10, background: state.twoFABusy ? "var(--st-accent-muted)" : "var(--st-accent)", color: "var(--st-on-accent)", font: "700 12.5px Inter,sans-serif", cursor: state.twoFABusy ? "not-allowed" : "pointer" }}>{state.twoFABusy ? "Preparing…" : "Enable 2FA"}</button>
+          <button className="clk" onClick={startTwoFA} disabled={state.twoFABusy} style={{ height: 38, padding: "0 16px", border: "none", borderRadius: 10, background: state.twoFABusy ? "var(--st-accent-muted)" : "var(--st-accent)", color: "var(--st-on-accent)", font: "700 12.5px Inter,sans-serif", cursor: state.twoFABusy ? "not-allowed" : "pointer" }}>{state.twoFABusy ? t("Preparing…") : t("Enable 2FA")}</button>
         </div>
       )}
     </div>
@@ -7133,14 +7208,14 @@ export function StormApp() {
       </div>
       <div style={{ marginTop: 14, border: "1px solid var(--st-divider)", borderRadius: 12, overflow: "hidden" }}>
         {state.apiKeys.map((k) => (
-          <div key={k.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderTop: "1px solid var(--st-divider)" }}>
+          <div key={k.id} className="listitem" style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderTop: "1px solid var(--st-divider)" }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ font: "600 13.5px Inter,sans-serif", color: "var(--st-text)" }}>{k.name}</div>
               <div className="mono" style={{ fontSize: 12, color: "var(--st-text-3)", marginTop: 4 }}>{k.key}</div>
               <div style={{ fontSize: 11, color: "var(--st-text-faint)", marginTop: 4 }}>
                 {k.allProjects ? t("All projects") : `${t("Projects:")} ${k.projectCount ?? 0}`}
                 {" · "}
-                {k.expires ? `until ${k.expires}` : "no expiry"}
+                {k.expires ? `until ${k.expires}` : t("no expiry")}
               </div>
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 5, maxWidth: 280, justifyContent: "flex-end" }}>
@@ -7164,10 +7239,10 @@ export function StormApp() {
     </div>
   );
 
-  const modalFooter = (onCancel: () => void, onSave: () => void, saveLabel: string, saveBg = "var(--st-accent-2)") => (
+  const modalFooter = (onCancel: () => void, onSave: () => void, saveLabel: string, saveBg = "var(--st-accent-2)", disabled = false) => (
     <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 24 }}>
       <button className="clk" onClick={onCancel} style={{ height: 42, padding: "0 20px", border: "1px solid var(--st-border)", borderRadius: 11, background: "var(--st-surface)", font: "700 13.5px Inter,sans-serif", color: "var(--st-text-2)" }}>{t("Cancel")}</button>
-      <button className="clk" onClick={onSave} style={{ height: 42, padding: "0 22px", border: "none", borderRadius: 11, background: saveBg, color: "var(--st-on-accent)", font: "700 13.5px Inter,sans-serif" }}>{saveLabel}</button>
+      <button className="clk" onClick={onSave} disabled={disabled} style={{ height: 42, padding: "0 22px", border: "none", borderRadius: 11, background: saveBg, color: "var(--st-on-accent)", font: "700 13.5px Inter,sans-serif", opacity: disabled ? .45 : 1, cursor: disabled ? "default" : "pointer" }}>{t(saveLabel)}</button>
     </div>
   );
 
@@ -7272,7 +7347,7 @@ export function StormApp() {
         60,
         440,
         <>
-          <h2 style={{ margin: 0, fontSize: 21, fontWeight: 800, color: "var(--st-text)", letterSpacing: "-.4px" }}>{state.wsUserMode === "add" ? "Invite member" : "Edit member"}</h2>
+          <h2 style={{ margin: 0, fontSize: 21, fontWeight: 800, color: "var(--st-text)", letterSpacing: "-.4px" }}>{state.wsUserMode === "add" ? t("Invite member") : t("Edit member")}</h2>
           {state.wsUserMode === "add" ? (
             <>
               <div style={{ marginTop: 16 }}><label className="flabel">{t("Email")}</label><input className="finp" placeholder={t("user@sbertech.ru")} value={state.wsUserEmail} onChange={(e) => setState({ wsUserEmail: e.target.value })} /></div>
@@ -7332,7 +7407,7 @@ export function StormApp() {
                       {checked && <Icon name="check" size={12} color="var(--st-on-accent)" sw={3} />}
                     </span>
                     <span className="mono" style={{ fontSize: 12, color: "var(--st-text)", flex: "none" }}>{s}</span>
-                    <span style={{ fontSize: 12, color: "var(--st-text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{API_SCOPE_LABELS[s]}</span>
+                    <span style={{ fontSize: 12, color: "var(--st-text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t(API_SCOPE_LABELS[s])}</span>
                   </div>
                 );
               })}
@@ -7372,7 +7447,7 @@ export function StormApp() {
       {/* new project */}
       {modalShell(
         state.modalOpen,
-        () => setState({ modalOpen: false, newName: "", newDesc: "", newStart: "", newEnd: "", newNameError: false }),
+        closeNewProject,
         60,
         480,
         <>
@@ -7383,9 +7458,8 @@ export function StormApp() {
             <input className="finp" style={state.newNameError && !state.newName.trim() ? { borderColor: "var(--st-danger)", boxShadow: "0 0 0 3px var(--st-danger-soft)" } : undefined} placeholder={t("e.g. Acme Corp — External Perimeter")} value={state.newName} onChange={(e) => setState({ newName: e.target.value, newNameError: false })} />
             {state.newNameError && !state.newName.trim() && <div style={{ marginTop: 6, font: "600 12px Inter,sans-serif", color: "var(--st-danger)" }}>{t("Project name is required")}</div>}
           </div>
-          <div style={{ marginTop: 16 }}><label className="flabel">{t("Description")}</label><textarea className="finp" rows={3} placeholder={t("Short summary of the engagement scope…")} value={state.newDesc} onChange={(e) => setState({ newDesc: e.target.value })} /></div>
           <div style={{ marginTop: 16 }}>
-            <StormAppSecFields value={state.newAppsec} onChange={(p) => setState({ newAppsec: { ...state.newAppsec, ...p } })} works={state.worksEnabled} t={t} />
+            <StormAppSecFields key={state.modalOpen ? "create-open" : "create-closed"} value={state.newAppsec} onChange={(p) => setState({ newAppsec: { ...state.newAppsec, ...p } })} works={state.worksEnabled} t={t} />
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 16 }}>
             {/* min/max keep the pickers themselves from offering an inverted range. */}
@@ -7395,7 +7469,7 @@ export function StormApp() {
           {datesInvalid(state.newStart, state.newEnd) && (
             <div style={{ marginTop: 8, font: "600 12px Inter,sans-serif", color: "var(--st-danger)" }}>{DATES_ERROR}</div>
           )}
-          {modalFooter(() => setState({ modalOpen: false, newName: "", newDesc: "", newStart: "", newEnd: "", newNameError: false }), createProject, "Create project")}
+          {modalFooter(closeNewProject, createProject, "Create project")}
         </>
       )}
 
@@ -7408,7 +7482,6 @@ export function StormApp() {
         <>
           <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "var(--st-text)", letterSpacing: "-.4px" }}>{t("Edit project")}</h2>
           <div style={{ marginTop: 20 }}><label className="flabel">{t("Project name")}</label><input className="finp" value={state.projEditName} onChange={(e) => setState({ projEditName: e.target.value })} /></div>
-          <div style={{ marginTop: 16 }}><label className="flabel">{t("Description")}</label><textarea className="finp" rows={3} value={state.projEditDesc} onChange={(e) => setState({ projEditDesc: e.target.value })} /></div>
           <div style={{ marginTop: 16 }}>
             <label className="flabel">{t("Status")}</label>
             <StormSelect
@@ -7418,7 +7491,7 @@ export function StormApp() {
             />
           </div>
           <div style={{ marginTop: 16 }}>
-            <StormAppSecFields value={state.projEditAppsec} onChange={(p) => setState({ projEditAppsec: { ...state.projEditAppsec, ...p } })} works={state.worksEnabled} t={t} />
+            <StormAppSecFields key={`${state.projEditId ?? "edit"}:${state.projEditOpen}`} value={state.projEditAppsec} onChange={(p) => setState({ projEditAppsec: { ...state.projEditAppsec, ...p } })} works={state.worksEnabled} t={t} />
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 16 }}>
             <div><label className="flabel">{t("Start date")}</label><StormDatePicker value={state.projEditStart} onChange={(v) => setState({ projEditStart: v })} max={state.projEditEnd || undefined} /></div>
@@ -7442,7 +7515,7 @@ export function StormApp() {
           620,
           <>
             <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "var(--st-text)", letterSpacing: "-.4px" }}>
-              {g ? `${g.actor} ${g.verb} ${g.subject}` : ""}
+              {g ? `${g.actor === "System" ? t("System") : g.actor} ${t(g.verb)} ${g.subject}` : ""}
             </h2>
             {g && <div className="mono" style={{ marginTop: 6, fontSize: 11.5, color: "var(--st-text-faint)" }}>{g.time}</div>}
             <div style={{ marginTop: 16, background: "var(--st-code-bg)", borderRadius: 10, padding: "12px 13px", display: "flex", flexDirection: "column", gap: 6, maxHeight: 420, overflow: "auto" }}>
@@ -7469,7 +7542,7 @@ export function StormApp() {
               return (
                 <div
                   key={r.kind}
-                  className="clk"
+                  className="listitem clk"
                   onClick={() => setState({ exportKind: r.kind })}
                   style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "14px 16px", borderRadius: 12, cursor: "pointer", border: `1.5px solid ${on ? "var(--st-accent-2)" : "var(--st-border-light)"}`, background: on ? "var(--st-accent-soft)" : "var(--st-surface)" }}
                 >
@@ -7493,17 +7566,17 @@ export function StormApp() {
         </>
       )}
 
-      {/* export: single vulnerability -> Jira issue */}
+      {/* export: single vulnerability -> TaskTracker issue */}
       {modalShell(
-        state.jiraExportOpen,
-        closeJiraExport,
+        state.taskTrackerExportOpen,
+        closeTaskTrackerExport,
         60,
         460,
         (() => {
-          const v = state.jiraExportVulnId != null ? d.vulns.find((x) => x.id === state.jiraExportVulnId) : undefined;
-          const link = state.jiraExportLink;
-          const isLinked = !!(link && link.status === "linked" && link.jira_issue_key);
-          const exportDisabled = state.jiraExportBusy || state.jiraExportChecking;
+          const v = state.taskTrackerExportVulnId != null ? d.vulns.find((x) => x.id === state.taskTrackerExportVulnId) : undefined;
+          const link = state.taskTrackerExportLink;
+          const isLinked = !!(link && link.status === "linked" && link.task_tracker_issue_key);
+          const exportDisabled = state.taskTrackerExportBusy || state.taskTrackerExportChecking;
           return (
             <>
               <h2 style={{ margin: 0, fontSize: 21, fontWeight: 800, color: "var(--st-text)", letterSpacing: "-.4px" }}>{t("Export to Task Tracker")}</h2>
@@ -7521,20 +7594,20 @@ export function StormApp() {
               {/* Статус-блок рендерим ТОЛЬКО когда есть что показать (проверка /
                   уже экспортировано / ошибка). Иначе — без пустого зарезервированного
                   пространства: карточка находки идёт сразу к кнопкам. */}
-              {(state.jiraExportChecking || isLinked || state.jiraExportError) && (
+              {(state.taskTrackerExportChecking || isLinked || state.taskTrackerExportError) && (
                 <div style={{ marginTop: 16 }}>
-                  {state.jiraExportChecking ? (
+                  {state.taskTrackerExportChecking ? (
                     <div style={{ font: "600 13px Inter,sans-serif", color: "var(--st-text-3)" }}>{t("Checking status…")}</div>
                   ) : isLinked ? (
                     <div style={{ display: "flex", alignItems: "center", gap: 10, border: "1px solid var(--st-success-soft)", background: "var(--st-success-soft)", borderRadius: 12, padding: "13px 15px" }}>
                       <Icon name="check-circle" size={18} color="var(--st-success)" sw={2.2} />
                       <div style={{ font: "600 13.5px Inter,sans-serif", color: "var(--st-text)" }}>
                         {t("Already exported:")}{" "}
-                        <a href={link!.jira_issue_url} target="_blank" rel="noreferrer" style={{ color: "var(--st-accent)", fontWeight: 700 }}>{link!.jira_issue_key}</a>
+                        <a href={link!.task_tracker_issue_url} target="_blank" rel="noreferrer" style={{ color: "var(--st-accent)", fontWeight: 700 }}>{link!.task_tracker_issue_key}</a>
                       </div>
                     </div>
                   ) : (
-                    <div style={{ color: "var(--st-danger)", font: "600 12.5px Inter,sans-serif" }}>{state.jiraExportError}</div>
+                    <div style={{ color: "var(--st-danger)", font: "600 12.5px Inter,sans-serif" }}>{state.taskTrackerExportError}</div>
                   )}
                 </div>
               )}
@@ -7542,14 +7615,14 @@ export function StormApp() {
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 22 }}>
                 {isLinked ? (
                   <>
-                    <a className="clk" href={link!.jira_issue_url} target="_blank" rel="noreferrer" style={{ height: 42, padding: "0 20px", borderRadius: 11, background: "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13.5px Inter,sans-serif", display: "inline-flex", alignItems: "center", textDecoration: "none" }}>{t("Open in Task Tracker")}</a>
-                    <button className="clk" onClick={closeJiraExport} style={{ height: 42, padding: "0 20px", border: "1px solid var(--st-border)", borderRadius: 11, background: "var(--st-surface)", font: "700 13.5px Inter,sans-serif", color: "var(--st-text-2)" }}>{t("Done")}</button>
+                    <a className="clk" href={link!.task_tracker_issue_url} target="_blank" rel="noreferrer" style={{ height: 42, padding: "0 20px", borderRadius: 11, background: "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13.5px Inter,sans-serif", display: "inline-flex", alignItems: "center", textDecoration: "none" }}>{t("Open in Task Tracker")}</a>
+                    <button className="clk" onClick={closeTaskTrackerExport} style={{ height: 42, padding: "0 20px", border: "1px solid var(--st-border)", borderRadius: 11, background: "var(--st-surface)", font: "700 13.5px Inter,sans-serif", color: "var(--st-text-2)" }}>{t("Done")}</button>
                   </>
                 ) : (
                   <>
-                    <button className="clk" onClick={closeJiraExport} style={{ height: 42, padding: "0 20px", border: "1px solid var(--st-border)", borderRadius: 11, background: "var(--st-surface)", font: "700 13.5px Inter,sans-serif", color: "var(--st-text-2)" }}>{t("Cancel")}</button>
-                    <button className="clk" onClick={doJiraExport} disabled={exportDisabled} style={{ height: 42, padding: "0 22px", border: "none", borderRadius: 11, background: exportDisabled ? "var(--st-accent-muted)" : "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13.5px Inter,sans-serif", cursor: exportDisabled ? "default" : "pointer" }}>
-                      {state.jiraExportBusy ? t("Exporting…") : t("Export")}
+                    <button className="clk" onClick={closeTaskTrackerExport} style={{ height: 42, padding: "0 20px", border: "1px solid var(--st-border)", borderRadius: 11, background: "var(--st-surface)", font: "700 13.5px Inter,sans-serif", color: "var(--st-text-2)" }}>{t("Cancel")}</button>
+                    <button className="clk" onClick={doTaskTrackerExport} disabled={exportDisabled} style={{ height: 42, padding: "0 22px", border: "none", borderRadius: 11, background: exportDisabled ? "var(--st-accent-muted)" : "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13.5px Inter,sans-serif", cursor: exportDisabled ? "default" : "pointer" }}>
+                      {state.taskTrackerExportBusy ? t("Exporting…") : t("Export")}
                     </button>
                   </>
                 )}
@@ -7559,56 +7632,56 @@ export function StormApp() {
         })()
       )}
 
-      {/* export: all listed vulnerabilities -> Jira issues */}
+      {/* export: all listed vulnerabilities -> TaskTracker issues */}
       {modalShell(
-        state.jiraBulkOpen,
-        closeBulkJira,
+        state.taskTrackerBulkOpen,
+        closeBulkTaskTracker,
         60,
         460,
         (() => {
           const total = vulns.length;
-          const pct = state.jiraBulkTotal > 0 ? Math.round((state.jiraBulkDone / state.jiraBulkTotal) * 100) : 0;
+          const pct = state.taskTrackerBulkTotal > 0 ? Math.round((state.taskTrackerBulkDone / state.taskTrackerBulkTotal) * 100) : 0;
           return (
             <>
               <h2 style={{ margin: 0, fontSize: 21, fontWeight: 800, color: "var(--st-text)", letterSpacing: "-.4px" }}>{t("Export all to Task Tracker")}</h2>
 
               <div style={{ marginTop: 16 }}>
-                {state.jiraBulkFinished ? (
+                {state.taskTrackerBulkFinished ? (
                   <div style={{ border: "1px solid var(--st-success-soft)", background: "var(--st-success-soft)", borderRadius: 12, padding: "14px 16px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 8 }}><Icon name="check-circle" size={18} color="var(--st-success)" sw={2.2} /><span style={{ font: "700 13.5px Inter,sans-serif", color: "var(--st-text)" }}>{t("Export finished")}</span></div>
                     <div style={{ font: "600 13px Inter,sans-serif", color: "var(--st-text-2)", lineHeight: 1.7 }}>
-                      {t("Created:")} <b>{state.jiraBulkCreated}</b><br />
-                      {t("Already linked (skipped):")} <b>{state.jiraBulkSkipped}</b><br />
-                      {t("Failed:")} <b style={{ color: state.jiraBulkFailed ? "var(--st-danger)" : "var(--st-text-2)" }}>{state.jiraBulkFailed}</b>
+                      {t("Created:")} <b>{state.taskTrackerBulkCreated}</b><br />
+                      {t("Already linked (skipped):")} <b>{state.taskTrackerBulkSkipped}</b><br />
+                      {t("Failed:")} <b style={{ color: state.taskTrackerBulkFailed ? "var(--st-danger)" : "var(--st-text-2)" }}>{state.taskTrackerBulkFailed}</b>
                     </div>
                   </div>
-                ) : state.jiraBulkRunning ? (
+                ) : state.taskTrackerBulkRunning ? (
                   <div>
-                    <div style={{ font: "600 13px Inter,sans-serif", color: "var(--st-text-2)", marginBottom: 10 }}>{t("Exporting")} {state.jiraBulkDone} / {state.jiraBulkTotal}…</div>
+                    <div style={{ font: "600 13px Inter,sans-serif", color: "var(--st-text-2)", marginBottom: 10 }}>{t("Exporting")} {state.taskTrackerBulkDone} / {state.taskTrackerBulkTotal}…</div>
                     <div style={{ height: 8, background: "var(--st-divider)", borderRadius: 6, overflow: "hidden" }}>
                       <div style={{ width: `${pct}%`, height: "100%", background: "var(--st-accent)", transition: "width .2s" }} />
                     </div>
                   </div>
                 ) : (
                   <div style={{ font: "600 13px Inter,sans-serif", color: "var(--st-text-2)", lineHeight: 1.5 }}>
-                    {t("This will create a Task Tracker issue (in To Do) for each of the")} <b style={{ color: "var(--st-text)" }}>{total}</b> {t("listed")} {total === 1 ? "vulnerability" : "vulnerabilities"} {t("(page filters apply). Already-linked findings are skipped.")}
+                    {t("This will create a Task Tracker issue (in To Do) for each of the")} <b style={{ color: "var(--st-text)" }}>{total}</b> {t("listed")} {total === 1 ? t("vulnerability") : t("vulnerabilities")} {t("(page filters apply). Already-linked findings are skipped.")}
                   </div>
                 )}
               </div>
 
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 22 }}>
-                {state.jiraBulkFinished ? (
+                {state.taskTrackerBulkFinished ? (
                   <>
-                    {state.jiraBulkProjectUrl && (
-                      <a className="clk" href={state.jiraBulkProjectUrl} target="_blank" rel="noreferrer" style={{ height: 42, padding: "0 20px", borderRadius: 11, background: "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13.5px Inter,sans-serif", display: "inline-flex", alignItems: "center", textDecoration: "none" }}>{t("Open Task Tracker")}</a>
+                    {state.taskTrackerBulkProjectUrl && (
+                      <a className="clk" href={state.taskTrackerBulkProjectUrl} target="_blank" rel="noreferrer" style={{ height: 42, padding: "0 20px", borderRadius: 11, background: "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13.5px Inter,sans-serif", display: "inline-flex", alignItems: "center", textDecoration: "none" }}>{t("Open Task Tracker")}</a>
                     )}
-                    <button className="clk" onClick={closeBulkJira} style={{ height: 42, padding: "0 20px", border: "1px solid var(--st-border)", borderRadius: 11, background: "var(--st-surface)", font: "700 13.5px Inter,sans-serif", color: "var(--st-text-2)" }}>{t("Done")}</button>
+                    <button className="clk" onClick={closeBulkTaskTracker} style={{ height: 42, padding: "0 20px", border: "1px solid var(--st-border)", borderRadius: 11, background: "var(--st-surface)", font: "700 13.5px Inter,sans-serif", color: "var(--st-text-2)" }}>{t("Done")}</button>
                   </>
                 ) : (
                   <>
-                    <button className="clk" onClick={closeBulkJira} disabled={state.jiraBulkRunning} style={{ height: 42, padding: "0 20px", border: "1px solid var(--st-border)", borderRadius: 11, background: "var(--st-surface)", font: "700 13.5px Inter,sans-serif", color: "var(--st-text-2)", cursor: state.jiraBulkRunning ? "default" : "pointer" }}>{t("Cancel")}</button>
-                    <button className="clk" onClick={doBulkJiraExport} disabled={state.jiraBulkRunning || total === 0} style={{ height: 42, padding: "0 22px", border: "none", borderRadius: 11, background: state.jiraBulkRunning || total === 0 ? "var(--st-accent-muted)" : "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13.5px Inter,sans-serif", cursor: state.jiraBulkRunning || total === 0 ? "default" : "pointer" }}>
-                      {state.jiraBulkRunning ? t("Exporting…") : `${t("Export")} ${total}`}
+                    <button className="clk" onClick={closeBulkTaskTracker} disabled={state.taskTrackerBulkRunning} style={{ height: 42, padding: "0 20px", border: "1px solid var(--st-border)", borderRadius: 11, background: "var(--st-surface)", font: "700 13.5px Inter,sans-serif", color: "var(--st-text-2)", cursor: state.taskTrackerBulkRunning ? "default" : "pointer" }}>{t("Cancel")}</button>
+                    <button className="clk" onClick={doBulkTaskTrackerExport} disabled={state.taskTrackerBulkRunning || total === 0} style={{ height: 42, padding: "0 22px", border: "none", borderRadius: 11, background: state.taskTrackerBulkRunning || total === 0 ? "var(--st-accent-muted)" : "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13.5px Inter,sans-serif", cursor: state.taskTrackerBulkRunning || total === 0 ? "default" : "pointer" }}>
+                      {state.taskTrackerBulkRunning ? t("Exporting…") : `${t("Export")} ${total}`}
                     </button>
                   </>
                 )}
@@ -7696,7 +7769,7 @@ export function StormApp() {
               </div>
             ))}
           </div>
-          {modalFooter(closeEditor, saveEditor, state.editorMode === "add" ? t("Create") : t("Save changes"))}
+          {modalFooter(closeEditor, saveEditor, state.ipEditBusy ? t("Saving…") : state.editorMode === "add" ? t("Create") : t("Save changes"), "var(--st-accent-2)", state.editorType === "ip" && state.editorMode === "edit" && (state.ipEditBusy || !fstr(state.editorForm.ip).trim() || fstr(state.editorForm.ip).trim() === fstr(state.editorForm.originalIp)))}
         </>
       )}
 
@@ -7792,7 +7865,7 @@ export function StormApp() {
       {/* image lightbox — click a step screenshot to view it full-size */}
       {state.lightboxSrc && (
         <div onClick={() => setState({ lightboxSrc: null })} style={{ position: "fixed", inset: 0, zIndex: 90, background: "rgba(10,16,26,.82)", display: "flex", alignItems: "center", justifyContent: "center", padding: 40, cursor: "zoom-out", animation: "storm-fade .18s ease both" }}>
-          <img src={state.lightboxSrc} alt="Step screenshot" onClick={stop} style={{ maxWidth: "100%", maxHeight: "100%", borderRadius: 12, boxShadow: "0 30px 80px rgba(0,0,0,.5)", display: "block", cursor: "default" }} />
+          <img src={state.lightboxSrc} alt={t("Step screenshot")} onClick={stop} style={{ maxWidth: "100%", maxHeight: "100%", borderRadius: 12, boxShadow: "0 30px 80px rgba(0,0,0,.5)", display: "block", cursor: "default" }} />
           <div className="clk" onClick={() => setState({ lightboxSrc: null })} style={{ position: "fixed", top: 22, right: 24, width: 40, height: 40, borderRadius: "50%", background: "rgba(255,255,255,.12)", color: "var(--st-on-accent)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
             <Icon name="close" size={20} color="var(--st-on-accent)" />
           </div>

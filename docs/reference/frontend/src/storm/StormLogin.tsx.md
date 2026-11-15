@@ -6,13 +6,13 @@
 
 ## StormLogin
 
-[frontend/src/storm/StormLogin.tsx:25](../../../../../frontend/src/storm/StormLogin.tsx#L25)
+[frontend/src/storm/StormLogin.tsx:26](../../../../../frontend/src/storm/StormLogin.tsx#L26)
 
 ```typescript
 StormLogin() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
 ```
 
-В теле вызывает `code.trim`, `resetEmail.trim`, `useAuthStore`, `useEffect`, `useState`, `useToastStore`, `username.trim`.
+В теле вызывает `code.trim`, `resetEmail.trim`, `t`, `useAuthStore`, `useEffect`, `useLangStore`, `useState`, `useToastStore`; полный список ниже.
 
 Возвращает: `import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element`.
 
@@ -21,8 +21,10 @@ StormLogin() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_
 
 - `code.trim`
 - `resetEmail.trim`
+- `t`
 - `useAuthStore`
 - `useEffect`
+- `useLangStore`
 - `useState`
 - `useToastStore`
 - `username.trim`
@@ -31,7 +33,7 @@ StormLogin() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_
 
 ## StormLogin.startSso
 
-[frontend/src/storm/StormLogin.tsx:69](../../../../../frontend/src/storm/StormLogin.tsx#L69)
+[frontend/src/storm/StormLogin.tsx:71](../../../../../frontend/src/storm/StormLogin.tsx#L71)
 
 ```typescript
 startSso() => void
@@ -50,13 +52,13 @@ startSso() => void
 
 ## StormLogin.handleForgot
 
-[frontend/src/storm/StormLogin.tsx:77](../../../../../frontend/src/storm/StormLogin.tsx#L77)
+[frontend/src/storm/StormLogin.tsx:79](../../../../../frontend/src/storm/StormLogin.tsx#L79)
 
 ```typescript
 async handleForgot(e: FormEvent) => Promise<void>
 ```
 
-В теле вызывает `e.preventDefault`, `getApiErrorMessage`, `pushToast`, `requestPasswordReset`, `resetEmail.trim`, `setResetBusy`, `setStage`.
+В теле вызывает `e.preventDefault`, `getApiErrorMessage`, `pushToast`, `requestPasswordReset`, `resetEmail.trim`, `setResetBusy`, `setStage`, `t`.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -74,12 +76,13 @@ async handleForgot(e: FormEvent) => Promise<void>
 - `resetEmail.trim`
 - `setResetBusy`
 - `setStage`
+- `t`
 
 </details>
 
 ## StormLogin.backToLogin
 
-[frontend/src/storm/StormLogin.tsx:93](../../../../../frontend/src/storm/StormLogin.tsx#L93)
+[frontend/src/storm/StormLogin.tsx:95](../../../../../frontend/src/storm/StormLogin.tsx#L95)
 
 ```typescript
 backToLogin() => void
@@ -99,13 +102,13 @@ backToLogin() => void
 
 ## StormLogin.handleSubmit
 
-[frontend/src/storm/StormLogin.tsx:98](../../../../../frontend/src/storm/StormLogin.tsx#L98)
+[frontend/src/storm/StormLogin.tsx:100](../../../../../frontend/src/storm/StormLogin.tsx#L100)
 
 ```typescript
 async handleSubmit(e: FormEvent) => Promise<void>
 ```
 
-В теле вызывает `e.preventDefault`, `err.message.trim`, `pushToast`, `setCode`, `setStage`, `signIn`, `username.trim`.
+В теле вызывает `e.preventDefault`, `err.message.trim`, `pushToast`, `setCode`, `setStage`, `signIn`, `t`, `username.trim`.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -122,19 +125,20 @@ async handleSubmit(e: FormEvent) => Promise<void>
 - `setCode`
 - `setStage`
 - `signIn`
+- `t`
 - `username.trim`
 
 </details>
 
 ## StormLogin.handleVerify
 
-[frontend/src/storm/StormLogin.tsx:116](../../../../../frontend/src/storm/StormLogin.tsx#L116)
+[frontend/src/storm/StormLogin.tsx:118](../../../../../frontend/src/storm/StormLogin.tsx#L118)
 
 ```typescript
 async handleVerify(e: FormEvent) => Promise<void>
 ```
 
-В теле вызывает `code.trim`, `completeTwoFactor`, `e.preventDefault`, `err.message.trim`, `pushToast`.
+В теле вызывает `code.trim`, `completeTwoFactor`, `e.preventDefault`, `err.message.trim`, `pushToast`, `t`.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -150,12 +154,13 @@ async handleVerify(e: FormEvent) => Promise<void>
 - `e.preventDefault`
 - `err.message.trim`
 - `pushToast`
+- `t`
 
 </details>
 
 ## StormLogin.backToCredentials
 
-[frontend/src/storm/StormLogin.tsx:128](../../../../../frontend/src/storm/StormLogin.tsx#L128)
+[frontend/src/storm/StormLogin.tsx:130](../../../../../frontend/src/storm/StormLogin.tsx#L130)
 
 ```typescript
 backToCredentials() => void

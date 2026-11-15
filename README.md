@@ -5,17 +5,17 @@
 
 ## Возможности
 
-- **Проекты**: папки, сроки, статусы `active / freeze / handover_to_development / vulnerability_recheck / completed / archived`. Карточку проекта (название, описание, сроки, статус) правят админ, лид проекта или его создатель; удаляет — только админ.
+- **Проекты**: папки, сроки, статусы `active / freeze / handover_to_development / vulnerability_recheck / completed / archived`. Карточку проекта (название, сроки, статус) правят админ, лид проекта или его создатель; удаляет — только админ.
 - **Роли**: аккаунтная `admin / pentester` и проектная `lead / pentester` — **обе глобальные**, настраиваются только на странице `/members`. `lead` сам по себе доступа к проекту не даёт: он открывает дополнительные возможности (управление составом команды) в тех проектах, где пользователь уже участник.
 - **Доступ по участию**: не-админ видит только те проекты, где он участник — вышел из проекта, и проект пропал из списка. Админ видит все проекты, даже те, где он не состоит. При обращении к чужому проекту или закрытому разделу показывается экран «Доступа нет».
 - **Инвентарь**: хосты, несколько IP на хост, порты с сервисами, HTTP endpoints (включая метод `QUERY`); импорт OpenAPI/Swagger; экспорт хостов/IP списком, эндпоинтов — списком или как OpenAPI 3.
 - **Уязвимости**: CVSS 4.0 с расчётом по спецификации (бэкенд — источник истины, severity выводится из вектора), шаги воспроизведения. Статусы совпадают с воркфлоу Task Tracker (Works «BUG APPSEC»): `open / in progress / problem analysis / need info / paused / resolved / closed / cancelled / sent by mistake` (3 категории: ожидание / в работе / завершено). Severity: `critical / high / medium / low / info / unrealized`.
 - **Активность проекта**: лента событий по проекту, видна всем его участникам (в отличие от админского `/audit-logs`).
-- **Заметки**: live-markdown редактор — `### ` + пробел прямо в строке превращается в заголовок; хранятся как Markdown.
+- **Заметки**: live-markdown редактор — `###`  + пробел прямо в строке превращается в заголовок; хранятся как Markdown.
 - **Уведомления** — ровно четыре повода: упоминание `@username`, добавление в проект, смена статуса своей находки, смена статуса проекта. Инициатора события никогда не уведомляем. Real-time push через WebSocket.
 - **Доказательная база**: evidence-файлы в MinIO (до 50 МБ, whitelist MIME).
 - **Word-отчёты** (кнопка «Generate report» на странице проекта): «Отчёт для сертификации» (СЗИ, `POST /projects/{id}/reports/szi`) и «Отчёт внутренней приёмки» (ПП, landscape, `POST /projects/{id}/reports/pp`). PDF не поддерживается — в образе нет конвертера.
-- **Task Tracker (Works) интеграция**: раздел «Tasks» (read-only витрина задач пространства STS), экспорт уязвимости в тикет `BUG_APPSEC` Works с резолвом компонента/версии и исполнителя; плюс поле «AppSec-тикет» проекта. Авторизация Bearer + cookie + Origin; SSRF + DNS-rebind защита. Ссылки на тикеты — в формате Works (`/swtr/units/current/unit/{key}?space=STS&tenant=default`).
+- **Task Tracker (Works) интеграция**: раздел «Tasks» (read-only витрина задач пространства APPSEC), экспорт уязвимости в тикет `BUG_APPSEC` Works с резолвом компонента/версии и исполнителя; плюс поле «AppSec-тикет» проекта (APPSEC) и связь STS → APPSEC. Подробнее: [настройка Task Tracker](docs/TASK_TRACKER.md). Авторизация Bearer + cookie + Origin; настройки на сервере через `WORKS_*`. Ссылки на тикеты — в формате Works (`/swtr/units/current/unit/{key}?space=STS&tenant=default`).
 - **Audit-журнал** в PostgreSQL с фильтрами и full-text поиском.
 - **Machine API `/v2`** для AI-агентов: bearer-токены, скоупы, white-list проектов.
 - **Mail outbox**: RabbitMQ + воркер `aiosmtplib` (Gmail / корпоративный SMTP через `.env`).
@@ -27,7 +27,8 @@ Storage: PostgreSQL 16, MinIO, RabbitMQ.
 Frontend: React 18 + TypeScript + Vite 6, Zustand, TipTap (редактор заметок), axios.
 
 > Интерфейс STORM (`frontend/src/storm/`) — это то, что видит пользователь: он собран на
-> обычном DOM и `storm.css`, без MUI (прежний MUI-интерфейс удалён).
+> обычном DOM и `storm.css`, без MUI. Страницы в `frontend/src/pages/` — прежний интерфейс
+> на MUI, в приложении не используются.
 
 ## Быстрый старт
 
@@ -45,10 +46,10 @@ docker compose up --build
 наполняет БД **демо-данными** и для боевого стенда НЕ нужен.
 
 - Frontend: `https://localhost` или `https://localhost:3000`
-  (перед приложением стоит nginx с самоподписанным сертификатом — браузер один раз спросит подтверждение)
+(перед приложением стоит nginx с самоподписанным сертификатом — браузер один раз спросит подтверждение)
 - **HTTP автоматически редиректится на HTTPS**: `http://localhost` → `https://localhost`,
-  `http://localhost:3000` → `https://localhost:3000`
-- Swagger (только для авторизованных): симметричные **v1 и v2** — **API приложения** `/api/v1/docs` и **агентский API** `/api/v2/docs`. Открывается на origin приложения (`https://localhost:3000/api/v1/docs`) или напрямую на бэкенде (`http://localhost:8000/api/v1/docs`). Ссылки есть в разделе **Docs**. Фронтовый `/docs` — это встроенная документация проекта, не Swagger.
+`http://localhost:3000` → `https://localhost:3000`
+- Backend Swagger: `http://localhost:8000/docs` (`/api/v1`), `http://localhost:8000/v2/docs` (агентский `/v2`)
 - MinIO console: `http://localhost:9001` (`minioadmin` / `minioadmin`)
 - RabbitMQ management: `http://localhost:15672` (`guest` / `guest`)
 
@@ -58,15 +59,17 @@ docker compose up --build
 только переменные окружения**, никаких правок в исходниках. Выбор окружения — через
 переменную `ENV_FILE` (по умолчанию `.env`); прод-настройки лежат в `.env.prod`.
 
-| | Dev (локально) | Prod (сервер) |
-|---|---|---|
-| Файл окружения | `.env` | `.env.prod` |
-| Адрес | `https://localhost`, `:3000` | `https://<адрес-сервера>` |
-| CORS / CSRF origins | `localhost` | адрес сервера |
-| `APP_BASE_URL` (ссылки в письмах) | `https://localhost:3000` | адрес сервера |
-| `DEBUG` | `true` | `false` |
-| backend | `--reload` | без reload, `restart: unless-stopped` |
-| TLS-сертификат (SAN) | `localhost`, `127.0.0.1` | + IP/домен сервера |
+
+|                                   | Dev (локально)               | Prod (сервер)                         |
+| --------------------------------- | ---------------------------- | ------------------------------------- |
+| Файл окружения                    | `.env`                       | `.env.prod`                           |
+| Адрес                             | `https://localhost`, `:3000` | `https://<адрес-сервера>`             |
+| CORS / CSRF origins               | `localhost`                  | адрес сервера                         |
+| `APP_BASE_URL` (ссылки в письмах) | `https://localhost:3000`     | адрес сервера                         |
+| `DEBUG`                           | `true`                       | `false`                               |
+| backend                           | `--reload`                   | без reload, `restart: unless-stopped` |
+| TLS-сертификат (SAN)              | `localhost`, `127.0.0.1`     | + IP/домен сервера                    |
+
 
 **Локальный dev** — как раньше:
 
@@ -100,14 +103,16 @@ cp .env.prod.example .env.prod   # заполнить: адрес, секрет�
 Стартовый админ создаётся при первом запуске из `INITIAL_ADMIN_USERNAME` / `INITIAL_ADMIN_PASSWORD` в `.env`.
 Демо-команду создаёт `backend/scripts/reset_and_seed.py`. Вход — по **username** (не по email).
 
-| Логин | Пароль | Аккаунтная роль | Проектная роль | Email |
-|-----------|---------|-----------------|----------------|---------------------|
-| `admin` | `admin` | admin | pentester | admin@example.com |
-| `alice` | `admin` | pentester | **lead** | alice@example.com |
-| `bob` | `admin` | pentester | **lead** | bob@example.com |
-| `charlie` | `admin` | pentester | pentester | charlie@example.com |
-| `diana` | `admin` | pentester | pentester | diana@example.com |
-| `eve` | `admin` | pentester | pentester | eve@example.com |
+
+| Логин     | Пароль  | Аккаунтная роль | Проектная роль | Email                                             |
+| --------- | ------- | --------------- | -------------- | ------------------------------------------------- |
+| `admin`   | `admin` | admin           | pentester      | [admin@example.com](mailto:admin@example.com)     |
+| `alice`   | `admin` | pentester       | **lead**       | [alice@example.com](mailto:alice@example.com)     |
+| `bob`     | `admin` | pentester       | **lead**       | [bob@example.com](mailto:bob@example.com)         |
+| `charlie` | `admin` | pentester       | pentester      | [charlie@example.com](mailto:charlie@example.com) |
+| `diana`   | `admin` | pentester       | pentester      | [diana@example.com](mailto:diana@example.com)     |
+| `eve`     | `admin` | pentester       | pentester      | [eve@example.com](mailto:eve@example.com)         |
+
 
 > ⚠️ Это дефолты **только для локальной разработки**. На любом общем стенде смените пароли
 > и `INITIAL_ADMIN_PASSWORD` в `.env`.
@@ -117,8 +122,8 @@ cp .env.prod.example .env.prod   # заполнить: адрес, секрет�
 - **admin** — видит все проекты (членство не требуется), управляет пользователями, проектами и составом команд.
 - **pentester** — видит **только** проекты, в которых он участник; в чужой проект доступа нет (403).
 - **lead** — **глобальная** проектная роль, а не «лид конкретного проекта». Лид остаётся обычным
-  пользователем (`pentester`) и получает права только в проектах, где он участник.
-  Управлять составом команды и карточкой проекта может: **админ, лид-участник или создатель проекта**.
+пользователем (`pentester`) и получает права только в проектах, где он участник.
+Управлять составом команды и карточкой проекта может: **админ, лид-участник или создатель проекта**.
 
 Обе роли меняются только на странице `/members` (доступна админу).
 
@@ -137,21 +142,24 @@ cd frontend && npx vitest run                     # фронтенд
 
 ## Документация
 
-Вся проектная документация собрана в папке [`docs/`](docs/).
+Вся проектная документация собрана в папке `[docs/](docs/)`.
 
-| Файл | Содержание |
-|------|-----------|
-| [docs/CONTEXT_ARCH.md](docs/CONTEXT_ARCH.md) | Короткая ориентация для AI-агента / нового разработчика |
-| [docs/ARCH.md](docs/ARCH.md) | Архитектура, сервисы, роутеры, API |
-| [docs/ARCH_DIAGRAMS.md](docs/ARCH_DIAGRAMS.md) | Подробные Mermaid-диаграммы по каждому компоненту |
-| [docs/DB_SCHEMA.md](docs/DB_SCHEMA.md) | Схема БД (таблицы, ERD, индексы) |
-| [docs/DESIGN.md](docs/DESIGN.md) | UI/UX дизайн-документ |
-| [docs/DEV_RULES.md](docs/DEV_RULES.md) | Правила разработки (стиль, безопасность, git flow) |
-| [docs/USE_CASES.md](docs/USE_CASES.md) | Сценарии использования по ролям |
-| [docs/TASK.md](docs/TASK.md) | Чек-лист реализованного и backlog |
-| [docs/TEST_CASES.md](docs/TEST_CASES.md) | Тест-кейсы QA |
-| [docs/API_PROCESSES.md](docs/API_PROCESSES.md) | Процессы и сценарии работы с API |
-| [docs/GOST_34_DOCUMENTATION.md](docs/GOST_34_DOCUMENTATION.md) | Документация по ГОСТ 34 |
-| [docs/openapi-v1.json](docs/openapi-v1.json) | Swagger / OpenAPI 3.1 — `/api/v1` (cookie-auth) |
-| [docs/openapi-v2.json](docs/openapi-v2.json) | Swagger / OpenAPI 3.1 — `/v2` (Bearer для AI-агентов) |
-| [docs/README.md](docs/README.md) | Как пересоздать OpenAPI-файлы |
+
+| Файл                                                           | Содержание                                              |
+| -------------------------------------------------------------- | ------------------------------------------------------- |
+| [docs/CONTEXT_ARCH.md](docs/CONTEXT_ARCH.md)                   | Короткая ориентация для AI-агента / нового разработчика |
+| [docs/ARCH.md](docs/ARCH.md)                                   | Архитектура, сервисы, роутеры, API                      |
+| [docs/ARCH_DIAGRAMS.md](docs/ARCH_DIAGRAMS.md)                 | Подробные Mermaid-диаграммы по каждому компоненту       |
+| [docs/DB_SCHEMA.md](docs/DB_SCHEMA.md)                         | Схема БД (таблицы, ERD, индексы)                        |
+| [docs/DESIGN.md](docs/DESIGN.md)                               | UI/UX дизайн-документ                                   |
+| [docs/DEV_RULES.md](docs/DEV_RULES.md)                         | Правила разработки (стиль, безопасность, git flow)      |
+| [docs/USE_CASES.md](docs/USE_CASES.md)                         | Сценарии использования по ролям                         |
+| [docs/TASK.md](docs/TASK.md)                                   | Чек-лист реализованного и backlog                       |
+| [docs/TEST_CASES.md](docs/TEST_CASES.md)                       | Тест-кейсы QA                                           |
+| [docs/API_PROCESSES.md](docs/API_PROCESSES.md)                 | Процессы и сценарии работы с API                        |
+| [docs/GOST_34_DOCUMENTATION.md](docs/GOST_34_DOCUMENTATION.md) | Документация по ГОСТ 34                                 |
+| [docs/openapi-v1.json](docs/openapi-v1.json)                   | Swagger / OpenAPI 3.1 — `/api/v1` (cookie-auth)         |
+| [docs/openapi-v2.json](docs/openapi-v2.json)                   | Swagger / OpenAPI 3.1 — `/v2` (Bearer для AI-агентов)   |
+| [docs/README.md](docs/README.md)                               | Как пересоздать OpenAPI-файлы                           |
+
+
