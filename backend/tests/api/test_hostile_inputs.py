@@ -77,7 +77,7 @@ async def test_nonfinite_json_numbers_are_rejected(api):
 async def test_sql_syntax_in_text_is_stored_as_data(api):
     client, _ = api
     name = "x'; DROP TABLE users; --"
-    result = await client.post("projects", json={"name": name})
+    result = await client.post("projects", json={"name": name, "appsec_ticket_key": "APPSEC-1"})
     assert result.status_code == 201 and result.json()["name"] == name
     assert (await client.get("users/me")).status_code == 200
 

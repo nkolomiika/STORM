@@ -135,3 +135,11 @@ async def test_oidc_accepts_a_valid_rsa_token_and_checks_nonce():
     assert (await client._verify_id_token(token, "expected", {"issuer": "https://issuer.test"}))["sub"] == "external-user"
     with pytest.raises(UnauthorizedError, match="nonce"):
         await client._verify_id_token(token, "wrong", {"issuer": "https://issuer.test"})
+
+
+def test_secret_encryption_roundtrip_keeps_plaintext_out_of_storage():
+    from app.security import decrypt_secret, encrypt_secret
+    plaintext = 'synthetic-integration-secret'
+    encrypted = encrypt_secret(plaintext)
+    assert encrypted != plaintext
+    assert decrypt_secret(encrypted) == plaintext

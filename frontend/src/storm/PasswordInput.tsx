@@ -5,6 +5,7 @@
 import { useState, type CSSProperties } from "react";
 import "./storm.css";
 import { Icon } from "./icons";
+import { t, useLangStore } from "./i18n";
 
 interface PasswordInputProps {
   id?: string;
@@ -17,6 +18,7 @@ interface PasswordInputProps {
 }
 
 export function PasswordInput({ id, value, onChange, placeholder, autoComplete, autoFocus, style }: PasswordInputProps) {
+  useLangStore((s) => s.lang);
   const [show, setShow] = useState(false);
   return (
     <div style={{ position: "relative" }}>
@@ -35,8 +37,8 @@ export function PasswordInput({ id, value, onChange, placeholder, autoComplete, 
         type="button"
         className="clk"
         onClick={() => setShow((s) => !s)}
-        aria-label={show ? "Hide password" : "Show password"}
-        title={show ? "Hide password" : "Show password"}
+        aria-label={show ? t("Hide password") : t("Show password")}
+        title={show ? t("Hide password") : t("Show password")}
         style={{ position: "absolute", top: 0, right: 0, height: "100%", width: 42, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: "none", color: "var(--st-text-faint)", cursor: "pointer", padding: 0 }}
       >
         <Icon name={show ? "eye-off" : "eye"} size={18} />

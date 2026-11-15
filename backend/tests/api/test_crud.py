@@ -36,7 +36,7 @@ async def test_create_host(api, payload):
 
 
 @pytest.mark.parametrize("resource,create,update", [
-    ("projects", {"name": "Created"}, {"name": "Changed"}),
+    ("projects", {"name": "Created", "appsec_ticket_key": "APPSEC-1"}, {"name": "Changed"}),
     ("projects/{project}/notes", {"title": "Note", "content": "text"}, {"title": "Changed"}),
     ("projects/{project}/credentials", {"username": "login", "password": "secret"}, {"password": "changed"}),
     ("projects/{project}/hosts/{host}/endpoints", {"path": "/api/test", "method": "GET"}, {"path": "/api/changed"}),

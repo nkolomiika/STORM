@@ -2,11 +2,45 @@
 
 Сгенерировано из объявлений кода. [Правила чтения](../../../METHODS.md).
 
-Методов и именованных функций: **6**.
+Методов и именованных функций: **7**.
+
+## normalize_ip_literal
+
+[backend/app/input_safety.py:10](../../../../backend/app/input_safety.py#L10)
+
+```python
+def normalize_ip_literal(value: object) -> str
+```
+
+Принимает только IPv4/IPv6-литерал, без URL, порта или zone-id.
+
+| Параметр | Тип | По умолчанию | Назначение |
+| --- | --- | --- | --- |
+| `value` | `object` | `обязательный` | Входное значение преобразования/проверки. |
+
+Возвращает: `str`.
+
+Явные raise в теле (исключения вызываемых методов могут добавляться):
+
+```python
+ValueError('Укажите корректный IPv4 или IPv6 адрес')
+```
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `ValueError`
+- `ip_address`
+- `isinstance`
+- `len`
+- `str`
+- `value.strip`
+
+</details>
 
 ## validate_json_value
 
-[backend/app/input_safety.py:9](../../../../backend/app/input_safety.py#L9)
+[backend/app/input_safety.py:20](../../../../backend/app/input_safety.py#L20)
 
 ```python
 def validate_json_value(value: object, depth: int=0) -> None
@@ -42,7 +76,7 @@ ValueError('Входные данные имеют слишком большую
 
 ## validate_request_parameters
 
-[backend/app/input_safety.py:26](../../../../backend/app/input_safety.py#L26)
+[backend/app/input_safety.py:37](../../../../backend/app/input_safety.py#L37)
 
 ```python
 async def validate_request_parameters(request: Request) -> None
@@ -77,7 +111,7 @@ HTTPException(422, f'{name}: недопустимый идентификатор
 
 ## read_upload
 
-[backend/app/input_safety.py:49](../../../../backend/app/input_safety.py#L49)
+[backend/app/input_safety.py:60](../../../../backend/app/input_safety.py#L60)
 
 ```python
 async def read_upload(upload: UploadFile, limit: int) -> bytes
@@ -109,7 +143,7 @@ HTTPException(413, 'Размер файла превышает допустим�
 
 ## SecurityHeadersMiddleware.__init__
 
-[backend/app/input_safety.py:59](../../../../backend/app/input_safety.py#L59)
+[backend/app/input_safety.py:70](../../../../backend/app/input_safety.py#L70)
 
 ```python
 def __init__(self, app) -> не аннотирован
@@ -125,7 +159,7 @@ def __init__(self, app) -> не аннотирован
 
 ## SecurityHeadersMiddleware.__call__
 
-[backend/app/input_safety.py:62](../../../../backend/app/input_safety.py#L62)
+[backend/app/input_safety.py:73](../../../../backend/app/input_safety.py#L73)
 
 ```python
 async def __call__(self, scope, receive, send) -> не аннотирован
@@ -150,7 +184,7 @@ async def __call__(self, scope, receive, send) -> не аннотирован
 
 ## SecurityHeadersMiddleware.__call__.secure_send
 
-[backend/app/input_safety.py:63](../../../../backend/app/input_safety.py#L63)
+[backend/app/input_safety.py:74](../../../../backend/app/input_safety.py#L74)
 
 ```python
 async def secure_send(message) -> не аннотирован

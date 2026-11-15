@@ -1,3 +1,4 @@
+import { t, useLangStore } from "./i18n";
 /* STORM «с возвращением» — возврат деактивированного пользователя по ссылке из
    письма. Публичная страница (без сессии): проверяем токен, показываем одну
    кнопку — по клику аккаунт разблокируется, бэкенд ставит cookie-сессию, а мы
@@ -29,6 +30,7 @@ const card: React.CSSProperties = {
 };
 
 export function StormReactivate() {
+  useLangStore((s) => s.lang);
   const [params] = useSearchParams();
   const token = params.get("token") ?? "";
   const refreshUser = useAuthStore((s) => s.refreshUser);
@@ -68,12 +70,12 @@ export function StormReactivate() {
     setSubmitting(true);
     try {
       await completeReactivation(token);
-      pushToast("Welcome back!", "success");
+      pushToast(t("Welcome back!"), "success");
       // Бэкенд уже выдал сессию (cookie) — подхватываем её; StormRoot покажет приложение.
       await refreshUser();
     } catch (err) {
       setSubmitting(false);
-      pushToast(getApiErrorMessage(err, "Couldn't reactivate the account"), "error");
+      pushToast(t(getApiErrorMessage(err, "Couldn't reactivate the account")), "error");
     }
   };
 
@@ -87,28 +89,24 @@ export function StormReactivate() {
           </div>
 
           {loading ? (
-            <div style={{ ...card, textAlign: "center", color: "var(--st-text-3)", fontSize: 14 }}>Checking the link…</div>
+            <div style={{ ...card, textAlign: "center", color: "var(--st-text-3)", fontSize: 14 }}>{t("Checking the link…")}</div>
           ) : !info?.valid ? (
             <div style={card}>
-              <h1 style={{ margin: "0 0 12px", fontSize: 24, fontWeight: 800, letterSpacing: "-.5px", color: "var(--st-text)" }}>Invalid link</h1>
+              <h1 style={{ margin: "0 0 12px", fontSize: 24, fontWeight: 800, letterSpacing: "-.5px", color: "var(--st-text)" }}>{t("Invalid link")}</h1>
               <p style={{ margin: "0 0 22px", fontSize: 13.5, color: "var(--st-text-2)", lineHeight: 1.55 }}>
-                {REASON_TEXT[info?.reason ?? "not_found"] ?? REASON_TEXT.not_found}
+                {t(REASON_TEXT[info?.reason ?? "not_found"] ?? REASON_TEXT.not_found)}
               </p>
               <a
                 href="/login"
                 className="clk"
                 style={{ display: "inline-flex", alignItems: "center", gap: 8, height: 44, padding: "0 20px", borderRadius: 12, background: "var(--st-accent)", color: "var(--st-on-accent)", font: "700 14px Inter,sans-serif", textDecoration: "none" }}
-              >
-                Go to sign in
-                <Icon name="chevron-right" size={16} color="var(--st-on-accent)" sw={2.4} />
+              >{t("Go to sign in")} <Icon name="chevron-right" size={16} color="var(--st-on-accent)" sw={2.4} />
               </a>
             </div>
           ) : (
             <div style={card}>
-              <h1 style={{ margin: "0 0 8px", fontSize: 26, fontWeight: 800, letterSpacing: "-.6px", color: "var(--st-text)" }}>Welcome back</h1>
-              <p style={{ margin: "0 0 22px", fontSize: 13.5, color: "var(--st-text-2)", lineHeight: 1.5 }}>
-                Your access to STORM has been restored for <b style={{ color: "var(--st-text)" }}>{info.username}</b>. Click below to sign in.
-              </p>
+              <h1 style={{ margin: "0 0 8px", fontSize: 26, fontWeight: 800, letterSpacing: "-.6px", color: "var(--st-text)" }}>{t("Welcome back")}</h1>
+              <p style={{ margin: "0 0 22px", fontSize: 13.5, color: "var(--st-text-2)", lineHeight: 1.5 }}>{t("Your access to STORM has been restored for")} <b style={{ color: "var(--st-text)" }}>{info.username}</b>{t(". Click below to sign in.")} </p>
               <button
                 type="button"
                 className="clk"
@@ -130,7 +128,7 @@ export function StormReactivate() {
                   boxShadow: "0 6px 18px rgba(46,95,191,.28)",
                 }}
               >
-                {submitting ? "Signing you in…" : "Return to my account"}
+                {submitting ? t("Signing you in…") : t("Return to my account")}
                 {!submitting && <Icon name="chevron-right" size={16} color="var(--st-on-accent)" sw={2.4} />}
               </button>
             </div>
@@ -141,7 +139,7 @@ export function StormReactivate() {
       <footer style={{ flex: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: 16, fontSize: 12.5, color: "var(--st-text-faint)", flexWrap: "wrap" }}>
         <span style={{ fontWeight: 700, color: "var(--st-text-3)" }}>STORM</span>
         <span>·</span>
-        <span>Licensed to SberTech · Copyright © 2026. All rights reserved.</span>
+        <span>{t("Licensed to SberTech · Copyright © 2026. All rights reserved.")}</span>
       </footer>
     </div>
   );

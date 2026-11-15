@@ -14,8 +14,6 @@ from typing import Any, Literal
 from urllib.parse import parse_qsl, urlparse, urlsplit
 from uuid import uuid4
 
-import ipaddress
-import socket
 
 import magic
 import httpx
@@ -29,12 +27,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import set_committed_value
 
+from app import notification_events
 from app.config import get_settings
+from app.tracker_spaces import normalize_project_ticket
+from app.tracker_metadata import normalize_project_versions
 from app.enums import (
     AssetType,
+    HostStatus,
     NotificationType,
+    OsType,
     ProjectRole,
     ProjectStatus,
+    ReconJobKind,
+    ReconJobStatus,
     Severity,
     UserRole,
     VulnerabilityStatus,
@@ -52,10 +57,9 @@ from app.models import (
     Endpoint,
     File,
     Host,
+    HostFarmJob,
     HostIpAddress,
     Invitation,
-    JiraInstance,
-    JiraIssueLink,
     WorksIssueLink,
     JsFile,
     JsSecret,
@@ -67,7 +71,6 @@ from app.models import (
     ProjectCredential,
     ProjectFolder,
     ProjectHiddenIp,
-    ProjectJiraLink,
     ProjectMember,
     ProjectNote,
     ProjectNoteComment,
@@ -84,8 +87,7 @@ from app.mail import (
     build_temporary_password_email,
 )
 from app.messaging import publish_mail_job
-from app.netguard import is_disallowed_ip
-from app.input_safety import read_upload, validate_json_value
+from app.input_safety import normalize_ip_literal, read_upload, validate_json_value
 from app.schemas import (
     CommentOut,
     ImportResult,
@@ -132,7 +134,6 @@ _OPEN_VULN_STATUSES = (
     VulnerabilityStatus.NEED_INFO,
     VulnerabilityStatus.PAUSED,
 )
-MENTION_RE = re.compile(r"@([a-zA-Z0-9_.-]{1,100})")
 MAX_FILE_SIZE = 50 * 1024 * 1024
 MAX_OPENAPI_IMPORT_BYTES = 2 * 1024 * 1024
 MAX_OPENAPI_PATHS = 2000
@@ -323,565 +324,6 @@ class AgentTokenService:
         await self.audit.log("DELETE", user_id=actor.id, entity_type="agent_api_token", entity_id=token_id)
 
 
-@dataclass
-class JiraCredentials:
-    """Разрешённые параметры подключения к Jira (из env или БД)."""
-
-    base_url: str
-    email: str
-    token: str
-    issue_type: str
-    enabled: bool
-    default_project_key: str = ""
-    start_date_field: str = ""
-    due_in_days: int = 14
-
-
-class _SafeJiraTransport(httpx.AsyncHTTPTransport):
-    """httpx transport с защитой от DNS rebinding.
-
-    Между нашей валидацией Jira base_url (в момент save config) и реальным
-    HTTP-запросом проходит время, за которое атакующий с контролем DNS
-    жертвы мог бы сменить запись с публичного IP на 127.0.0.1 / RFC1918
-    (короткий TTL). Этот transport повторно резолвит host прямо перед
-    отправкой и валит запрос, если в свежем DNS-ответе есть запрещённый IP.
-
-    NB: это не «pin-by-IP» в чистом виде — между нашим getaddrinfo и
-    getaddrinfo внутри httpcore остаётся миллисекундное окно. Но оно сводит
-    практическую атаку к нулю и не требует ломать SNI / TLS verification.
-    """
-
-    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
-        host = request.url.host
-        if host:
-            try:
-                resolved = {info[4][0] for info in socket.getaddrinfo(host, None)}
-            except socket.gaierror as exc:
-                raise httpx.ConnectError(f"DNS не разрешает {host}: {exc}") from exc
-            for addr in resolved:
-                if JiraIntegrationService._is_disallowed_ip(addr):
-                    raise httpx.ConnectError(
-                        f"DNS вернул запрещённый IP {addr} для {host} — отклонено защитой SSRF"
-                    )
-        return await super().handle_async_request(request)
-
-
-class JiraIntegrationService:
-    """Backend-only интеграция с Jira REST API."""
-
-    def __init__(self, db: AsyncSession) -> None:
-        self.db = db
-        self.audit = AuditService(db)
-
-    # Сам предикат живёт в app.netguard — им пользуется и рекон-ферма, которой
-    # нельзя тянуть за собой весь app.services.
-    _is_disallowed_ip = staticmethod(is_disallowed_ip)
-
-    @classmethod
-    def _validate_external_url(cls, raw_url: str) -> str:
-        """SSRF-защита: разрешаем только https и публичные хосты (запрет на localhost, RFC1918, link-local)."""
-        if not raw_url or not raw_url.strip():
-            raise ValidationError("Jira base_url не может быть пустым")
-        parsed = urlparse(raw_url.strip())
-        if parsed.scheme not in {"https", "http"}:
-            raise ValidationError("Jira base_url должен использовать https:// или http://")
-        if parsed.scheme == "http" and not settings.debug:
-            raise ValidationError("Jira base_url в production должен использовать https://")
-        host = parsed.hostname
-        if not host:
-            raise ValidationError("Jira base_url не содержит host")
-        if host.lower() in {"localhost", "metadata.google.internal", "instance-data"}:
-            raise ValidationError("Jira base_url указывает на запрещённый хост")
-        try:
-            resolved = {info[4][0] for info in socket.getaddrinfo(host, None)}
-        except socket.gaierror as exc:
-            raise ValidationError(f"Не удалось разрешить host Jira: {exc}") from exc
-        for addr in resolved:
-            if cls._is_disallowed_ip(addr):
-                raise ValidationError("Jira base_url указывает на внутренний/приватный IP — запрещено")
-        return raw_url.strip().rstrip("/")
-
-    @staticmethod
-    def _fernet():
-        from cryptography.fernet import Fernet
-
-        settings = get_settings()
-        key = base64.urlsafe_b64encode(hashlib.sha256(settings.jwt_secret_key.encode("utf-8")).digest())
-        return Fernet(key)
-
-    @classmethod
-    def _encrypt_secret(cls, value: str) -> str:
-        return cls._fernet().encrypt(value.encode("utf-8")).decode("utf-8")
-
-    @classmethod
-    def _decrypt_secret(cls, value: str) -> str:
-        return cls._fernet().decrypt(value.encode("utf-8")).decode("utf-8")
-
-    async def get_config(self) -> JiraInstance | None:
-        return await self.db.scalar(select(JiraInstance).order_by(JiraInstance.created_at.desc()))
-
-    async def resolve_credentials(self) -> "JiraCredentials | None":
-        """Возвращает рабочие креды Jira: сперва из env (деплой-конфиг), иначе из БД.
-
-        Интеграция задаётся один раз на уровне деплоя (JIRA_* в окружении) и не
-        настраивается через веб. Ветка с БД оставлена для обратной совместимости.
-        """
-        s = get_settings()
-        if s.jira_configured:
-            return JiraCredentials(
-                base_url=s.jira_base_url,
-                email=s.jira_email,
-                token=s.jira_api_token,
-                issue_type=s.jira_default_issue_type or "Task",
-                enabled=s.jira_enabled,
-                default_project_key=(s.jira_default_project_key or "").upper(),
-                start_date_field=s.jira_start_date_field,
-                due_in_days=s.jira_due_in_days,
-            )
-        cfg = await self.get_config()
-        if cfg:
-            return JiraCredentials(
-                base_url=cfg.base_url,
-                email=cfg.email,
-                token=self._decrypt_secret(cfg.api_token_encrypted),
-                issue_type=cfg.default_issue_type,
-                enabled=cfg.is_enabled,
-                default_project_key=(s.jira_default_project_key or "").upper(),
-                start_date_field=s.jira_start_date_field,
-                due_in_days=s.jira_due_in_days,
-            )
-        return None
-
-    async def upsert_config(self, payload: dict, actor_id: int) -> JiraInstance:
-        config = await self.get_config()
-        token = payload.pop("api_token", None)
-        if not config:
-            if not token:
-                raise ValidationError("Для первой настройки Jira нужен api_token")
-            safe_base_url = self._validate_external_url(payload["base_url"])
-            config = JiraInstance(
-                name=payload["name"],
-                base_url=safe_base_url,
-                email=payload["email"],
-                api_token_encrypted=self._encrypt_secret(token),
-                default_issue_type=payload["default_issue_type"],
-                is_enabled=payload["is_enabled"],
-                created_by=actor_id,
-            )
-            self.db.add(config)
-        else:
-            for key, value in payload.items():
-                if key == "base_url" and value:
-                    value = self._validate_external_url(value)
-                if value is not None:
-                    setattr(config, key, value)
-            if token:
-                config.api_token_encrypted = self._encrypt_secret(token)
-        await self.db.commit()
-        await self.db.refresh(config)
-        await self.audit.log("UPDATE", user_id=actor_id, entity_type="jira_config", entity_id=config.id)
-        return config
-
-    async def upsert_project_link(self, project_id: int, jira_project_key: str, actor_id: int) -> ProjectJiraLink:
-        project = await self.db.scalar(select(Project).where(Project.id == project_id))
-        if not project:
-            raise NotFoundError("Проект не найден")
-        link = await self.db.scalar(select(ProjectJiraLink).where(ProjectJiraLink.project_id == project_id))
-        if not link:
-            link = ProjectJiraLink(project_id=project_id, jira_project_key=jira_project_key.upper(), created_by=actor_id)
-            self.db.add(link)
-        else:
-            link.jira_project_key = jira_project_key.upper()
-        await self.db.commit()
-        await self.db.refresh(link)
-        await self.audit.log("UPDATE", user_id=actor_id, entity_type="project_jira_link", entity_id=link.id)
-        return link
-
-    async def get_project_link(self, project_id: int) -> ProjectJiraLink | None:
-        return await self.db.scalar(select(ProjectJiraLink).where(ProjectJiraLink.project_id == project_id))
-
-    # Критичность в задаче показываем по-русски — интерфейс Jira русский.
-    SEVERITY_RU = {
-        "critical": "Критическая",
-        "high": "Высокая",
-        "medium": "Средняя",
-        "low": "Низкая",
-        "info": "Информационная",
-    }
-
-    @staticmethod
-    def _jira_doc(sections: list[tuple[str, str | None, str]]) -> dict:
-        """Собирает ADF-описание с заголовками: на каждую секцию — h3 и тело.
-
-        sections — тройки (заголовок, текст, стиль), где стиль:
-        "text" — каждая строка становится абзацем,
-        "ordered" — нумерованный список, каждая строка = пункт (собственная
-        нумерация в исходном тексте снимается, чтобы не задваивалась).
-        Пустые секции пропускаются.
-        """
-        content: list[dict] = []
-        for title, body, style in sections:
-            text = (body or "").strip()
-            if not text:
-                continue
-            content.append({"type": "heading", "attrs": {"level": 3}, "content": [{"type": "text", "text": title}]})
-            lines = [line.strip() for line in text[:8000].split("\n") if line.strip()]
-            if style == "ordered":
-                items = []
-                for line in lines:
-                    clean = re.sub(r"^\s*(?:\d+[.)]|[-*•])\s*", "", line)
-                    if clean:
-                        items.append(
-                            {"type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "text": clean}]}]}
-                        )
-                if items:
-                    content.append({"type": "orderedList", "attrs": {"order": 1}, "content": items})
-            else:
-                for line in lines:
-                    content.append({"type": "paragraph", "content": [{"type": "text", "text": line}]})
-        if not content:
-            content = [{"type": "paragraph", "content": [{"type": "text", "text": "—"}]}]
-        return {"type": "doc", "version": 1, "content": content}
-
-    async def get_issue_link(self, vulnerability_id: int) -> JiraIssueLink | None:
-        return await self.db.scalar(select(JiraIssueLink).where(JiraIssueLink.vulnerability_id == vulnerability_id))
-
-    async def _claim_issue_link(self, vuln_id: int) -> tuple[JiraIssueLink, bool]:
-        """Бронирует JiraIssueLink с status='pending' перед HTTP-вызовом.
-
-        Возвращает (link, created). Если параллельный запрос уже забронировал
-        запись — отдаём существующую и created=False. UNIQUE constraint на
-        vulnerability_id гарантирует, что один из конкурентов проиграет
-        IntegrityError'ом — это и есть точка сериализации.
-        """
-        link = JiraIssueLink(
-            vulnerability_id=vuln_id,
-            jira_issue_key="",
-            jira_issue_url="",
-            status="pending",
-        )
-        self.db.add(link)
-        try:
-            await self.db.commit()
-        except IntegrityError:
-            await self.db.rollback()
-            existing = await self.get_issue_link(vuln_id)
-            if existing is None:
-                # Теоретически возможно, если race-конкурент откатился после
-                # нашего fail'а — сообщаем явно, чтобы клиент повторил.
-                raise ValidationError("Не удалось создать связь с Jira, повторите попытку")
-            return existing, False
-        await self.db.refresh(link)
-        return link, True
-
-    async def _mark_link_error(self, link: JiraIssueLink, error: str) -> None:
-        """Отмечает связь как «error» и сохраняет последнюю ошибку для UI."""
-        link.status = "error"
-        link.last_error = error[:500]
-        await self.db.commit()
-
-    async def export_vulnerability(self, project_id: int, vuln_id: int, actor_id: int) -> JiraIssueLink:
-        config = await self.resolve_credentials()
-        if not config or not config.enabled:
-            raise ValidationError("Jira не настроена или отключена")
-        # Ключ Jira-проекта: единый на уровне деплоя (JIRA_DEFAULT_PROJECT_KEY),
-        # либо явная привязка проекта (если задана), если дефолта нет.
-        link_row = await self.get_project_link(project_id)
-        project_key = config.default_project_key or (link_row.jira_project_key if link_row else "")
-        if not project_key:
-            raise ValidationError("Не задан Jira project key (JIRA_DEFAULT_PROJECT_KEY)")
-
-        # 1) Проверяем готовый линк — если он уже «linked», возвращаем как есть.
-        existing = await self.get_issue_link(vuln_id)
-        if existing and existing.status == "linked":
-            return existing
-
-        # 2) Бронируем запись (claim-row) ДО HTTP-вызова. Защита от race:
-        #    два параллельных POST не смогут оба создать issue в Jira —
-        #    один проиграет на UNIQUE constraint и получит существующий линк.
-        if existing is None:
-            link, created = await self._claim_issue_link(vuln_id)
-            if not created and link.status == "linked":
-                return link
-        else:
-            # Линк был в pending/error — переиспользуем для retry.
-            link = existing
-            link.status = "pending"
-            link.last_error = None
-            await self.db.commit()
-
-        vuln_data = await VulnerabilityService(self.db).get(project_id, vuln_id)
-        vulnerability = vuln_data["vulnerability"]
-        today = datetime.now(UTC).date()
-        due = today + timedelta(days=config.due_in_days)
-        # Описание — структурированное: каждый блок со своим заголовком (даты
-        # вынесены в поля Jira, поэтому в тексте их не дублируем).
-        cvss = f"{vulnerability.cvss_score or ''} {vulnerability.cvss_vector or ''}".strip()
-        sections: list[tuple[str, str | None, str]] = [
-            ("Описание", vulnerability.description, "text"),
-            ("Критичность", self.SEVERITY_RU.get(vulnerability.severity.value, vulnerability.severity.value), "text"),
-            ("CVSS", cvss, "text"),
-            ("Шаги воспроизведения", vulnerability.steps_to_reproduce, "ordered"),
-            ("Влияние на систему", vulnerability.impact, "text"),
-            ("Рекомендации к устранению", vulnerability.recommendations, "text"),
-        ]
-        # Summary формата "STORM-{id уязвимости} — {название}"; задача создаётся
-        # в статусе To Do (первый статус workflow Jira по умолчанию).
-        summary = f"STORM-{vuln_id} — {vulnerability.title}"
-        fields = {
-            "project": {"key": project_key},
-            "summary": summary[:250],
-            "issuetype": {"name": config.issue_type},
-            "description": self._jira_doc(sections),
-            # Дата начала = сегодня, срок выполнения = сегодня + N дней (Jira ждёт YYYY-MM-DD).
-            "duedate": due.isoformat(),
-        }
-        if config.start_date_field:
-            fields[config.start_date_field] = today.isoformat()
-        payload = {"fields": fields}
-        safe_base_url = self._validate_external_url(config.base_url)
-        # Путь создания issue и способ аутентификации берём из env (см. config).
-        auth, headers = self._jira_auth_headers(config)
-        create_url = f"{safe_base_url}{self._api_path(get_settings().jira_create_issue_path)}"
-
-        # 3) Сетевой вызов с обёрткой ошибок и DNS-rebind защитой.
-        try:
-            async with httpx.AsyncClient(
-                timeout=20.0,
-                follow_redirects=False,
-                transport=_SafeJiraTransport(),
-            ) as client:
-                response = await client.post(create_url, json=payload, auth=auth, headers=headers)
-        except httpx.HTTPError as exc:
-            await self._mark_link_error(link, f"Jira недоступна: {exc.__class__.__name__}: {exc}")
-            raise ValidationError(f"Jira недоступна: {exc}") from exc
-
-        if response.status_code >= 400:
-            error_text = response.text[:500]
-            await self._mark_link_error(link, f"HTTP {response.status_code}: {error_text}")
-            raise ValidationError(f"Jira вернула ошибку {response.status_code}: {error_text}")
-
-        try:
-            data = response.json()
-        except ValueError as exc:
-            await self._mark_link_error(link, "Jira вернула не-JSON ответ")
-            raise ValidationError("Jira вернула не-JSON ответ") from exc
-
-        issue_key = data.get("key")
-        if not issue_key:
-            await self._mark_link_error(link, "Jira не вернула key созданной issue")
-            raise ValidationError("Jira не вернула key созданной issue")
-
-        link.jira_issue_key = issue_key
-        link.jira_issue_url = f"{safe_base_url}{self._api_path(get_settings().jira_browse_path, key=issue_key)}"
-        link.status = "linked"
-        link.last_error = None
-        await self.db.commit()
-        await self.db.refresh(link)
-        await self.audit.log("CREATE", user_id=actor_id, entity_type="jira_issue_link", entity_id=link.id)
-        return link
-
-    # ── Раздел «Tasks»: read-only витрина задач Jira-проекта (по умолчанию STS) ──
-    # В отличие от export_vulnerability здесь мы только ЧИТАЕМ задачи и ничего не
-    # пишем ни в Jira, ни в нашу БД. Те же креды (env/БД) и та же SSRF/DNS-rebind
-    # защита, что и у экспорта уязвимости.
-
-    # statusCategory в Jira универсальна (не зависит от кастомных статусов
-    # воркфлоу): new / indeterminate / done. Сворачиваем в три «ведра» для UI.
-    _STATUS_CATEGORY = {"new": "todo", "indeterminate": "inprogress", "done": "done"}
-    # Обратное отображение «ведро → имя statusCategory в JQL».
-    _JQL_CATEGORY = {"todo": "To Do", "inprogress": "In Progress", "done": "Done"}
-    _KEY_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]+-\d+$")
-
-    @staticmethod
-    def _tasks_project_key() -> str:
-        """Ключ Jira-проекта раздела Tasks (JIRA_TASKS_PROJECT_KEY, по умолчанию STS)."""
-        return (get_settings().jira_tasks_project_key or "STS").upper()
-
-    @staticmethod
-    def _api_path(template: str, **kw) -> str:
-        """Строит путь REST-эндпоинта из шаблона в env, подставляя {version}/{key}.
-
-        Эндпоинты вынесены в env (JIRA_SEARCH_PATH / JIRA_ISSUE_PATH /
-        JIRA_CREATE_ISSUE_PATH / JIRA_BROWSE_PATH), чтобы подключить инстанс с
-        немного другим API (напр. Server/DC v2 /search вместо Cloud v3
-        /search/jql) без правки кода. Лишние плейсхолдеры в kw игнорируются.
-        """
-        return template.format(version=get_settings().jira_api_version, **kw)
-
-    @classmethod
-    def _jira_auth_headers(cls, config: "JiraCredentials") -> tuple:
-        """(auth, headers) по JIRA_AUTH_TYPE: basic (email+token) | bearer (PAT).
-
-        Модель взята из эталонного клиента (QG SA): Jira Cloud — Basic
-        email:token, Server/DC — Bearer с персональным токеном (PAT).
-        """
-        headers = {"Accept": "application/json", "Content-Type": "application/json"}
-        if (get_settings().jira_auth_type or "basic").lower() == "bearer":
-            headers["Authorization"] = f"Bearer {config.token}"
-            return None, headers
-        return (config.email, config.token), headers
-
-    @classmethod
-    def _adf_to_text(cls, node: object) -> str:
-        """Разворачивает ADF-описание Jira Cloud в плоский текст.
-
-        Jira Cloud отдаёт описание как Atlassian Document Format (дерево узлов);
-        для read-only показа собираем текстовые листья, сохраняя переносы между
-        абзацами / заголовками / пунктами списков. Server/DC отдаёт строку — её
-        возвращаем как есть.
-        """
-        if node is None:
-            return ""
-        if isinstance(node, str):
-            return node
-        if isinstance(node, list):
-            return "".join(cls._adf_to_text(n) for n in node)
-        if not isinstance(node, dict):
-            return ""
-        ntype = node.get("type")
-        if ntype == "text":
-            return str(node.get("text", ""))
-        if ntype == "hardBreak":
-            return "\n"
-        inner = cls._adf_to_text(node.get("content"))
-        # Блочные узлы завершаем переводом строки, чтобы текст не слипался.
-        if ntype in {"paragraph", "heading", "listItem", "blockquote", "codeBlock", "rule"}:
-            return inner + "\n"
-        return inner
-
-    @classmethod
-    def _map_task(cls, issue: dict) -> dict:
-        """Jira issue → плоский словарь под JiraTaskOut."""
-        fields = issue.get("fields") or {}
-        status = fields.get("status") or {}
-        category = (status.get("statusCategory") or {}).get("key", "")
-        issue_type = fields.get("issuetype") or {}
-        priority = fields.get("priority")
-        assignee = fields.get("assignee")
-        return {
-            "key": issue.get("key", ""),
-            "summary": fields.get("summary") or "",
-            "status": status.get("name") or "",
-            "status_category": cls._STATUS_CATEGORY.get(category, "unknown"),
-            "issue_type": issue_type.get("name") or "",
-            "priority": priority.get("name") if isinstance(priority, dict) else None,
-            "assignee": assignee.get("displayName") if isinstance(assignee, dict) else None,
-            "updated": fields.get("updated") or "",
-            "created": fields.get("created") or "",
-        }
-
-    @staticmethod
-    def _jql_escape(value: str) -> str:
-        """Экранирует пользовательский ввод для строкового литерала JQL."""
-        return value.replace("\\", "\\\\").replace('"', '\\"')
-
-    def _build_jql(self, project_key: str, query: str | None, category: str | None) -> str:
-        clauses = [f'project = "{project_key}"']
-        if category and category in self._JQL_CATEGORY:
-            clauses.append(f'statusCategory = "{self._JQL_CATEGORY[category]}"')
-        if query and query.strip():
-            # Поиск по названию; совпадение по ключу берёт на себя клиент
-            # (JQL `key = "<слово>"` на не-ключе падает с ошибкой).
-            clauses.append(f'summary ~ "{self._jql_escape(query.strip())}"')
-        return " AND ".join(clauses) + " ORDER BY updated DESC"
-
-    async def _jira_request(
-        self, method: str, path: str, *, params: dict | None = None, json_body: dict | None = None
-    ) -> tuple[dict, str]:
-        """Запрос к Jira REST с теми же кредами, аутентификацией и SSRF/DNS-rebind защитой.
-
-        Возвращает (json, validated_base_url). «Не настроена» — осознанная 422
-        с понятным текстом, а не 500: UI показывает её в месте списка. Метод и
-        путь определяются вызывающим (из env), что позволяет работать и с
-        Cloud (GET /search/jql), и с Server/DC (POST /search).
-        """
-        config = await self.resolve_credentials()
-        if not config or not config.enabled:
-            raise ValidationError("Интеграция с Jira не настроена или отключена")
-        safe_base_url = self._validate_external_url(config.base_url)
-        auth, headers = self._jira_auth_headers(config)
-        try:
-            async with httpx.AsyncClient(
-                timeout=15.0,
-                follow_redirects=False,
-                transport=_SafeJiraTransport(),
-            ) as client:
-                response = await client.request(
-                    method.upper(),
-                    f"{safe_base_url}{path}",
-                    params=params,
-                    json=json_body,
-                    auth=auth,
-                    headers=headers,
-                )
-        except httpx.HTTPError as exc:
-            raise ValidationError(f"Jira недоступна: {exc}") from exc
-        if response.status_code == 404:
-            raise NotFoundError("No task found in the AppSec space")
-        if response.status_code >= 400:
-            raise ValidationError(f"Jira вернула ошибку {response.status_code}: {response.text[:300]}")
-        try:
-            return response.json(), safe_base_url
-        except ValueError as exc:
-            raise ValidationError("Jira вернула не-JSON ответ") from exc
-
-    async def list_tasks(self, query: str | None = None, category: str | None = None) -> dict:
-        """Список задач Jira-проекта (read-only), сортировка по дате обновления.
-
-        Эндпоинт и метод берутся из env (JIRA_SEARCH_PATH / JIRA_SEARCH_METHOD):
-        Cloud — GET /search/jql (токенная пагинация, total не отдаётся), Server/DC
-        — POST /search (возвращает total). Разбор устойчив к обоим форматам: UI
-        грузит одну страницу и фильтрует её на клиенте (как список уязвимостей).
-        """
-        s = get_settings()
-        jql = self._build_jql(self._tasks_project_key(), query, category)
-        fields = ["summary", "status", "issuetype", "priority", "assignee", "updated", "created"]
-        path = self._api_path(s.jira_search_path)
-        if (s.jira_search_method or "GET").upper() == "POST":
-            # Классический /search ждёт fields списком в JSON-теле.
-            data, safe_base_url = await self._jira_request("POST", path, json_body={"jql": jql, "maxResults": 100, "fields": fields})
-        else:
-            # /search/jql ждёт fields строкой в query-параметрах.
-            data, safe_base_url = await self._jira_request("GET", path, params={"jql": jql, "maxResults": 100, "fields": ",".join(fields)})
-        issues = data.get("issues") or []
-        items = []
-        for issue in issues:
-            item = self._map_task(issue)
-            # Ссылка на задачу — чтобы фронт мог связать тикет с проектом. Это
-            # запрос на АЗ из APPSEC, поэтому берём APPSEC-шаблон (space=APPSEC).
-            item["url"] = f"{safe_base_url}{self._api_path(s.jira_tasks_browse_path, key=item['key'])}" if item.get("key") else None
-            items.append(item)
-        return {
-            "items": items,
-            "next_page_token": data.get("nextPageToken"),
-            "is_last": bool(data.get("isLast", True)),
-        }
-
-    async def get_task(self, key: str) -> dict:
-        """Полная карточка одной задачи Jira по ключу (напр. STS-123)."""
-        key = (key or "").strip().upper()
-        if not self._KEY_RE.match(key):
-            raise ValidationError("Некорректный ключ задачи Jira")
-        fields = [
-            "summary", "status", "issuetype", "priority", "assignee",
-            "updated", "created", "description", "labels", "reporter",
-        ]
-        path = self._api_path(get_settings().jira_issue_path, key=key)
-        data, safe_base_url = await self._jira_request("GET", path, params={"fields": ",".join(fields)})
-        detail = self._map_task(data)
-        fields_data = data.get("fields") or {}
-        reporter = fields_data.get("reporter")
-        detail.update(
-            {
-                "reporter": reporter.get("displayName") if isinstance(reporter, dict) else None,
-                "description": self._adf_to_text(fields_data.get("description")).strip(),
-                "labels": list(fields_data.get("labels") or []),
-                "url": f"{safe_base_url}{self._api_path(get_settings().jira_tasks_browse_path, key=detail['key'])}",
-            }
-        )
-        return detail
-
 
 class WorksService:
     """Экспорт находок STORM в Works (STS / bug_appsec) + резолв справочников
@@ -904,6 +346,12 @@ class WorksService:
             raise ValidationError(exc.message) from exc
 
     async def find_versions(self, q: str = "") -> list[dict[str, str]]:
+        if settings.works_tasks_demo_file:
+            from app.task_tracker import TaskTrackerService
+            tasks = await TaskTrackerService().list_tasks()
+            versions = {version['code']: version for task in tasks['items'] for version in task['affected_versions']}
+            needle = q.casefold()
+            return [version for version in versions.values() if needle in (version['name'] + ' ' + version['code']).casefold()][:50]
         if not settings.works_configured:
             return []
         try:
@@ -952,11 +400,22 @@ class WorksService:
     async def export_vulnerability(
         self, project_id: int, vuln_id: int, user: User, assignee: str | None
     ) -> WorksIssueLink:
-        if not settings.works_configured:
-            raise ValidationError("Интеграция с Works не настроена или отключена")
         project = await self.db.scalar(select(Project).where(Project.id == project_id))
         if project is None:
             raise NotFoundError("Проект не найден")
+        missing = []
+        if not (project.appsec_ticket_key or project.appsec_ticket_url or '').strip():
+            missing.append('APPSEC-тикет')
+        if not (project.appsec_assignee or '').strip():
+            missing.append('исполнитель')
+        if not project.appsec_versions and not (project.appsec_version_code or '').strip():
+            missing.append('затронутые версии')
+        if missing:
+            raise ValidationError('Заполните данные по проекту. Не заполнено: ' + ', '.join(missing))
+        if not settings.works_configured:
+            raise ValidationError("Интеграция с Works не настроена или отключена")
+        ticket = {"appsec_ticket_key": project.appsec_ticket_key, "appsec_ticket_url": project.appsec_ticket_url}
+        normalize_project_ticket(ticket, required=True)
         vuln_data = await VulnerabilityService(self.db).get(project_id, vuln_id)
         vulnerability = vuln_data["vulnerability"]
 
@@ -969,10 +428,10 @@ class WorksService:
             if project.appsec_component_code
             else None
         )
-        version = (
-            {"code": project.appsec_version_code, "name": project.appsec_version_name or ""}
+        versions = project.appsec_versions or (
+            [{"code": project.appsec_version_code, "name": project.appsec_version_name or project.appsec_version_code}]
             if project.appsec_version_code
-            else None
+            else []
         )
 
         summary = f"BUG_APPSEC: {vulnerability.title}"[:250]
@@ -1014,13 +473,13 @@ class WorksService:
                     reporter=user.username,
                     priority=priority,
                     component=component,
-                    version=version,
+                    versions=versions,
                     drafts_info=drafts_info,
                 )
                 # Привязываем созданный STS-тикет к APPSEC-тикету проекта (запросу
                 # на АЗ), если он задан. Best-effort: сбой связи не срывает экспорт.
                 created_key = self._extract_key(response)
-                linked_key = (project.appsec_ticket_key or "").strip()
+                linked_key = ticket["appsec_ticket_key"] or ""
                 if created_key and linked_key:
                     try:
                         await wc.link_units(source=created_key, destination=linked_key)
@@ -2084,11 +1543,17 @@ class ProjectService:
         return project
 
     async def create_project(self, payload: dict, actor_id: int, ip_address: str | None = None) -> Project:
-        """Создаёт новый проект."""
+        """Создаёт проект и членство его автора одной транзакцией с аудитом."""
+        if "description" in payload:
+            raise ValidationError("Поле description проекта удалено")
         self._validate_project_dates(payload.get("start_date"), payload.get("end_date"))
+        normalize_project_ticket(payload)
+        normalize_project_versions(payload)
         payload["folder"] = self._normalize_project_folder(payload.get("folder"))
         project = Project(**payload, created_by=actor_id)
         self.db.add(project)
+        await self.db.flush()
+        self.db.add(ProjectMember(project_id=project.id, user_id=actor_id))
         await self.db.flush()
         await self.db.refresh(project)
         await self.audit.log("CREATE", user_id=actor_id, entity_type="project", entity_id=project.id, ip_address=ip_address)
@@ -2099,7 +1564,13 @@ class ProjectService:
 
     async def update_project(self, project_id: int, payload: dict, actor_id: int, ip_address: str | None = None) -> Project:
         """Обновляет проект."""
+        if "description" in payload:
+            raise ValidationError("Поле description проекта удалено")
         project = await self.get_project(project_id)
+        normalize_project_ticket(payload)
+        if 'appsec_versions' not in payload and 'appsec_version_name' in payload and 'appsec_version_code' not in payload:
+            payload['appsec_version_code'] = project.appsec_version_code
+        normalize_project_versions(payload)
         if "folder" in payload:
             payload["folder"] = self._normalize_project_folder(payload.get("folder"))
         next_start_date = payload.get("start_date", project.start_date)
@@ -2117,7 +1588,7 @@ class ProjectService:
         for key, value in payload.items():
             if value is not None:
                 setattr(project, key, value)
-            elif key == "timeline_frozen_at":
+            elif key == "timeline_frozen_at" or key.startswith("appsec_"):
                 setattr(project, key, None)
         await self.db.flush()
         await self.db.refresh(project)
@@ -2950,7 +2421,9 @@ class AssetService:
         set_committed_value(host, "ip_addresses", [])
         await self._replace_host_ip_addresses(host, ip_entries)
         await self.db.flush()
+        events = await notification_events.queue_mentions(self.db, project_id, host.notes or "", actor_id, {"host_id": host.id, "hostname": host.hostname})
         await self.audit.log("CREATE", user_id=actor_id, entity_type="host", entity_id=host.id)
+        await notification_events.publish(events)
         await ws_manager.broadcast(project_id, {"event": "created", "entity": "host", "project_id": str(project_id), "data": {"id": str(host.id)}})
         return await self._get_host(project_id, host.id)
 
@@ -3027,6 +2500,7 @@ class AssetService:
 
     async def update_host(self, project_id: int, host_id: int, payload: dict, actor_id: int) -> Host:
         host = await self._get_host(project_id, host_id)
+        previous_notes = getattr(host, "notes", None) or ""
         has_ip_payload = "ip_addresses" in payload or "ip_address" in payload
         raw_ip_entries = payload.pop("ip_addresses", None)
         primary_ip = payload.pop("ip_address", None)
@@ -3039,9 +2513,92 @@ class AssetService:
                 raise ValidationError("Нужно указать хотя бы один IP-адрес или hostname")
             await self._replace_host_ip_addresses(host, ip_entries)
         await self.db.flush()
+        events = await notification_events.queue_mentions(self.db, project_id, host.notes or "", actor_id, {"host_id": host.id, "hostname": host.hostname}, previous=previous_notes)
         await self.audit.log("UPDATE", user_id=actor_id, entity_type="host", entity_id=host.id)
+        await notification_events.publish(events)
         await ws_manager.broadcast(project_id, {"event": "updated", "entity": "host", "project_id": str(project_id), "data": {"id": str(host.id)}})
         return await self._get_host(project_id, host.id)
+
+    async def change_ip_address(self, project_id: int, old_ip: str, new_ip: str, actor_id: int) -> dict:
+        """Меняет IP во всех привязках проекта, сбрасывает замеры и атомарно ставит перепроверку.
+
+        Имена хостов и другие адреса не меняются. Порты/технологии изменяемого IP
+        удаляются вместе с привязками находок к устаревшим портам/сервисам.
+        Повторный пробив принудительный, даже если origin=ip уже существует.
+        """
+        from app.farm import IpFarmService
+
+        try:
+            previous = normalize_ip_literal(old_ip)
+            address = normalize_ip_literal(new_ip)
+        except ValueError as exc:
+            raise ValidationError(str(exc)) from exc
+        if previous == address:
+            raise ValidationError('Укажите другой IP-адрес')
+        old_values = {old_ip.strip(), previous}
+        new_values = {new_ip.strip(), address}
+        if await self.db.scalar(select(Project.id).where(Project.id == project_id).with_for_update()) is None:
+            raise NotFoundError('Проект не найден')
+        pairs = (await self.db.execute(
+            select(HostIpAddress, Host).join(Host, Host.id == HostIpAddress.host_id)
+            .where(Host.project_id == project_id, HostIpAddress.ip_address.in_(old_values))
+            .with_for_update(of=(Host, HostIpAddress))
+        )).all()
+        if not pairs:
+            raise NotFoundError('IP-адрес не найден')
+        target = await self.db.scalar(
+            select(Host.id).outerjoin(HostIpAddress, HostIpAddress.host_id == Host.id)
+            .where(Host.project_id == project_id, or_(HostIpAddress.ip_address.in_(new_values), Host.ip_address.in_(new_values))).limit(1)
+        )
+        if target is not None:
+            raise ConflictError('Этот IP-адрес уже есть в проекте')
+        active_raw = (await self.db.scalars(select(HostFarmJob.raw).where(
+            HostFarmJob.project_id == project_id, HostFarmJob.kind == ReconJobKind.IPS,
+            HostFarmJob.status.in_([ReconJobStatus.PENDING, ReconJobStatus.QUEUED, ReconJobStatus.RUNNING]),
+        ))).all()
+        for raw in active_raw:
+            targets, _ = IpFarmService.parse_ip_targets(raw or '')
+            if previous in targets:
+                raise ConflictError('Дождитесь завершения текущей проверки этого IP-адреса')
+
+        ip_ids = [ip.id for ip, _ in pairs]
+        host_ids = sorted({host.id for _, host in pairs})
+        port_ids = select(Port.id).where(Port.ip_address_id.in_(ip_ids))
+        service_ids = select(Service.id).where(Service.port_id.in_(port_ids))
+        await self.db.execute(delete(VulnerabilityAsset).where(or_(
+            and_(VulnerabilityAsset.asset_type == AssetType.PORT, VulnerabilityAsset.asset_id.in_(port_ids)),
+            and_(VulnerabilityAsset.asset_type == AssetType.SERVICE, VulnerabilityAsset.asset_id.in_(service_ids)),
+        )))
+        await self.db.execute(delete(Port).where(Port.ip_address_id.in_(ip_ids)))
+        has_ip_host = False
+        for ip, host in pairs:
+            ip.ip_address = address
+            ip.hostnames = []
+            if ip.is_primary or host.ip_address in old_values:
+                host.ip_address = address
+                host.status = HostStatus.UNKNOWN
+                host.os_type = OsType.UNKNOWN
+            if host.origin == 'ip':
+                has_ip_host = True
+                host.status = HostStatus.UNKNOWN
+                host.os_type = OsType.UNKNOWN
+        if not has_ip_host:
+            ip_host = Host(project_id=project_id, hostname=None, ip_address=address, origin='ip', status=HostStatus.UNKNOWN, os_type=OsType.UNKNOWN)
+            self.db.add(ip_host)
+            await self.db.flush()
+            self.db.add(HostIpAddress(host_id=ip_host.id, ip_address=address, is_primary=True, hostnames=[]))
+        await self.db.execute(delete(ProjectHiddenIp).where(ProjectHiddenIp.project_id == project_id, ProjectHiddenIp.ip_address.in_(old_values | new_values)))
+        try:
+            await self.db.flush()
+            job = await IpFarmService(self.db).create_job(project_id, address, actor_id, force=True, commit=False)
+            await self.audit.log('UPDATE', user_id=actor_id, entity_type='ip_address', entity_id=ip_ids[0],
+                                 details={'project_id': str(project_id), 'old_ip_address': previous, 'ip_address': address, 'host_ids': host_ids, 'job_id': job.id}, commit=False)
+            await self.db.commit()
+        except IntegrityError as exc:
+            await self.db.rollback()
+            raise ConflictError('IP-адрес был изменён параллельно; обновите страницу') from exc
+        await ws_manager.broadcast(project_id, {'event': 'updated', 'entity': 'host', 'project_id': str(project_id), 'data': {'old_ip_address': previous, 'ip_address': address}})
+        return {'old_ip_address': previous, 'ip_address': address, 'updated_hosts': len(host_ids), 'job': job}
 
     async def delete_host(self, project_id: int, host_id: int, actor_id: int) -> None:
         host = await self._get_host(project_id, host_id)
@@ -3363,17 +2920,22 @@ class AssetService:
             )
         )
         if duplicate:
+            previous_description = duplicate.description or ""
             self._merge_endpoint_fields(duplicate, payload)
             await self.db.flush()
             await self.db.refresh(duplicate)
+            events = await notification_events.queue_mentions(self.db, project_id, duplicate.description or "", actor_id, {"endpoint_id": duplicate.id, "host_id": host_id}, previous=previous_description)
             await self.audit.log("UPDATE", user_id=actor_id, entity_type="endpoint", entity_id=duplicate.id)
+            await notification_events.publish(events)
             await ws_manager.broadcast(project_id, {"event": "updated", "entity": "endpoint", "project_id": str(project_id), "data": {"id": str(duplicate.id)}})
             return duplicate
         endpoint = Endpoint(host_id=host_id, **payload)
         self.db.add(endpoint)
         await self.db.flush()
         await self.db.refresh(endpoint)
+        events = await notification_events.queue_mentions(self.db, project_id, endpoint.description or "", actor_id, {"endpoint_id": endpoint.id, "host_id": host_id})
         await self.audit.log("CREATE", user_id=actor_id, entity_type="endpoint", entity_id=endpoint.id)
+        await notification_events.publish(events)
         await ws_manager.broadcast(project_id, {"event": "created", "entity": "endpoint", "project_id": str(project_id), "data": {"id": str(endpoint.id)}})
         return endpoint
 
@@ -3383,6 +2945,7 @@ class AssetService:
         endpoint = await self.db.scalar(select(Endpoint).where(and_(Endpoint.id == endpoint_id, Endpoint.host_id == host_id)))
         if not endpoint:
             raise NotFoundError("Endpoint не найден")
+        previous_description = endpoint.description or ""
         next_path = payload.get("path") if payload.get("path") is not None else endpoint.path
         next_method = payload.get("method") if payload.get("method") is not None else endpoint.method
         duplicate = await self.db.scalar(
@@ -3402,7 +2965,9 @@ class AssetService:
                 setattr(endpoint, key, value)
         await self.db.flush()
         await self.db.refresh(endpoint)
+        events = await notification_events.queue_mentions(self.db, project_id, endpoint.description or "", actor_id, {"endpoint_id": endpoint.id, "host_id": host_id}, previous=previous_description)
         await self.audit.log("UPDATE", user_id=actor_id, entity_type="endpoint", entity_id=endpoint.id)
+        await notification_events.publish(events)
         await ws_manager.broadcast(project_id, {"event": "updated", "entity": "endpoint", "project_id": str(project_id), "data": {"id": str(endpoint.id)}})
         return endpoint
 
@@ -3744,6 +3309,7 @@ class VulnerabilityService:
         self.db.add(VulnerabilityAsset(vulnerability_id=vuln.id, asset_type=AssetType.HOST, asset_id=host_id))
         await self.db.flush()
         await self.db.refresh(vuln)
+        events = await notification_events.queue_mentions(self.db, project_id, "\n".join(str(getattr(vuln, key, None) or "") for key in ("title", "description", "steps_to_reproduce", "impact", "recommendations")), actor_id, {"vulnerability_id": vuln.id, "vulnerability_title": vuln.title})
         await self.audit.log(
             "CREATE",
             user_id=actor_id,
@@ -3751,6 +3317,7 @@ class VulnerabilityService:
             entity_id=vuln.id,
             details={"host_id": str(host_id)},
         )
+        await notification_events.publish(events)
         await ws_manager.broadcast(project_id, {"event": "created", "entity": "vulnerability", "project_id": str(project_id), "data": {"id": str(vuln.id)}})
         return vuln
 
@@ -3766,6 +3333,7 @@ class VulnerabilityService:
         # Статус меняют и здесь (карточка находки шлёт его в общем PUT), а не
         # только через patch_status — уведомление автору нужно в обоих путях.
         old_status = vuln.status
+        previous_content = "\n".join(str(getattr(vuln, key, None) or "") for key in ("title", "description", "steps_to_reproduce", "impact", "recommendations"))
         self._apply_calculated_cvss_fields(
             payload,
             current_version=vuln.cvss_version.value if vuln.cvss_version else None,
@@ -3788,7 +3356,9 @@ class VulnerabilityService:
                 setattr(vuln, key, value)
         await self.db.flush()
         await self.db.refresh(vuln)
+        events = await notification_events.queue_mentions(self.db, project_id, "\n".join(str(getattr(vuln, key, None) or "") for key in ("title", "description", "steps_to_reproduce", "impact", "recommendations")), actor_id, {"vulnerability_id": vuln.id, "vulnerability_title": vuln.title}, previous=previous_content)
         await self.audit.log("UPDATE", user_id=actor_id, entity_type="vulnerability", entity_id=vuln.id)
+        await notification_events.publish(events)
         await ws_manager.broadcast(project_id, {"event": "updated", "entity": "vulnerability", "project_id": str(project_id), "data": {"id": str(vuln.id)}})
         if old_status != vuln.status:
             await self._notify_vuln_status_changed(vuln, actor_id)
@@ -4030,28 +3600,7 @@ class CommentService:
         return vuln
 
     async def _extract_mentions(self, project_id: int, content: str) -> list[User]:
-        usernames = set(MENTION_RE.findall(content))
-        if not usernames:
-            return []
-        # Принимаем упоминание, если юзер либо участник проекта, либо админ
-        # (админы имеют доступ ко всем проектам без явного членства, поэтому
-        # упоминание их в комментарии тоже должно создавать уведомление).
-        # В outer-join'е на пару (user, project) каждая уникальная связь даёт
-        # ровно одну строку из-за UNIQUE constraint ProjectMember(project_id, user_id),
-        # а юзеры без membership дают по одной строке с NULL membership.
-        rows = (
-            await self.db.scalars(
-                select(User)
-                .outerjoin(ProjectMember, and_(ProjectMember.user_id == User.id, ProjectMember.project_id == project_id))
-                .where(
-                    and_(
-                        User.username.in_(list(usernames)),
-                        or_(ProjectMember.user_id.is_not(None), User.role == UserRole.ADMIN),
-                    )
-                )
-            )
-        ).all()
-        return list(rows)
+        return await notification_events.mentioned_users(self.db, project_id, content)
 
     async def list(self, project_id: int, vuln_id: int, page: int, size: int) -> tuple[list[CommentOut], int]:
         await self._ensure_vuln(project_id, vuln_id)
@@ -4160,9 +3709,11 @@ class CommentService:
             raise NotFoundError("Комментарий не найден")
         if comment.user_id != actor.id:
             raise ForbiddenError("Можно редактировать только свой комментарий")
+        previous_content = comment.content
         comment.content = content
         await self.db.execute(delete(CommentMention).where(CommentMention.comment_id == comment.id))
         mentioned_users = await self._extract_mentions(project_id, content)
+        events = await notification_events.queue_mentions(self.db, project_id, content, actor.id, {"comment_id": comment.id, "vulnerability_id": vuln_id}, previous=previous_content, users=mentioned_users)
         mention_models: list[MentionOut] = []
         for user in mentioned_users:
             self.db.add(CommentMention(comment_id=comment.id, user_id=user.id))
@@ -4170,6 +3721,7 @@ class CommentService:
         await self.db.flush()
         await self.db.refresh(comment)
         await self.audit.log("UPDATE", user_id=actor.id, entity_type="comment", entity_id=comment.id)
+        await notification_events.publish(events)
         await ws_manager.broadcast(project_id, {"event": "updated", "entity": "comment", "project_id": str(project_id), "data": {"id": str(comment.id)}})
         return CommentOut(
             id=comment.id,
@@ -4359,6 +3911,7 @@ class ProjectNoteService:
         self.db.add(note)
         await self.db.flush()
         await self.db.refresh(note)
+        events = await notification_events.queue_mentions(self.db, project_id, f"{note.title}\n{note.content or chr(32)}", actor_id, {"note_id": note.id, "note_title": note.title})
         # project_id и title в details — нужны для post-факта журнала активности
         # уровня проекта (DELETE-записи без них нельзя было бы связать с проектом).
         await self.audit.log(
@@ -4368,6 +3921,7 @@ class ProjectNoteService:
             entity_id=note.id,
             details={"project_id": str(project_id), "title": note.title},
         )
+        await notification_events.publish(events)
         await ws_manager.broadcast(
             project_id,
             {"event": "created", "entity": "project_note", "project_id": str(project_id), "data": {"id": str(note.id)}},
@@ -4377,6 +3931,7 @@ class ProjectNoteService:
     async def update_note(self, project_id: int, note_id: int, payload: dict, actor_id: int) -> ProjectNote:
         await self._lock_tree(project_id)
         note = await self._get_note(project_id, note_id)
+        previous_content = f"{note.title}\n{note.content or chr(32)}"
         next_title = payload.get("title")
         if next_title is not None:
             normalized_title = str(next_title).strip()
@@ -4388,6 +3943,7 @@ class ProjectNoteService:
         note.updated_by = actor_id
         await self.db.flush()
         await self.db.refresh(note)
+        events = await notification_events.queue_mentions(self.db, project_id, f"{note.title}\n{note.content or chr(32)}", actor_id, {"note_id": note.id, "note_title": note.title}, previous=previous_content)
         await self.audit.log(
             "UPDATE",
             user_id=actor_id,
@@ -4395,6 +3951,7 @@ class ProjectNoteService:
             entity_id=note.id,
             details={"project_id": str(project_id), "title": note.title},
         )
+        await notification_events.publish(events)
         await ws_manager.broadcast(
             project_id,
             {"event": "updated", "entity": "project_note", "project_id": str(project_id), "data": {"id": str(note.id)}},
@@ -4620,10 +4177,13 @@ class ProjectNoteService:
         comment = await self._get_comment(project_id, note_id, comment_id)
         if comment.user_id != actor.id:
             raise ForbiddenError("Можно редактировать только свой комментарий")
+        previous_content = comment.content
         comment.content = content
+        events = await notification_events.queue_mentions(self.db, project_id, content, actor.id, {"note_comment_id": comment.id}, previous=previous_content)
         await self.db.flush()
         await self.db.refresh(comment)
         await self.audit.log("UPDATE", user_id=actor.id, entity_type="project_note_comment", entity_id=comment.id)
+        await notification_events.publish(events)
         await ws_manager.broadcast(
             project_id,
             {
@@ -4840,6 +4400,9 @@ class NotificationService:
                     commenter_username=username, status=status,
                 )
         for item in notifications:
+            if item.context_data:
+                contexts[item.id] = NotificationContext.model_validate(item.context_data)
+                continue
             if item.comment_id:
                 context = comment_contexts.get(item.comment_id)
                 if context is not None:

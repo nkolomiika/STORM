@@ -98,7 +98,7 @@ backend обновляет сразу все три.
    (`VITE_PROXY_TARGET=http://backend:8000`).
 4. **backend** (FastAPI/uvicorn):
    - REST — `/api/v1/*` (все доменные роутеры: auth, projects, vulnerabilities,
-     files, farm, scanner, reports, jira, …);
+     files, farm, scanner, reports, task_tracker, works, …);
    - агентский (машинный) API — смонтирован под `/api/v2` (Swagger `/api/v2/docs`);
    - WebSocket — `/ws/*` (нотификации, live-обновления);
    - healthcheck — `GET /health` → `{"status":"ok"}`.
@@ -215,7 +215,7 @@ app-only, либо `refresh_token`). Если `SMTP_OAUTH_*` пусты — fall
 | `FARM_REVERSE_DNS_ENABLED` | обратный резолв IP | `false` на стенде без DNS |
 | `SERVICES_DETECT_ENGINE` | `httpx` \| `whatweb` | `httpx` |
 | `SSO_*` | OIDC/Keycloak-вход (опционально) | см. ниже |
-| `JIRA_*` | интеграция Jira (экспорт находок + раздел Tasks) | см. ниже |
+| `WORKS_*` | Task Tracker: экспорт STS, Tasks/проект APPSEC | [настройки](TASK_TRACKER.md) |
 | `CERT_IP` / `CERT_HOST` | адрес в SAN self-signed сертификата (prod) | выставить адрес сервера |
 
 ### Секреты, которые ОБЯЗАТЕЛЬНО сменить перед проливкой в prod
@@ -325,10 +325,7 @@ HTTPS с корпоративным сертификатом. Чтобы `httpx`
 - **SSO / OIDC** — `SSO_ENABLED=true` + `SSO_ISSUER` (Keycloak-совместимый),
   поток Authorization Code + PKCE, callback `{APP_BASE_URL}/api/v1/auth/sso/
   callback` (разрешить в IdP). Авто-создание пользователей — `SSO_AUTO_CREATE_USERS`.
-- **Jira** — `JIRA_BASE_URL` + токен; экспорт находок в issue и read-only раздел
-  «Tasks». Пути REST вынесены в env (Cloud v3 / Server-DC v2). Пусто
-  `JIRA_BASE_URL`/`JIRA_API_TOKEN` → интеграция считается ненастроенной (UI
-  покажет явно).
+- **Task Tracker / Works** — `WORKS_ENABLED`, `WORKS_BASE_URL`, `WORKS_API_TOKEN`; экспорт уязвимостей в STS, задачи и тикет проекта в APPSEC. Поиску требуется тело рабочего нативного запроса `WORKS_TASKS_SEARCH_BODY`; его отсутствие даёт 503. Подробности и диагностика: [TASK_TRACKER.md](TASK_TRACKER.md).
 
 ---
 

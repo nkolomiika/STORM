@@ -40,7 +40,7 @@ async def test_admin_cannot_delete_foreign_comment() -> None:
 
 
 @pytest.mark.asyncio
-async def test_update_comment_mentions_do_not_create_notifications(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_update_comment_new_mentions_create_notifications(monkeypatch: pytest.MonkeyPatch) -> None:
     project_id = next(_ids)
     vuln_id = next(_ids)
     comment = SimpleNamespace(
@@ -61,6 +61,7 @@ async def test_update_comment_mentions_do_not_create_notifications(monkeypatch: 
     db.refresh = AsyncMock()
     ws_manager = SimpleNamespace(broadcast=AsyncMock(), notify_user=AsyncMock())
     monkeypatch.setattr("app.services.ws_manager", ws_manager)
+    monkeypatch.setattr("app.notification_events.ws_manager", ws_manager)
 
     service = CommentService(db)
     service._ensure_vuln = AsyncMock()
@@ -71,8 +72,8 @@ async def test_update_comment_mentions_do_not_create_notifications(monkeypatch: 
 
     added_models = [call.args[0] for call in db.add.call_args_list]
     assert any(isinstance(model, CommentMention) for model in added_models)
-    assert not any(isinstance(model, Notification) for model in added_models)
-    ws_manager.notify_user.assert_not_awaited()
+    assert any(isinstance(model, Notification) for model in added_models)
+    ws_manager.notify_user.assert_awaited_once()
     ws_manager.broadcast.assert_awaited_once()
     assert result.mentions[0].username == "target"
 

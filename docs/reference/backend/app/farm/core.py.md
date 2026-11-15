@@ -111,13 +111,14 @@ def parse_token(token: str) -> tuple[str, bool, int | None, str | None] | None
 - `host.lower`
 - `host.lower().rstrip`
 - `ipaddress.ip_address`
+- `str`
 - `urlsplit`
 
 </details>
 
 ## parse_targets
 
-[backend/app/farm/core.py:153](../../../../../backend/app/farm/core.py#L153)
+[backend/app/farm/core.py:160](../../../../../backend/app/farm/core.py#L160)
 
 ```python
 def parse_targets(raw: str) -> tuple[dict[str, ParsedTarget], list[str]]
@@ -152,7 +153,7 @@ def parse_targets(raw: str) -> tuple[dict[str, ParsedTarget], list[str]]
 
 ## candidates_for
 
-[backend/app/farm/core.py:185](../../../../../backend/app/farm/core.py#L185)
+[backend/app/farm/core.py:192](../../../../../backend/app/farm/core.py#L192)
 
 ```python
 def candidates_for(tgt: ParsedTarget) -> list[ProbeCandidate]
@@ -176,7 +177,7 @@ def candidates_for(tgt: ParsedTarget) -> list[ProbeCandidate]
 
 ## trim_excess_ports
 
-[backend/app/farm/core.py:198](../../../../../backend/app/farm/core.py#L198)
+[backend/app/farm/core.py:205](../../../../../backend/app/farm/core.py#L205)
 
 ```python
 def trim_excess_ports(targets: dict[str, ParsedTarget]) -> list[str]
@@ -202,7 +203,7 @@ def trim_excess_ports(targets: dict[str, ParsedTarget]) -> list[str]
 
 ## build_transport
 
-[backend/app/farm/core.py:213](../../../../../backend/app/farm/core.py#L213)
+[backend/app/farm/core.py:220](../../../../../backend/app/farm/core.py#L220)
 
 ```python
 def build_transport(transport: httpx.AsyncBaseTransport | None, limits: httpx.Limits) -> httpx.AsyncBaseTransport
@@ -227,7 +228,7 @@ def build_transport(transport: httpx.AsyncBaseTransport | None, limits: httpx.Li
 
 ## probe_candidates
 
-[backend/app/farm/core.py:223](../../../../../backend/app/farm/core.py#L223)
+[backend/app/farm/core.py:230](../../../../../backend/app/farm/core.py#L230)
 
 ```python
 async def probe_candidates(candidates: list[ProbeCandidate], *, transport: httpx.AsyncBaseTransport | None=None) -> list[ProbeResult]
@@ -257,7 +258,7 @@ HTTP-пробив кандидатов до корня `/`. БД не трога
 
 ## probe_candidates.probe_one
 
-[backend/app/farm/core.py:241](../../../../../backend/app/farm/core.py#L241)
+[backend/app/farm/core.py:248](../../../../../backend/app/farm/core.py#L248)
 
 ```python
 async def probe_one(c: ProbeCandidate) -> ProbeResult

@@ -1,5 +1,9 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { StormDocs } from "./StormDocs";
+import { useLangStore } from "./i18n";
+
+beforeEach(() => useLangStore.getState().setLang("ru"));
+afterEach(() => useLangStore.getState().setLang("en"));
 
 describe("StormDocs — раздел /docs", () => {
   it("лендинг: заголовок Docs и карточки категорий по роли (обычный пользователь)", () => {
@@ -8,7 +12,7 @@ describe("StormDocs — раздел /docs", () => {
     expect(screen.getAllByText("Docs").length).toBeGreaterThan(0);
     // документы «Пользователь» и «Agent API» видны, «Администратор» — нет (скрытие)
     expect(screen.getAllByText("Пользователь").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Agent API").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Агентский API").length).toBeGreaterThan(0);
     expect(screen.queryByText("Администратор")).toBeNull();
   });
 
@@ -28,7 +32,7 @@ describe("StormDocs — раздел /docs", () => {
 
   it("поиск фильтрует дерево и показывает результаты", () => {
     render(<StormDocs isAdmin={false} />);
-    fireEvent.change(screen.getByPlaceholderText("Поиск по Docs…"), { target: { value: "уязвим" } });
+    fireEvent.change(screen.getByPlaceholderText("Поиск по документации…"), { target: { value: "уязвим" } });
     expect(screen.getByText("Результаты поиска")).toBeTruthy();
     expect(screen.getAllByText("Уязвимости").length).toBeGreaterThan(0);
   });

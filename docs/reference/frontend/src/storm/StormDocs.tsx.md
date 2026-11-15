@@ -2,11 +2,35 @@
 
 Сгенерировано из объявлений кода. [Правила чтения](../../../../METHODS.md).
 
-Методов и именованных функций: **8**.
+Методов и именованных функций: **9**.
+
+## t
+
+[frontend/src/storm/StormDocs.tsx:28](../../../../../frontend/src/storm/StormDocs.tsx#L28)
+
+```typescript
+t(source: string, values?: Record<string, string | number>) => string
+```
+
+Документация всегда русская, независимо от языка остального интерфейса.
+
+| Параметр | Тип | По умолчанию | Назначение |
+| --- | --- | --- | --- |
+| `source` | `string` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
+| `values` | `Record<string, string \| number>` | `undefined (optional)` | Определяется именем/типом и контрактом вызывающего кода. |
+
+Возвращает: `string`.
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `translate`
+
+</details>
 
 ## pagesWord
 
-[frontend/src/storm/StormDocs.tsx:27](../../../../../frontend/src/storm/StormDocs.tsx#L27)
+[frontend/src/storm/StormDocs.tsx:33](../../../../../frontend/src/storm/StormDocs.tsx#L33)
 
 ```typescript
 pagesWord(n: number) => string
@@ -22,7 +46,7 @@ pagesWord(n: number) => string
 
 ## bodySnippet
 
-[frontend/src/storm/StormDocs.tsx:36](../../../../../frontend/src/storm/StormDocs.tsx#L36)
+[frontend/src/storm/StormDocs.tsx:42](../../../../../frontend/src/storm/StormDocs.tsx#L42)
 
 ```typescript
 bodySnippet(body: string, q: string) => string | null
@@ -55,7 +79,7 @@ bodySnippet(body: string, q: string) => string | null
 
 ## highlight
 
-[frontend/src/storm/StormDocs.tsx:51](../../../../../frontend/src/storm/StormDocs.tsx#L51)
+[frontend/src/storm/StormDocs.tsx:57](../../../../../frontend/src/storm/StormDocs.tsx#L57)
 
 ```typescript
 highlight(text: string, q: string) => ReactNode
@@ -82,7 +106,7 @@ highlight(text: string, q: string) => ReactNode
 
 ## StormDocs
 
-[frontend/src/storm/StormDocs.tsx:74](../../../../../frontend/src/storm/StormDocs.tsx#L74)
+[frontend/src/storm/StormDocs.tsx:80](../../../../../frontend/src/storm/StormDocs.tsx#L80)
 
 ```typescript
 StormDocs({ isAdmin, onNavigateWorkspace }: Props) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -108,6 +132,7 @@ StormDocs({ isAdmin, onNavigateWorkspace }: Props) => import("/Users/nkolomiika/
 - `query.trim`
 - `query.trim().toLowerCase`
 - `searchResults.map`
+- `t`
 - `useMemo`
 - `useState`
 - `visible.filter`
@@ -118,7 +143,7 @@ StormDocs({ isAdmin, onNavigateWorkspace }: Props) => import("/Users/nkolomiika/
 
 ## StormDocs.matches
 
-[frontend/src/storm/StormDocs.tsx:82](../../../../../frontend/src/storm/StormDocs.tsx#L82)
+[frontend/src/storm/StormDocs.tsx:88](../../../../../frontend/src/storm/StormDocs.tsx#L88)
 
 ```typescript
 matches(c: DocChapter) => boolean
@@ -144,7 +169,7 @@ matches(c: DocChapter) => boolean
 
 ## StormDocs.goHome
 
-[frontend/src/storm/StormDocs.tsx:94](../../../../../frontend/src/storm/StormDocs.tsx#L94)
+[frontend/src/storm/StormDocs.tsx:100](../../../../../frontend/src/storm/StormDocs.tsx#L100)
 
 ```typescript
 goHome() => void
@@ -163,7 +188,7 @@ goHome() => void
 
 ## StormDocs.openCategory
 
-[frontend/src/storm/StormDocs.tsx:95](../../../../../frontend/src/storm/StormDocs.tsx#L95)
+[frontend/src/storm/StormDocs.tsx:101](../../../../../frontend/src/storm/StormDocs.tsx#L101)
 
 ```typescript
 openCategory(audience: string) => void
@@ -187,7 +212,7 @@ openCategory(audience: string) => void
 
 ## StormDocs.toggleGroup
 
-[frontend/src/storm/StormDocs.tsx:99](../../../../../frontend/src/storm/StormDocs.tsx#L99)
+[frontend/src/storm/StormDocs.tsx:105](../../../../../frontend/src/storm/StormDocs.tsx#L105)
 
 ```typescript
 toggleGroup(audience: string) => void

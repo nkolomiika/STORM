@@ -106,6 +106,11 @@ def test_split_weakness_and_unrealized_separated():
     [
         ("Platform V PRODUCT 1.1", "1.1"),        # основной формат: берём последний токен
         ("Platform V Stack 1.0.2-beta2", "1.0.2-beta2"),
+        ("Platform V Stack 1.0.2-beta.2", "1.0.2-beta.2"),
+        ("Platform V Stack 1.0.2-rc1", "1.0.2-rc1"),
+        ("Platform V Stack v1.0.2+2026.11", "v1.0.2+2026.11"),
+        ("Platform V Stack 1.0.2 build 42", "1.0.2 build 42"),
+        ("Platform V Stack", ""),
         ("2.3.4", "2.3.4"),                        # уже только версия
         ("  Platform V X 9.9  ", "9.9"),           # обрезаем пробелы по краям
         (None, ""),                                # нет данных → пусто (плейсхолдер не трогаем)
@@ -116,6 +121,11 @@ def test_split_weakness_and_unrealized_separated():
 def test_distrib_version(affected, expected):
     project = SimpleNamespace(appsec_version_name=affected)
     assert _distrib_version(project) == expected
+
+
+def test_distrib_version_keeps_all_versions_from_the_project_array():
+    project = SimpleNamespace(appsec_versions=[{'code': 'v1', 'name': 'Platform 1.0'}, {'code': 'v2', 'name': 'Platform 2.0'}], appsec_version_name='Legacy 0.1')
+    assert _distrib_version(project) == '1.0, 2.0'
 
 
 # ---------- severity_label / SEVERITY_RU ----------

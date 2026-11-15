@@ -6,13 +6,13 @@
 
 ## StormActivate
 
-[frontend/src/storm/StormActivate.tsx:38](../../../../../frontend/src/storm/StormActivate.tsx#L38)
+[frontend/src/storm/StormActivate.tsx:39](../../../../../frontend/src/storm/StormActivate.tsx#L39)
 
 ```typescript
 StormActivate() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
 ```
 
-В теле вызывает `USERNAME_RE.test`, `params.get`, `useAuthStore`, `useEffect`, `useMemo`, `useRef`, `useSearchParams`, `useState`; полный список ниже.
+В теле вызывает `USERNAME_RE.test`, `params.get`, `t`, `useAuthStore`, `useEffect`, `useLangStore`, `useMemo`, `useRef`; полный список ниже.
 
 Возвращает: `import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element`.
 
@@ -21,8 +21,10 @@ StormActivate() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/no
 
 - `USERNAME_RE.test`
 - `params.get`
+- `t`
 - `useAuthStore`
 - `useEffect`
+- `useLangStore`
 - `useMemo`
 - `useRef`
 - `useSearchParams`
@@ -33,13 +35,13 @@ StormActivate() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/no
 
 ## StormActivate.handleSubmit
 
-[frontend/src/storm/StormActivate.tsx:125](../../../../../frontend/src/storm/StormActivate.tsx#L125)
+[frontend/src/storm/StormActivate.tsx:127](../../../../../frontend/src/storm/StormActivate.tsx#L127)
 
 ```typescript
 async handleSubmit(e: FormEvent) => Promise<void>
 ```
 
-В теле вызывает `acceptInvitation`, `e.preventDefault`, `getApiErrorMessage`, `pushToast`, `refreshUser`, `setSubmitting`, `username.trim`.
+В теле вызывает `acceptInvitation`, `e.preventDefault`, `getApiErrorMessage`, `pushToast`, `refreshUser`, `setSubmitting`, `t`, `username.trim`.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -56,6 +58,7 @@ async handleSubmit(e: FormEvent) => Promise<void>
 - `pushToast`
 - `refreshUser`
 - `setSubmitting`
+- `t`
 - `username.trim`
 
 </details>

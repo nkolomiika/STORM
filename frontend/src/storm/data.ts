@@ -52,6 +52,8 @@ export interface Endpoint {
 /** One address of a host, with what it reverse-resolves to. */
 export interface IpEntry {
   ip: string;
+  /** Замеры только этого адреса; порты других IP хоста сюда не входят. */
+  ports?: Port[];
   /** Names the address resolves to; `confirmed: false` = PTR without a forward match. */
   hostnames: { hostname: string; source: string; confirmed: boolean }[];
 }
@@ -144,7 +146,6 @@ export interface Cred {
 /** The open project, assembled from the backend collections — a view, not a store. */
 export interface ProjectDetail {
   status: ProjectStatus;
-  desc: string;
   start: string;
   end: string;
   /** Percentage of the engagement window elapsed (derived from start/end). */

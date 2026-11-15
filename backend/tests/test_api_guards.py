@@ -19,7 +19,7 @@ def depends_on(dependant, call):
 
 
 def protected_routes():
-    external = {"works", "jira", "farm", "scanner", "files", "images"}
+    external = {"works", "task_tracker", "farm", "scanner", "files", "images"}
     for target, prefix in [(app, ""), (agent_api_v2, "/api/v2")]:
         routes = []
         for registered in target.routes:

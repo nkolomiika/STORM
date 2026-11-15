@@ -1,7 +1,7 @@
 import axios from "axios";
 import type {
-  JiraTaskDetail,
-  JiraTaskList,
+  TaskTrackerTaskDetail,
+  TaskTrackerTaskList,
   AuthLoginResponse,
   SsoConfig,
   TwoFASetupResponse,
@@ -15,6 +15,7 @@ import type {
   AuditLog,
   Host,
   HostDetails,
+  IpAddressChangeResult,
   HostFarmJob,
   IpFarmJob,
   JsFarmJob,
@@ -43,12 +44,10 @@ import type {
   Vulnerability,
   VulnerabilityAsset,
   AgentApiToken,
-  JiraIssueLink,
+  TaskTrackerIssueLink,
   WorksConfig,
   WorksRef,
   WorksIssueLink,
-  ProjectJiraLink,
-  JiraConfig,
 } from "./types";
 
 const api = axios.create({
@@ -442,14 +441,15 @@ export async function deleteProjectFolder(folderId: number): Promise<DeleteProje
 export async function createProject(payload: {
   name: string;
   folder?: string;
-  description?: string;
   start_date?: string;
   end_date?: string;
   appsec_component_code?: string | null;
   appsec_component_name?: string | null;
   appsec_version_code?: string | null;
   appsec_version_name?: string | null;
+  appsec_versions?: WorksRef[];
   appsec_assignee?: string | null;
+  appsec_assignee_name?: string | null;
   appsec_ticket_url?: string | null;
   appsec_ticket_key?: string | null;
 }): Promise<Project> {
@@ -468,7 +468,6 @@ export async function updateProject(
   payload: {
     name?: string;
     folder?: string;
-    description?: string;
     start_date?: string;
     end_date?: string;
     status?: Project["status"];
@@ -476,7 +475,9 @@ export async function updateProject(
     appsec_component_name?: string | null;
     appsec_version_code?: string | null;
     appsec_version_name?: string | null;
+    appsec_versions?: WorksRef[];
     appsec_assignee?: string | null;
+    appsec_assignee_name?: string | null;
     appsec_ticket_url?: string | null;
     appsec_ticket_key?: string | null;
   }
@@ -718,6 +719,13 @@ export async function updateHost(
 
 export async function deleteHost(projectId: number, hostId: number): Promise<void> {
   await api.delete(`/projects/${projectId}/hosts/${hostId}`);
+}
+
+export async function changeIpAddress(projectId: number, previous: string, address: string): Promise<IpAddressChangeResult> {
+  assertRequired(previous, "IP address");
+  assertRequired(address, "IP address");
+  const { data } = await api.put<IpAddressChangeResult>(`/projects/${projectId}/ip-addresses/${encodeURIComponent(previous)}`, { ip_address: address });
+  return data;
 }
 
 /* ── Скрытые IP: «удаление» адреса из вкладки IP без разрыва привязки к хостам ──
@@ -1041,19 +1049,18 @@ export async function deleteVulnerability(projectId: number, vulnerabilityId: nu
   await api.delete(`/projects/${projectId}/vulnerabilities/${vulnerabilityId}`);
 }
 
-export async function getVulnerabilityJiraLink(projectId: number, vulnerabilityId: number): Promise<JiraIssueLink | null> {
-  const { data } = await api.get<JiraIssueLink | null>(`/projects/${projectId}/vulnerabilities/${vulnerabilityId}/jira`);
-  return data;
+export async function getVulnerabilityTaskTrackerLink(projectId: number, vulnerabilityId: number): Promise<TaskTrackerIssueLink | null> {
+  const link = await getVulnerabilityWorksLink(projectId, vulnerabilityId);
+  return link ? { id: vulnerabilityId, vulnerability_id: vulnerabilityId, task_tracker_issue_key: link.works_key, task_tracker_issue_url: link.works_url, status: "linked", last_error: null, created_at: "", updated_at: "" } : null;
 }
 
-export async function exportVulnerabilityToJira(projectId: number, vulnerabilityId: number): Promise<JiraIssueLink> {
-  const { data } = await api.post<JiraIssueLink>(`/projects/${projectId}/vulnerabilities/${vulnerabilityId}/jira/export`);
-  return data;
+export async function exportVulnerabilityToTaskTracker(projectId: number, vulnerabilityId: number): Promise<TaskTrackerIssueLink> {
+  const existing = await getVulnerabilityTaskTrackerLink(projectId, vulnerabilityId);
+  if (existing?.task_tracker_issue_key) return existing;
+  const link = await exportVulnerabilityToWorks(projectId, vulnerabilityId);
+  return { id: vulnerabilityId, vulnerability_id: vulnerabilityId, task_tracker_issue_key: link.works_key, task_tracker_issue_url: link.works_url, status: "linked", last_error: null, created_at: "", updated_at: "" };
 }
 
-// ---- Works (sbertrack) AppSec export ----
-
-/** Доступен ли экспорт в AppSec (настроена ли интеграция Works). */
 export async function getWorksConfig(): Promise<WorksConfig> {
   const { data } = await api.get<WorksConfig>("/works/config");
   return data;
@@ -1087,35 +1094,6 @@ export async function exportVulnerabilityToWorks(
     `/projects/${projectId}/vulnerabilities/${vulnerabilityId}/works/export`,
     { assignee: assignee ?? null }
   );
-  return data;
-}
-
-export async function getProjectJiraLink(projectId: number): Promise<ProjectJiraLink | null> {
-  const { data } = await api.get<ProjectJiraLink | null>(`/projects/${projectId}/jira-link`);
-  return data;
-}
-
-export async function saveProjectJiraLink(projectId: number, jiraProjectKey: string): Promise<ProjectJiraLink> {
-  assertRequired(jiraProjectKey, "Jira project key");
-  const { data } = await api.put<ProjectJiraLink>(`/projects/${projectId}/jira-link`, { jira_project_key: jiraProjectKey });
-  return data;
-}
-
-export async function getJiraConfig(): Promise<JiraConfig | null> {
-  const { data } = await api.get<JiraConfig | null>("/jira/config");
-  return data;
-}
-
-export async function saveJiraConfig(payload: {
-  base_url: string;
-  email: string;
-  api_token?: string;
-  default_issue_type?: string;
-  is_enabled?: boolean;
-}): Promise<JiraConfig> {
-  assertRequired(payload.base_url, "Jira base URL");
-  assertRequired(payload.email, "Email");
-  const { data } = await api.put<JiraConfig>("/jira/config", { name: "default", ...payload });
   return data;
 }
 
@@ -1315,23 +1293,23 @@ export async function getAuditLogs(
   return data;
 }
 
-// ── Jira «Tasks» (раздел Tasks) ──────────────────────────────────────────────
-// Бэкенд проксирует задачи Jira-проекта STS (read-only). Поиск по имени и фильтр
-// по категории статуса выполняются на бэкенде (JQL), но фронт также фильтрует
-// загруженную страницу на клиенте — как список уязвимостей. Пагинация у Jira
+// ── TaskTracker «Tasks» (раздел Tasks) ──────────────────────────────────────────────
+// Бэкенд проксирует задачи Task Tracker пространства APPSEC (read-only). Поиск по имени и фильтр
+// по категории статуса выполняются на бэкенде Task Tracker, но фронт также фильтрует
+// загруженную страницу на клиенте — как список уязвимостей. Пагинация у TaskTracker
 // Cloud токенная, поэтому total не возвращается — отдаём items + next_page_token.
 
-/** Список задач Jira (проект STS). category: "todo"|"inprogress"|"done"|"". */
+/** Список задач Task Tracker (пространство APPSEC). category: "todo"|"inprogress"|"done"|"". */
 export async function getTasks(params: {
   query?: string;
   category?: string;
-} = {}): Promise<JiraTaskList> {
-  const { data } = await api.get<JiraTaskList>("/tasks", { params });
+} = {}): Promise<TaskTrackerTaskList> {
+  const { data } = await api.get<TaskTrackerTaskList>("/tasks", { params });
   return data;
 }
 
-/** Полная карточка одной задачи Jira по ключу (напр. "STS-123"). */
-export async function getTask(key: string): Promise<JiraTaskDetail> {
-  const { data } = await api.get<JiraTaskDetail>(`/tasks/${encodeURIComponent(key)}`);
+/** Полная карточка одной задачи TaskTracker по ключу (напр. "APPSEC-123"). */
+export async function getTask(key: string): Promise<TaskTrackerTaskDetail> {
+  const { data } = await api.get<TaskTrackerTaskDetail>(`/tasks/${encodeURIComponent(key)}`);
   return data;
 }

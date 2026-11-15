@@ -290,7 +290,7 @@ class IpFarmService(HostFarmService):
                 result.errors.extend(host_res.errors)
         return result
 
-    async def create_job(self, project_id: int, raw: str, actor_id: int) -> HostFarmJob:
+    async def create_job(self, project_id: int, raw: str, actor_id: int, *, force: bool = False, commit: bool = True) -> HostFarmJob:
         targets, _ = self.parse_ip_targets(raw)
         if len(targets) > settings.farm_max_targets:
             raise ValidationError(f"Слишком много IP: {len(targets)} (максимум {settings.farm_max_targets})")
@@ -304,7 +304,7 @@ class IpFarmService(HostFarmService):
             )
         )
         # Уже добавленные адреса фиксируем синхронно — воркер исключит их из пробива.
-        existing = await self._existing_target_keys(project_id, targets)
+        existing = set() if force else await self._existing_target_keys(project_id, targets)
         new_count = len(targets) - len(existing)
         # Заготовок, в отличие от фермы хостов, не создаём: до обратного резолва
         # неизвестно, заводить ли новый Host или подшить адрес к существующему.
@@ -325,6 +325,9 @@ class IpFarmService(HostFarmService):
             job.result = IpFarmResult(ips_skipped=len(existing)).model_dump()
             job.finished_at = datetime.now(UTC)
         self.db.add(job)
-        await self.db.commit()
+        if commit:
+            await self.db.commit()
+        else:
+            await self.db.flush()
         await self.db.refresh(job)
         return job

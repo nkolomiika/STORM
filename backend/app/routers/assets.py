@@ -1,13 +1,13 @@
 
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Query, Request, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.enums import HostStatus
 from app.dependencies import enforce_csrf, get_current_user, require_project_access
-from app.farm import JsFarmService
+from app.farm import JsFarmService, enqueue_job
 from app.models import User
 from app.http_headers import content_disposition
 from app.pagination import PageParams, PaginatedResponse, to_paginated_response
@@ -19,6 +19,8 @@ from app.schemas import (
     HostCreate,
     HostOut,
     HostUpdate,
+    IpAddressChangeOut,
+    IpAddressChangeRequest,
     JsBulkDeleteRequest,
     JsFileOut,
     PortCreate,
@@ -117,6 +119,23 @@ async def delete_host(
 
 
 # ── Скрытые IP: «удаление» адреса из вкладки IP без разрыва привязки к хостам ──
+@router.put('/projects/{project_id}/ip-addresses/{old_ip}', response_model=IpAddressChangeOut, status_code=status.HTTP_202_ACCEPTED)
+async def change_ip_address(
+    project_id: int,
+    old_ip: str,
+    payload: IpAddressChangeRequest,
+    background_tasks: BackgroundTasks,
+    _: None = Depends(enforce_csrf),
+    current_user: User = Depends(get_current_user),
+    _project=Depends(require_project_access),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Обновляет IP проекта и ставит повторный пробив после сброса старых замеров."""
+    result = await AssetService(db).change_ip_address(project_id, old_ip, payload.ip_address, current_user.id)
+    enqueue_job(result['job'], background_tasks)
+    return result
+
+
 @router.get("/projects/{project_id}/hidden-ips", response_model=list[str])
 async def list_hidden_ips(
     project_id: int,

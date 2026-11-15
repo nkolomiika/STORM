@@ -53,6 +53,15 @@
 | `updated_at` | `string` | да | {"format": "date-time"} |
 | `project_ids` | `list[integer]` | нет | — |
 
+## AppSecVersionRef
+
+
+
+| Поле | Тип | Required | Ограничения/описание |
+| --- | --- | --- | --- |
+| `code` | `string` | да | {"maxLength": 64, "minLength": 1} |
+| `name` | `string` | да | {"maxLength": 255, "minLength": 1} |
+
 ## AssetType
 
 
@@ -65,7 +74,7 @@
 
 | Поле | Тип | Required | Ограничения/описание |
 | --- | --- | --- | --- |
-| `file` | `string` | да | {"contentMediaType": "application/octet-stream"} |
+| `file` | `string` | да | {"format": "binary"} |
 
 ## Body_import_project_data_api_v1_projects__project_id__import_post
 
@@ -73,7 +82,7 @@
 
 | Поле | Тип | Required | Ограничения/описание |
 | --- | --- | --- | --- |
-| `file` | `string` | да | {"contentMediaType": "application/octet-stream"} |
+| `file` | `string` | да | {"format": "binary"} |
 
 ## Body_upload_file_api_v1_projects__project_id__vulnerabilities__vuln_id__files_post
 
@@ -81,7 +90,7 @@
 
 | Поле | Тип | Required | Ограничения/описание |
 | --- | --- | --- | --- |
-| `file` | `string` | да | {"contentMediaType": "application/octet-stream"} |
+| `file` | `string` | да | {"format": "binary"} |
 
 ## Body_upload_my_avatar_api_v1_users_me_avatar_post
 
@@ -89,7 +98,7 @@
 
 | Поле | Тип | Required | Ограничения/описание |
 | --- | --- | --- | --- |
-| `avatar` | `string` | да | {"contentMediaType": "application/octet-stream"} |
+| `avatar` | `string` | да | {"format": "binary"} |
 
 ## Body_upload_project_image_api_v1_projects__project_id__images_post
 
@@ -97,7 +106,7 @@
 
 | Поле | Тип | Required | Ограничения/описание |
 | --- | --- | --- | --- |
-| `file` | `string` | да | {"contentMediaType": "application/octet-stream"} |
+| `file` | `string` | да | {"format": "binary"} |
 
 ## CommentCreate
 
@@ -488,6 +497,25 @@
 | `mail_preview_url` | `string \| null` | нет | — |
 | `activation_url` | `string \| null` | нет | — |
 
+## IpAddressChangeOut
+
+
+
+| Поле | Тип | Required | Ограничения/описание |
+| --- | --- | --- | --- |
+| `old_ip_address` | `string` | да | — |
+| `ip_address` | `string` | да | — |
+| `updated_hosts` | `integer` | да | — |
+| `job` | `IpFarmJobOut` | да | — |
+
+## IpAddressChangeRequest
+
+
+
+| Поле | Тип | Required | Ограничения/описание |
+| --- | --- | --- | --- |
+| `ip_address` | `string` | да | {"maxLength": 45, "minLength": 1} |
+
 ## IpFarmIpResult
 
 
@@ -546,97 +574,6 @@ Union не годится: pydantic должен знать точный тип 
 | `hosts_promoted` | `integer` | нет | {"default": 0} |
 | `ips` | `list[IpFarmIpResult]` | нет | — |
 | `errors` | `list[string]` | нет | — |
-
-## JiraConfigOut
-
-
-
-| Поле | Тип | Required | Ограничения/описание |
-| --- | --- | --- | --- |
-| `id` | `integer` | да | — |
-| `name` | `string` | да | — |
-| `base_url` | `string` | да | — |
-| `email` | `string` | да | {"format": "email"} |
-| `default_issue_type` | `string` | да | — |
-| `is_enabled` | `boolean` | да | — |
-| `created_by` | `integer` | да | — |
-| `created_at` | `string` | да | {"format": "date-time"} |
-| `updated_at` | `string` | да | {"format": "date-time"} |
-
-## JiraConfigUpsert
-
-
-
-| Поле | Тип | Required | Ограничения/описание |
-| --- | --- | --- | --- |
-| `name` | `string` | нет | {"maxLength": 255, "minLength": 1, "default": "default"} |
-| `base_url` | `string` | да | {"maxLength": 1024, "minLength": 1} |
-| `email` | `string` | да | {"format": "email"} |
-| `api_token` | `string \| null` | нет | — |
-| `default_issue_type` | `string` | нет | {"maxLength": 100, "minLength": 1, "default": "Task"} |
-| `is_enabled` | `boolean` | нет | {"default": true} |
-
-## JiraIssueLinkOut
-
-
-
-| Поле | Тип | Required | Ограничения/описание |
-| --- | --- | --- | --- |
-| `id` | `integer` | да | — |
-| `vulnerability_id` | `integer` | да | — |
-| `jira_issue_key` | `string` | да | — |
-| `jira_issue_url` | `string` | да | — |
-| `status` | `string` | да | — |
-| `last_error` | `string \| null` | да | — |
-| `created_at` | `string` | да | {"format": "date-time"} |
-| `updated_at` | `string` | да | {"format": "date-time"} |
-
-## JiraTaskDetailOut
-
-
-
-| Поле | Тип | Required | Ограничения/описание |
-| --- | --- | --- | --- |
-| `key` | `string` | да | — |
-| `summary` | `string` | да | — |
-| `status` | `string` | да | — |
-| `status_category` | `string` | да | — |
-| `issue_type` | `string` | да | — |
-| `priority` | `string \| null` | нет | — |
-| `assignee` | `string \| null` | нет | — |
-| `updated` | `string` | да | — |
-| `created` | `string` | да | — |
-| `url` | `string` | нет | {"default": ""} |
-| `reporter` | `string \| null` | нет | — |
-| `description` | `string` | нет | {"default": ""} |
-| `labels` | `list[string]` | нет | — |
-
-## JiraTaskListOut
-
-
-
-| Поле | Тип | Required | Ограничения/описание |
-| --- | --- | --- | --- |
-| `items` | `list[JiraTaskOut]` | да | — |
-| `next_page_token` | `string \| null` | нет | — |
-| `is_last` | `boolean` | нет | {"default": true} |
-
-## JiraTaskOut
-
-
-
-| Поле | Тип | Required | Ограничения/описание |
-| --- | --- | --- | --- |
-| `key` | `string` | да | — |
-| `summary` | `string` | да | — |
-| `status` | `string` | да | — |
-| `status_category` | `string` | да | — |
-| `issue_type` | `string` | да | — |
-| `priority` | `string \| null` | нет | — |
-| `assignee` | `string \| null` | нет | — |
-| `updated` | `string` | да | — |
-| `created` | `string` | да | — |
-| `url` | `string \| null` | нет | — |
 
 ## JsBulkDeleteRequest
 
@@ -761,6 +698,11 @@ Union не годится: pydantic должен знать точный тип 
 
 | Поле | Тип | Required | Ограничения/описание |
 | --- | --- | --- | --- |
+| `endpoint_id` | `integer \| null` | нет | — |
+| `endpoint_path` | `string \| null` | нет | — |
+| `endpoint_method` | `string \| null` | нет | — |
+| `hostname` | `string \| null` | нет | — |
+| `deadline_date` | `string \| null` | нет | — |
 | `vulnerability_id` | `integer \| null` | нет | — |
 | `vulnerability_title` | `string \| null` | нет | — |
 | `note_id` | `integer \| null` | нет | — |
@@ -1045,14 +987,15 @@ Union не годится: pydantic должен знать точный тип 
 | --- | --- | --- | --- |
 | `name` | `string` | да | {"maxLength": 255, "minLength": 1} |
 | `folder` | `string` | нет | {"maxLength": 255, "default": ""} |
-| `description` | `string \| null` | нет | — |
 | `start_date` | `string \| null` | нет | — |
 | `end_date` | `string \| null` | нет | — |
 | `appsec_component_code` | `string \| null` | нет | — |
 | `appsec_component_name` | `string \| null` | нет | — |
 | `appsec_version_code` | `string \| null` | нет | — |
 | `appsec_version_name` | `string \| null` | нет | — |
+| `appsec_versions` | `list[AppSecVersionRef]` | нет | {"maxItems": 100} |
 | `appsec_assignee` | `string \| null` | нет | — |
+| `appsec_assignee_name` | `string \| null` | нет | — |
 | `appsec_ticket_url` | `string \| null` | нет | — |
 | `appsec_ticket_key` | `string \| null` | нет | — |
 
@@ -1122,27 +1065,6 @@ Union не годится: pydantic должен знать точный тип 
 | `created_by` | `integer` | да | — |
 | `created_at` | `string` | да | {"format": "date-time"} |
 | `updated_at` | `string` | да | {"format": "date-time"} |
-
-## ProjectJiraLinkOut
-
-
-
-| Поле | Тип | Required | Ограничения/описание |
-| --- | --- | --- | --- |
-| `id` | `integer` | да | — |
-| `project_id` | `integer` | да | — |
-| `jira_project_key` | `string` | да | — |
-| `created_by` | `integer` | да | — |
-| `created_at` | `string` | да | {"format": "date-time"} |
-| `updated_at` | `string` | да | {"format": "date-time"} |
-
-## ProjectJiraLinkUpsert
-
-
-
-| Поле | Тип | Required | Ограничения/описание |
-| --- | --- | --- | --- |
-| `jira_project_key` | `string` | да | {"maxLength": 32, "minLength": 1} |
 
 ## ProjectMemberCreate
 
@@ -1269,7 +1191,6 @@ Union не годится: pydantic должен знать точный тип 
 | `id` | `integer` | да | — |
 | `name` | `string` | да | — |
 | `folder` | `string` | да | — |
-| `description` | `string \| null` | да | — |
 | `start_date` | `string \| null` | да | — |
 | `end_date` | `string \| null` | да | — |
 | `timeline_frozen_at` | `string \| null` | да | — |
@@ -1279,7 +1200,9 @@ Union не годится: pydantic должен знать точный тип 
 | `appsec_component_name` | `string \| null` | нет | — |
 | `appsec_version_code` | `string \| null` | нет | — |
 | `appsec_version_name` | `string \| null` | нет | — |
+| `appsec_versions` | `list[AppSecVersionRef]` | нет | — |
 | `appsec_assignee` | `string \| null` | нет | — |
+| `appsec_assignee_name` | `string \| null` | нет | — |
 | `appsec_ticket_url` | `string \| null` | нет | — |
 | `appsec_ticket_key` | `string \| null` | нет | — |
 | `created_at` | `string` | да | {"format": "date-time"} |
@@ -1309,7 +1232,6 @@ Union не годится: pydantic должен знать точный тип 
 | --- | --- | --- | --- |
 | `name` | `string \| null` | нет | — |
 | `folder` | `string \| null` | нет | — |
-| `description` | `string \| null` | нет | — |
 | `start_date` | `string \| null` | нет | — |
 | `end_date` | `string \| null` | нет | — |
 | `status` | `ProjectStatus \| null` | нет | — |
@@ -1317,7 +1239,9 @@ Union не годится: pydantic должен знать точный тип 
 | `appsec_component_name` | `string \| null` | нет | — |
 | `appsec_version_code` | `string \| null` | нет | — |
 | `appsec_version_name` | `string \| null` | нет | — |
+| `appsec_versions` | `list[AppSecVersionRef]` | нет | {"maxItems": 100} |
 | `appsec_assignee` | `string \| null` | нет | — |
+| `appsec_assignee_name` | `string \| null` | нет | — |
 | `appsec_ticket_url` | `string \| null` | нет | — |
 | `appsec_ticket_key` | `string \| null` | нет | — |
 
@@ -1478,6 +1402,59 @@ Union не годится: pydantic должен знать точный тип 
 | `subdomains` | `list[string]` | нет | — |
 | `errors` | `list[string]` | нет | — |
 
+## TaskTrackerTaskDetailOut
+
+
+
+| Поле | Тип | Required | Ограничения/описание |
+| --- | --- | --- | --- |
+| `key` | `string` | да | — |
+| `summary` | `string` | да | — |
+| `status` | `string` | да | — |
+| `status_category` | `string` | да | — |
+| `issue_type` | `string` | да | — |
+| `priority` | `string \| null` | нет | — |
+| `assignee` | `string \| null` | нет | — |
+| `assignee_username` | `string \| null` | нет | — |
+| `affected_versions` | `list[AppSecVersionRef]` | нет | — |
+| `is_demo` | `boolean` | нет | {"default": false} |
+| `updated` | `string` | да | — |
+| `created` | `string` | да | — |
+| `url` | `string` | нет | {"default": ""} |
+| `reporter` | `string \| null` | нет | — |
+| `description` | `string` | нет | {"default": ""} |
+| `labels` | `list[string]` | нет | — |
+
+## TaskTrackerTaskListOut
+
+
+
+| Поле | Тип | Required | Ограничения/описание |
+| --- | --- | --- | --- |
+| `items` | `list[TaskTrackerTaskOut]` | да | — |
+| `next_page_token` | `string \| null` | нет | — |
+| `is_last` | `boolean` | нет | {"default": true} |
+
+## TaskTrackerTaskOut
+
+
+
+| Поле | Тип | Required | Ограничения/описание |
+| --- | --- | --- | --- |
+| `key` | `string` | да | — |
+| `summary` | `string` | да | — |
+| `status` | `string` | да | — |
+| `status_category` | `string` | да | — |
+| `issue_type` | `string` | да | — |
+| `priority` | `string \| null` | нет | — |
+| `assignee` | `string \| null` | нет | — |
+| `assignee_username` | `string \| null` | нет | — |
+| `affected_versions` | `list[AppSecVersionRef]` | нет | — |
+| `is_demo` | `boolean` | нет | {"default": false} |
+| `updated` | `string` | да | — |
+| `created` | `string` | да | — |
+| `url` | `string \| null` | нет | — |
+
 ## TwoFAConfirmRequest
 
 
@@ -1596,8 +1573,6 @@ Union не годится: pydantic должен знать точный тип 
 | `loc` | `list[string \| integer]` | да | — |
 | `msg` | `string` | да | — |
 | `type` | `string` | да | — |
-| `input` | `object` | нет | — |
-| `ctx` | `object` | нет | — |
 
 ## VulnerabilityAssetCreate
 

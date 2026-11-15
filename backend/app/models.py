@@ -251,7 +251,6 @@ class Project(Base, TimestampMixin):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     folder: Mapped[str] = mapped_column(String(255), nullable=False, default="", server_default="")
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)
     start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     timeline_frozen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -267,7 +266,9 @@ class Project(Base, TimestampMixin):
     appsec_component_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     appsec_version_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
     appsec_version_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    appsec_versions: Mapped[list[dict]] = mapped_column(JSON, nullable=False, default=list, server_default="[]")
     appsec_assignee: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    appsec_assignee_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # Связанный AppSec-тикет из раздела Tasks (ссылка подставляется в отчёт «по задаче …»).
     appsec_ticket_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     appsec_ticket_key: Mapped[str | None] = mapped_column(String(64), nullable=True)
@@ -303,33 +304,6 @@ class ProjectMember(Base):
     project_id: Mapped[int] = mapped_column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     added_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-
-
-class JiraInstance(Base, TimestampMixin):
-    """Глобальная конфигурация Jira для backend-only интеграции."""
-
-    __tablename__ = "jira_instances"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(String(255), nullable=False, default="default", server_default="default")
-    base_url: Mapped[str] = mapped_column(String(1024), nullable=False)
-    email: Mapped[str] = mapped_column(String(255), nullable=False)
-    api_token_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
-    default_issue_type: Mapped[str] = mapped_column(String(100), nullable=False, default="Task", server_default="Task")
-    is_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
-    created_by: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
-
-
-class ProjectJiraLink(Base, TimestampMixin):
-    """Привязка проекта STORM к Jira project key."""
-
-    __tablename__ = "project_jira_links"
-    __table_args__ = (UniqueConstraint("project_id", name="uq_project_jira_link_project"),)
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    project_id: Mapped[int] = mapped_column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
-    jira_project_key: Mapped[str] = mapped_column(String(32), nullable=False)
-    created_by: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
 
 
 class ProjectNote(Base, TimestampMixin):
@@ -762,25 +736,6 @@ class VulnerabilityAsset(Base):
     asset_id: Mapped[int] = mapped_column(Integer, nullable=False)
 
 
-class JiraIssueLink(Base, TimestampMixin):
-    """Связь уязвимости STORM с issue в Jira."""
-
-    __tablename__ = "jira_issue_links"
-    __table_args__ = (UniqueConstraint("vulnerability_id", name="uq_jira_issue_link_vulnerability"),)
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    vulnerability_id: Mapped[int] = mapped_column(
-        Integer,
-        ForeignKey("vulnerabilities.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
-    jira_issue_key: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
-    jira_issue_url: Mapped[str] = mapped_column(String(1024), nullable=False)
-    status: Mapped[str] = mapped_column(String(32), nullable=False, default="linked", server_default="linked")
-    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
-
-
 class WorksIssueLink(Base, TimestampMixin):
     """Связь уязвимости STORM с тикетом bug_appsec в Works (STS)."""
 
@@ -880,6 +835,8 @@ class Notification(Base):
     actor_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     status: Mapped[str | None] = mapped_column(String(50), nullable=True)
     is_read: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
+    context_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    dedupe_key: Mapped[str | None] = mapped_column(String(255), nullable=True, unique=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 

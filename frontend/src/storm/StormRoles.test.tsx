@@ -10,7 +10,7 @@ import type { User, UserRole } from "../types";
 vi.mock("../api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../api")>();
   const mk = (id: number, name: string, status: string, createdBy: number) => ({
-    id, name, folder: "", description: `${name} — assessment`, start_date: "2026-04-27",
+    id, name, folder: "", start_date: "2026-04-27",
     end_date: "2026-07-27", timeline_frozen_at: null, status, created_by: createdBy,
     created_at: "2026-01-01T00:00:00Z", updated_at: "2026-07-10T00:00:00Z",
   });

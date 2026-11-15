@@ -178,7 +178,7 @@ async def test_host_creation_times_match_full_list_without_loading_children(api)
 async def test_host_creation_times_empty_and_project_access(api):
     from app.security import create_access_token
     client, ids = api
-    created = await client.post("projects", json={"name": "Empty chart"})
+    created = await client.post("projects", json={"name": "Empty chart", "appsec_ticket_key": "APPSEC-1"})
     assert created.status_code == 201, created.text
     response = await client.get(f"projects/{created.json()['id']}/host-creation-times")
     assert response.status_code == 200 and response.json() == []

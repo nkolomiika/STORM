@@ -1,3 +1,4 @@
+import { t, useLangStore } from "./i18n";
 /* STORM sign-in screen. Styled in the STORM design language and wired to the
    real backend auth via useAuthStore.signIn (POST /api/v1/auth/login). */
 
@@ -23,6 +24,7 @@ const SSO_ERROR_MESSAGES: Record<string, string> = {
 };
 
 export function StormLogin() {
+  useLangStore((s) => s.lang);
   const signIn = useAuthStore((s) => s.signIn);
   const completeTwoFactor = useAuthStore((s) => s.completeTwoFactor);
   const isLoading = useAuthStore((s) => s.isLoading);
@@ -54,7 +56,7 @@ export function StormLogin() {
       const params = new URLSearchParams(window.location.search);
       const code = params.get("sso_error");
       if (code) {
-        pushToast(SSO_ERROR_MESSAGES[code] ?? "Couldn't sign in with SSO.", "error");
+        pushToast(t(SSO_ERROR_MESSAGES[code] ?? "Couldn't sign in with SSO."), "error");
         // Убираем параметр из URL, чтобы тост не повторялся при перезагрузке.
         params.delete("sso_error");
         const query = params.toString();
@@ -84,7 +86,7 @@ export function StormLogin() {
       // поэтому и текст подтверждения намеренно нейтральный.
       setStage("forgotSent");
     } catch (err) {
-      pushToast(getApiErrorMessage(err, "Couldn't send the reset link"), "error");
+      pushToast(t(getApiErrorMessage(err, "Couldn't send the reset link")), "error");
     } finally {
       setResetBusy(false);
     }
@@ -109,7 +111,7 @@ export function StormLogin() {
     } catch (err) {
       // Surface the (now status-aware) error as a bottom-right toast.
       const message = err instanceof Error && err.message.trim() ? err.message : "Couldn't sign in";
-      pushToast(message, "error");
+      pushToast(t(message), "error");
     }
   };
 
@@ -121,7 +123,7 @@ export function StormLogin() {
       // On success the auth store sets `user`; StormRoot swaps in the app.
     } catch (err) {
       const message = err instanceof Error && err.message.trim() ? err.message : "Couldn't verify the code";
-      pushToast(message, "error");
+      pushToast(t(message), "error");
     }
   };
 
@@ -143,15 +145,15 @@ export function StormLogin() {
 
           {stage === "credentials" ? (
             <form onSubmit={handleSubmit} style={{ background: "var(--st-surface)", border: "1px solid var(--st-border-light)", borderRadius: 20, boxShadow: "0 24px 60px rgba(15,27,45,.10)", padding: "32px 34px 30px" }}>
-              <h1 style={{ margin: "0 0 22px", fontSize: 26, fontWeight: 800, letterSpacing: "-.6px", color: "var(--st-text)" }}>Sign in</h1>
+              <h1 style={{ margin: "0 0 22px", fontSize: 26, fontWeight: 800, letterSpacing: "-.6px", color: "var(--st-text)" }}>{t("Sign in")}</h1>
 
               <div style={{ marginBottom: 15 }}>
-                <label className="flabel" htmlFor="storm-user">Username</label>
+                <label className="flabel" htmlFor="storm-user">{t("Username")}</label>
                 <input id="storm-user" className="finp" autoComplete="username" placeholder="ivanov" value={username} onChange={(e) => setUsername(e.target.value)} />
               </div>
               <div style={{ marginBottom: 22 }}>
-                <label className="flabel" htmlFor="storm-pass">Password</label>
-                <PasswordInput id="storm-pass" autoComplete="current-password" placeholder="••••••••" value={password} onChange={setPassword} />
+                <label className="flabel" htmlFor="storm-pass">{t("Password")}</label>
+                <PasswordInput id="storm-pass" autoComplete="current-password" placeholder={t("••••••••")} value={password} onChange={setPassword} />
               </div>
 
               <button
@@ -174,7 +176,7 @@ export function StormLogin() {
                   boxShadow: "none",
                 }}
               >
-                {isLoading ? "Signing in…" : "Sign in"}
+                {isLoading ? t("Signing in…") : t("Sign in")}
                 {!isLoading && <Icon name="chevron-right" size={16} color="var(--st-on-accent)" sw={2.4} />}
               </button>
 
@@ -183,15 +185,13 @@ export function StormLogin() {
                 className="clk"
                 onClick={() => setStage("forgot")}
                 style={{ width: "100%", marginTop: 12, height: 38, border: "none", borderRadius: 10, background: "transparent", color: "var(--st-text-2)", font: "600 13px Inter,sans-serif", cursor: "pointer" }}
-              >
-                Forgot password?
-              </button>
+              >{t("Forgot password?")} </button>
 
               {sso?.enabled && (
                 <>
                   <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "18px 0 14px" }}>
                     <span style={{ flex: 1, height: 1, background: "var(--st-border-light)" }} />
-                    <span style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: 1, color: "var(--st-text-faint)", textTransform: "uppercase" }}>or</span>
+                    <span style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: 1, color: "var(--st-text-faint)", textTransform: "uppercase" }}>{t("or")}</span>
                     <span style={{ flex: 1, height: 1, background: "var(--st-border-light)" }} />
                   </div>
                   <button
@@ -214,20 +214,18 @@ export function StormLogin() {
                     }}
                   >
                     <Icon name="shield-check" size={17} color="var(--st-accent)" sw={2} />
-                    {sso.button_label || "Sign in with SSO"}
+                    {sso.button_label || t("Sign in with SSO")}
                   </button>
                 </>
               )}
             </form>
           ) : stage === "forgot" ? (
             <form onSubmit={handleForgot} style={{ background: "var(--st-surface)", border: "1px solid var(--st-border-light)", borderRadius: 20, boxShadow: "0 24px 60px rgba(15,27,45,.10)", padding: "32px 34px 30px" }}>
-              <h1 style={{ margin: "0 0 8px", fontSize: 26, fontWeight: 800, letterSpacing: "-.6px", color: "var(--st-text)" }}>Reset password</h1>
-              <p style={{ margin: "0 0 22px", fontSize: 13.5, color: "var(--st-text-2)", lineHeight: 1.5 }}>
-                Enter the email address of your account — we'll send you a link to set a new password.
-              </p>
+              <h1 style={{ margin: "0 0 8px", fontSize: 26, fontWeight: 800, letterSpacing: "-.6px", color: "var(--st-text)" }}>{t("Reset password")}</h1>
+              <p style={{ margin: "0 0 22px", fontSize: 13.5, color: "var(--st-text-2)", lineHeight: 1.5 }}>{t("Enter the email address of your account — we'll send you a link to set a new password.")} </p>
 
               <div style={{ marginBottom: 22 }}>
-                <label className="flabel" htmlFor="storm-reset-email">Email</label>
+                <label className="flabel" htmlFor="storm-reset-email">{t("Email")}</label>
                 <input
                   id="storm-reset-email"
                   className="finp"
@@ -260,7 +258,7 @@ export function StormLogin() {
                   boxShadow: "0 6px 18px rgba(46,95,191,.28)",
                 }}
               >
-                {resetBusy ? "Sending…" : "Send reset link"}
+                {resetBusy ? t("Sending…") : t("Send reset link")}
                 {!resetBusy && <Icon name="chevron-right" size={16} color="var(--st-on-accent)" sw={2.4} />}
               </button>
 
@@ -269,9 +267,7 @@ export function StormLogin() {
                 className="clk"
                 onClick={backToLogin}
                 style={{ width: "100%", marginTop: 12, height: 40, border: "none", borderRadius: 10, background: "transparent", color: "var(--st-text-2)", font: "600 13px Inter,sans-serif", cursor: "pointer" }}
-              >
-                Back to sign in
-              </button>
+              >{t("Back to sign in")} </button>
             </form>
           ) : stage === "forgotSent" ? (
             <div style={{ background: "var(--st-surface)", border: "1px solid var(--st-border-light)", borderRadius: 20, boxShadow: "0 24px 60px rgba(15,27,45,.10)", padding: "32px 34px 30px" }}>
@@ -279,29 +275,25 @@ export function StormLogin() {
                 <span style={{ width: 42, height: 42, flex: "none", borderRadius: "50%", background: "var(--st-accent-soft)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <Icon name="mail" size={20} color="var(--st-accent)" sw={2} />
                 </span>
-                <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, letterSpacing: "-.5px", color: "var(--st-text)" }}>Check your email</h1>
+                <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, letterSpacing: "-.5px", color: "var(--st-text)" }}>{t("Check your email")}</h1>
               </div>
               {/* Формулировка намеренно не подтверждает существование аккаунта. */}
-              <p style={{ margin: "0 0 22px", fontSize: 13.5, color: "var(--st-text-2)", lineHeight: 1.6 }}>
-                If an account exists for <b style={{ color: "var(--st-text)" }}>{resetEmail.trim()}</b>, we've sent it a link to set a new password. The link is single-use and expires shortly.
-              </p>
+              <p style={{ margin: "0 0 22px", fontSize: 13.5, color: "var(--st-text-2)", lineHeight: 1.6 }}>{t("If an account exists for")} <b style={{ color: "var(--st-text)" }}>{resetEmail.trim()}</b>{t(", we've sent it a link to set a new password. The link is single-use and expires shortly.")} </p>
               <button
                 type="button"
                 className="clk"
                 onClick={backToLogin}
                 style={{ width: "100%", height: 46, border: "none", borderRadius: 12, background: "var(--st-accent)", color: "var(--st-on-accent)", font: "700 14px Inter,sans-serif", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 9 }}
-              >
-                Back to sign in
-                <Icon name="chevron-right" size={16} color="var(--st-on-accent)" sw={2.4} />
+              >{t("Back to sign in")} <Icon name="chevron-right" size={16} color="var(--st-on-accent)" sw={2.4} />
               </button>
             </div>
           ) : (
             <form onSubmit={handleVerify} style={{ background: "var(--st-surface)", border: "1px solid var(--st-border-light)", borderRadius: 20, boxShadow: "0 24px 60px rgba(15,27,45,.10)", padding: "32px 34px 30px" }}>
-              <h1 style={{ margin: "0 0 8px", fontSize: 26, fontWeight: 800, letterSpacing: "-.6px", color: "var(--st-text)" }}>Two-factor code</h1>
-              <p style={{ margin: "0 0 22px", fontSize: 13.5, color: "var(--st-text-2)", lineHeight: 1.5 }}>Enter the 6-digit code from your authenticator app.</p>
+              <h1 style={{ margin: "0 0 8px", fontSize: 26, fontWeight: 800, letterSpacing: "-.6px", color: "var(--st-text)" }}>{t("Two-factor code")}</h1>
+              <p style={{ margin: "0 0 22px", fontSize: 13.5, color: "var(--st-text-2)", lineHeight: 1.5 }}>{t("Enter the 6-digit code from your authenticator app.")}</p>
 
               <div style={{ marginBottom: 22 }}>
-                <label className="flabel" htmlFor="storm-2fa">Authentication code</label>
+                <label className="flabel" htmlFor="storm-2fa">{t("Authentication code")}</label>
                 <input
                   id="storm-2fa"
                   className="finp"
@@ -309,7 +301,7 @@ export function StormLogin() {
                   autoComplete="one-time-code"
                   autoFocus
                   maxLength={6}
-                  placeholder="000000"
+                  placeholder={t("000000")}
                   value={code}
                   onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
                   style={{ font: "700 18px 'JetBrains Mono',monospace", letterSpacing: 6, textAlign: "center" }}
@@ -336,7 +328,7 @@ export function StormLogin() {
                   boxShadow: "0 6px 18px rgba(46,95,191,.28)",
                 }}
               >
-                {isLoading ? "Verifying…" : "Verify"}
+                {isLoading ? t("Verifying…") : t("Verify")}
                 {!isLoading && <Icon name="chevron-right" size={16} color="var(--st-on-accent)" sw={2.4} />}
               </button>
 
@@ -345,9 +337,7 @@ export function StormLogin() {
                 className="clk"
                 onClick={backToCredentials}
                 style={{ width: "100%", marginTop: 12, height: 40, border: "none", borderRadius: 10, background: "transparent", color: "var(--st-text-2)", font: "600 13px Inter,sans-serif", cursor: "pointer" }}
-              >
-                Back to sign in
-              </button>
+              >{t("Back to sign in")} </button>
             </form>
           )}
         </div>
@@ -356,7 +346,7 @@ export function StormLogin() {
       <footer style={{ flex: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: 16, background: "transparent", fontSize: 12.5, color: "var(--st-text-faint)", flexWrap: "wrap" }}>
         <span style={{ fontWeight: 700, color: "var(--st-text-3)" }}>STORM</span>
         <span>·</span>
-        <span>Licensed to SberTech · Copyright © 2026. All rights reserved.</span>
+        <span>{t("Licensed to SberTech · Copyright © 2026. All rights reserved.")}</span>
       </footer>
     </div>
   );

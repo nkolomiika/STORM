@@ -2,11 +2,11 @@
 
 Сгенерировано из объявлений кода. [Правила чтения](../../../METHODS.md).
 
-Методов и именованных функций: **17**.
+Методов и именованных функций: **18**.
 
 ## _register_protected_docs
 
-[backend/app/main.py:60](../../../../backend/app/main.py#L60)
+[backend/app/main.py:64](../../../../backend/app/main.py#L64)
 
 ```python
 def _register_protected_docs(fastapi_app: FastAPI, *, openapi_route: str, docs_route: str, redoc_route: str) -> None
@@ -31,7 +31,7 @@ def _register_protected_docs(fastapi_app: FastAPI, *, openapi_route: str, docs_r
 
 ## _register_protected_docs._openapi_json
 
-[backend/app/main.py:71](../../../../backend/app/main.py#L71)
+[backend/app/main.py:75](../../../../backend/app/main.py#L75)
 
 ```python
 async def _openapi_json(_: object=Depends(get_current_user)) -> JSONResponse
@@ -63,7 +63,7 @@ fastapi_app.get(openapi_route, include_in_schema=False)
 
 ## _register_protected_docs._swagger_ui
 
-[backend/app/main.py:75](../../../../backend/app/main.py#L75)
+[backend/app/main.py:79](../../../../backend/app/main.py#L79)
 
 ```python
 async def _swagger_ui(request: Request, _: object=Depends(get_current_user)) -> не аннотирован
@@ -97,7 +97,7 @@ fastapi_app.get(docs_route, include_in_schema=False)
 
 ## _register_protected_docs._redoc
 
-[backend/app/main.py:80](../../../../backend/app/main.py#L80)
+[backend/app/main.py:84](../../../../backend/app/main.py#L84)
 
 ```python
 async def _redoc(request: Request, _: object=Depends(get_current_user)) -> не аннотирован
@@ -131,7 +131,7 @@ fastapi_app.get(redoc_route, include_in_schema=False)
 
 ## _register_routes
 
-[backend/app/main.py:93](../../../../backend/app/main.py#L93)
+[backend/app/main.py:97](../../../../backend/app/main.py#L97)
 
 ```python
 def _register_routes() -> None
@@ -153,7 +153,7 @@ def _register_routes() -> None
 
 ## _register_error_handlers
 
-[backend/app/main.py:128](../../../../backend/app/main.py#L128)
+[backend/app/main.py:132](../../../../backend/app/main.py#L132)
 
 ```python
 def _register_error_handlers() -> None
@@ -172,7 +172,7 @@ def _register_error_handlers() -> None
 
 ## _register_error_handlers._format_request_validation
 
-[backend/app/main.py:129](../../../../backend/app/main.py#L129)
+[backend/app/main.py:133](../../../../backend/app/main.py#L133)
 
 ```python
 def _format_request_validation(exc: RequestValidationError) -> str
@@ -201,7 +201,7 @@ def _format_request_validation(exc: RequestValidationError) -> str
 
 ## _register_error_handlers.request_validation_handler
 
-[backend/app/main.py:154](../../../../backend/app/main.py#L154)
+[backend/app/main.py:158](../../../../backend/app/main.py#L158)
 
 ```python
 async def request_validation_handler(_: Request, exc: RequestValidationError) -> JSONResponse
@@ -226,7 +226,7 @@ async def request_validation_handler(_: Request, exc: RequestValidationError) ->
 
 ## _register_error_handlers.not_found_handler
 
-[backend/app/main.py:157](../../../../backend/app/main.py#L157)
+[backend/app/main.py:161](../../../../backend/app/main.py#L161)
 
 ```python
 async def not_found_handler(_: Request, exc: NotFoundError) -> JSONResponse
@@ -251,7 +251,7 @@ async def not_found_handler(_: Request, exc: NotFoundError) -> JSONResponse
 
 ## _register_error_handlers.unauthorized_handler
 
-[backend/app/main.py:160](../../../../backend/app/main.py#L160)
+[backend/app/main.py:164](../../../../backend/app/main.py#L164)
 
 ```python
 async def unauthorized_handler(_: Request, exc: UnauthorizedError) -> JSONResponse
@@ -276,7 +276,7 @@ async def unauthorized_handler(_: Request, exc: UnauthorizedError) -> JSONRespon
 
 ## _register_error_handlers.forbidden_handler
 
-[backend/app/main.py:163](../../../../backend/app/main.py#L163)
+[backend/app/main.py:167](../../../../backend/app/main.py#L167)
 
 ```python
 async def forbidden_handler(_: Request, exc: ForbiddenError) -> JSONResponse
@@ -301,7 +301,7 @@ async def forbidden_handler(_: Request, exc: ForbiddenError) -> JSONResponse
 
 ## _register_error_handlers.conflict_handler
 
-[backend/app/main.py:166](../../../../backend/app/main.py#L166)
+[backend/app/main.py:170](../../../../backend/app/main.py#L170)
 
 ```python
 async def conflict_handler(_: Request, exc: ConflictError) -> JSONResponse
@@ -326,7 +326,7 @@ async def conflict_handler(_: Request, exc: ConflictError) -> JSONResponse
 
 ## _register_error_handlers.validation_handler
 
-[backend/app/main.py:169](../../../../backend/app/main.py#L169)
+[backend/app/main.py:173](../../../../backend/app/main.py#L173)
 
 ```python
 async def validation_handler(_: Request, exc: ValidationError) -> JSONResponse
@@ -351,7 +351,7 @@ async def validation_handler(_: Request, exc: ValidationError) -> JSONResponse
 
 ## _register_error_handlers.app_error_handler
 
-[backend/app/main.py:172](../../../../backend/app/main.py#L172)
+[backend/app/main.py:176](../../../../backend/app/main.py#L176)
 
 ```python
 async def app_error_handler(_: Request, exc: StormError) -> JSONResponse
@@ -376,7 +376,7 @@ async def app_error_handler(_: Request, exc: StormError) -> JSONResponse
 
 ## startup
 
-[backend/app/main.py:193](../../../../backend/app/main.py#L193)
+[backend/app/main.py:197](../../../../backend/app/main.py#L197)
 
 ```python
 async def startup() -> None
@@ -396,8 +396,10 @@ async def startup() -> None
 - `SessionLocal`
 - `UserService`
 - `add_missing`
+- `asyncio.create_task`
 - `conn.execute`
 - `conn.run_sync`
+- `deadline_loop`
 - `engine.begin`
 - `service.bootstrap_admin`
 - `text`
@@ -406,7 +408,7 @@ async def startup() -> None
 
 ## startup.add_missing
 
-[backend/app/main.py:275](../../../../backend/app/main.py#L275)
+[backend/app/main.py:289](../../../../backend/app/main.py#L289)
 
 ```python
 async def add_missing(table: str, columns: dict[str, str]) -> None
@@ -433,9 +435,30 @@ SQLite не умеет ADD COLUMN IF NOT EXISTS — проверяем чере�
 
 </details>
 
+## shutdown_notifications
+
+[backend/app/main.py:349](../../../../backend/app/main.py#L349)
+
+```python
+async def shutdown_notifications() -> None
+```
+
+В теле вызывает `getattr`, `suppress`, `task.cancel`.
+
+Возвращает: `None`.
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `getattr`
+- `suppress`
+- `task.cancel`
+
+</details>
+
 ## health
 
-[backend/app/main.py:330](../../../../backend/app/main.py#L330)
+[backend/app/main.py:358](../../../../backend/app/main.py#L358)
 
 ```python
 async def health() -> dict

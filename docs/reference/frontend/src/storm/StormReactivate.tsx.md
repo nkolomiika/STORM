@@ -6,13 +6,13 @@
 
 ## StormReactivate
 
-[frontend/src/storm/StormReactivate.tsx:31](../../../../../frontend/src/storm/StormReactivate.tsx#L31)
+[frontend/src/storm/StormReactivate.tsx:32](../../../../../frontend/src/storm/StormReactivate.tsx#L32)
 
 ```typescript
 StormReactivate() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
 ```
 
-В теле вызывает `params.get`, `useAuthStore`, `useEffect`, `useSearchParams`, `useState`, `useToastStore`.
+В теле вызывает `params.get`, `t`, `useAuthStore`, `useEffect`, `useLangStore`, `useSearchParams`, `useState`, `useToastStore`.
 
 Возвращает: `import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element`.
 
@@ -20,8 +20,10 @@ StormReactivate() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/
 <summary>Прямые вызовы в теле</summary>
 
 - `params.get`
+- `t`
 - `useAuthStore`
 - `useEffect`
+- `useLangStore`
 - `useSearchParams`
 - `useState`
 - `useToastStore`
@@ -30,13 +32,13 @@ StormReactivate() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/
 
 ## StormReactivate.handleActivate
 
-[frontend/src/storm/StormReactivate.tsx:66](../../../../../frontend/src/storm/StormReactivate.tsx#L66)
+[frontend/src/storm/StormReactivate.tsx:68](../../../../../frontend/src/storm/StormReactivate.tsx#L68)
 
 ```typescript
 async handleActivate() => Promise<void>
 ```
 
-В теле вызывает `completeReactivation`, `getApiErrorMessage`, `pushToast`, `refreshUser`, `setSubmitting`.
+В теле вызывает `completeReactivation`, `getApiErrorMessage`, `pushToast`, `refreshUser`, `setSubmitting`, `t`.
 
 Возвращает: `Promise<void>`.
 
@@ -48,5 +50,6 @@ async handleActivate() => Promise<void>
 - `pushToast`
 - `refreshUser`
 - `setSubmitting`
+- `t`
 
 </details>

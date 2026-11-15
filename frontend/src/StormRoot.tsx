@@ -10,6 +10,7 @@ import { StormToaster } from "./storm/StormToaster";
 import { SberMark } from "./storm/icons";
 import { useAuthStore } from "./store";
 import { useThemeStore } from "./storm/theme";
+import { t, useLangStore } from "./storm/i18n";
 
 /** The signed-out URL. Everything else belongs to the authenticated app. */
 export const LOGIN_PATH = "/login";
@@ -26,11 +27,14 @@ export function StormRoot() {
   const isInitialized = useAuthStore((s) => s.isInitialized);
   const user = useAuthStore((s) => s.user);
   const theme = useThemeStore((s) => s.theme);
+  const lang = useLangStore((s) => s.lang);
   const navigate = useNavigate();
   const location = useLocation();
 
+  useEffect(() => { document.documentElement.lang = lang; }, [lang]);
+
   /* The dark theme is a signed-in preference: the login / activate / reset
-     screens always render light (and in English). Once auth resolves, reflect
+     screens always render light, using the saved language. Once auth resolves, reflect
      the saved theme for a signed-in user, else force light. Before it resolves
      we leave whatever initTheme() applied, so a signed-in dark user doesn't
      flash light on reload. */
@@ -71,7 +75,7 @@ export function StormRoot() {
     content = (
       <div className="storm" style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, background: "var(--st-bg)" }}>
         <SberMark size={40} />
-        <div className="mono" style={{ fontSize: 11, letterSpacing: 2, color: "var(--st-text-faint)", fontWeight: 700 }}>LOADING STORM…</div>
+        <div className="mono" style={{ fontSize: 11, letterSpacing: 2, color: "var(--st-text-faint)", fontWeight: 700 }}>{t("Loading STORM…")}</div>
       </div>
     );
   } else if (onActivate && !user) {

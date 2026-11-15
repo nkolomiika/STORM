@@ -1753,17 +1753,26 @@ def _fill_credentials_table(doc: DocxDocument, credentials: list[dict]) -> None:
         _fill_row(target.rows[prev_idx], cred)
 
 
-def _distrib_version(project: Project) -> str:
-    """Версия дистрибутива из поля затронутой версии проекта (`appsec_version_name`).
+def _report_version(name: str) -> str:
+    """Remove the product prefix only; preserve the entire original version suffix."""
+    match = re.search(r'(?<!\S)[vV]?\d+(?:\.\d+)+', name)
+    if match is None:
+        match = re.search(r'(?<!\S)[vV]?\d+(?:[-+][^\s]*)?\s*$', name)
+    return name[match.start():].strip() if match else ''
 
-    Значения приходят в формате «Platform V PRODUCT 1.1» — нас интересует только
-    номер версии в конце. Разбиваем по пробелам и берём последний токен
-    («1.1»). Пусто/нет данных → "" (плейсхолдер в шаблоне не трогаем).
+
+def _distrib_version(project: Project) -> str:
+    """Версии дистрибутива из массива appsec_versions (старое поле — fallback).
+
+    Из «Platform V Stack 1.0.2-beta.2» берём целиком «1.0.2-beta.2».
+    Название продукта убирается только в отчёте; исходные значения не меняются.
+    Версии перечисляем через запятую. Нет данных → "" (не трогаем плейсхолдер).
     """
-    raw = (getattr(project, "appsec_version_name", None) or "").strip()
-    if not raw:
-        return ""
-    return raw.split()[-1]
+    versions = getattr(project, 'appsec_versions', None) or []
+    names = [str(item.get('name') or item.get('code') or '').strip() for item in versions if isinstance(item, dict)]
+    if not names:
+        names = [(getattr(project, "appsec_version_name", None) or "").strip()]
+    return ", ".join(dict.fromkeys(number for name in names if (number := _report_version(name))))
 
 
 def _update_cover_distrib_version(doc: DocxDocument, project: Project) -> None:
@@ -2891,6 +2900,33 @@ def _build_test_procedures_list(doc: DocxDocument, items: list[Vulnerability]) -
             parent.remove(ellipsis_paragraph._element)
 
 
+def _fill_analysis_result_placeholders(doc: DocxDocument) -> None:
+    """Заменяет многоточия в 4.3.1/4.3.3 жёлтыми подсказками для заполнения.
+
+    Заполненный текст и соседний раздел анализа поверхности атаки не меняются.
+    """
+    prompts = {
+        "Результаты анализа архитектуры ПП": "Заполните результаты анализа архитектуры ПП",
+        "Результаты анализа модели угроз ПП": "Заполните результаты анализа модели угроз ПП",
+    }
+    for heading in doc.paragraphs:
+        if _heading_level(heading) != 3:
+            continue
+        label = _normalize_label(heading.text)
+        prompt = next((value for prefix, value in prompts.items() if label.startswith(_normalize_label(prefix))), None)
+        if prompt is None:
+            continue
+        for element in _block_elements_until_heading(heading, max_stop_level=3)[1:]:
+            if element.tag != qn('w:p'):
+                continue
+            paragraph = Paragraph(element, heading._parent)
+            if paragraph.text.strip() not in {'...', '…'}:
+                continue
+            _set_paragraph_text(paragraph, prompt)
+            for run in paragraph.runs:
+                _apply_run_highlight(run, 'yellow')
+
+
 # ----------------------------- Раздел 4.4 «Выполнение тестов» -----------------------------
 
 # Подписи разделов внутри карточки теста (проза после H4).
@@ -2970,6 +3006,7 @@ def _fill_test_card(
     H4 → «Тест на проникновение Test-N «<title>»».
     «Описание теста:» → vuln.impact (описание воздействия/уязвимости).
     «Шаги при проведении теста:» → этапы без картинок.
+    «Ожидаемый результат:» → жёлтая подсказка «Заполните ожидаемый результат».
     «Фактический результат:» → этапы с картинками.
     «Вывод:» → краткий шаблонный итог.
     """
@@ -3010,13 +3047,15 @@ def _fill_test_card(
         lines=[_step_one_line(idx, step) for idx, step in enumerate(workflow_steps, start=1)] if workflow_steps else [],
         strip_numbering=True,
     )
-    # «Ожидаемый результат:» в шаблоне содержит примеры с жёстко прописанным
-    # «Test–1». Поскольку реальных данных у нас нет, очищаем содержимое раздела
-    # одним «…», чтобы исключить путаницу с шаблонным номером.
-    content_paragraphs += _replace_section_with_lines(
+    # Ожидаемый результат заполняется вручную; шаблонный пример не переносим.
+    expected_paragraphs = _replace_section_with_lines(
         paragraphs=sections.get(TEST_EXPECTED_HEADER, []),
-        lines=[],
+        lines=["Заполните ожидаемый результат"],
     )
+    for paragraph in expected_paragraphs:
+        for run in paragraph.runs:
+            _apply_run_highlight(run, "yellow")
+    content_paragraphs += expected_paragraphs
     content_paragraphs += _fill_actual_result_section(
         paragraphs=sections.get(TEST_ACTUAL_HEADER, []),
         steps=workflow_steps,
@@ -3276,6 +3315,8 @@ def _build_common(
         _update_object_under_test(doc, project, hosts)
     _update_test_stand_paragraphs(doc, hosts)
     _update_pp_headings(doc, project)
+    if kind == "szi":
+        _fill_analysis_result_placeholders(doc)
     _update_footers_and_headers(doc, project)
 
     # Сортируем находки по хосту и убыванию критичности — в этом порядке они

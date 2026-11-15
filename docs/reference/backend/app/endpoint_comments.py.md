@@ -6,7 +6,7 @@
 
 ## EndpointCommentService.__init__
 
-[backend/app/endpoint_comments.py:11](../../../../backend/app/endpoint_comments.py#L11)
+[backend/app/endpoint_comments.py:12](../../../../backend/app/endpoint_comments.py#L12)
 
 ```python
 def __init__(self, db: AsyncSession) -> None
@@ -22,7 +22,7 @@ def __init__(self, db: AsyncSession) -> None
 
 ## EndpointCommentService._ensure_endpoint
 
-[backend/app/endpoint_comments.py:14](../../../../backend/app/endpoint_comments.py#L14)
+[backend/app/endpoint_comments.py:15](../../../../backend/app/endpoint_comments.py#L15)
 
 ```python
 async def _ensure_endpoint(self, project_id: int, host_id: int, endpoint_id: int) -> None
@@ -59,7 +59,7 @@ NotFoundError('Endpoint не найден')
 
 ## EndpointCommentService._out
 
-[backend/app/endpoint_comments.py:24](../../../../backend/app/endpoint_comments.py#L24)
+[backend/app/endpoint_comments.py:25](../../../../backend/app/endpoint_comments.py#L25)
 
 ```python
 def _out(comment: EndpointComment, user: User) -> EndpointCommentOut
@@ -83,7 +83,7 @@ def _out(comment: EndpointComment, user: User) -> EndpointCommentOut
 
 ## EndpointCommentService.list
 
-[backend/app/endpoint_comments.py:31](../../../../backend/app/endpoint_comments.py#L31)
+[backend/app/endpoint_comments.py:32](../../../../backend/app/endpoint_comments.py#L32)
 
 ```python
 async def list(self, project_id: int, host_id: int, endpoint_id: int, page: int, size: int) -> tuple[list[EndpointCommentOut], int]
@@ -127,7 +127,7 @@ async def list(self, project_id: int, host_id: int, endpoint_id: int, page: int,
 
 ## EndpointCommentService.create
 
-[backend/app/endpoint_comments.py:43](../../../../backend/app/endpoint_comments.py#L43)
+[backend/app/endpoint_comments.py:44](../../../../backend/app/endpoint_comments.py#L44)
 
 ```python
 async def create(self, project_id: int, host_id: int, endpoint_id: int, content: str, actor: User) -> EndpointCommentOut
@@ -152,6 +152,8 @@ async def create(self, project_id: int, host_id: int, endpoint_id: int, content:
 
 - `AuditLog`
 - `EndpointComment`
+- `notification_events.publish`
+- `notification_events.queue_mentions`
 - `self._ensure_endpoint`
 - `self._out`
 - `self.db.add`

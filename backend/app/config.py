@@ -119,39 +119,6 @@ class Settings(BaseSettings):
     # аккаунт и сразу даёт сессию, поэтому окно тоже держим коротким (сутки).
     reactivation_expire_hours: int = 24
 
-    # --- Jira: единая интеграция на уровне деплоя (не настраивается через веб) ---
-    jira_base_url: str = ""
-    jira_email: str = ""
-    jira_api_token: str = ""
-    jira_default_issue_type: str = "Task"
-    # Все задачи создаются в этом Jira-проекте (напр. "SEC").
-    jira_default_project_key: str = ""
-    # Раздел «Tasks» — read-only витрина запросов на АЗ из пространства APPSEC
-    # (их мы привязываем к проекту; уязвимости же пушатся в STS, см. Works ниже).
-    jira_tasks_project_key: str = "APPSEC"
-    jira_enabled: bool = True
-    # Дата начала = сегодня, срок выполнения = сегодня + jira_due_in_days.
-    # ID поля «Дата начала» специфичен для сайта (кастомное поле); пусто = не проставлять.
-    jira_start_date_field: str = "customfield_10015"
-    jira_due_in_days: int = 14
-    # --- Jira REST: версия API, аутентификация и ПУТИ эндпоинтов вынесены в env,
-    # чтобы подключить инстанс с немного другим API без правки кода. {version} и
-    # {key} подставляются автоматически. Значения по умолчанию = Jira Cloud (v3):
-    #   • Cloud:      версия 3, basic (email+token), поиск GET /search/jql
-    #   • Server/DC:  версия 2, bearer (PAT),        поиск POST /search
-    jira_api_version: str = "3"
-    jira_auth_type: str = "basic"  # basic (email+token) | bearer (PAT)
-    jira_search_path: str = "/rest/api/{version}/search/jql"
-    jira_search_method: str = "GET"  # GET (Cloud /search/jql) | POST (классический /search)
-    jira_issue_path: str = "/rest/api/{version}/issue/{key}"
-    jira_create_issue_path: str = "/rest/api/{version}/issue"
-    # Человекочитаемая ссылка на созданную через экспорт задачу (Works, STS).
-    # base = jira_base_url (напр. https://portal.works.prod.sbt).
-    jira_browse_path: str = "/swtr/units/current/unit/{key}?space=STS&tenant=default"
-    # Ссылка на задачу РАЗДЕЛА «Tasks» — это запрос на АЗ из пространства APPSEC;
-    # используется как appsec_ticket_url проекта (идёт в отчёт «по задаче …»).
-    jira_tasks_browse_path: str = "/swtr/units/current/unit/{key}?space=APPSEC&tenant=default"
-
     # --- Works (sbertrack) — экспорт устранения уязвимостей в пространство STS,
     # suit bug_appsec. Аутентификация как в qg-sa: Bearer-токен сервисной учётки +
     # статическая cookie. Пути эндпоинтов вынесены в env (подстраиваемы без правки
@@ -178,6 +145,12 @@ class Settings(BaseSettings):
     works_version_find_path: str = "/extension/plugin/v2/rest/api/swtr_task_tracker_plugin/v1/version/find"
     # Поиск юнитов по ключам — для получения текущего workflow_status тикета (как в qg-sa).
     works_unit_find_path: str = "/rest/api/unit/v3/find"
+    works_tasks_space: str = "APPSEC"
+    works_tasks_search_path: str = "/rest/api/unit/v3/find"
+    # Exact body from this Task Tracker deployment; no incompatible API fallback.
+    works_tasks_search_body: dict | None = None
+    # Explicit local UI fixture source; never a fallback for a failed real API.
+    works_tasks_demo_file: str = ""
     # Ссылка на тикет в UI Works ({key}/{space} подставляются).
     works_issue_url_template: str = "https://portal.works.prod.sbt/swtr/units/current/unit/{key}?space={space}&tenant=default"
 
@@ -277,11 +250,6 @@ class Settings(BaseSettings):
     # Максимум целей на один скан (nmap запускается одной командой на пачку).
     portscan_max_targets: int = 64
 
-    @property
-    def jira_configured(self) -> bool:
-        """Заданы ли все обязательные параметры подключения к Jira."""
-        return bool(self.jira_base_url and self.jira_email and self.jira_api_token)
-
     @field_validator("sso_verify_tls", "works_verify_ssl", mode="before")
     @classmethod
     def _parse_sso_verify_tls(cls, v):
@@ -341,7 +309,7 @@ class Settings(BaseSettings):
     @property
     def works_configured(self) -> bool:
         """Достаточно ли настроек, чтобы экспортировать тикеты в Works."""
-        return bool(self.works_enabled and self.works_api_token.strip() and self.works_base_url.strip())
+        return bool(not self.works_tasks_demo_file and self.works_enabled and self.works_api_token.strip() and self.works_base_url.strip())
 
     @property
     def works_cookies_dict(self) -> dict[str, str]:

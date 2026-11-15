@@ -1,3 +1,4 @@
+import { t, useLangStore } from "./i18n";
 /* STORM «забыли пароль» — шаг 2: установка нового пароля по ссылке из письма.
    Публичная страница (без сессии). Ссылка одноразовая: после успешной смены
    бэкенд гасит токен и отзывает все активные сессии, поэтому дальше уводим
@@ -27,6 +28,7 @@ const card: React.CSSProperties = {
 };
 
 export function StormResetPassword() {
+  useLangStore((s) => s.lang);
   const [params] = useSearchParams();
   const token = params.get("token") ?? "";
   const navigate = useNavigate();
@@ -73,11 +75,11 @@ export function StormResetPassword() {
     setSubmitting(true);
     try {
       await confirmPasswordReset(token, password);
-      pushToast("Password updated — sign in with your new password", "success");
+      pushToast(t("Password updated — sign in with your new password"), "success");
       navigate("/login", { replace: true });
     } catch (err) {
       setSubmitting(false);
-      pushToast(getApiErrorMessage(err, "Couldn't reset the password"), "error");
+      pushToast(t(getApiErrorMessage(err, "Couldn't reset the password")), "error");
     }
   };
 
@@ -91,40 +93,37 @@ export function StormResetPassword() {
           </div>
 
           {loading ? (
-            <div style={{ ...card, textAlign: "center", color: "var(--st-text-3)", fontSize: 14 }}>Checking the link…</div>
+            <div style={{ ...card, textAlign: "center", color: "var(--st-text-3)", fontSize: 14 }}>{t("Checking the link…")}</div>
           ) : !info?.valid ? (
             <div style={card}>
-              <h1 style={{ margin: "0 0 12px", fontSize: 24, fontWeight: 800, letterSpacing: "-.5px", color: "var(--st-text)" }}>Invalid link</h1>
+              <h1 style={{ margin: "0 0 12px", fontSize: 24, fontWeight: 800, letterSpacing: "-.5px", color: "var(--st-text)" }}>{t("Invalid link")}</h1>
               <p style={{ margin: "0 0 22px", fontSize: 13.5, color: "var(--st-text-2)", lineHeight: 1.55 }}>
-                {REASON_TEXT[info?.reason ?? "not_found"] ?? REASON_TEXT.not_found}
+                {t(REASON_TEXT[info?.reason ?? "not_found"] ?? REASON_TEXT.not_found)}
               </p>
               <button
                 type="button"
                 className="clk"
                 onClick={() => navigate("/login", { replace: true })}
                 style={{ display: "inline-flex", alignItems: "center", gap: 8, height: 44, padding: "0 20px", border: "none", borderRadius: 12, background: "var(--st-accent)", color: "var(--st-on-accent)", font: "700 14px Inter,sans-serif", cursor: "pointer" }}
-              >
-                Go to sign in
-                <Icon name="chevron-right" size={16} color="var(--st-on-accent)" sw={2.4} />
+              >{t("Go to sign in")} <Icon name="chevron-right" size={16} color="var(--st-on-accent)" sw={2.4} />
               </button>
             </div>
           ) : (
             <form onSubmit={handleSubmit} style={card}>
-              <h1 style={{ margin: "0 0 8px", fontSize: 26, fontWeight: 800, letterSpacing: "-.6px", color: "var(--st-text)" }}>Set a new password</h1>
-              <p style={{ margin: "0 0 22px", fontSize: 13.5, color: "var(--st-text-2)", lineHeight: 1.5 }}>
-                For account <b style={{ color: "var(--st-text)" }}>{info.username}</b>.
+              <h1 style={{ margin: "0 0 8px", fontSize: 26, fontWeight: 800, letterSpacing: "-.6px", color: "var(--st-text)" }}>{t("Set a new password")}</h1>
+              <p style={{ margin: "0 0 22px", fontSize: 13.5, color: "var(--st-text-2)", lineHeight: 1.5 }}>{t("For account")} <b style={{ color: "var(--st-text)" }}>{info.username}</b>.
               </p>
 
               <div style={{ marginBottom: 15 }}>
-                <label className="flabel" htmlFor="rp-pass">New password</label>
-                <PasswordInput id="rp-pass" autoComplete="new-password" autoFocus placeholder="at least 8 characters" value={password} onChange={setPassword} />
+                <label className="flabel" htmlFor="rp-pass">{t("New password")}</label>
+                <PasswordInput id="rp-pass" autoComplete="new-password" autoFocus placeholder={t("at least 8 characters")} value={password} onChange={setPassword} />
               </div>
 
               <div style={{ marginBottom: 22 }}>
-                <label className="flabel" htmlFor="rp-confirm">Confirm password</label>
-                <PasswordInput id="rp-confirm" autoComplete="new-password" placeholder="repeat the password" value={confirm} onChange={setConfirm} />
+                <label className="flabel" htmlFor="rp-confirm">{t("Confirm password")}</label>
+                <PasswordInput id="rp-confirm" autoComplete="new-password" placeholder={t("repeat the password")} value={confirm} onChange={setConfirm} />
                 {confirm.length > 0 && !confirmValid && (
-                  <div style={{ marginTop: 6, fontSize: 12, fontWeight: 600, color: "var(--st-danger)" }}>Passwords don't match</div>
+                  <div style={{ marginTop: 6, fontSize: 12, fontWeight: 600, color: "var(--st-danger)" }}>{t("Passwords don't match")}</div>
                 )}
               </div>
 
@@ -148,7 +147,7 @@ export function StormResetPassword() {
                   boxShadow: "0 6px 18px rgba(46,95,191,.28)",
                 }}
               >
-                {submitting ? "Saving…" : "Save password"}
+                {submitting ? t("Saving…") : t("Save password")}
                 {!submitting && <Icon name="chevron-right" size={16} color="var(--st-on-accent)" sw={2.4} />}
               </button>
             </form>
@@ -159,7 +158,7 @@ export function StormResetPassword() {
       <footer style={{ flex: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: 16, fontSize: 12.5, color: "var(--st-text-faint)", flexWrap: "wrap" }}>
         <span style={{ fontWeight: 700, color: "var(--st-text-3)" }}>STORM</span>
         <span>·</span>
-        <span>Licensed to SberTech · Copyright © 2026. All rights reserved.</span>
+        <span>{t("Licensed to SberTech · Copyright © 2026. All rights reserved.")}</span>
       </footer>
     </div>
   );

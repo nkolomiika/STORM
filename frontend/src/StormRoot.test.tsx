@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { vi } from "vitest";
 import { MemoryRouter, useLocation } from "react-router-dom";
 
@@ -56,7 +56,7 @@ describe("StormRoot auth gate", () => {
   it("sends a signed-out visitor to /login", async () => {
     useAuthStore.setState({ user: null, isInitialized: true });
     renderAt("/projects/1/vulns");
-    expect(await screen.findByTestId("path")).toHaveTextContent("/login");
+    await waitFor(() => expect(screen.getByTestId("path")).toHaveTextContent("/login"));
   });
 
   it("keeps a signed-in user on their deep link", async () => {
@@ -75,7 +75,7 @@ describe("StormRoot auth gate", () => {
   it("moves a signed-in user off /login", async () => {
     useAuthStore.setState({ user: admin, isInitialized: true });
     renderAt("/login");
-    expect(await screen.findByTestId("path")).toHaveTextContent("/projects");
+    await waitFor(() => expect(screen.getByTestId("path")).toHaveTextContent("/projects"));
   });
 
   // Logout must change the URL too, not just swap the rendered screen.
@@ -86,7 +86,7 @@ describe("StormRoot auth gate", () => {
 
     fireEvent.click(await screen.findByText("Logout"));
 
-    expect(await screen.findByTestId("path")).toHaveTextContent("/login");
+    await waitFor(() => expect(screen.getByTestId("path")).toHaveTextContent("/login"));
     expect(useAuthStore.getState().user).toBeNull();
   });
 });

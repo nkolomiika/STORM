@@ -13,10 +13,10 @@ from pathlib import Path
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 EXTERNAL_MODULES = {
     "app/cloudflare.py", "app/mail.py", "app/messaging.py", "app/oidc.py",
-    "app/works.py", "app/storage/minio_client.py", "app/worker/mail_worker.py",
-    "app/routers/jira.py", "app/routers/works.py",
+    "app/works.py", "app/task_tracker.py", "app/storage/minio_client.py", "app/worker/mail_worker.py",
+    "app/routers/task_tracker.py", "app/routers/works.py",
 }
-EXTERNAL_SERVICE_CLASSES = {"JiraCredentials", "_SafeJiraTransport", "JiraIntegrationService", "WorksService"}
+EXTERNAL_SERVICE_CLASSES = {"WorksService"}
 EXTERNAL_AUTH_METHODS = {"login_via_sso", "_provision_sso_user", "_unique_username"}
 
 

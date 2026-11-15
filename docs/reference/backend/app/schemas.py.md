@@ -2,7 +2,7 @@
 
 Сгенерировано из объявлений кода. [Правила чтения](../../../METHODS.md).
 
-Методов и именованных функций: **14**.
+Методов и именованных функций: **15**.
 
 ## InputBaseModel.normalize_strings
 
@@ -106,7 +106,7 @@ ValueError('expires_at должен содержать часовой пояс')
 
 ## ProjectCreate.validate_dates
 
-[backend/app/schemas.py:334](../../../../backend/app/schemas.py#L334)
+[backend/app/schemas.py:342](../../../../backend/app/schemas.py#L342)
 
 ```python
 def validate_dates(self) -> 'ProjectCreate'
@@ -131,7 +131,7 @@ ValueError('Дата окончания проекта не может быть 
 
 ## ProjectUpdate.validate_dates
 
-[backend/app/schemas.py:356](../../../../backend/app/schemas.py#L356)
+[backend/app/schemas.py:366](../../../../backend/app/schemas.py#L366)
 
 ```python
 def validate_dates(self) -> 'ProjectUpdate'
@@ -154,9 +154,32 @@ ValueError('Дата окончания проекта не может быть 
 
 </details>
 
+## IpAddressChangeRequest.validate_ip
+
+[backend/app/schemas.py:577](../../../../backend/app/schemas.py#L577)
+
+```python
+def validate_ip(cls, value) -> не аннотирован
+```
+
+В теле вызывает `normalize_ip_literal`.
+
+| Параметр | Тип | По умолчанию | Назначение |
+| --- | --- | --- | --- |
+| `value` | `не аннотирован` | `обязательный` | Входное значение преобразования/проверки. |
+
+Возвращает: `не аннотирован`.
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `normalize_ip_literal`
+
+</details>
+
 ## HostIpAddressOut._empty_hostnames
 
-[backend/app/schemas.py:623](../../../../backend/app/schemas.py#L623)
+[backend/app/schemas.py:602](../../../../backend/app/schemas.py#L602)
 
 ```python
 def _empty_hostnames(cls, value: object) -> object
@@ -172,7 +195,7 @@ def _empty_hostnames(cls, value: object) -> object
 
 ## HostCreate.validate_target_defined
 
-[backend/app/schemas.py:639](../../../../backend/app/schemas.py#L639)
+[backend/app/schemas.py:618](../../../../backend/app/schemas.py#L618)
 
 ```python
 def validate_target_defined(self) -> 'HostCreate'
@@ -199,7 +222,7 @@ ValueError('Нужно указать хотя бы один ip_address или h
 
 ## EndpointCreate.validate_endpoint_target_defined
 
-[backend/app/schemas.py:772](../../../../backend/app/schemas.py#L772)
+[backend/app/schemas.py:751](../../../../backend/app/schemas.py#L751)
 
 ```python
 def validate_endpoint_target_defined(self) -> 'EndpointCreate'
@@ -224,7 +247,7 @@ ValueError('Нужно указать path или request_raw')
 
 ## EndpointOut._coerce_optional_list
 
-[backend/app/schemas.py:804](../../../../backend/app/schemas.py#L804)
+[backend/app/schemas.py:783](../../../../backend/app/schemas.py#L783)
 
 ```python
 def _coerce_optional_list(cls, value: object) -> object
@@ -240,7 +263,7 @@ def _coerce_optional_list(cls, value: object) -> object
 
 ## VulnerabilityCreate.validate_cvss_version
 
-[backend/app/schemas.py:838](../../../../backend/app/schemas.py#L838)
+[backend/app/schemas.py:817](../../../../backend/app/schemas.py#L817)
 
 ```python
 def validate_cvss_version(cls, value: CvssVersion | None) -> CvssVersion | None
@@ -269,7 +292,7 @@ ValueError('Поддерживается только CVSS 4.0')
 
 ## VulnerabilityUpdate.validate_cvss_version
 
-[backend/app/schemas.py:860](../../../../backend/app/schemas.py#L860)
+[backend/app/schemas.py:839](../../../../backend/app/schemas.py#L839)
 
 ```python
 def validate_cvss_version(cls, value: CvssVersion | None) -> CvssVersion | None
@@ -298,7 +321,7 @@ ValueError('Поддерживается только CVSS 4.0')
 
 ## JsFileOut._empty_endpoints
 
-[backend/app/schemas.py:1169](../../../../backend/app/schemas.py#L1169)
+[backend/app/schemas.py:1160](../../../../backend/app/schemas.py#L1160)
 
 ```python
 def _empty_endpoints(cls, value: object) -> object
@@ -314,7 +337,7 @@ def _empty_endpoints(cls, value: object) -> object
 
 ## StormImportEndpoint.validate_target_defined
 
-[backend/app/schemas.py:1328](../../../../backend/app/schemas.py#L1328)
+[backend/app/schemas.py:1319](../../../../backend/app/schemas.py#L1319)
 
 ```python
 def validate_target_defined(self) -> 'StormImportEndpoint'
@@ -339,7 +362,7 @@ ValueError('Каждый endpoint должен содержать path или re
 
 ## StormImportHost.validate_target_defined
 
-[backend/app/schemas.py:1343](../../../../backend/app/schemas.py#L1343)
+[backend/app/schemas.py:1334](../../../../backend/app/schemas.py#L1334)
 
 ```python
 def validate_target_defined(self) -> 'StormImportHost'

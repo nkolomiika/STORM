@@ -1,9 +1,20 @@
 """Shared boundaries for untrusted request values and upload streams."""
 import math
+from ipaddress import ip_address
 
 from fastapi import HTTPException, Request, UploadFile
 
 MAX_RESOURCE_ID = 2**31 - 1
+
+
+def normalize_ip_literal(value: object) -> str:
+    """Принимает только IPv4/IPv6-литерал, без URL, порта или zone-id."""
+    if not isinstance(value, str) or '%' in value or len(value.strip()) > 45:
+        raise ValueError('Укажите корректный IPv4 или IPv6 адрес')
+    try:
+        return str(ip_address(value.strip()))
+    except ValueError as exc:
+        raise ValueError('Укажите корректный IPv4 или IPv6 адрес') from exc
 
 
 def validate_json_value(value: object, depth: int = 0) -> None:

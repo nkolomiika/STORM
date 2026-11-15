@@ -6,7 +6,7 @@
 
 ## StormRoot
 
-[frontend/src/StormRoot.tsx:24](../../../../frontend/src/StormRoot.tsx#L24)
+[frontend/src/StormRoot.tsx:25](../../../../frontend/src/StormRoot.tsx#L25)
 
 ```typescript
 StormRoot() => React.JSX.Element
@@ -19,8 +19,10 @@ Auth gate: initialise the session, then show the login screen or the app.
 <details>
 <summary>Прямые вызовы в теле</summary>
 
+- `t`
 - `useAuthStore`
 - `useEffect`
+- `useLangStore`
 - `useLocation`
 - `useNavigate`
 - `useThemeStore`

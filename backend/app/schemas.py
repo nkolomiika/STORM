@@ -16,7 +16,7 @@ from app.enums import (
     UserRole,
     VulnerabilityStatus,
 )
-from app.input_safety import MAX_RESOURCE_ID, validate_json_value
+from app.input_safety import MAX_RESOURCE_ID, normalize_ip_literal, validate_json_value
 
 
 class ORMBase(BaseModel):
@@ -316,17 +316,25 @@ class UserSearchOut(ORMBase):
     is_sso: bool = False
 
 
+class AppSecVersionRef(InputBaseModel):
+    code: str = Field(min_length=1, max_length=64)
+    name: str = Field(min_length=1, max_length=255)
+
+
 class ProjectCreate(InputBaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     name: str = Field(min_length=1, max_length=255)
     folder: str = Field(default="", max_length=255)
-    description: str | None = None
     start_date: date | None = None
     end_date: date | None = None
     appsec_component_code: str | None = Field(default=None, max_length=64)
     appsec_component_name: str | None = Field(default=None, max_length=255)
     appsec_version_code: str | None = Field(default=None, max_length=64)
     appsec_version_name: str | None = Field(default=None, max_length=255)
+    appsec_versions: list[AppSecVersionRef] = Field(default_factory=list, max_length=100)
     appsec_assignee: str | None = Field(default=None, max_length=255)
+    appsec_assignee_name: str | None = Field(default=None, max_length=255)
     appsec_ticket_url: str | None = Field(default=None, max_length=1024)
     appsec_ticket_key: str | None = Field(default=None, max_length=64)
 
@@ -336,11 +344,11 @@ class ProjectCreate(InputBaseModel):
             raise ValueError("Дата окончания проекта не может быть раньше даты начала")
         return self
 
-
 class ProjectUpdate(InputBaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     name: str | None = Field(default=None, min_length=1, max_length=255)
     folder: str | None = Field(default=None, max_length=255)
-    description: str | None = None
     start_date: date | None = None
     end_date: date | None = None
     status: ProjectStatus | None = None
@@ -348,7 +356,9 @@ class ProjectUpdate(InputBaseModel):
     appsec_component_name: str | None = Field(default=None, max_length=255)
     appsec_version_code: str | None = Field(default=None, max_length=64)
     appsec_version_name: str | None = Field(default=None, max_length=255)
+    appsec_versions: list[AppSecVersionRef] = Field(default_factory=list, max_length=100)
     appsec_assignee: str | None = Field(default=None, max_length=255)
+    appsec_assignee_name: str | None = Field(default=None, max_length=255)
     appsec_ticket_url: str | None = Field(default=None, max_length=1024)
     appsec_ticket_key: str | None = Field(default=None, max_length=64)
 
@@ -363,7 +373,6 @@ class ProjectOut(ORMBase):
     id: int
     name: str
     folder: str
-    description: str | None
     start_date: date | None
     end_date: date | None
     timeline_frozen_at: datetime | None
@@ -373,7 +382,9 @@ class ProjectOut(ORMBase):
     appsec_component_name: str | None = None
     appsec_version_code: str | None = None
     appsec_version_name: str | None = None
+    appsec_versions: list[AppSecVersionRef] = Field(default_factory=list)
     appsec_assignee: str | None = None
+    appsec_assignee_name: str | None = None
     appsec_ticket_url: str | None = None
     appsec_ticket_key: str | None = None
     created_at: datetime
@@ -413,51 +424,6 @@ class ProjectMemberOut(BaseModel):
     added_at: datetime
 
 
-class JiraConfigUpsert(InputBaseModel):
-    name: str = Field(default="default", min_length=1, max_length=255)
-    base_url: str = Field(min_length=1, max_length=1024)
-    email: EmailStr
-    api_token: str | None = Field(default=None, min_length=1)
-    default_issue_type: str = Field(default="Task", min_length=1, max_length=100)
-    is_enabled: bool = True
-
-
-class JiraConfigOut(ORMBase):
-    id: int
-    name: str
-    base_url: str
-    email: EmailStr
-    default_issue_type: str
-    is_enabled: bool
-    created_by: int
-    created_at: datetime
-    updated_at: datetime
-
-
-class ProjectJiraLinkUpsert(InputBaseModel):
-    jira_project_key: str = Field(min_length=1, max_length=32)
-
-
-class ProjectJiraLinkOut(ORMBase):
-    id: int
-    project_id: int
-    jira_project_key: str
-    created_by: int
-    created_at: datetime
-    updated_at: datetime
-
-
-class JiraIssueLinkOut(ORMBase):
-    id: int
-    vulnerability_id: int
-    jira_issue_key: str
-    jira_issue_url: str
-    status: str
-    last_error: str | None
-    created_at: datetime
-    updated_at: datetime
-
-
 class WorksConfigOut(BaseModel):
     """Публичная конфигурация Works: доступен ли экспорт в AppSec."""
 
@@ -486,10 +452,10 @@ class WorksExportRequest(InputBaseModel):
     assignee: str | None = Field(default=None, max_length=255)
 
 
-# ── Раздел «Tasks»: read-only проекция задач Jira-проекта (по умолчанию STS) ──
-# status_category сворачивает Jira statusCategory в одно из «вёдер»
+# ── Раздел «Tasks»: read-only проекция задач Task Tracker (APPSEC) ──
+# status_category сворачивает workflow status в одно из «вёдер»
 # todo / inprogress / done / unknown — универсально для любого воркфлоу.
-class JiraTaskOut(BaseModel):
+class TaskTrackerTaskOut(BaseModel):
     key: str
     summary: str
     status: str
@@ -497,22 +463,25 @@ class JiraTaskOut(BaseModel):
     issue_type: str
     priority: str | None = None
     assignee: str | None = None
+    assignee_username: str | None = None
+    affected_versions: list[AppSecVersionRef] = Field(default_factory=list)
+    is_demo: bool = False
     updated: str
     created: str
-    # Ссылка на задачу в Jira/Works (для связывания тикета с проектом и отчёта).
+    # Ссылка на задачу в Task Tracker (для связывания тикета с проектом и отчёта).
     url: str | None = None
 
 
-class JiraTaskDetailOut(JiraTaskOut):
+class TaskTrackerTaskDetailOut(TaskTrackerTaskOut):
     reporter: str | None = None
     description: str = ""
     labels: list[str] = Field(default_factory=list)
     url: str = ""
 
 
-class JiraTaskListOut(BaseModel):
-    # Jira Cloud перешла на токенную пагинацию (/search/jql): total не отдаётся.
-    items: list[JiraTaskOut]
+class TaskTrackerTaskListOut(BaseModel):
+    # Pagination metadata for the Task Tracker result page.
+    items: list[TaskTrackerTaskOut]
     next_page_token: str | None = None
     is_last: bool = True
 
@@ -597,6 +566,16 @@ class HostIpAddressUpdate(InputBaseModel):
     ip_address: str | None = Field(default=None, min_length=1, max_length=45)
     label: str | None = Field(default=None, max_length=100)
     is_primary: bool | None = None
+
+
+class IpAddressChangeRequest(InputBaseModel):
+    model_config = ConfigDict(extra='forbid')
+    ip_address: str = Field(min_length=1, max_length=45)
+
+    @field_validator('ip_address', mode='before')
+    @classmethod
+    def validate_ip(cls, value):
+        return normalize_ip_literal(value)
 
 
 class HostnameResolutionOut(BaseModel):
@@ -976,6 +955,11 @@ class ProjectNoteCommentOut(ORMBase):
 
 
 class NotificationContext(BaseModel):
+    endpoint_id: int | None = None
+    endpoint_path: str | None = None
+    endpoint_method: str | None = None
+    hostname: str | None = None
+    deadline_date: date | None = None
     vulnerability_id: int | None = None
     vulnerability_title: str | None = None
     # Поля для упоминаний в комментариях заметок (вместо уязвимостей).
@@ -1128,6 +1112,13 @@ class IpFarmJobOut(ORMBase):
     result: IpFarmResult | None = None
     error: str | None = None
     created_at: datetime
+
+
+class IpAddressChangeOut(BaseModel):
+    old_ip_address: str
+    ip_address: str
+    updated_hosts: int
+    job: IpFarmJobOut
 
 
 # --- JS farm: поиск .js на доменах + греп секретов/путей ---

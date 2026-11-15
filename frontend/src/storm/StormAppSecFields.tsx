@@ -8,9 +8,9 @@
  * локального пользователя / IAM-логин для IAM) — он идёт в assigned_to тикета.
  * Все поля — typeahead; используется в формах создания и редактирования проекта. */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { findWorksComponents, findWorksVersions, searchUsers, getTasks } from "../api";
-import type { JiraTask } from "../types";
+import type { TaskTrackerTask, WorksRef } from "../types";
 
 /** Отображаем только ФИ (Фамилия Имя) — первые два слова ФИО. Для IAM-логина
  *  без пробелов возвращаем как есть. Хранимое значение (username) не меняется. */
@@ -21,11 +21,15 @@ function fio2fi(s: string | null | undefined): string {
 export interface AppSecFieldsValue {
   appsec_component_code: string | null;
   appsec_component_name: string | null;
-  appsec_version_code: string | null;
-  appsec_version_name: string | null;
+  appsec_versions: WorksRef[];
   appsec_assignee: string | null;
+  appsec_assignee_name: string | null;
   appsec_ticket_url: string | null;
   appsec_ticket_key: string | null;
+}
+
+export function emptyAppsecFields(): AppSecFieldsValue {
+  return { appsec_component_code: null, appsec_component_name: null, appsec_versions: [], appsec_assignee: null, appsec_assignee_name: null, appsec_ticket_url: null, appsec_ticket_key: null };
 }
 
 interface Opt {
@@ -39,12 +43,14 @@ function Typeahead({
   value,
   fetchOptions,
   onPick,
+  clearOnPick = false,
 }: {
   label: string;
   placeholder: string;
   value: string;
   fetchOptions: (q: string) => Promise<Opt[]>;
   onPick: (opt: Opt) => void;
+  clearOnPick?: boolean;
 }) {
   const [q, setQ] = useState(value);
   const [opts, setOpts] = useState<Opt[]>([]);
@@ -117,7 +123,7 @@ function Typeahead({
               // onMouseDown (не onClick): срабатывает до blur инпута.
               onMouseDown={() => {
                 onPick(o);
-                setQ(o.name);
+                setQ(clearOnPick ? "" : o.name);
                 setOpen(false);
               }}
               style={{ padding: "9px 14px", fontSize: 13.5, color: "var(--st-text)", cursor: "pointer" }}
@@ -146,11 +152,15 @@ function TicketField({
   onChange: (patch: { appsec_ticket_url: string | null; appsec_ticket_key: string | null }) => void;
   t: (s: string) => string;
 }) {
+  const inputId = useId();
+  const editing = useRef(false);
   const [q, setQ] = useState(taskKey || url || "");
-  const [opts, setOpts] = useState<JiraTask[]>([]);
+  const [opts, setOpts] = useState<TaskTrackerTask[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  useEffect(() => setQ(taskKey || url || ""), [url, taskKey]);
+  useEffect(() => {
+    if (taskKey || url || !editing.current) setQ(taskKey || url || "");
+  }, [url, taskKey]);
 
   const looksLikeUrl = (s: string) => /^https?:\/\//i.test(s.trim());
 
@@ -179,18 +189,20 @@ function TicketField({
 
   return (
     <div style={{ position: "relative" }}>
-      <label className="flabel">{t("AppSec ticket")}</label>
+      <label className="flabel" htmlFor={inputId}>{t("AppSec ticket")}</label>
       <input
+        id={inputId}
         className="finp"
         placeholder={t("Paste a URL or start typing a ticket…")}
         value={q}
         onChange={(e) => {
           const text = e.target.value;
+          editing.current = true;
           setQ(text);
           setOpen(true);
           // URL сохраняем сразу; поиск по тексту сохраняется только выбором из списка.
           if (looksLikeUrl(text)) onChange({ appsec_ticket_url: text.trim(), appsec_ticket_key: null });
-          else if (text.trim() === "") onChange({ appsec_ticket_url: null, appsec_ticket_key: null });
+          else onChange({ appsec_ticket_url: null, appsec_ticket_key: null });
         }}
         onFocus={() => setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), 160)}
@@ -220,6 +232,7 @@ function TicketField({
               key={task.key}
               className="prow clk"
               onMouseDown={() => {
+                editing.current = false;
                 onChange({ appsec_ticket_url: task.url ?? null, appsec_ticket_key: task.key });
                 setQ(task.key);
                 setOpen(false);
@@ -267,22 +280,32 @@ export function StormAppSecFields({
       <Typeahead
         label={t("Assignee")}
         placeholder={t("Start typing a name…")}
-        value={fio2fi(value.appsec_assignee)}
+        value={fio2fi(value.appsec_assignee_name || value.appsec_assignee)}
         fetchOptions={async (q) => {
           const res = await searchUsers(q, 5);
           // code = username (= ФИО для локального / IAM-логин для IAM) → в assigned_to тикета.
           return res.map((u) => ({ code: u.username, name: fio2fi(u.full_name || u.username) }));
         }}
-        onPick={(o) => onChange({ appsec_assignee: o.code })}
+        onPick={(o) => onChange({ appsec_assignee: o.code, appsec_assignee_name: o.name })}
       />
       {/* Затронутая версия — всегда (ищется в Works/AppSec-пространстве проекта). */}
       <Typeahead
-        label={t("Affected version")}
+        label={t("Affected versions")}
         placeholder={t("Start typing a version…")}
-        value={value.appsec_version_name || ""}
+        value=""
         fetchOptions={(q) => findWorksVersions(q)}
-        onPick={(o) => onChange({ appsec_version_code: o.code, appsec_version_name: o.name })}
+        clearOnPick
+        onPick={(o) => {
+          if (!value.appsec_versions.some((version) => version.code === o.code))
+            onChange({ appsec_versions: [...value.appsec_versions, { code: o.code, name: o.name }] });
+        }}
       />
+      {value.appsec_versions.length > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: -6 }}>
+        {value.appsec_versions.map((version) => <span key={version.code} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 6px 4px 10px", borderRadius: 9, background: "var(--st-accent-soft)", color: "var(--st-text-2)", fontSize: 12 }}>
+          {version.name}
+          <button type="button" className="actbtn del" title={`${t("Remove version")}: ${version.name}`} aria-label={`${t("Remove version")}: ${version.name}`} onClick={() => onChange({ appsec_versions: value.appsec_versions.filter((item) => item.code !== version.code) })}>×</button>
+        </span>)}
+      </div>}
       {works && (<>
       <div style={{ font: "700 12.5px Inter,sans-serif", color: "var(--st-text-2)", marginTop: 2 }}>{t("AppSec export (Works)")}</div>
       <Typeahead

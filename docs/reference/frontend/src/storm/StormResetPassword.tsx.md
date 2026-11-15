@@ -6,13 +6,13 @@
 
 ## StormResetPassword
 
-[frontend/src/storm/StormResetPassword.tsx:29](../../../../../frontend/src/storm/StormResetPassword.tsx#L29)
+[frontend/src/storm/StormResetPassword.tsx:30](../../../../../frontend/src/storm/StormResetPassword.tsx#L30)
 
 ```typescript
 StormResetPassword() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
 ```
 
-В теле вызывает `params.get`, `useEffect`, `useNavigate`, `useSearchParams`, `useState`, `useToastStore`.
+В теле вызывает `params.get`, `t`, `useEffect`, `useLangStore`, `useNavigate`, `useSearchParams`, `useState`, `useToastStore`.
 
 Возвращает: `import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element`.
 
@@ -20,7 +20,9 @@ StormResetPassword() => import("/Users/nkolomiika/Cursor Projects/SberPCF/fronte
 <summary>Прямые вызовы в теле</summary>
 
 - `params.get`
+- `t`
 - `useEffect`
+- `useLangStore`
 - `useNavigate`
 - `useSearchParams`
 - `useState`
@@ -30,13 +32,13 @@ StormResetPassword() => import("/Users/nkolomiika/Cursor Projects/SberPCF/fronte
 
 ## StormResetPassword.handleSubmit
 
-[frontend/src/storm/StormResetPassword.tsx:70](../../../../../frontend/src/storm/StormResetPassword.tsx#L70)
+[frontend/src/storm/StormResetPassword.tsx:72](../../../../../frontend/src/storm/StormResetPassword.tsx#L72)
 
 ```typescript
 async handleSubmit(e: FormEvent) => Promise<void>
 ```
 
-В теле вызывает `confirmPasswordReset`, `e.preventDefault`, `getApiErrorMessage`, `navigate`, `pushToast`, `setSubmitting`.
+В теле вызывает `confirmPasswordReset`, `e.preventDefault`, `getApiErrorMessage`, `navigate`, `pushToast`, `setSubmitting`, `t`.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -53,5 +55,6 @@ async handleSubmit(e: FormEvent) => Promise<void>
 - `navigate`
 - `pushToast`
 - `setSubmitting`
+- `t`
 
 </details>
