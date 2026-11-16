@@ -1,3 +1,5 @@
+import { ERROR_MESSAGES, errorMessageForCode } from "../errorMessages";
+import { useReconJobPolling } from "./useReconJobPolling";
 import { subscribeNotificationUpdates } from "./notificationUpdates";
 /* STORM — Offensive Security Research & Management Console.
    React port of the design prototype (STORM.dc.html). Every collection it renders
@@ -11,7 +13,6 @@ import {
   useRef,
   useState,
   type ChangeEvent,
-  type ClipboardEvent as ReactClipboardEvent,
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
@@ -52,7 +53,6 @@ import {
   getProject as apiGetProject,
   getWorksConfig as apiGetWorksConfig,
   getVulnerabilityWorksLink as apiGetVulnWorksLink,
-  exportVulnerabilityToWorks as apiExportVulnToWorks,
   deleteProject as apiDeleteProject,
   createInvitation as apiCreateInvitation,
   getInvitations as apiGetInvitations,
@@ -858,11 +858,6 @@ const toggleIn = <T,>(arr: T[], v: T): T[] => (arr.includes(v) ? arr.filter((x) 
 const fstr = (v: string | string[] | undefined): string => (typeof v === "string" ? v : "");
 
 /** dd.mm.yyyy → yyyy-mm-dd (for <input type=date>) and back. */
-const toISODate = (s?: string): string => {
-  if (!s) return "";
-  const m = String(s).match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
-  return m ? `${m[3]}-${m[2]}-${m[1]}` : s;
-};
 const toDispDate = (s?: string): string => {
   if (!s) return "";
   const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -1105,22 +1100,6 @@ function renderMarkdown(src: string): ReactNode {
 }
 
 /** Deterministic sparkline point string (ported from prototype). */
-function sparkline(seed: number, current: number): string {
-  const n = 6;
-  const w = 74;
-  const h = 30;
-  const pad = 3;
-  const vals: number[] = [];
-  let v = Math.max(0, current - (2 + (seed % 4)));
-  for (let i = 0; i < n - 1; i++) {
-    v = Math.max(0, v + (((seed * (i + 3)) % 5) - 2));
-    vals.push(v);
-  }
-  vals.push(current);
-  const max = Math.max(1, ...vals);
-  const stepX = w / (n - 1);
-  return vals.map((val, i) => `${Math.round(i * stepX)},${Math.round(h - pad - (val / max) * (h - pad * 2))}`).join(" ");
-}
 
 /**
  * Cumulative-count sparkline driven by real "added at" timestamps.
@@ -1728,6 +1707,23 @@ export function StormApp() {
      up while simply sitting on the Activity tab). `project_role` is a global
      user attribute and the workspace members page is where it is configured. */
   const reloadUsers = () => setStateRaw((s) => ({ ...s, usersTick: s.usersTick + 1 }));
+  const shownMailErrors = useRef(new Set<string>());
+  useEffect(() => {
+    if (state.view !== "workspaceMembers") return;
+    const timer = setInterval(reloadUsers, 15000);
+    return () => clearInterval(timer);
+  }, [state.view]);
+  useEffect(() => {
+    if (state.view !== "workspaceMembers") return;
+    for (const invitation of state.pendingInvites) {
+      if (!invitation.email_error) continue;
+      const key = `${invitation.id}:${invitation.email_error}`;
+      if (shownMailErrors.current.has(key)) continue;
+      shownMailErrors.current.add(key);
+      pushToast(t(errorMessageForCode(invitation.email_error_code) ?? ERROR_MESSAGES.mail_unavailable), "error");
+    }
+  }, [state.pendingInvites, state.view]);
+
   useEffect(() => {
     if (!isAdmin) {
       setStateRaw((s) => (s.workspaceUsers.length === 0 && s.pendingInvites.length === 0 ? s : { ...s, workspaceUsers: [], pendingInvites: [] }));
@@ -1876,106 +1872,41 @@ export function StormApp() {
     );
   };
 
-  // ================= host farm: poll the running probe job =================
-  useEffect(() => {
-    const job = state.hostFarmJob;
-    const pid = state.openProjectId;
-    if (!job || pid == null || !isFarmJobInFlight(job.status)) return;
-    let cancelled = false;
-    const timer = setTimeout(async () => {
-      try {
-        const next = await apiGetHostFarmJob(pid, job.id);
-        if (cancelled) return;
-        // Reload every tick so the per-host commits show up as statuses fill in.
-        reloadHosts();
-        if (isFarmJobInFlight(next.status)) {
-          setStateRaw((s) => (s.hostFarmJob && s.hostFarmJob.id === next.id ? { ...s, hostFarmJob: next } : s));
-        } else {
-          setStateRaw((s) => (s.hostFarmJob && s.hostFarmJob.id === next.id ? { ...s, hostFarmJob: null } : s));
-          if (next.status === "done" && next.result) {
-            hostFarmDoneToast(next.result);
-          } else if (next.status === "failed") {
-            pushToast(next.error || t("Probe failed"), "error");
-          }
-        }
-      } catch {
-        // Transient error — re-arm the poll by nudging the reference.
-        if (!cancelled) setStateRaw((s) => (s.hostFarmJob ? { ...s, hostFarmJob: { ...s.hostFarmJob } } : s));
-      }
-    }, 1500);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.hostFarmJob, state.openProjectId]);
+  useReconJobPolling(state.hostFarmJob, state.openProjectId, {
+    load: apiGetHostFarmJob,
+    update: (next) => {
+      reloadHosts();
+      setStateRaw((s) => (s.hostFarmJob?.id === next.id ? { ...s, hostFarmJob: isFarmJobInFlight(next.status) ? next : null } : s));
+      if (next.status === "done" && next.result) { hostFarmDoneToast(next.result); }
+      else if (next.status === "failed") pushToast(t("The check could not be completed. Try starting it again."), "error");
+    },
+    retry: () => setStateRaw((s) => s.hostFarmJob ? { ...s, hostFarmJob: { ...s.hostFarmJob } } : s),
+    error: (error) => pushToast(getApiErrorMessage(error, "The check could not be completed. Try starting it again."), "error"),
+  });
 
-  // ================= ip farm: poll the running resolve+probe job =================
-  useEffect(() => {
-    const job = state.ipFarmJob;
-    const pid = state.openProjectId;
-    if (!job || pid == null || !isFarmJobInFlight(job.status)) return;
-    let cancelled = false;
-    const timer = setTimeout(async () => {
-      try {
-        const next = await apiGetIpFarmJob(pid, job.id);
-        if (cancelled) return;
-        // The IP farm commits per address, so rows stream in as it goes.
-        reloadHosts();
-        if (isFarmJobInFlight(next.status)) {
-          setStateRaw((s) => (s.ipFarmJob && s.ipFarmJob.id === next.id ? { ...s, ipFarmJob: next } : s));
-        } else {
-          setStateRaw((s) => (s.ipFarmJob && s.ipFarmJob.id === next.id ? { ...s, ipFarmJob: null } : s));
-          if (next.status === "done" && next.result) {
-            ipFarmDoneToast(next.result);
-          } else if (next.status === "failed") {
-            pushToast(next.error || t("Probe failed"), "error");
-          }
-        }
-      } catch {
-        if (!cancelled) setStateRaw((s) => (s.ipFarmJob ? { ...s, ipFarmJob: { ...s.ipFarmJob } } : s));
-      }
-    }, 1500);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.ipFarmJob, state.openProjectId]);
+  useReconJobPolling(state.ipFarmJob, state.openProjectId, {
+    load: apiGetIpFarmJob,
+    update: (next) => {
+      reloadHosts();
+      setStateRaw((s) => (s.ipFarmJob?.id === next.id ? { ...s, ipFarmJob: isFarmJobInFlight(next.status) ? next : null } : s));
+      if (next.status === "done" && next.result) { ipFarmDoneToast(next.result); }
+      else if (next.status === "failed") pushToast(t("The check could not be completed. Try starting it again."), "error");
+    },
+    retry: () => setStateRaw((s) => s.ipFarmJob ? { ...s, ipFarmJob: { ...s.ipFarmJob } } : s),
+    error: (error) => pushToast(getApiErrorMessage(error, "The check could not be completed. Try starting it again."), "error"),
+  });
 
-  // ================= js farm: poll the running scan job =================
-  useEffect(() => {
-    const job = state.jsFarmJob;
-    const pid = state.openProjectId;
-    if (!job || pid == null || !isFarmJobInFlight(job.status)) return;
-    let cancelled = false;
-    const timer = setTimeout(async () => {
-      try {
-        const next = await apiGetJsScanJob(pid, job.id);
-        if (cancelled) return;
-        // The scan commits per file, so found files stream in as it runs (throttled).
-        reloadJsFilesThrottled();
-        if (isFarmJobInFlight(next.status)) {
-          setStateRaw((s) => (s.jsFarmJob && s.jsFarmJob.id === next.id ? { ...s, jsFarmJob: next } : s));
-        } else {
-          reloadJsFiles(); // финальное состояние — без дросселя
-          setStateRaw((s) => (s.jsFarmJob && s.jsFarmJob.id === next.id ? { ...s, jsFarmJob: null } : s));
-          if (next.status === "done" && next.result) {
-            pushToast(`${t("Scan done")} — ${next.result.files_scanned} JS, ${next.result.secrets_found} ${t("secrets")}, ${next.result.endpoints_found} ${t("paths")}`, "success");
-          } else if (next.status === "failed") {
-            pushToast(next.error || t("Scan failed"), "error");
-          }
-        }
-      } catch {
-        if (!cancelled) setStateRaw((s) => (s.jsFarmJob ? { ...s, jsFarmJob: { ...s.jsFarmJob } } : s));
-      }
-    }, 1500);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.jsFarmJob, state.openProjectId]);
+  useReconJobPolling(state.jsFarmJob, state.openProjectId, {
+    load: apiGetJsScanJob,
+    update: (next) => {
+      if (isFarmJobInFlight(next.status)) reloadJsFilesThrottled(); else reloadJsFiles();
+      setStateRaw((s) => (s.jsFarmJob?.id === next.id ? { ...s, jsFarmJob: isFarmJobInFlight(next.status) ? next : null } : s));
+      if (next.status === "done" && next.result) { pushToast(`${t("Scan done")} — ${next.result.files_scanned} JS, ${next.result.secrets_found} ${t("secrets")}, ${next.result.endpoints_found} ${t("paths")}`, "success"); }
+      else if (next.status === "failed") pushToast(t("The check could not be completed. Try starting it again."), "error");
+    },
+    retry: () => setStateRaw((s) => s.jsFarmJob ? { ...s, jsFarmJob: { ...s.jsFarmJob } } : s),
+    error: (error) => pushToast(getApiErrorMessage(error, "The check could not be completed. Try starting it again."), "error"),
+  });
 
   /** Hosts rendered by the whole Recon section. Backend-only — never the seed. */
   const hosts: Host[] = state.apiHosts ?? [];
@@ -2649,6 +2580,10 @@ export function StormApp() {
   };
 
   // ================= TaskTracker export =================
+  /** Перечитывает метаданные проекта перед STS-экспортом.
+   * При отсутствии тикета, исполнителя или версий показывает список полей
+   * и возвращает false до обращения к интеграции.
+   */
   const checkProjectForSts = async (projectId: number): Promise<boolean> => {
     try {
       const project = await apiGetProject(projectId);
@@ -2665,21 +2600,6 @@ export function StormApp() {
   };
   // Экспорт находки в AppSec (Works): создаёт тикет bug_appsec в STS. Исполнитель,
   // компонент и версия берутся из настроек проекта; статус потом подтянется (Stage 4).
-  const exportToWorks = async () => {
-    const pid = state.openProjectId;
-    const vid = state.openVulnId;
-    if (pid == null || vid == null || state.worksExportBusy) return;
-    if (!await checkProjectForSts(pid)) return;
-    setState({ worksExportBusy: true });
-    try {
-      const link = await apiExportVulnToWorks(pid, vid);
-      setState({ worksExportBusy: false, vulnWorksLink: link });
-      pushToast(`${t("Exported to AppSec")}: ${link.works_key}`, "success");
-    } catch (e) {
-      setState({ worksExportBusy: false });
-      pushToast(getApiErrorMessage(e, "Couldn't export to AppSec"), "error");
-    }
-  };
 
   const openTaskTrackerExport = async (vulnId: number) => {
     const pid = state.openProjectId;
@@ -2879,6 +2799,10 @@ export function StormApp() {
     })();
   };
   const closeEndpoint = () => { endpointRequestVersion.current++; setState({ epOpen: false }); };
+  /** Сохраняет изменённый HTTP-запрос; API извлекает из него метод и путь.
+   * После успеха обновляет список и исходное значение редактора. При ошибке
+   * введённый запрос остаётся доступен для исправления.
+   */
   const saveEndpointRequest = async () => {
     const pid = state.openProjectId;
     if (pid == null || state.epSaving || state.epLoading || state.epRequest === state.epRequestOriginal) return;
@@ -3167,6 +3091,9 @@ export function StormApp() {
   };
   const openEpImport = () => setState({ epImportOpen: true, epImportRaw: "", epImportPreview: "", epImportBusy: false, epImportSwaggerHosts: [] });
   const closeEpImport = () => setState({ epImportOpen: false, epImportRaw: "", epImportPreview: "", epImportBusy: false, epImportSwaggerHosts: [] });
+  /** Объединяет распознанные Swagger-строки с черновиком импорта без дублей.
+   * Открывает предпросмотр Add endpoints; сохранение в БД выполняется отдельно.
+   */
   const importSwaggerEndpoints = (lines: string[]) => setState((s) => ({
     exportPageOpen: false,
     epImportOpen: true,
@@ -3345,6 +3272,10 @@ export function StormApp() {
   /* There is no per-IP endpoint: a host's addresses are replaced wholesale via
      updateHost. The current list is re-fetched first so labels and is_primary of
      the existing addresses survive the round-trip. */
+  /** Сохраняет IP: изменение заменяет адрес во всём проекте и запускает перепроверку.
+   * Успех обновляет открытую карточку/список и отслеживаемую задачу; ошибка
+   * сохраняет введённое значение и оставляет форму для исправления.
+   */
   const saveIpEditor = async () => {
     const pid = state.openProjectId;
     const f = state.editorForm;
@@ -3577,14 +3508,12 @@ export function StormApp() {
       noteFormOriginal: { title: n ? n.title : "", excerpt: n ? n.excerpt : "" },
     });
   };
-  const closeNoteEditor = () => setState({ noteEditorOpen: false });
   // «All notes» / Cancel — всегда возврат к списку заметок (не к вьюеру).
   const backToNotesList = () => setState({ openNoteId: null, noteEditorOpen: false });
   /* Opening a note always shows it rendered — including your own. Editing is a
      deliberate act (the pencil / the viewer's Edit button), not what a click on
      the note means. `id` is the backend id: it goes into the URL. */
   const openNoteViewer = (id: number) => setState({ section: "notes", openNoteId: id, noteEditorOpen: false });
-  const closeNoteViewer = () => setState({ openNoteId: null, noteEditorOpen: false });
   const updateNoteForm = (k: keyof NoteForm, v: string) => setState((s) => ({ noteForm: { ...s.noteForm, [k]: v } }));
   /** Upload screenshots pasted into the note editor and append them as Markdown
       images; the editor (TipTap Image) renders them inline right away, and the
@@ -3901,7 +3830,7 @@ export function StormApp() {
           pushToast(t("Invitation created for {email} — activation link copied: {url}", { email: res.email_sent_to, url: res.activation_url }), "success");
         } else {
           const preview = res.mail_preview_url ? t(" (email preview: {url})", { url: res.mail_preview_url }) : "";
-          pushToast(t("Invitation sent to {email}{preview}", { email: res.email_sent_to, preview }), "success");
+          pushToast(t("Invitation queued for {email}{preview}", { email: res.email_sent_to, preview }), "success");
         }
       } else {
         const u = state.workspaceUsers[state.wsUserIndex];
@@ -3932,7 +3861,7 @@ export function StormApp() {
     try {
       const res = await apiReactivateUser(u.id);
       const preview = res.mail_preview_url ? t(" (email preview: {url})", { url: res.mail_preview_url }) : "";
-      pushToast(`${t("Reactivation link sent to")} ${res.email_sent_to}${preview}`, "success");
+      pushToast(`${t("Reactivation link queued for")} ${res.email_sent_to}${preview}`, "success");
       reloadUsers();
     } catch (e) {
       pushToast(getApiErrorMessage(e, "Couldn't send the reactivation link"), "error");
@@ -3946,7 +3875,7 @@ export function StormApp() {
         pushToast(t("Activation link copied: {url}", { url: res.activation_url }), "success");
       } else {
         const preview = res.mail_preview_url ? t(" (email preview: {url})", { url: res.mail_preview_url }) : "";
-        pushToast(t("Invitation re-sent to {email}{preview}", { email: res.email_sent_to, preview }), "success");
+        pushToast(t("Invitation queued for {email}{preview}", { email: res.email_sent_to, preview }), "success");
       }
       reloadUsers();
     } catch (e) {
@@ -4855,6 +4784,10 @@ export function StormApp() {
   };
   const TASK_COLS = "110px minmax(0,2fr) minmax(0,150px) 90px minmax(0,140px) minmax(0,170px) 120px 64px";
 
+  /** Загружает полную карточку APPSEC и открывает чистый черновик проекта.
+   * Переносит логин исполнителя и все версии. Поздние ответы после навигации
+   * игнорируются; ошибка оставляет форму закрытой и показывает уведомление.
+   */
   const createProjectFromTask = async (task: TaskTrackerTask) => {
     const request = ++taskProjectRequest.current;
     setState({ tasksCreatingKey: task.key });
@@ -5097,6 +5030,7 @@ export function StormApp() {
                 <span style={{ width: 32, height: 32, flex: "none", borderRadius: "50%", background: "var(--st-divider)", color: "var(--st-text-3)", display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name="mail" size={15} color="var(--st-text-3)" /></span>
                 <div style={{ minWidth: 0 }}>
                   <div className="mono" style={{ fontSize: 12.5, color: "var(--st-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{inv.email}</div>
+                  {inv.email_error && <div style={{ fontSize: 11, color: "var(--st-danger)", marginTop: 4 }}>{t(errorMessageForCode(inv.email_error_code) ?? ERROR_MESSAGES.mail_unavailable)}</div>}
                   <div style={{ fontSize: 11, color: inv.is_expired ? "var(--st-danger)" : "var(--st-text-3)", fontWeight: 600, marginTop: 2 }}>{inv.is_expired ? t("Link expired — resend it") : t("Pending activation")}</div>
                 </div>
               </div>
@@ -5347,15 +5281,11 @@ export function StormApp() {
               {/* В карточке уязвимости кнопка экспорта — на линии заголовка (напротив «Issues»). */}
               {sec === "vulns" && state.openVulnId != null && (
                 <>
-                  {state.worksEnabled && (state.vulnWorksLink ? (
+                  {state.worksEnabled && state.vulnWorksLink && (
                     <a href={state.vulnWorksLink.works_url} target="_blank" rel="noopener noreferrer" title={t("Open in Works")} style={{ display: "inline-flex", alignItems: "center", gap: 7, height: 42, padding: "0 16px", borderRadius: 10, border: "1px solid var(--st-success-soft)", background: "var(--st-success-soft)", color: "var(--st-text)", font: "700 12.5px Inter,sans-serif", textDecoration: "none" }}>
                       <Icon name="check-circle" size={15} color="var(--st-success)" sw={2.2} />{state.vulnWorksLink.works_key}{state.vulnWorksLink.works_status ? ` · ${state.vulnWorksLink.works_status}` : ""}
                     </a>
-                  ) : (
-                    <button className="clk" onClick={exportToWorks} disabled={state.worksExportBusy} style={{ display: "inline-flex", alignItems: "center", gap: 7, height: 42, padding: "0 16px", borderRadius: 10, border: "1px solid var(--st-border)", background: "var(--st-surface)", color: "var(--st-accent-2)", font: "700 13px Inter,sans-serif", cursor: state.worksExportBusy ? "default" : "pointer" }}>
-                      <Icon name="upload" size={15} color="var(--st-accent-2)" sw={2.2} />{state.worksExportBusy ? t("Exporting…") : t("Export to AppSec")}
-                    </button>
-                  ))}
+                  )}
                   <button className="addbtn clk" onClick={() => state.openVulnId != null && openTaskTrackerExport(state.openVulnId)} style={{ height: 42 }}>
                     <Icon name="upload" size={15} color="var(--st-on-accent)" sw={2.4} />{t("Export to Task Tracker")}
                   </button>

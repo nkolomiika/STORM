@@ -2,11 +2,11 @@
 
 Сгенерировано из объявлений кода. [Правила чтения](../../../METHODS.md).
 
-Методов и именованных функций: **137**.
+Методов и именованных функций: **102**.
 
 ## isBlank
 
-[frontend/src/api.ts:58](../../../../frontend/src/api.ts#L58)
+[frontend/src/api.ts:51](../../../../frontend/src/api.ts#L51)
 
 ```typescript
 isBlank(value: string | null | undefined) => boolean
@@ -29,7 +29,7 @@ isBlank(value: string | null | undefined) => boolean
 
 ## assertRequired
 
-[frontend/src/api.ts:60](../../../../frontend/src/api.ts#L60)
+[frontend/src/api.ts:53](../../../../frontend/src/api.ts#L53)
 
 ```typescript
 assertRequired(value: string | null | undefined, label: string) => void
@@ -47,7 +47,7 @@ assertRequired(value: string | null | undefined, label: string) => void
 Явные throw в теле:
 
 ```typescript
-new Error(`Field "${label}" is required`)
+new UserInputError(`Field "${label}" is required`)
 ```
 
 <details>
@@ -59,17 +59,18 @@ new Error(`Field "${label}" is required`)
 
 ## normalizeDetailMessage
 
-[frontend/src/api.ts:66](../../../../frontend/src/api.ts#L66)
+[frontend/src/api.ts:59](../../../../frontend/src/api.ts#L59)
 
 ```typescript
-normalizeDetailMessage(detail: unknown) => string | null
+normalizeDetailMessage(detail: unknown, depth = 0) => string | null
 ```
 
-В теле вызывает `Array.isArray`, `detail.map`, `detail.map((item) => normalizeDetailMessage(item)).filter`, `detail.trim`, `messages.join`, `normalizeDetailMessage`.
+В теле вызывает `Array.isArray`, `Object.hasOwn`, `detail.slice`, `detail.slice(0, 50).map`, `detail.slice(0, 50).map((item) => normalizeDetailMessage(item, depth + 1)).filter`, `detail.trim`, `message?.replace`, `message?.startsWith`; полный список ниже.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
 | `detail` | `unknown` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
+| `depth` | `number` | `0` | Определяется именем/типом и контрактом вызывающего кода. |
 
 Возвращает: `string \| null`.
 
@@ -77,9 +78,13 @@ normalizeDetailMessage(detail: unknown) => string | null
 <summary>Прямые вызовы в теле</summary>
 
 - `Array.isArray`
-- `detail.map`
-- `detail.map((item) => normalizeDetailMessage(item)).filter`
+- `Object.hasOwn`
+- `detail.slice`
+- `detail.slice(0, 50).map`
+- `detail.slice(0, 50).map((item) => normalizeDetailMessage(item, depth + 1)).filter`
 - `detail.trim`
+- `message?.replace`
+- `message?.startsWith`
 - `messages.join`
 - `normalizeDetailMessage`
 
@@ -87,7 +92,7 @@ normalizeDetailMessage(detail: unknown) => string | null
 
 ## getApiErrorStatus
 
-[frontend/src/api.ts:86](../../../../frontend/src/api.ts#L86)
+[frontend/src/api.ts:84](../../../../frontend/src/api.ts#L84)
 
 ```typescript
 getApiErrorStatus(error: unknown) => number | null
@@ -110,13 +115,15 @@ HTTP-статус ошибки axios, если он есть (403 → показ
 
 ## getApiErrorMessage
 
-[frontend/src/api.ts:89](../../../../frontend/src/api.ts#L89)
+[frontend/src/api.ts:91](../../../../frontend/src/api.ts#L91)
 
 ```typescript
 getApiErrorMessage(error: unknown, fallback: string) => string
 ```
 
-В теле вызывает `axios.isAxiosError`, `error.message.trim`, `normalizeDetailMessage`.
+Сообщение для пользователя: известный код сервера или безопасная бизнес-ошибка.
+Диагностика 5xx, HTML, SQL, нативные исключения и сообщения библиотек скрываются.
+Локальный текст разрешён только для явно созданного UserInputError.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -130,7 +137,9 @@ getApiErrorMessage(error: unknown, fallback: string) => string
 
 - `axios.isAxiosError`
 - `error.message.trim`
+- `errorMessageForCode`
 - `normalizeDetailMessage`
+- `safeErrorDetail`
 
 </details>
 
@@ -486,34 +495,9 @@ async searchUsers(q: string, limit = 10) => Promise<UserSearchResult[]>
 
 </details>
 
-## createUser
-
-[frontend/src/api.ts:264](../../../../frontend/src/api.ts#L264)
-
-```typescript
-async createUser(_payload: { username: string; email: string; full_name?: string; password?: string; role: User["role"]; project_role?: User["project_role"]; send_invite_email?: boolean; }) => Promise<User>
-```
-
-@deprecated Прямое создание пользователя с паролем убрано в пользу приглашений
-({@link createInvitation}). Функция оставлена только чтобы типизировалась
-устаревшая, НЕ подключённая к роутингу страница `pages/UsersAdminPage.tsx`
-(живой UI — Storm — её не использует). Реального эндпоинта на бэкенде больше нет.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `_payload` | `{ username: string; email: string; full_name?: string; password?: string; role: User["role"]; project_role?: User["project_role"]; send_invite_email?: boolean; }` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-
-Возвращает: `Promise<User>`.
-
-Явные throw в теле:
-
-```typescript
-new Error("Direct user creation is disabled — use invitations (invite flow)")
-```
-
 ## createInvitation
 
-[frontend/src/api.ts:280](../../../../frontend/src/api.ts#L280)
+[frontend/src/api.ts:262](../../../../frontend/src/api.ts#L262)
 
 ```typescript
 async createInvitation(payload: { email: string; full_name?: string; role: User["role"]; project_role?: User["project_role"]; }) => Promise<InvitationSentResult>
@@ -541,7 +525,7 @@ async createInvitation(payload: { email: string; full_name?: string; role: User[
 
 ## getInvitations
 
-[frontend/src/api.ts:291](../../../../frontend/src/api.ts#L291)
+[frontend/src/api.ts:273](../../../../frontend/src/api.ts#L273)
 
 ```typescript
 async getInvitations() => Promise<Invitation[]>
@@ -564,7 +548,7 @@ async getInvitations() => Promise<Invitation[]>
 
 ## resendInvitation
 
-[frontend/src/api.ts:296](../../../../frontend/src/api.ts#L296)
+[frontend/src/api.ts:278](../../../../frontend/src/api.ts#L278)
 
 ```typescript
 async resendInvitation(invitationId: number) => Promise<InvitationSentResult>
@@ -591,7 +575,7 @@ async resendInvitation(invitationId: number) => Promise<InvitationSentResult>
 
 ## revokeInvitation
 
-[frontend/src/api.ts:301](../../../../frontend/src/api.ts#L301)
+[frontend/src/api.ts:283](../../../../frontend/src/api.ts#L283)
 
 ```typescript
 async revokeInvitation(invitationId: number) => Promise<void>
@@ -618,7 +602,7 @@ async revokeInvitation(invitationId: number) => Promise<void>
 
 ## getInvitationInfo
 
-[frontend/src/api.ts:307](../../../../frontend/src/api.ts#L307)
+[frontend/src/api.ts:289](../../../../frontend/src/api.ts#L289)
 
 ```typescript
 async getInvitationInfo(token: string) => Promise<InvitationInfo>
@@ -646,7 +630,7 @@ async getInvitationInfo(token: string) => Promise<InvitationInfo>
 
 ## checkInvitationUsername
 
-[frontend/src/api.ts:312](../../../../frontend/src/api.ts#L312)
+[frontend/src/api.ts:294](../../../../frontend/src/api.ts#L294)
 
 ```typescript
 async checkInvitationUsername(token: string, username: string) => Promise<boolean>
@@ -675,7 +659,7 @@ async checkInvitationUsername(token: string, username: string) => Promise<boolea
 
 ## acceptInvitation
 
-[frontend/src/api.ts:320](../../../../frontend/src/api.ts#L320)
+[frontend/src/api.ts:302](../../../../frontend/src/api.ts#L302)
 
 ```typescript
 async acceptInvitation(token: string, payload: { username: string; password: string }) => Promise<AuthLoginResponse>
@@ -705,7 +689,7 @@ async acceptInvitation(token: string, payload: { username: string; password: str
 
 ## updateUser
 
-[frontend/src/api.ts:333](../../../../frontend/src/api.ts#L333)
+[frontend/src/api.ts:315](../../../../frontend/src/api.ts#L315)
 
 ```typescript
 async updateUser(userId: number, payload: { username?: string; full_name?: string; role?: User["role"]; project_role?: User["project_role"]; is_active?: boolean; }) => Promise<User>
@@ -733,7 +717,7 @@ async updateUser(userId: number, payload: { username?: string; full_name?: strin
 
 ## reactivateUser
 
-[frontend/src/api.ts:349](../../../../frontend/src/api.ts#L349)
+[frontend/src/api.ts:331](../../../../frontend/src/api.ts#L331)
 
 ```typescript
 async reactivateUser(userId: number) => Promise<PasswordResetResult>
@@ -761,7 +745,7 @@ async reactivateUser(userId: number) => Promise<PasswordResetResult>
 
 ## getReactivationInfo
 
-[frontend/src/api.ts:356](../../../../frontend/src/api.ts#L356)
+[frontend/src/api.ts:338](../../../../frontend/src/api.ts#L338)
 
 ```typescript
 async getReactivationInfo(token: string) => Promise<ReactivationInfo>
@@ -789,7 +773,7 @@ async getReactivationInfo(token: string) => Promise<ReactivationInfo>
 
 ## completeReactivation
 
-[frontend/src/api.ts:362](../../../../frontend/src/api.ts#L362)
+[frontend/src/api.ts:344](../../../../frontend/src/api.ts#L344)
 
 ```typescript
 async completeReactivation(token: string) => Promise<AuthLoginResponse>
@@ -815,36 +799,9 @@ async completeReactivation(token: string) => Promise<AuthLoginResponse>
 
 </details>
 
-## resetUserPassword
-
-[frontend/src/api.ts:367](../../../../frontend/src/api.ts#L367)
-
-```typescript
-async resetUserPassword(userId: number) => Promise<PasswordResetResult>
-```
-
-Клиентский HTTP-метод: PATCH ``/users/${userId}/password``. Использует общий axios-клиент с cookie и обработкой обновления сессии.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `userId` | `number` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-
-Возвращает: `Promise<PasswordResetResult>`.
-
-Прямые HTTP-вызовы:
-
-- `PATCH `/users/${userId}/password``; аргументы: `нет`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `api.patch`
-
-</details>
-
 ## deleteUser
 
-[frontend/src/api.ts:372](../../../../frontend/src/api.ts#L372)
+[frontend/src/api.ts:349](../../../../frontend/src/api.ts#L349)
 
 ```typescript
 async deleteUser(userId: number) => Promise<void>
@@ -869,36 +826,9 @@ async deleteUser(userId: number) => Promise<void>
 
 </details>
 
-## updateMyProfile
-
-[frontend/src/api.ts:376](../../../../frontend/src/api.ts#L376)
-
-```typescript
-async updateMyProfile(payload: { username?: string; email?: string; full_name?: string; }) => Promise<User>
-```
-
-Клиентский HTTP-метод: PATCH `"/users/me"`. Использует общий axios-клиент с cookie и обработкой обновления сессии.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `payload` | `{ username?: string; email?: string; full_name?: string; }` | `обязательный` | Данные операции; для HTTP структура определена Pydantic request-схемой. |
-
-Возвращает: `Promise<User>`.
-
-Прямые HTTP-вызовы:
-
-- `PATCH "/users/me"`; аргументы: `payload`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `api.patch`
-
-</details>
-
 ## changeMyPassword
 
-[frontend/src/api.ts:385](../../../../frontend/src/api.ts#L385)
+[frontend/src/api.ts:353](../../../../frontend/src/api.ts#L353)
 
 ```typescript
 async changeMyPassword(payload: { current_password: string; new_password: string }) => Promise<User>
@@ -926,7 +856,7 @@ async changeMyPassword(payload: { current_password: string; new_password: string
 
 ## uploadMyAvatar
 
-[frontend/src/api.ts:392](../../../../frontend/src/api.ts#L392)
+[frontend/src/api.ts:360](../../../../frontend/src/api.ts#L360)
 
 ```typescript
 async uploadMyAvatar(file: File) => Promise<User>
@@ -947,7 +877,7 @@ async uploadMyAvatar(file: File) => Promise<User>
 Явные throw в теле:
 
 ```typescript
-new Error("An avatar file is required")
+new UserInputError("An avatar file is required")
 ```
 
 <details>
@@ -960,7 +890,7 @@ new Error("An avatar file is required")
 
 ## getProjects
 
-[frontend/src/api.ts:404](../../../../frontend/src/api.ts#L404)
+[frontend/src/api.ts:372](../../../../frontend/src/api.ts#L372)
 
 ```typescript
 async getProjects(page = 1, size = 20, status?: Project["status"]) => Promise<PaginatedResponse<Project>>
@@ -989,7 +919,7 @@ async getProjects(page = 1, size = 20, status?: Project["status"]) => Promise<Pa
 
 ## getProjectStats
 
-[frontend/src/api.ts:409](../../../../frontend/src/api.ts#L409)
+[frontend/src/api.ts:377](../../../../frontend/src/api.ts#L377)
 
 ```typescript
 async getProjectStats() => Promise<ProjectStats[]>
@@ -1010,115 +940,9 @@ async getProjectStats() => Promise<ProjectStats[]>
 
 </details>
 
-## getProjectFolders
-
-[frontend/src/api.ts:414](../../../../frontend/src/api.ts#L414)
-
-```typescript
-async getProjectFolders() => Promise<ProjectFolder[]>
-```
-
-Клиентский HTTP-метод: GET `"/projects/folders"`. Использует общий axios-клиент с cookie и обработкой обновления сессии.
-
-Возвращает: `Promise<ProjectFolder[]>`.
-
-Прямые HTTP-вызовы:
-
-- `GET "/projects/folders"`; аргументы: `нет`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `api.get`
-
-</details>
-
-## createProjectFolder
-
-[frontend/src/api.ts:419](../../../../frontend/src/api.ts#L419)
-
-```typescript
-async createProjectFolder(payload: { name: string; parent_id?: number | null }) => Promise<ProjectFolder>
-```
-
-Клиентский HTTP-метод: POST `"/projects/folders"`. Использует общий axios-клиент с cookie и обработкой обновления сессии.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `payload` | `{ name: string; parent_id?: number \| null }` | `обязательный` | Данные операции; для HTTP структура определена Pydantic request-схемой. |
-
-Возвращает: `Promise<ProjectFolder>`.
-
-Прямые HTTP-вызовы:
-
-- `POST "/projects/folders"`; аргументы: `payload`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `api.post`
-- `assertRequired`
-
-</details>
-
-## moveProjectFolder
-
-[frontend/src/api.ts:425](../../../../frontend/src/api.ts#L425)
-
-```typescript
-async moveProjectFolder(folderId: number, payload: { parent_id?: number | null }) => Promise<ProjectFolder>
-```
-
-Клиентский HTTP-метод: PATCH ``/projects/folders/${folderId}/move``. Использует общий axios-клиент с cookie и обработкой обновления сессии.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `folderId` | `number` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-| `payload` | `{ parent_id?: number \| null }` | `обязательный` | Данные операции; для HTTP структура определена Pydantic request-схемой. |
-
-Возвращает: `Promise<ProjectFolder>`.
-
-Прямые HTTP-вызовы:
-
-- `PATCH `/projects/folders/${folderId}/move``; аргументы: `payload`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `api.patch`
-
-</details>
-
-## deleteProjectFolder
-
-[frontend/src/api.ts:436](../../../../frontend/src/api.ts#L436)
-
-```typescript
-async deleteProjectFolder(folderId: number) => Promise<DeleteProjectFolderResult>
-```
-
-Клиентский HTTP-метод: DELETE ``/projects/folders/${folderId}``. Использует общий axios-клиент с cookie и обработкой обновления сессии.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `folderId` | `number` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-
-Возвращает: `Promise<DeleteProjectFolderResult>`.
-
-Прямые HTTP-вызовы:
-
-- `DELETE `/projects/folders/${folderId}``; аргументы: `нет`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `api.delete`
-
-</details>
-
 ## createProject
 
-[frontend/src/api.ts:441](../../../../frontend/src/api.ts#L441)
+[frontend/src/api.ts:388](../../../../frontend/src/api.ts#L388)
 
 ```typescript
 async createProject(payload: { name: string; folder?: string; start_date?: string; end_date?: string; appsec_component_code?: string | null; appsec_component_name?: string | null; appsec_version_code?: string | null; appsec_version_name?: string | null; appsec_versions?: WorksRef[]; appsec_assignee?: string | null; appsec_assignee_name?: string | null; appsec_ticket_url?: string | null; appsec_ticket_key?: string | null; }) => Promise<Project>
@@ -1146,7 +970,7 @@ async createProject(payload: { name: string; folder?: string; start_date?: strin
 
 ## getProject
 
-[frontend/src/api.ts:461](../../../../frontend/src/api.ts#L461)
+[frontend/src/api.ts:408](../../../../frontend/src/api.ts#L408)
 
 ```typescript
 async getProject(projectId: number) => Promise<Project>
@@ -1173,7 +997,7 @@ async getProject(projectId: number) => Promise<Project>
 
 ## updateProject
 
-[frontend/src/api.ts:466](../../../../frontend/src/api.ts#L466)
+[frontend/src/api.ts:413](../../../../frontend/src/api.ts#L413)
 
 ```typescript
 async updateProject(projectId: number, payload: { name?: string; folder?: string; start_date?: string; end_date?: string; status?: Project["status"]; appsec_component_code?: string | null; appsec_component_name?: string | null; appsec_version_code?: string | null; appsec_version_name?: string | null; appsec_versions?: WorksRef[]; appsec_assignee?: string | null; appsec_assignee_name?: string | null; appsec_ticket_url?: string | null; appsec_ticket_key?: string | null; }) => Promise<Project>
@@ -1201,7 +1025,7 @@ async updateProject(projectId: number, payload: { name?: string; folder?: string
 
 ## getProjectMembers
 
-[frontend/src/api.ts:489](../../../../frontend/src/api.ts#L489)
+[frontend/src/api.ts:436](../../../../frontend/src/api.ts#L436)
 
 ```typescript
 async getProjectMembers(projectId: number) => Promise<ProjectMember[]>
@@ -1228,7 +1052,7 @@ async getProjectMembers(projectId: number) => Promise<ProjectMember[]>
 
 ## addProjectMember
 
-[frontend/src/api.ts:494](../../../../frontend/src/api.ts#L494)
+[frontend/src/api.ts:441](../../../../frontend/src/api.ts#L441)
 
 ```typescript
 async addProjectMember(projectId: number, userId: number) => Promise<void>
@@ -1250,7 +1074,7 @@ async addProjectMember(projectId: number, userId: number) => Promise<void>
 Явные throw в теле:
 
 ```typescript
-new Error("Select a user")
+new UserInputError("Select a user")
 ```
 
 <details>
@@ -1262,7 +1086,7 @@ new Error("Select a user")
 
 ## removeProjectMember
 
-[frontend/src/api.ts:501](../../../../frontend/src/api.ts#L501)
+[frontend/src/api.ts:448](../../../../frontend/src/api.ts#L448)
 
 ```typescript
 async removeProjectMember(projectId: number, userId: number) => Promise<void>
@@ -1290,7 +1114,7 @@ async removeProjectMember(projectId: number, userId: number) => Promise<void>
 
 ## getProjectActivity
 
-[frontend/src/api.ts:506](../../../../frontend/src/api.ts#L506)
+[frontend/src/api.ts:453](../../../../frontend/src/api.ts#L453)
 
 ```typescript
 async getProjectActivity(projectId: number, limit = 50) => Promise<ProjectActivityItem[]>
@@ -1318,7 +1142,7 @@ async getProjectActivity(projectId: number, limit = 50) => Promise<ProjectActivi
 
 ## listProjectNotes
 
-[frontend/src/api.ts:511](../../../../frontend/src/api.ts#L511)
+[frontend/src/api.ts:458](../../../../frontend/src/api.ts#L458)
 
 ```typescript
 async listProjectNotes(projectId: number) => Promise<ProjectNote[]>
@@ -1343,65 +1167,9 @@ async listProjectNotes(projectId: number) => Promise<ProjectNote[]>
 
 </details>
 
-## listProjectNotesActivity
-
-[frontend/src/api.ts:526](../../../../frontend/src/api.ts#L526)
-
-```typescript
-async listProjectNotesActivity(projectId: number, limit = 30) => Promise<ProjectNoteActivity[]>
-```
-
-Клиентский HTTP-метод: GET ``/projects/${projectId}/notes-activity``. Использует общий axios-клиент с cookie и обработкой обновления сессии.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `projectId` | `number` | `обязательный` | ID проекта в API. |
-| `limit` | `number` | `30` | Максимальное число возвращаемых записей. |
-
-Возвращает: `Promise<ProjectNoteActivity[]>`.
-
-Прямые HTTP-вызовы:
-
-- `GET `/projects/${projectId}/notes-activity``; аргументы: `{ params: { limit } }`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `api.get`
-
-</details>
-
-## getProjectNote
-
-[frontend/src/api.ts:537](../../../../frontend/src/api.ts#L537)
-
-```typescript
-async getProjectNote(projectId: number, noteId: number) => Promise<ProjectNote>
-```
-
-Клиентский HTTP-метод: GET ``/projects/${projectId}/notes/${noteId}``. Использует общий axios-клиент с cookie и обработкой обновления сессии.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `projectId` | `number` | `обязательный` | ID проекта в API. |
-| `noteId` | `number` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-
-Возвращает: `Promise<ProjectNote>`.
-
-Прямые HTTP-вызовы:
-
-- `GET `/projects/${projectId}/notes/${noteId}``; аргументы: `нет`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `api.get`
-
-</details>
-
 ## createProjectNote
 
-[frontend/src/api.ts:542](../../../../frontend/src/api.ts#L542)
+[frontend/src/api.ts:473](../../../../frontend/src/api.ts#L473)
 
 ```typescript
 async createProjectNote(projectId: number, payload: { title: string; parent_id?: number | null; content?: string | null }) => Promise<ProjectNote>
@@ -1430,7 +1198,7 @@ async createProjectNote(projectId: number, payload: { title: string; parent_id?:
 
 ## updateProjectNote
 
-[frontend/src/api.ts:551](../../../../frontend/src/api.ts#L551)
+[frontend/src/api.ts:482](../../../../frontend/src/api.ts#L482)
 
 ```typescript
 async updateProjectNote(projectId: number, noteId: number, payload: { title?: string; content?: string | null }) => Promise<ProjectNote>
@@ -1458,72 +1226,9 @@ async updateProjectNote(projectId: number, noteId: number, payload: { title?: st
 
 </details>
 
-## moveProjectNote
-
-[frontend/src/api.ts:563](../../../../frontend/src/api.ts#L563)
-
-```typescript
-async moveProjectNote(projectId: number, noteId: number, payload: { parent_id?: number | null }) => Promise<ProjectNote>
-```
-
-Клиентский HTTP-метод: PATCH ``/projects/${projectId}/notes/${noteId}/move``. Использует общий axios-клиент с cookie и обработкой обновления сессии.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `projectId` | `number` | `обязательный` | ID проекта в API. |
-| `noteId` | `number` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-| `payload` | `{ parent_id?: number \| null }` | `обязательный` | Данные операции; для HTTP структура определена Pydantic request-схемой. |
-
-Возвращает: `Promise<ProjectNote>`.
-
-Прямые HTTP-вызовы:
-
-- `PATCH `/projects/${projectId}/notes/${noteId}/move``; аргументы: `payload`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `api.patch`
-
-</details>
-
-## reorderProjectNotes
-
-[frontend/src/api.ts:572](../../../../frontend/src/api.ts#L572)
-
-```typescript
-async reorderProjectNotes(projectId: number, payload: { parent_id?: number | null; items: Array<{ id: number; sort_order: number }> }) => Promise<ProjectNote[]>
-```
-
-Клиентский HTTP-метод: PATCH ``/projects/${projectId}/notes/reorder``. Использует общий axios-клиент с cookie и обработкой обновления сессии.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `projectId` | `number` | `обязательный` | ID проекта в API. |
-| `payload` | `{ parent_id?: number \| null; items: Array<{ id: number; sort_order: number }> }` | `обязательный` | Данные операции; для HTTP структура определена Pydantic request-схемой. |
-
-Возвращает: `Promise<ProjectNote[]>`.
-
-Прямые HTTP-вызовы:
-
-- `PATCH `/projects/${projectId}/notes/reorder``; аргументы: `payload`.
-
-Явные throw в теле:
-
-```typescript
-new Error("Provide at least one page to sort")
-```
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `api.patch`
-
-</details>
-
 ## deleteProjectNote
 
-[frontend/src/api.ts:583](../../../../frontend/src/api.ts#L583)
+[frontend/src/api.ts:494](../../../../frontend/src/api.ts#L494)
 
 ```typescript
 async deleteProjectNote(projectId: number, noteId: number) => Promise<void>
@@ -1551,7 +1256,7 @@ async deleteProjectNote(projectId: number, noteId: number) => Promise<void>
 
 ## listProjectCredentials
 
-[frontend/src/api.ts:589](../../../../frontend/src/api.ts#L589)
+[frontend/src/api.ts:500](../../../../frontend/src/api.ts#L500)
 
 ```typescript
 async listProjectCredentials(projectId: number) => Promise<ProjectCredential[]>
@@ -1578,7 +1283,7 @@ async listProjectCredentials(projectId: number) => Promise<ProjectCredential[]>
 
 ## createProjectCredential
 
-[frontend/src/api.ts:594](../../../../frontend/src/api.ts#L594)
+[frontend/src/api.ts:505](../../../../frontend/src/api.ts#L505)
 
 ```typescript
 async createProjectCredential(projectId: number, payload: { username?: string | null; password: string; host?: string | null }) => Promise<ProjectCredential>
@@ -1607,7 +1312,7 @@ async createProjectCredential(projectId: number, payload: { username?: string | 
 
 ## updateProjectCredential
 
-[frontend/src/api.ts:603](../../../../frontend/src/api.ts#L603)
+[frontend/src/api.ts:514](../../../../frontend/src/api.ts#L514)
 
 ```typescript
 async updateProjectCredential(projectId: number, credentialId: number, payload: { username?: string | null; password?: string; host?: string | null }) => Promise<ProjectCredential>
@@ -1636,7 +1341,7 @@ async updateProjectCredential(projectId: number, credentialId: number, payload: 
 
 ## deleteProjectCredential
 
-[frontend/src/api.ts:614](../../../../frontend/src/api.ts#L614)
+[frontend/src/api.ts:525](../../../../frontend/src/api.ts#L525)
 
 ```typescript
 async deleteProjectCredential(projectId: number, credentialId: number) => Promise<void>
@@ -1662,127 +1367,9 @@ async deleteProjectCredential(projectId: number, credentialId: number) => Promis
 
 </details>
 
-## listProjectNoteComments
-
-[frontend/src/api.ts:618](../../../../frontend/src/api.ts#L618)
-
-```typescript
-async listProjectNoteComments(projectId: number, noteId: number) => Promise<PaginatedResponse<ProjectNoteComment>>
-```
-
-Клиентский HTTP-метод: GET ``/projects/${projectId}/notes/${noteId}/comments``. Использует общий axios-клиент с cookie и обработкой обновления сессии.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `projectId` | `number` | `обязательный` | ID проекта в API. |
-| `noteId` | `number` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-
-Возвращает: `Promise<PaginatedResponse<ProjectNoteComment>>`.
-
-Прямые HTTP-вызовы:
-
-- `GET `/projects/${projectId}/notes/${noteId}/comments``; аргументы: `{ params: { page: 1, size: 100 }, }`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `api.get`
-
-</details>
-
-## createProjectNoteComment
-
-[frontend/src/api.ts:625](../../../../frontend/src/api.ts#L625)
-
-```typescript
-async createProjectNoteComment(projectId: number, noteId: number, content: string) => Promise<ProjectNoteComment>
-```
-
-Клиентский HTTP-метод: POST ``/projects/${projectId}/notes/${noteId}/comments``. Использует общий axios-клиент с cookie и обработкой обновления сессии.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `projectId` | `number` | `обязательный` | ID проекта в API. |
-| `noteId` | `number` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-| `content` | `string` | `обязательный` | Текст содержимого; формат определяется вызывающим сервисом. |
-
-Возвращает: `Promise<ProjectNoteComment>`.
-
-Прямые HTTP-вызовы:
-
-- `POST `/projects/${projectId}/notes/${noteId}/comments``; аргументы: `{ content }`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `api.post`
-- `assertRequired`
-
-</details>
-
-## updateProjectNoteComment
-
-[frontend/src/api.ts:635](../../../../frontend/src/api.ts#L635)
-
-```typescript
-async updateProjectNoteComment(projectId: number, noteId: number, commentId: number, content: string) => Promise<ProjectNoteComment>
-```
-
-Клиентский HTTP-метод: PUT ``/projects/${projectId}/notes/${noteId}/comments/${commentId}``. Использует общий axios-клиент с cookie и обработкой обновления сессии.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `projectId` | `number` | `обязательный` | ID проекта в API. |
-| `noteId` | `number` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-| `commentId` | `number` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-| `content` | `string` | `обязательный` | Текст содержимого; формат определяется вызывающим сервисом. |
-
-Возвращает: `Promise<ProjectNoteComment>`.
-
-Прямые HTTP-вызовы:
-
-- `PUT `/projects/${projectId}/notes/${noteId}/comments/${commentId}``; аргументы: `{ content }`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `api.put`
-- `assertRequired`
-
-</details>
-
-## deleteProjectNoteComment
-
-[frontend/src/api.ts:646](../../../../frontend/src/api.ts#L646)
-
-```typescript
-async deleteProjectNoteComment(projectId: number, noteId: number, commentId: number) => Promise<void>
-```
-
-Клиентский HTTP-метод: DELETE ``/projects/${projectId}/notes/${noteId}/comments/${commentId}``. Использует общий axios-клиент с cookie и обработкой обновления сессии.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `projectId` | `number` | `обязательный` | ID проекта в API. |
-| `noteId` | `number` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-| `commentId` | `number` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-
-Возвращает: `Promise<void>`.
-
-Прямые HTTP-вызовы:
-
-- `DELETE `/projects/${projectId}/notes/${noteId}/comments/${commentId}``; аргументы: `нет`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `api.delete`
-
-</details>
-
 ## deleteProject
 
-[frontend/src/api.ts:650](../../../../frontend/src/api.ts#L650)
+[frontend/src/api.ts:529](../../../../frontend/src/api.ts#L529)
 
 ```typescript
 async deleteProject(projectId: number) => Promise<void>
@@ -1809,7 +1396,7 @@ async deleteProject(projectId: number) => Promise<void>
 
 ## getHostCreationTimes
 
-[frontend/src/api.ts:655](../../../../frontend/src/api.ts#L655)
+[frontend/src/api.ts:534](../../../../frontend/src/api.ts#L534)
 
 ```typescript
 async getHostCreationTimes(projectId: number) => Promise<string[]>
@@ -1836,7 +1423,7 @@ async getHostCreationTimes(projectId: number) => Promise<string[]>
 
 ## getHosts
 
-[frontend/src/api.ts:660](../../../../frontend/src/api.ts#L660)
+[frontend/src/api.ts:539](../../../../frontend/src/api.ts#L539)
 
 ```typescript
 async getHosts(projectId: number) => Promise<PaginatedResponse<Host>>
@@ -1865,7 +1452,7 @@ async getHosts(projectId: number) => Promise<PaginatedResponse<Host>>
 
 ## createHost
 
-[frontend/src/api.ts:681](../../../../frontend/src/api.ts#L681)
+[frontend/src/api.ts:560](../../../../frontend/src/api.ts#L560)
 
 ```typescript
 async createHost(projectId: number, payload: { ip_address?: string; ip_addresses?: string[]; hostname?: string; notes?: string; status?: "up" | "down" | "unknown"; os_type?: OsType; }) => Promise<Host>
@@ -1887,7 +1474,7 @@ async createHost(projectId: number, payload: { ip_address?: string; ip_addresses
 Явные throw в теле:
 
 ```typescript
-new Error('Provide at least "IP address" or "Hostname"')
+new UserInputError('Provide at least "IP address" or "Hostname"')
 ```
 
 <details>
@@ -1900,7 +1487,7 @@ new Error('Provide at least "IP address" or "Hostname"')
 
 ## getHost
 
-[frontend/src/api.ts:699](../../../../frontend/src/api.ts#L699)
+[frontend/src/api.ts:578](../../../../frontend/src/api.ts#L578)
 
 ```typescript
 async getHost(projectId: number, hostId: number) => Promise<HostDetails>
@@ -1928,7 +1515,7 @@ async getHost(projectId: number, hostId: number) => Promise<HostDetails>
 
 ## updateHost
 
-[frontend/src/api.ts:704](../../../../frontend/src/api.ts#L704)
+[frontend/src/api.ts:583](../../../../frontend/src/api.ts#L583)
 
 ```typescript
 async updateHost(projectId: number, hostId: number, payload: { ip_address?: string; ip_addresses?: Array<{ ip_address: string; label?: string | null; is_primary?: boolean }>; hostname?: string; notes?: string | null; status?: "up" | "down" | "unknown"; os_type?: OsType; }) => Promise<Host>
@@ -1957,7 +1544,7 @@ async updateHost(projectId: number, hostId: number, payload: { ip_address?: stri
 
 ## deleteHost
 
-[frontend/src/api.ts:720](../../../../frontend/src/api.ts#L720)
+[frontend/src/api.ts:599](../../../../frontend/src/api.ts#L599)
 
 ```typescript
 async deleteHost(projectId: number, hostId: number) => Promise<void>
@@ -1985,7 +1572,7 @@ async deleteHost(projectId: number, hostId: number) => Promise<void>
 
 ## changeIpAddress
 
-[frontend/src/api.ts:724](../../../../frontend/src/api.ts#L724)
+[frontend/src/api.ts:603](../../../../frontend/src/api.ts#L603)
 
 ```typescript
 async changeIpAddress(projectId: number, previous: string, address: string) => Promise<IpAddressChangeResult>
@@ -2016,7 +1603,7 @@ async changeIpAddress(projectId: number, previous: string, address: string) => P
 
 ## getHiddenIps
 
-[frontend/src/api.ts:733](../../../../frontend/src/api.ts#L733)
+[frontend/src/api.ts:612](../../../../frontend/src/api.ts#L612)
 
 ```typescript
 async getHiddenIps(projectId: number) => Promise<string[]>
@@ -2043,7 +1630,7 @@ async getHiddenIps(projectId: number) => Promise<string[]>
 
 ## hideIp
 
-[frontend/src/api.ts:739](../../../../frontend/src/api.ts#L739)
+[frontend/src/api.ts:618](../../../../frontend/src/api.ts#L618)
 
 ```typescript
 async hideIp(projectId: number, ip: string) => Promise<void>
@@ -2069,38 +1656,9 @@ async hideIp(projectId: number, ip: string) => Promise<void>
 
 </details>
 
-## unhideIp
-
-[frontend/src/api.ts:744](../../../../frontend/src/api.ts#L744)
-
-```typescript
-async unhideIp(projectId: number, ip: string) => Promise<void>
-```
-
-Возвращает адрес в список IP.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `projectId` | `number` | `обязательный` | ID проекта в API. |
-| `ip` | `string` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-
-Возвращает: `Promise<void>`.
-
-Прямые HTTP-вызовы:
-
-- `DELETE `/projects/${projectId}/hidden-ips/${encodeURIComponent(ip)}``; аргументы: `нет`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `api.delete`
-- `encodeURIComponent`
-
-</details>
-
 ## startHostFarm
 
-[frontend/src/api.ts:751](../../../../frontend/src/api.ts#L751)
+[frontend/src/api.ts:625](../../../../frontend/src/api.ts#L625)
 
 ```typescript
 async startHostFarm(projectId: number, raw: string) => Promise<HostFarmJob>
@@ -2129,7 +1687,7 @@ async startHostFarm(projectId: number, raw: string) => Promise<HostFarmJob>
 
 ## getHostFarmJob
 
-[frontend/src/api.ts:758](../../../../frontend/src/api.ts#L758)
+[frontend/src/api.ts:632](../../../../frontend/src/api.ts#L632)
 
 ```typescript
 async getHostFarmJob(projectId: number, jobId: number) => Promise<HostFarmJob>
@@ -2157,7 +1715,7 @@ async getHostFarmJob(projectId: number, jobId: number) => Promise<HostFarmJob>
 
 ## startIpFarm
 
-[frontend/src/api.ts:764](../../../../frontend/src/api.ts#L764)
+[frontend/src/api.ts:638](../../../../frontend/src/api.ts#L638)
 
 ```typescript
 async startIpFarm(projectId: number, raw: string) => Promise<IpFarmJob>
@@ -2186,7 +1744,7 @@ async startIpFarm(projectId: number, raw: string) => Promise<IpFarmJob>
 
 ## getIpFarmJob
 
-[frontend/src/api.ts:771](../../../../frontend/src/api.ts#L771)
+[frontend/src/api.ts:645](../../../../frontend/src/api.ts#L645)
 
 ```typescript
 async getIpFarmJob(projectId: number, jobId: number) => Promise<IpFarmJob>
@@ -2214,7 +1772,7 @@ async getIpFarmJob(projectId: number, jobId: number) => Promise<IpFarmJob>
 
 ## startJsScan
 
-[frontend/src/api.ts:777](../../../../frontend/src/api.ts#L777)
+[frontend/src/api.ts:651](../../../../frontend/src/api.ts#L651)
 
 ```typescript
 async startJsScan(projectId: number, raw = "") => Promise<JsFarmJob>
@@ -2242,7 +1800,7 @@ async startJsScan(projectId: number, raw = "") => Promise<JsFarmJob>
 
 ## getJsScanJob
 
-[frontend/src/api.ts:783](../../../../frontend/src/api.ts#L783)
+[frontend/src/api.ts:657](../../../../frontend/src/api.ts#L657)
 
 ```typescript
 async getJsScanJob(projectId: number, jobId: number) => Promise<JsFarmJob>
@@ -2270,7 +1828,7 @@ async getJsScanJob(projectId: number, jobId: number) => Promise<JsFarmJob>
 
 ## getJsFilesPage
 
-[frontend/src/api.ts:791](../../../../frontend/src/api.ts#L791)
+[frontend/src/api.ts:665](../../../../frontend/src/api.ts#L665)
 
 ```typescript
 async getJsFilesPage(projectId: number, page: number, size: number) => Promise<PaginatedResponse<JsFile>>
@@ -2299,37 +1857,9 @@ JS-файлы проекта с находками — раздел JS груп�
 
 </details>
 
-## bulkDeleteJsFiles
-
-[frontend/src/api.ts:803](../../../../frontend/src/api.ts#L803)
-
-```typescript
-async bulkDeleteJsFiles(projectId: number, ids: number[]) => Promise<number>
-```
-
-Массово удаляет JS-файлы по id. Возвращает `deleted`.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `projectId` | `number` | `обязательный` | ID проекта в API. |
-| `ids` | `number[]` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-
-Возвращает: `Promise<number>`.
-
-Прямые HTTP-вызовы:
-
-- `POST `/projects/${projectId}/js-files/bulk-delete``; аргументы: `{ ids }`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `api.post`
-
-</details>
-
 ## deleteJsFilesForHost
 
-[frontend/src/api.ts:809](../../../../frontend/src/api.ts#L809)
+[frontend/src/api.ts:677](../../../../frontend/src/api.ts#L677)
 
 ```typescript
 async deleteJsFilesForHost(projectId: number, hostId: number) => Promise<void>
@@ -2357,7 +1887,7 @@ async deleteJsFilesForHost(projectId: number, hostId: number) => Promise<void>
 
 ## downloadJsArchive
 
-[frontend/src/api.ts:815](../../../../frontend/src/api.ts#L815)
+[frontend/src/api.ts:683](../../../../frontend/src/api.ts#L683)
 
 ```typescript
 async downloadJsArchive(projectId: number, hostId?: number) => Promise<Blob>
@@ -2384,255 +1914,9 @@ Zip найденных .js. `hostId` сужает архив до одного �
 
 </details>
 
-## getPorts
-
-[frontend/src/api.ts:823](../../../../frontend/src/api.ts#L823)
-
-```typescript
-async getPorts(projectId: number, hostId: number) => Promise<Port[]>
-```
-
-Клиентский HTTP-метод: GET ``/projects/${projectId}/hosts/${hostId}/ports``. Использует общий axios-клиент с cookie и обработкой обновления сессии.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `projectId` | `number` | `обязательный` | ID проекта в API. |
-| `hostId` | `number` | `обязательный` | ID хоста в API. |
-
-Возвращает: `Promise<Port[]>`.
-
-Прямые HTTP-вызовы:
-
-- `GET `/projects/${projectId}/hosts/${hostId}/ports``; аргументы: `нет`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `api.get`
-
-</details>
-
-## createPort
-
-[frontend/src/api.ts:828](../../../../frontend/src/api.ts#L828)
-
-```typescript
-async createPort(projectId: number, hostId: number, payload: { ip_address_id: number; port_number: number; protocol?: "tcp" | "udp"; state?: "open" | "closed" | "filtered"; }) => Promise<Port>
-```
-
-Клиентский HTTP-метод: POST ``/projects/${projectId}/hosts/${hostId}/ports``. Использует общий axios-клиент с cookie и обработкой обновления сессии.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `projectId` | `number` | `обязательный` | ID проекта в API. |
-| `hostId` | `number` | `обязательный` | ID хоста в API. |
-| `payload` | `{ ip_address_id: number; port_number: number; protocol?: "tcp" \| "udp"; state?: "open" \| "closed" \| "filtered"; }` | `обязательный` | Данные операции; для HTTP структура определена Pydantic request-схемой. |
-
-Возвращает: `Promise<Port>`.
-
-Прямые HTTP-вызовы:
-
-- `POST `/projects/${projectId}/hosts/${hostId}/ports``; аргументы: `payload`.
-
-Явные throw в теле:
-
-```typescript
-new Error("Port must be a number")
-new Error("No IP address selected")
-```
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `Number.isFinite`
-- `api.post`
-
-</details>
-
-## updatePort
-
-[frontend/src/api.ts:848](../../../../frontend/src/api.ts#L848)
-
-```typescript
-async updatePort(projectId: number, hostId: number, portId: number, payload: { ip_address_id?: number; port_number?: number; protocol?: "tcp" | "udp"; state?: "open" | "closed" | "filtered"; }) => Promise<Port>
-```
-
-Клиентский HTTP-метод: PUT ``/projects/${projectId}/hosts/${hostId}/ports/${portId}``. Использует общий axios-клиент с cookie и обработкой обновления сессии.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `projectId` | `number` | `обязательный` | ID проекта в API. |
-| `hostId` | `number` | `обязательный` | ID хоста в API. |
-| `portId` | `number` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-| `payload` | `{ ip_address_id?: number; port_number?: number; protocol?: "tcp" \| "udp"; state?: "open" \| "closed" \| "filtered"; }` | `обязательный` | Данные операции; для HTTP структура определена Pydantic request-схемой. |
-
-Возвращает: `Promise<Port>`.
-
-Прямые HTTP-вызовы:
-
-- `PUT `/projects/${projectId}/hosts/${hostId}/ports/${portId}``; аргументы: `payload`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `api.put`
-
-</details>
-
-## deletePort
-
-[frontend/src/api.ts:863](../../../../frontend/src/api.ts#L863)
-
-```typescript
-async deletePort(projectId: number, hostId: number, portId: number) => Promise<void>
-```
-
-Клиентский HTTP-метод: DELETE ``/projects/${projectId}/hosts/${hostId}/ports/${portId}``. Использует общий axios-клиент с cookie и обработкой обновления сессии.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `projectId` | `number` | `обязательный` | ID проекта в API. |
-| `hostId` | `number` | `обязательный` | ID хоста в API. |
-| `portId` | `number` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-
-Возвращает: `Promise<void>`.
-
-Прямые HTTP-вызовы:
-
-- `DELETE `/projects/${projectId}/hosts/${hostId}/ports/${portId}``; аргументы: `нет`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `api.delete`
-
-</details>
-
-## getServices
-
-[frontend/src/api.ts:867](../../../../frontend/src/api.ts#L867)
-
-```typescript
-async getServices(projectId: number, hostId: number, portId: number) => Promise<Service[]>
-```
-
-Клиентский HTTP-метод: GET ``/projects/${projectId}/hosts/${hostId}/ports/${portId}/services``. Использует общий axios-клиент с cookie и обработкой обновления сессии.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `projectId` | `number` | `обязательный` | ID проекта в API. |
-| `hostId` | `number` | `обязательный` | ID хоста в API. |
-| `portId` | `number` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-
-Возвращает: `Promise<Service[]>`.
-
-Прямые HTTP-вызовы:
-
-- `GET `/projects/${projectId}/hosts/${hostId}/ports/${portId}/services``; аргументы: `нет`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `api.get`
-
-</details>
-
-## createService
-
-[frontend/src/api.ts:872](../../../../frontend/src/api.ts#L872)
-
-```typescript
-async createService(projectId: number, hostId: number, portId: number, payload: { name: string; version?: string; banner?: string }) => Promise<Service>
-```
-
-Клиентский HTTP-метод: POST ``/projects/${projectId}/hosts/${hostId}/ports/${portId}/services``. Использует общий axios-клиент с cookie и обработкой обновления сессии.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `projectId` | `number` | `обязательный` | ID проекта в API. |
-| `hostId` | `number` | `обязательный` | ID хоста в API. |
-| `portId` | `number` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-| `payload` | `{ name: string; version?: string; banner?: string }` | `обязательный` | Данные операции; для HTTP структура определена Pydantic request-схемой. |
-
-Возвращает: `Promise<Service>`.
-
-Прямые HTTP-вызовы:
-
-- `POST `/projects/${projectId}/hosts/${hostId}/ports/${portId}/services``; аргументы: `payload`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `api.post`
-- `assertRequired`
-
-</details>
-
-## updateService
-
-[frontend/src/api.ts:883](../../../../frontend/src/api.ts#L883)
-
-```typescript
-async updateService(projectId: number, hostId: number, portId: number, serviceId: number, payload: { name?: string; version?: string; banner?: string }) => Promise<Service>
-```
-
-Клиентский HTTP-метод: PUT ``/projects/${projectId}/hosts/${hostId}/ports/${portId}/services/${serviceId}``. Использует общий axios-клиент с cookie и обработкой обновления сессии.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `projectId` | `number` | `обязательный` | ID проекта в API. |
-| `hostId` | `number` | `обязательный` | ID хоста в API. |
-| `portId` | `number` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-| `serviceId` | `number` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-| `payload` | `{ name?: string; version?: string; banner?: string }` | `обязательный` | Данные операции; для HTTP структура определена Pydantic request-схемой. |
-
-Возвращает: `Promise<Service>`.
-
-Прямые HTTP-вызовы:
-
-- `PUT `/projects/${projectId}/hosts/${hostId}/ports/${portId}/services/${serviceId}``; аргументы: `payload`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `api.put`
-- `assertRequired`
-
-</details>
-
-## deleteService
-
-[frontend/src/api.ts:897](../../../../frontend/src/api.ts#L897)
-
-```typescript
-async deleteService(projectId: number, hostId: number, portId: number, serviceId: number) => Promise<void>
-```
-
-Клиентский HTTP-метод: DELETE ``/projects/${projectId}/hosts/${hostId}/ports/${portId}/services/${serviceId}``. Использует общий axios-клиент с cookie и обработкой обновления сессии.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `projectId` | `number` | `обязательный` | ID проекта в API. |
-| `hostId` | `number` | `обязательный` | ID хоста в API. |
-| `portId` | `number` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-| `serviceId` | `number` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-
-Возвращает: `Promise<void>`.
-
-Прямые HTTP-вызовы:
-
-- `DELETE `/projects/${projectId}/hosts/${hostId}/ports/${portId}/services/${serviceId}``; аргументы: `нет`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `api.delete`
-
-</details>
-
 ## listEndpointComments
 
-[frontend/src/api.ts:902](../../../../frontend/src/api.ts#L902)
+[frontend/src/api.ts:692](../../../../frontend/src/api.ts#L692)
 
 ```typescript
 async listEndpointComments(projectId: number, hostId: number, endpointId: number, page = 1) => Promise<PaginatedResponse<EndpointComment>>
@@ -2662,7 +1946,7 @@ async listEndpointComments(projectId: number, hostId: number, endpointId: number
 
 ## createEndpointComment
 
-[frontend/src/api.ts:907](../../../../frontend/src/api.ts#L907)
+[frontend/src/api.ts:697](../../../../frontend/src/api.ts#L697)
 
 ```typescript
 async createEndpointComment(projectId: number, hostId: number, endpointId: number, content: string) => Promise<EndpointComment>
@@ -2693,7 +1977,7 @@ async createEndpointComment(projectId: number, hostId: number, endpointId: numbe
 
 ## getEndpoints
 
-[frontend/src/api.ts:913](../../../../frontend/src/api.ts#L913)
+[frontend/src/api.ts:703](../../../../frontend/src/api.ts#L703)
 
 ```typescript
 async getEndpoints(projectId: number, hostId: number) => Promise<Endpoint[]>
@@ -2721,7 +2005,7 @@ async getEndpoints(projectId: number, hostId: number) => Promise<Endpoint[]>
 
 ## createEndpoint
 
-[frontend/src/api.ts:918](../../../../frontend/src/api.ts#L918)
+[frontend/src/api.ts:708](../../../../frontend/src/api.ts#L708)
 
 ```typescript
 async createEndpoint(projectId: number, hostId: number, payload: { path?: string; method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "HEAD" | "OPTIONS" | "TRACE" | "QUERY"; description?: string | null; request_raw?: string; query_params?: { name: string; value?: string | null; required?: boolean; description?: string | null }[]; request_body?: string | null; request_content_type?: string | null; request_headers?: EndpointRequestHeader[]; }) => Promise<Endpoint>
@@ -2744,7 +2028,7 @@ async createEndpoint(projectId: number, hostId: number, payload: { path?: string
 Явные throw в теле:
 
 ```typescript
-new Error('Provide at least "Path" or "Raw request"')
+new UserInputError('Provide at least "Path" or "Raw request"')
 ```
 
 <details>
@@ -2757,7 +2041,7 @@ new Error('Provide at least "Path" or "Raw request"')
 
 ## updateEndpoint
 
-[frontend/src/api.ts:939](../../../../frontend/src/api.ts#L939)
+[frontend/src/api.ts:729](../../../../frontend/src/api.ts#L729)
 
 ```typescript
 async updateEndpoint(projectId: number, hostId: number, endpointId: number, payload: { path?: string; method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "HEAD" | "OPTIONS" | "TRACE" | "QUERY"; description?: string | null; request_raw?: string; query_params?: { name: string; value?: string | null; required?: boolean; description?: string | null }[]; request_body?: string | null; request_content_type?: string | null; request_headers?: EndpointRequestHeader[]; }) => Promise<Endpoint>
@@ -2781,7 +2065,7 @@ async updateEndpoint(projectId: number, hostId: number, endpointId: number, payl
 Явные throw в теле:
 
 ```typescript
-new Error('Provide at least "Path" or "Raw request"')
+new UserInputError('Provide at least "Path" or "Raw request"')
 ```
 
 <details>
@@ -2794,7 +2078,7 @@ new Error('Provide at least "Path" or "Raw request"')
 
 ## deleteEndpoint
 
-[frontend/src/api.ts:961](../../../../frontend/src/api.ts#L961)
+[frontend/src/api.ts:751](../../../../frontend/src/api.ts#L751)
 
 ```typescript
 async deleteEndpoint(projectId: number, hostId: number, endpointId: number) => Promise<void>
@@ -2823,7 +2107,7 @@ async deleteEndpoint(projectId: number, hostId: number, endpointId: number) => P
 
 ## getVulnerabilities
 
-[frontend/src/api.ts:965](../../../../frontend/src/api.ts#L965)
+[frontend/src/api.ts:755](../../../../frontend/src/api.ts#L755)
 
 ```typescript
 async getVulnerabilities(projectId: number) => Promise<PaginatedResponse<Vulnerability>>
@@ -2855,7 +2139,7 @@ async getVulnerabilities(projectId: number) => Promise<PaginatedResponse<Vulnera
 
 ## createVulnerability
 
-[frontend/src/api.ts:984](../../../../frontend/src/api.ts#L984)
+[frontend/src/api.ts:774](../../../../frontend/src/api.ts#L774)
 
 ```typescript
 async createVulnerability(projectId: number, payload: { host_id: number; title: string; description?: string | null; // Необязательно: бэкенд по умолчанию ставит "unknown" (критичность не определена). severity?: "critical" | "high" | "medium" | "low" | "info" | "unrealized"; cvss_version?: "4.0" | null; cvss_score?: number | null; cvss_vector?: string | null; cwe_id?: string | null; status?: "open" | "in_progress" | "problem_analysis" | "need_info" | "paused" | "resolved" | "closed" | "cancelled" | "sent_by_mistake"; workflow_steps?: Array<{ id: string; description?: string | null; image_file_ids?: number[]; endpoint_id?: number | null; endpoint_request_raw?: string | null; }>; steps_to_reproduce?: string | null; impact?: string | null; recommendations?: string | null; }) => Promise<Vulnerability>
@@ -2877,7 +2161,7 @@ async createVulnerability(projectId: number, payload: { host_id: number; title: 
 Явные throw в теле:
 
 ```typescript
-new Error("Select a host")
+new UserInputError("Select a host")
 ```
 
 <details>
@@ -2890,7 +2174,7 @@ new Error("Select a host")
 
 ## updateVulnerability
 
-[frontend/src/api.ts:1017](../../../../frontend/src/api.ts#L1017)
+[frontend/src/api.ts:807](../../../../frontend/src/api.ts#L807)
 
 ```typescript
 async updateVulnerability(projectId: number, vulnerabilityId: number, payload: { title?: string; description?: string | null; severity?: "critical" | "high" | "medium" | "low" | "info" | "unrealized"; cvss_version?: "4.0" | null; cvss_score?: number | null; cvss_vector?: string | null; cwe_id?: string | null; status?: "open" | "in_progress" | "problem_analysis" | "need_info" | "paused" | "resolved" | "closed" | "cancelled" | "sent_by_mistake"; workflow_steps?: Array<{ id: string; description?: string | null; image_file_ids?: number[]; endpoint_id?: number | null; endpoint_request_raw?: string | null; }>; steps_to_reproduce?: string | null; impact?: string | null; recommendations?: string | null; }) => Promise<Vulnerability>
@@ -2920,7 +2204,7 @@ async updateVulnerability(projectId: number, vulnerabilityId: number, payload: {
 
 ## deleteVulnerability
 
-[frontend/src/api.ts:1048](../../../../frontend/src/api.ts#L1048)
+[frontend/src/api.ts:838](../../../../frontend/src/api.ts#L838)
 
 ```typescript
 async deleteVulnerability(projectId: number, vulnerabilityId: number) => Promise<void>
@@ -2948,7 +2232,7 @@ async deleteVulnerability(projectId: number, vulnerabilityId: number) => Promise
 
 ## getVulnerabilityTaskTrackerLink
 
-[frontend/src/api.ts:1052](../../../../frontend/src/api.ts#L1052)
+[frontend/src/api.ts:842](../../../../frontend/src/api.ts#L842)
 
 ```typescript
 async getVulnerabilityTaskTrackerLink(projectId: number, vulnerabilityId: number) => Promise<TaskTrackerIssueLink | null>
@@ -2972,7 +2256,7 @@ async getVulnerabilityTaskTrackerLink(projectId: number, vulnerabilityId: number
 
 ## exportVulnerabilityToTaskTracker
 
-[frontend/src/api.ts:1057](../../../../frontend/src/api.ts#L1057)
+[frontend/src/api.ts:847](../../../../frontend/src/api.ts#L847)
 
 ```typescript
 async exportVulnerabilityToTaskTracker(projectId: number, vulnerabilityId: number) => Promise<TaskTrackerIssueLink>
@@ -2997,7 +2281,7 @@ async exportVulnerabilityToTaskTracker(projectId: number, vulnerabilityId: numbe
 
 ## getWorksConfig
 
-[frontend/src/api.ts:1064](../../../../frontend/src/api.ts#L1064)
+[frontend/src/api.ts:854](../../../../frontend/src/api.ts#L854)
 
 ```typescript
 async getWorksConfig() => Promise<WorksConfig>
@@ -3020,7 +2304,7 @@ async getWorksConfig() => Promise<WorksConfig>
 
 ## findWorksComponents
 
-[frontend/src/api.ts:1070](../../../../frontend/src/api.ts#L1070)
+[frontend/src/api.ts:860](../../../../frontend/src/api.ts#L860)
 
 ```typescript
 async findWorksComponents(q: string) => Promise<WorksRef[]>
@@ -3047,7 +2331,7 @@ Typeahead по компонентам Works (имя→UUID).
 
 ## findWorksVersions
 
-[frontend/src/api.ts:1076](../../../../frontend/src/api.ts#L1076)
+[frontend/src/api.ts:866](../../../../frontend/src/api.ts#L866)
 
 ```typescript
 async findWorksVersions(q: string) => Promise<WorksRef[]>
@@ -3074,7 +2358,7 @@ Typeahead по версиям Works (имя→UUID).
 
 ## getVulnerabilityWorksLink
 
-[frontend/src/api.ts:1082](../../../../frontend/src/api.ts#L1082)
+[frontend/src/api.ts:872](../../../../frontend/src/api.ts#L872)
 
 ```typescript
 async getVulnerabilityWorksLink(projectId: number, vulnerabilityId: number) => Promise<WorksIssueLink | null>
@@ -3102,7 +2386,7 @@ async getVulnerabilityWorksLink(projectId: number, vulnerabilityId: number) => P
 
 ## exportVulnerabilityToWorks
 
-[frontend/src/api.ts:1088](../../../../frontend/src/api.ts#L1088)
+[frontend/src/api.ts:878](../../../../frontend/src/api.ts#L878)
 
 ```typescript
 async exportVulnerabilityToWorks(projectId: number, vulnerabilityId: number, assignee?: string | null) => Promise<WorksIssueLink>
@@ -3131,7 +2415,7 @@ async exportVulnerabilityToWorks(projectId: number, vulnerabilityId: number, ass
 
 ## getVulnerability
 
-[frontend/src/api.ts:1100](../../../../frontend/src/api.ts#L1100)
+[frontend/src/api.ts:890](../../../../frontend/src/api.ts#L890)
 
 ```typescript
 async getVulnerability(projectId: number, vulnerabilityId: number) => Promise<VulnerabilityDetails>
@@ -3157,37 +2441,9 @@ async getVulnerability(projectId: number, vulnerabilityId: number) => Promise<Vu
 
 </details>
 
-## getHostVulnerabilities
-
-[frontend/src/api.ts:1105](../../../../frontend/src/api.ts#L1105)
-
-```typescript
-async getHostVulnerabilities(projectId: number, hostId: number) => Promise<PaginatedResponse<Vulnerability>>
-```
-
-Клиентский HTTP-метод: GET ``/projects/${projectId}/hosts/${hostId}/vulnerabilities``. Использует общий axios-клиент с cookie и обработкой обновления сессии.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `projectId` | `number` | `обязательный` | ID проекта в API. |
-| `hostId` | `number` | `обязательный` | ID хоста в API. |
-
-Возвращает: `Promise<PaginatedResponse<Vulnerability>>`.
-
-Прямые HTTP-вызовы:
-
-- `GET `/projects/${projectId}/hosts/${hostId}/vulnerabilities``; аргументы: `{ params: { page: 1, size: 100 }, }`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `api.get`
-
-</details>
-
 ## addVulnerabilityAsset
 
-[frontend/src/api.ts:1112](../../../../frontend/src/api.ts#L1112)
+[frontend/src/api.ts:895](../../../../frontend/src/api.ts#L895)
 
 ```typescript
 async addVulnerabilityAsset(projectId: number, vulnerabilityId: number, payload: { asset_type: "host" | "port" | "service" | "endpoint"; asset_id: number; }) => Promise<VulnerabilityAsset>
@@ -3216,7 +2472,7 @@ async addVulnerabilityAsset(projectId: number, vulnerabilityId: number, payload:
 
 ## deleteVulnerabilityAsset
 
-[frontend/src/api.ts:1124](../../../../frontend/src/api.ts#L1124)
+[frontend/src/api.ts:907](../../../../frontend/src/api.ts#L907)
 
 ```typescript
 async deleteVulnerabilityAsset(projectId: number, vulnerabilityId: number, assetLinkId: number) => Promise<void>
@@ -3245,7 +2501,7 @@ async deleteVulnerabilityAsset(projectId: number, vulnerabilityId: number, asset
 
 ## listVulnerabilityFiles
 
-[frontend/src/api.ts:1128](../../../../frontend/src/api.ts#L1128)
+[frontend/src/api.ts:911](../../../../frontend/src/api.ts#L911)
 
 ```typescript
 async listVulnerabilityFiles(projectId: number, vulnerabilityId: number) => Promise<VulnerabilityFile[]>
@@ -3273,7 +2529,7 @@ async listVulnerabilityFiles(projectId: number, vulnerabilityId: number) => Prom
 
 ## uploadVulnerabilityFile
 
-[frontend/src/api.ts:1133](../../../../frontend/src/api.ts#L1133)
+[frontend/src/api.ts:916](../../../../frontend/src/api.ts#L916)
 
 ```typescript
 async uploadVulnerabilityFile(projectId: number, vulnerabilityId: number, file: File) => Promise<VulnerabilityFile>
@@ -3296,7 +2552,7 @@ async uploadVulnerabilityFile(projectId: number, vulnerabilityId: number, file: 
 Явные throw в теле:
 
 ```typescript
-new Error("Select a file")
+new UserInputError("Select a file")
 ```
 
 <details>
@@ -3309,7 +2565,7 @@ new Error("Select a file")
 
 ## deleteVulnerabilityFile
 
-[frontend/src/api.ts:1145](../../../../frontend/src/api.ts#L1145)
+[frontend/src/api.ts:928](../../../../frontend/src/api.ts#L928)
 
 ```typescript
 async deleteVulnerabilityFile(projectId: number, vulnerabilityId: number, fileId: number) => Promise<void>
@@ -3338,7 +2594,7 @@ async deleteVulnerabilityFile(projectId: number, vulnerabilityId: number, fileId
 
 ## uploadProjectImage
 
-[frontend/src/api.ts:1151](../../../../frontend/src/api.ts#L1151)
+[frontend/src/api.ts:934](../../../../frontend/src/api.ts#L934)
 
 ```typescript
 async uploadProjectImage(projectId: number, file: File) => Promise<{ url: string }>
@@ -3361,7 +2617,7 @@ served URL to embed as `![alt](url)`. Backed by POST /projects/{id}/images.
 Явные throw в теле:
 
 ```typescript
-new Error("Select an image")
+new UserInputError("Select an image")
 ```
 
 <details>
@@ -3369,223 +2625,12 @@ new Error("Select an image")
 
 - `api.post`
 - `formData.append`
-
-</details>
-
-## listVulnerabilityComments
-
-[frontend/src/api.ts:1163](../../../../frontend/src/api.ts#L1163)
-
-```typescript
-async listVulnerabilityComments(projectId: number, vulnerabilityId: number) => Promise<PaginatedResponse<VulnerabilityComment>>
-```
-
-Клиентский HTTP-метод: GET ``/projects/${projectId}/vulnerabilities/${vulnerabilityId}/comments``. Использует общий axios-клиент с cookie и обработкой обновления сессии.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `projectId` | `number` | `обязательный` | ID проекта в API. |
-| `vulnerabilityId` | `number` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-
-Возвращает: `Promise<PaginatedResponse<VulnerabilityComment>>`.
-
-Прямые HTTP-вызовы:
-
-- `GET `/projects/${projectId}/vulnerabilities/${vulnerabilityId}/comments``; аргументы: `{ params: { page: 1, size: 100 }, }`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `api.get`
-
-</details>
-
-## createVulnerabilityComment
-
-[frontend/src/api.ts:1170](../../../../frontend/src/api.ts#L1170)
-
-```typescript
-async createVulnerabilityComment(projectId: number, vulnerabilityId: number, content: string) => Promise<VulnerabilityComment>
-```
-
-Клиентский HTTP-метод: POST ``/projects/${projectId}/vulnerabilities/${vulnerabilityId}/comments``. Использует общий axios-клиент с cookie и обработкой обновления сессии.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `projectId` | `number` | `обязательный` | ID проекта в API. |
-| `vulnerabilityId` | `number` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-| `content` | `string` | `обязательный` | Текст содержимого; формат определяется вызывающим сервисом. |
-
-Возвращает: `Promise<VulnerabilityComment>`.
-
-Прямые HTTP-вызовы:
-
-- `POST `/projects/${projectId}/vulnerabilities/${vulnerabilityId}/comments``; аргументы: `{ content }`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `api.post`
-- `assertRequired`
-
-</details>
-
-## updateVulnerabilityComment
-
-[frontend/src/api.ts:1176](../../../../frontend/src/api.ts#L1176)
-
-```typescript
-async updateVulnerabilityComment(projectId: number, vulnerabilityId: number, commentId: number, content: string) => Promise<VulnerabilityComment>
-```
-
-Клиентский HTTP-метод: PUT ``/projects/${projectId}/vulnerabilities/${vulnerabilityId}/comments/${commentId}``. Использует общий axios-клиент с cookie и обработкой обновления сессии.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `projectId` | `number` | `обязательный` | ID проекта в API. |
-| `vulnerabilityId` | `number` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-| `commentId` | `number` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-| `content` | `string` | `обязательный` | Текст содержимого; формат определяется вызывающим сервисом. |
-
-Возвращает: `Promise<VulnerabilityComment>`.
-
-Прямые HTTP-вызовы:
-
-- `PUT `/projects/${projectId}/vulnerabilities/${vulnerabilityId}/comments/${commentId}``; аргументы: `{ content }`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `api.put`
-- `assertRequired`
-
-</details>
-
-## deleteVulnerabilityComment
-
-[frontend/src/api.ts:1187](../../../../frontend/src/api.ts#L1187)
-
-```typescript
-async deleteVulnerabilityComment(projectId: number, vulnerabilityId: number, commentId: number) => Promise<void>
-```
-
-Клиентский HTTP-метод: DELETE ``/projects/${projectId}/vulnerabilities/${vulnerabilityId}/comments/${commentId}``. Использует общий axios-клиент с cookie и обработкой обновления сессии.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `projectId` | `number` | `обязательный` | ID проекта в API. |
-| `vulnerabilityId` | `number` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-| `commentId` | `number` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-
-Возвращает: `Promise<void>`.
-
-Прямые HTTP-вызовы:
-
-- `DELETE `/projects/${projectId}/vulnerabilities/${vulnerabilityId}/comments/${commentId}``; аргументы: `нет`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `api.delete`
-
-</details>
-
-## importProjectData
-
-[frontend/src/api.ts:1191](../../../../frontend/src/api.ts#L1191)
-
-```typescript
-async importProjectData(projectId: number, file: File) => Promise<ImportResult>
-```
-
-Клиентский HTTP-метод: POST ``/projects/${projectId}/import``. Использует общий axios-клиент с cookie и обработкой обновления сессии.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `projectId` | `number` | `обязательный` | ID проекта в API. |
-| `file` | `File` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-
-Возвращает: `Promise<ImportResult>`.
-
-Прямые HTTP-вызовы:
-
-- `POST `/projects/${projectId}/import``; аргументы: `formData / { headers: { "Content-Type": "multipart/form-data" }, }`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `api.post`
-- `formData.append`
-
-</details>
-
-## importOpenApiFile
-
-[frontend/src/api.ts:1200](../../../../frontend/src/api.ts#L1200)
-
-```typescript
-async importOpenApiFile(projectId: number, hostId: number, file: File) => Promise<OpenApiImportResult>
-```
-
-Клиентский HTTP-метод: POST ``/projects/${projectId}/hosts/${hostId}/import-openapi``. Использует общий axios-клиент с cookie и обработкой обновления сессии.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `projectId` | `number` | `обязательный` | ID проекта в API. |
-| `hostId` | `number` | `обязательный` | ID хоста в API. |
-| `file` | `File` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-
-Возвращает: `Promise<OpenApiImportResult>`.
-
-Прямые HTTP-вызовы:
-
-- `POST `/projects/${projectId}/hosts/${hostId}/import-openapi``; аргументы: `formData / { headers: { "Content-Type": "multipart/form-data" }, }`.
-
-Явные throw в теле:
-
-```typescript
-new Error("Select a Swagger/OpenAPI file")
-```
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `api.post`
-- `formData.append`
-
-</details>
-
-## exportOpenApiFile
-
-[frontend/src/api.ts:1212](../../../../frontend/src/api.ts#L1212)
-
-```typescript
-async exportOpenApiFile(projectId: number, hostId: number) => Promise<Blob>
-```
-
-Клиентский HTTP-метод: GET ``/projects/${projectId}/hosts/${hostId}/export-openapi``. Использует общий axios-клиент с cookie и обработкой обновления сессии.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `projectId` | `number` | `обязательный` | ID проекта в API. |
-| `hostId` | `number` | `обязательный` | ID хоста в API. |
-
-Возвращает: `Promise<Blob>`.
-
-Прямые HTTP-вызовы:
-
-- `GET `/projects/${projectId}/hosts/${hostId}/export-openapi``; аргументы: `{ responseType: "blob", }`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `api.get`
 
 </details>
 
 ## downloadProjectCertificationReport
 
-[frontend/src/api.ts:1219](../../../../frontend/src/api.ts#L1219)
+[frontend/src/api.ts:946](../../../../frontend/src/api.ts#L946)
 
 ```typescript
 async downloadProjectCertificationReport(projectId: number) => Promise<Blob>
@@ -3612,7 +2657,7 @@ async downloadProjectCertificationReport(projectId: number) => Promise<Blob>
 
 ## downloadProjectAcceptanceReport
 
-[frontend/src/api.ts:1226](../../../../frontend/src/api.ts#L1226)
+[frontend/src/api.ts:953](../../../../frontend/src/api.ts#L953)
 
 ```typescript
 async downloadProjectAcceptanceReport(projectId: number) => Promise<Blob>
@@ -3639,7 +2684,7 @@ async downloadProjectAcceptanceReport(projectId: number) => Promise<Blob>
 
 ## listAgentTokens
 
-[frontend/src/api.ts:1233](../../../../frontend/src/api.ts#L1233)
+[frontend/src/api.ts:960](../../../../frontend/src/api.ts#L960)
 
 ```typescript
 async listAgentTokens() => Promise<AgentApiToken[]>
@@ -3662,7 +2707,7 @@ async listAgentTokens() => Promise<AgentApiToken[]>
 
 ## createAgentToken
 
-[frontend/src/api.ts:1238](../../../../frontend/src/api.ts#L1238)
+[frontend/src/api.ts:965](../../../../frontend/src/api.ts#L965)
 
 ```typescript
 async createAgentToken(payload: { name: string; scopes: string[]; project_ids: number[]; all_projects: boolean; expires_at?: string | null; }) => Promise<AgentApiToken & { token: string }>
@@ -3689,7 +2734,7 @@ async createAgentToken(payload: { name: string; scopes: string[]; project_ids: n
 
 ## revokeAgentToken
 
-[frontend/src/api.ts:1249](../../../../frontend/src/api.ts#L1249)
+[frontend/src/api.ts:976](../../../../frontend/src/api.ts#L976)
 
 ```typescript
 async revokeAgentToken(tokenId: number) => Promise<void>
@@ -3716,7 +2761,7 @@ async revokeAgentToken(tokenId: number) => Promise<void>
 
 ## listNotifications
 
-[frontend/src/api.ts:1253](../../../../frontend/src/api.ts#L1253)
+[frontend/src/api.ts:980](../../../../frontend/src/api.ts#L980)
 
 ```typescript
 async listNotifications(options?: { is_read?: boolean }) => Promise<PaginatedResponse<Notification>>
@@ -3741,32 +2786,9 @@ async listNotifications(options?: { is_read?: boolean }) => Promise<PaginatedRes
 
 </details>
 
-## unreadCount
-
-[frontend/src/api.ts:1262](../../../../frontend/src/api.ts#L1262)
-
-```typescript
-async unreadCount() => Promise<number>
-```
-
-Клиентский HTTP-метод: GET `"/notifications/unread-count"`. Использует общий axios-клиент с cookie и обработкой обновления сессии.
-
-Возвращает: `Promise<number>`.
-
-Прямые HTTP-вызовы:
-
-- `GET "/notifications/unread-count"`; аргументы: `нет`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `api.get`
-
-</details>
-
 ## markNotificationRead
 
-[frontend/src/api.ts:1267](../../../../frontend/src/api.ts#L1267)
+[frontend/src/api.ts:989](../../../../frontend/src/api.ts#L989)
 
 ```typescript
 async markNotificationRead(notificationId: number) => Promise<void>
@@ -3793,7 +2815,7 @@ async markNotificationRead(notificationId: number) => Promise<void>
 
 ## markAllNotificationsRead
 
-[frontend/src/api.ts:1271](../../../../frontend/src/api.ts#L1271)
+[frontend/src/api.ts:993](../../../../frontend/src/api.ts#L993)
 
 ```typescript
 async markAllNotificationsRead() => Promise<void>
@@ -3814,38 +2836,9 @@ async markAllNotificationsRead() => Promise<void>
 
 </details>
 
-## getAuditLogs
-
-[frontend/src/api.ts:1275](../../../../frontend/src/api.ts#L1275)
-
-```typescript
-async getAuditLogs(page = 1, size = 50, filters?: { user_id?: string; username?: string; action?: string; entity_type?: string; entity_id?: string; ip_address?: string; query?: string; created_from?: string; created_to?: string; }) => Promise<PaginatedResponse<AuditLog>>
-```
-
-Клиентский HTTP-метод: GET `"/audit-logs"`. Использует общий axios-клиент с cookie и обработкой обновления сессии.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `page` | `number` | `1` | Номер страницы, начиная с 1. |
-| `size` | `number` | `50` | Число элементов страницы; верхняя граница задаётся маршрутом. |
-| `filters` | `{ user_id?: string; username?: string; action?: string; entity_type?: string; entity_id?: string; ip_address?: string; query?: string; created_from?: string; created_to?: string; }` | `undefined (optional)` | Определяется именем/типом и контрактом вызывающего кода. |
-
-Возвращает: `Promise<PaginatedResponse<AuditLog>>`.
-
-Прямые HTTP-вызовы:
-
-- `GET "/audit-logs"`; аргументы: `{ params: { page, size, ...filters }, }`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `api.get`
-
-</details>
-
 ## getTasks
 
-[frontend/src/api.ts:1303](../../../../frontend/src/api.ts#L1303)
+[frontend/src/api.ts:1004](../../../../frontend/src/api.ts#L1004)
 
 ```typescript
 async getTasks(params: { query?: string; category?: string; } = {}) => Promise<TaskTrackerTaskList>
@@ -3872,7 +2865,7 @@ async getTasks(params: { query?: string; category?: string; } = {}) => Promise<T
 
 ## getTask
 
-[frontend/src/api.ts:1312](../../../../frontend/src/api.ts#L1312)
+[frontend/src/api.ts:1013](../../../../frontend/src/api.ts#L1013)
 
 ```typescript
 async getTask(key: string) => Promise<TaskTrackerTaskDetail>

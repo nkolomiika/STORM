@@ -426,14 +426,17 @@ router.get('/invitations', response_model=list[InvitationOut])
 <summary>Прямые вызовы в теле</summary>
 
 - `InvitationOut.model_validate`
+- `InvitationOut.model_validate(item).model_copy`
 - `UserService`
 - `UserService(db).list_invitations`
+- `deliveries.get`
+- `invitation_delivery`
 
 </details>
 
 ## resend_invitation
 
-[backend/app/routers/users.py:179](../../../../../backend/app/routers/users.py#L179)
+[backend/app/routers/users.py:181](../../../../../backend/app/routers/users.py#L181)
 
 ```python
 async def resend_invitation(invitation_id: int, request: Request, _: None=Depends(enforce_csrf), admin: User=Depends(require_admin), db: AsyncSession=Depends(get_db)) -> InvitationSentOut
@@ -474,7 +477,7 @@ router.post('/invitations/{invitation_id}/resend', response_model=InvitationSent
 
 ## revoke_invitation
 
-[backend/app/routers/users.py:197](../../../../../backend/app/routers/users.py#L197)
+[backend/app/routers/users.py:199](../../../../../backend/app/routers/users.py#L199)
 
 ```python
 async def revoke_invitation(invitation_id: int, request: Request, _: None=Depends(enforce_csrf), admin: User=Depends(require_admin), db: AsyncSession=Depends(get_db)) -> None
@@ -511,16 +514,15 @@ router.delete('/invitations/{invitation_id}', status_code=status.HTTP_204_NO_CON
 
 ## search_users
 
-[backend/app/routers/users.py:209](../../../../../backend/app/routers/users.py#L209)
+[backend/app/routers/users.py:211](../../../../../backend/app/routers/users.py#L211)
 
 ```python
 async def search_users(q: str=Query('', max_length=100), limit: int=Query(10, ge=1, le=25), _: User=Depends(get_current_user), db: AsyncSession=Depends(get_db)) -> list[UserSearchOut]
 ```
 
-Поиск людей для назначения исполнителя: по username или ФИО (full_name).
+Ищет активных локальных пользователей STORM по логину или ФИО.
 
-При настроенном IAM дополнительно подмешивает кандидатов из IAM
-(dedup по username, локальные пользователи в приоритете).
+SSO-вход не подключает удалённый поиск IAM: в выдаче только пользователи БД.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -542,20 +544,15 @@ router.get('/search', response_model=list[UserSearchOut])
 <details>
 <summary>Прямые вызовы в теле</summary>
 
-- `UserSearchOut`
 - `UserSearchOut.model_validate`
 - `UserService`
-- `cand.get`
-- `out.append`
-- `seen.add`
-- `service.iam_user_candidates`
-- `service.search_users`
+- `UserService(db).search_users`
 
 </details>
 
 ## get_user
 
-[backend/app/routers/users.py:233](../../../../../backend/app/routers/users.py#L233)
+[backend/app/routers/users.py:227](../../../../../backend/app/routers/users.py#L227)
 
 ```python
 async def get_user(user_id: int, _admin: User=Depends(require_admin), db: AsyncSession=Depends(get_db)) -> UserOut
@@ -590,7 +587,7 @@ router.get('/{user_id}', response_model=UserOut)
 
 ## get_user_avatar
 
-[backend/app/routers/users.py:244](../../../../../backend/app/routers/users.py#L244)
+[backend/app/routers/users.py:238](../../../../../backend/app/routers/users.py#L238)
 
 ```python
 async def get_user_avatar(user_id: int, current_user: User=Depends(get_current_user), db: AsyncSession=Depends(get_db)) -> Response
@@ -626,7 +623,7 @@ router.get('/{user_id}/avatar')
 
 ## update_user
 
-[backend/app/routers/users.py:257](../../../../../backend/app/routers/users.py#L257)
+[backend/app/routers/users.py:251](../../../../../backend/app/routers/users.py#L251)
 
 ```python
 async def update_user(user_id: int, payload: UserUpdate, request: Request, _: None=Depends(enforce_csrf), admin: User=Depends(require_admin), db: AsyncSession=Depends(get_db)) -> UserOut
@@ -666,7 +663,7 @@ router.put('/{user_id}', response_model=UserOut)
 
 ## delete_user
 
-[backend/app/routers/users.py:271](../../../../../backend/app/routers/users.py#L271)
+[backend/app/routers/users.py:265](../../../../../backend/app/routers/users.py#L265)
 
 ```python
 async def delete_user(user_id: int, request: Request, _: None=Depends(enforce_csrf), admin: User=Depends(require_admin), db: AsyncSession=Depends(get_db)) -> None
@@ -703,7 +700,7 @@ router.delete('/{user_id}', status_code=status.HTTP_204_NO_CONTENT)
 
 ## reactivate_user
 
-[backend/app/routers/users.py:283](../../../../../backend/app/routers/users.py#L283)
+[backend/app/routers/users.py:277](../../../../../backend/app/routers/users.py#L277)
 
 ```python
 async def reactivate_user(user_id: int, request: Request, _: None=Depends(enforce_csrf), admin: User=Depends(require_admin), db: AsyncSession=Depends(get_db)) -> ReactivationRequestOut
@@ -744,7 +741,7 @@ router.post('/{user_id}/reactivate', response_model=ReactivationRequestOut, stat
 
 ## reset_password
 
-[backend/app/routers/users.py:301](../../../../../backend/app/routers/users.py#L301)
+[backend/app/routers/users.py:295](../../../../../backend/app/routers/users.py#L295)
 
 ```python
 async def reset_password(user_id: int, request: Request, _: None=Depends(enforce_csrf), admin: User=Depends(require_admin), db: AsyncSession=Depends(get_db)) -> PasswordResetOut
@@ -782,7 +779,7 @@ router.patch('/{user_id}/password', response_model=PasswordResetOut, status_code
 
 ## reset_2fa
 
-[backend/app/routers/users.py:315](../../../../../backend/app/routers/users.py#L315)
+[backend/app/routers/users.py:309](../../../../../backend/app/routers/users.py#L309)
 
 ```python
 async def reset_2fa(user_id: int, request: Request, _: None=Depends(enforce_csrf), admin: User=Depends(require_admin), db: AsyncSession=Depends(get_db)) -> UserOut

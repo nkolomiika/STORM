@@ -6,7 +6,7 @@
 
 ## reclaim_stale_jobs
 
-[backend/app/worker/recon_worker.py:32](../../../../../backend/app/worker/recon_worker.py#L32)
+[backend/app/worker/recon_worker.py:33](../../../../../backend/app/worker/recon_worker.py#L33)
 
 ```python
 async def reclaim_stale_jobs(db: AsyncSession, *, older_than_seconds: int, max_attempts: int, now: datetime | None=None) -> int
@@ -52,7 +52,7 @@ Consumer стоит с requeue=False, а run_recon_job пропускает runn
 
 ## wait_for_rabbitmq
 
-[backend/app/worker/recon_worker.py:76](../../../../../backend/app/worker/recon_worker.py#L76)
+[backend/app/worker/recon_worker.py:77](../../../../../backend/app/worker/recon_worker.py#L77)
 
 ```python
 async def wait_for_rabbitmq(host: str, port: int, retry_delay: float=2.0) -> None
@@ -81,7 +81,7 @@ async def wait_for_rabbitmq(host: str, port: int, retry_delay: float=2.0) -> Non
 
 ## relay_pending_jobs
 
-[backend/app/worker/recon_worker.py:97](../../../../../backend/app/worker/recon_worker.py#L97)
+[backend/app/worker/recon_worker.py:98](../../../../../backend/app/worker/recon_worker.py#L98)
 
 ```python
 async def relay_pending_jobs(channel: aio_pika.abc.AbstractChannel, queue_name: str) -> None
@@ -129,7 +129,7 @@ async def relay_pending_jobs(channel: aio_pika.abc.AbstractChannel, queue_name: 
 
 ## consume_recon_jobs
 
-[backend/app/worker/recon_worker.py:147](../../../../../backend/app/worker/recon_worker.py#L147)
+[backend/app/worker/recon_worker.py:148](../../../../../backend/app/worker/recon_worker.py#L148)
 
 ```python
 async def consume_recon_jobs(queue: aio_pika.abc.AbstractQueue) -> None
@@ -156,7 +156,7 @@ async def consume_recon_jobs(queue: aio_pika.abc.AbstractQueue) -> None
 
 ## main
 
-[backend/app/worker/recon_worker.py:154](../../../../../backend/app/worker/recon_worker.py#L154)
+[backend/app/worker/recon_worker.py:155](../../../../../backend/app/worker/recon_worker.py#L155)
 
 ```python
 async def main() -> None

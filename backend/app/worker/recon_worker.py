@@ -11,6 +11,7 @@ API; здесь незавершённая задача останется pendi
 
 import asyncio
 import logging
+from app.observability import configure_logging
 import socket
 from datetime import UTC, datetime, timedelta
 from urllib.parse import urlsplit
@@ -207,5 +208,5 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
+    configure_logging()
     asyncio.run(main())

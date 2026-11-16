@@ -106,7 +106,7 @@ ValueError('expires_at должен содержать часовой пояс')
 
 ## ProjectCreate.validate_dates
 
-[backend/app/schemas.py:342](../../../../backend/app/schemas.py#L342)
+[backend/app/schemas.py:337](../../../../backend/app/schemas.py#L337)
 
 ```python
 def validate_dates(self) -> 'ProjectCreate'
@@ -131,7 +131,7 @@ ValueError('Дата окончания проекта не может быть 
 
 ## ProjectUpdate.validate_dates
 
-[backend/app/schemas.py:366](../../../../backend/app/schemas.py#L366)
+[backend/app/schemas.py:361](../../../../backend/app/schemas.py#L361)
 
 ```python
 def validate_dates(self) -> 'ProjectUpdate'
@@ -156,7 +156,7 @@ ValueError('Дата окончания проекта не может быть 
 
 ## IpAddressChangeRequest.validate_ip
 
-[backend/app/schemas.py:577](../../../../backend/app/schemas.py#L577)
+[backend/app/schemas.py:572](../../../../backend/app/schemas.py#L572)
 
 ```python
 def validate_ip(cls, value) -> не аннотирован
@@ -179,7 +179,7 @@ def validate_ip(cls, value) -> не аннотирован
 
 ## HostIpAddressOut._empty_hostnames
 
-[backend/app/schemas.py:602](../../../../backend/app/schemas.py#L602)
+[backend/app/schemas.py:597](../../../../backend/app/schemas.py#L597)
 
 ```python
 def _empty_hostnames(cls, value: object) -> object
@@ -195,7 +195,7 @@ def _empty_hostnames(cls, value: object) -> object
 
 ## HostCreate.validate_target_defined
 
-[backend/app/schemas.py:618](../../../../backend/app/schemas.py#L618)
+[backend/app/schemas.py:613](../../../../backend/app/schemas.py#L613)
 
 ```python
 def validate_target_defined(self) -> 'HostCreate'
@@ -222,7 +222,7 @@ ValueError('Нужно указать хотя бы один ip_address или h
 
 ## EndpointCreate.validate_endpoint_target_defined
 
-[backend/app/schemas.py:751](../../../../backend/app/schemas.py#L751)
+[backend/app/schemas.py:746](../../../../backend/app/schemas.py#L746)
 
 ```python
 def validate_endpoint_target_defined(self) -> 'EndpointCreate'
@@ -247,7 +247,7 @@ ValueError('Нужно указать path или request_raw')
 
 ## EndpointOut._coerce_optional_list
 
-[backend/app/schemas.py:783](../../../../backend/app/schemas.py#L783)
+[backend/app/schemas.py:778](../../../../backend/app/schemas.py#L778)
 
 ```python
 def _coerce_optional_list(cls, value: object) -> object
@@ -263,7 +263,7 @@ def _coerce_optional_list(cls, value: object) -> object
 
 ## VulnerabilityCreate.validate_cvss_version
 
-[backend/app/schemas.py:817](../../../../backend/app/schemas.py#L817)
+[backend/app/schemas.py:812](../../../../backend/app/schemas.py#L812)
 
 ```python
 def validate_cvss_version(cls, value: CvssVersion | None) -> CvssVersion | None
@@ -292,7 +292,7 @@ ValueError('Поддерживается только CVSS 4.0')
 
 ## VulnerabilityUpdate.validate_cvss_version
 
-[backend/app/schemas.py:839](../../../../backend/app/schemas.py#L839)
+[backend/app/schemas.py:834](../../../../backend/app/schemas.py#L834)
 
 ```python
 def validate_cvss_version(cls, value: CvssVersion | None) -> CvssVersion | None
@@ -321,7 +321,7 @@ ValueError('Поддерживается только CVSS 4.0')
 
 ## JsFileOut._empty_endpoints
 
-[backend/app/schemas.py:1160](../../../../backend/app/schemas.py#L1160)
+[backend/app/schemas.py:1155](../../../../backend/app/schemas.py#L1155)
 
 ```python
 def _empty_endpoints(cls, value: object) -> object
@@ -337,7 +337,7 @@ def _empty_endpoints(cls, value: object) -> object
 
 ## StormImportEndpoint.validate_target_defined
 
-[backend/app/schemas.py:1319](../../../../backend/app/schemas.py#L1319)
+[backend/app/schemas.py:1314](../../../../backend/app/schemas.py#L1314)
 
 ```python
 def validate_target_defined(self) -> 'StormImportEndpoint'
@@ -362,7 +362,7 @@ ValueError('Каждый endpoint должен содержать path или re
 
 ## StormImportHost.validate_target_defined
 
-[backend/app/schemas.py:1334](../../../../backend/app/schemas.py#L1334)
+[backend/app/schemas.py:1329](../../../../backend/app/schemas.py#L1329)
 
 ```python
 def validate_target_defined(self) -> 'StormImportHost'

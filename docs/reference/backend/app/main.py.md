@@ -2,11 +2,11 @@
 
 Сгенерировано из объявлений кода. [Правила чтения](../../../METHODS.md).
 
-Методов и именованных функций: **18**.
+Методов и именованных функций: **15**.
 
 ## _register_protected_docs
 
-[backend/app/main.py:64](../../../../backend/app/main.py#L64)
+[backend/app/main.py:73](../../../../backend/app/main.py#L73)
 
 ```python
 def _register_protected_docs(fastapi_app: FastAPI, *, openapi_route: str, docs_route: str, redoc_route: str) -> None
@@ -31,7 +31,7 @@ def _register_protected_docs(fastapi_app: FastAPI, *, openapi_route: str, docs_r
 
 ## _register_protected_docs._openapi_json
 
-[backend/app/main.py:75](../../../../backend/app/main.py#L75)
+[backend/app/main.py:84](../../../../backend/app/main.py#L84)
 
 ```python
 async def _openapi_json(_: object=Depends(get_current_user)) -> JSONResponse
@@ -63,7 +63,7 @@ fastapi_app.get(openapi_route, include_in_schema=False)
 
 ## _register_protected_docs._swagger_ui
 
-[backend/app/main.py:79](../../../../backend/app/main.py#L79)
+[backend/app/main.py:88](../../../../backend/app/main.py#L88)
 
 ```python
 async def _swagger_ui(request: Request, _: object=Depends(get_current_user)) -> не аннотирован
@@ -97,7 +97,7 @@ fastapi_app.get(docs_route, include_in_schema=False)
 
 ## _register_protected_docs._redoc
 
-[backend/app/main.py:84](../../../../backend/app/main.py#L84)
+[backend/app/main.py:93](../../../../backend/app/main.py#L93)
 
 ```python
 async def _redoc(request: Request, _: object=Depends(get_current_user)) -> не аннотирован
@@ -131,7 +131,7 @@ fastapi_app.get(redoc_route, include_in_schema=False)
 
 ## _register_routes
 
-[backend/app/main.py:97](../../../../backend/app/main.py#L97)
+[backend/app/main.py:106](../../../../backend/app/main.py#L106)
 
 ```python
 def _register_routes() -> None
@@ -153,7 +153,7 @@ def _register_routes() -> None
 
 ## _register_error_handlers
 
-[backend/app/main.py:132](../../../../backend/app/main.py#L132)
+[backend/app/main.py:141](../../../../backend/app/main.py#L141)
 
 ```python
 def _register_error_handlers() -> None
@@ -172,13 +172,13 @@ def _register_error_handlers() -> None
 
 ## _register_error_handlers._format_request_validation
 
-[backend/app/main.py:133](../../../../backend/app/main.py#L133)
+[backend/app/main.py:142](../../../../backend/app/main.py#L142)
 
 ```python
 def _format_request_validation(exc: RequestValidationError) -> str
 ```
 
-В теле вызывает `'.'.join`, `'; '.join`, `exc.errors`, `item.get`, `item.get('ctx', {}).get`, `messages.append`, `str`.
+В теле вызывает `'.'.join`, `'; '.join`, `exc.errors`, `item.get`, `item.get('ctx', {}).get`, `item.get('msg', '').removeprefix`, `messages.append`, `public_message`; полный список ниже.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -194,20 +194,23 @@ def _format_request_validation(exc: RequestValidationError) -> str
 - `exc.errors`
 - `item.get`
 - `item.get('ctx', {}).get`
+- `item.get('msg', '').removeprefix`
 - `messages.append`
+- `public_message`
 - `str`
+- `{'extra_forbidden': 'Это поле не поддерживается', 'json_invalid': 'Не удалось прочитать данные запроса. Проверьте формат JSON', 'enum': 'Выберите одно из допустимых значений', 'string_type': 'Введите текст', 'int_parsing': 'Введите целое число', 'int_type': 'Введите целое число', 'list_type': 'Ожидается список значений', 'string_pattern_mismatch': 'Проверьте формат поля'}.get`
 
 </details>
 
 ## _register_error_handlers.request_validation_handler
 
-[backend/app/main.py:158](../../../../backend/app/main.py#L158)
+[backend/app/main.py:176](../../../../backend/app/main.py#L176)
 
 ```python
 async def request_validation_handler(_: Request, exc: RequestValidationError) -> JSONResponse
 ```
 
-В теле вызывает `JSONResponse`, `_format_request_validation`.
+В теле вызывает `JSONResponse`, `_format_request_validation`, `exc.errors`, `len`, `logger.warning`, `sorted`.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -221,143 +224,22 @@ async def request_validation_handler(_: Request, exc: RequestValidationError) ->
 
 - `JSONResponse`
 - `_format_request_validation`
-
-</details>
-
-## _register_error_handlers.not_found_handler
-
-[backend/app/main.py:161](../../../../backend/app/main.py#L161)
-
-```python
-async def not_found_handler(_: Request, exc: NotFoundError) -> JSONResponse
-```
-
-В теле вызывает `JSONResponse`, `str`.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `_` | `Request` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-| `exc` | `NotFoundError` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-
-Возвращает: `JSONResponse`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `JSONResponse`
-- `str`
-
-</details>
-
-## _register_error_handlers.unauthorized_handler
-
-[backend/app/main.py:164](../../../../backend/app/main.py#L164)
-
-```python
-async def unauthorized_handler(_: Request, exc: UnauthorizedError) -> JSONResponse
-```
-
-В теле вызывает `JSONResponse`, `str`.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `_` | `Request` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-| `exc` | `UnauthorizedError` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-
-Возвращает: `JSONResponse`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `JSONResponse`
-- `str`
-
-</details>
-
-## _register_error_handlers.forbidden_handler
-
-[backend/app/main.py:167](../../../../backend/app/main.py#L167)
-
-```python
-async def forbidden_handler(_: Request, exc: ForbiddenError) -> JSONResponse
-```
-
-В теле вызывает `JSONResponse`, `str`.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `_` | `Request` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-| `exc` | `ForbiddenError` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-
-Возвращает: `JSONResponse`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `JSONResponse`
-- `str`
-
-</details>
-
-## _register_error_handlers.conflict_handler
-
-[backend/app/main.py:170](../../../../backend/app/main.py#L170)
-
-```python
-async def conflict_handler(_: Request, exc: ConflictError) -> JSONResponse
-```
-
-В теле вызывает `JSONResponse`, `str`.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `_` | `Request` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-| `exc` | `ConflictError` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-
-Возвращает: `JSONResponse`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `JSONResponse`
-- `str`
-
-</details>
-
-## _register_error_handlers.validation_handler
-
-[backend/app/main.py:173](../../../../backend/app/main.py#L173)
-
-```python
-async def validation_handler(_: Request, exc: ValidationError) -> JSONResponse
-```
-
-В теле вызывает `JSONResponse`, `str`.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `_` | `Request` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-| `exc` | `ValidationError` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-
-Возвращает: `JSONResponse`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `JSONResponse`
-- `str`
+- `exc.errors`
+- `len`
+- `logger.warning`
+- `sorted`
 
 </details>
 
 ## _register_error_handlers.app_error_handler
 
-[backend/app/main.py:176](../../../../backend/app/main.py#L176)
+[backend/app/main.py:180](../../../../backend/app/main.py#L180)
 
 ```python
 async def app_error_handler(_: Request, exc: StormError) -> JSONResponse
 ```
 
-В теле вызывает `JSONResponse`, `str`.
+В теле вызывает `JSONResponse`, `isinstance`, `logger.warning`, `next`, `public_message`, `str`, `str(exc).strip`, `type`.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -370,13 +252,74 @@ async def app_error_handler(_: Request, exc: StormError) -> JSONResponse
 <summary>Прямые вызовы в теле</summary>
 
 - `JSONResponse`
+- `isinstance`
+- `logger.warning`
+- `next`
+- `public_message`
 - `str`
+- `str(exc).strip`
+- `type`
+
+</details>
+
+## _register_error_handlers.http_error_handler
+
+[backend/app/main.py:193](../../../../backend/app/main.py#L193)
+
+```python
+async def http_error_handler(_: Request, exc: StarletteHTTPException) -> JSONResponse
+```
+
+В теле вызывает `JSONResponse`, `any`, `logger.warning`, `public_message`, `str`.
+
+| Параметр | Тип | По умолчанию | Назначение |
+| --- | --- | --- | --- |
+| `_` | `Request` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
+| `exc` | `StarletteHTTPException` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
+
+Возвращает: `JSONResponse`.
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `JSONResponse`
+- `any`
+- `logger.warning`
+- `public_message`
+- `str`
+
+</details>
+
+## _register_error_handlers.unexpected_error_handler
+
+[backend/app/main.py:203](../../../../backend/app/main.py#L203)
+
+```python
+async def unexpected_error_handler(request: Request, exc: Exception) -> JSONResponse
+```
+
+В теле вызывает `JSONResponse`, `getattr`, `logger.error`, `type`.
+
+| Параметр | Тип | По умолчанию | Назначение |
+| --- | --- | --- | --- |
+| `request` | `Request` | `обязательный` | HTTP-запрос Starlette/FastAPI. |
+| `exc` | `Exception` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
+
+Возвращает: `JSONResponse`.
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `JSONResponse`
+- `getattr`
+- `logger.error`
+- `type`
 
 </details>
 
 ## startup
 
-[backend/app/main.py:197](../../../../backend/app/main.py#L197)
+[backend/app/main.py:226](../../../../backend/app/main.py#L226)
 
 ```python
 async def startup() -> None
@@ -408,7 +351,7 @@ async def startup() -> None
 
 ## startup.add_missing
 
-[backend/app/main.py:289](../../../../backend/app/main.py#L289)
+[backend/app/main.py:318](../../../../backend/app/main.py#L318)
 
 ```python
 async def add_missing(table: str, columns: dict[str, str]) -> None
@@ -437,7 +380,7 @@ SQLite не умеет ADD COLUMN IF NOT EXISTS — проверяем чере�
 
 ## shutdown_notifications
 
-[backend/app/main.py:349](../../../../backend/app/main.py#L349)
+[backend/app/main.py:378](../../../../backend/app/main.py#L378)
 
 ```python
 async def shutdown_notifications() -> None
@@ -458,7 +401,7 @@ async def shutdown_notifications() -> None
 
 ## health
 
-[backend/app/main.py:358](../../../../backend/app/main.py#L358)
+[backend/app/main.py:387](../../../../backend/app/main.py#L387)
 
 ```python
 async def health() -> dict

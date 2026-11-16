@@ -1946,7 +1946,7 @@
           "users"
         ],
         "summary": "Search Users",
-        "description": "Поиск людей для назначения исполнителя: по username или ФИО (full_name).\n\nПри настроенном IAM дополнительно подмешивает кандидатов из IAM\n(dedup по username, локальные пользователи в приоритете).",
+        "description": "Ищет активных локальных пользователей STORM по логину или ФИО.\n\nSSO-вход не подключает удалённый поиск IAM: в выдаче только пользователи БД.",
         "operationId": "search_users_api_v1_users_search_get",
         "parameters": [
           {
@@ -13058,6 +13058,39 @@
             "type": "boolean",
             "title": "Is Expired",
             "default": false
+          },
+          "email_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Status"
+          },
+          "email_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Error"
+          },
+          "email_error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Error Code"
           },
           "expires_at": {
             "type": "string",

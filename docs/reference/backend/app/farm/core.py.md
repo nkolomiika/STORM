@@ -2,40 +2,11 @@
 
 Сгенерировано из объявлений кода. [Правила чтения](../../../../METHODS.md).
 
-Методов и именованных функций: **10**.
-
-## _cf_from_headers
-
-[backend/app/farm/core.py:68](../../../../../backend/app/farm/core.py#L68)
-
-```python
-def _cf_from_headers(headers) -> bool
-```
-
-CF прямо из ответа пробива: server=cloudflare либо любой cf-* заголовок.
-
-Не зависит от внешнего движка детекта (httpx-pd может отсутствовать/таймаутить)
-и надёжнее статического CIDR — BYOIP вроде claude.com (160.79.104.x) в
-опубликованные диапазоны CF не входит, но заголовки CF отдаёт всегда.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `headers` | `не аннотирован` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-
-Возвращает: `bool`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `(headers.get('server') or '').lower`
-- `any`
-- `headers.get`
-
-</details>
+Методов и именованных функций: **9**.
 
 ## ProbeTransport.handle_async_request
 
-[backend/app/farm/core.py:84](../../../../../backend/app/farm/core.py#L84)
+[backend/app/farm/core.py:66](../../../../../backend/app/farm/core.py#L66)
 
 ```python
 async def handle_async_request(self, request: httpx.Request) -> httpx.Response
@@ -69,7 +40,7 @@ httpx.ConnectError(f'{addr} для {host} запрещён (SSRF)')
 
 ## resolve_scheme
 
-[backend/app/farm/core.py:103](../../../../../backend/app/farm/core.py#L103)
+[backend/app/farm/core.py:85](../../../../../backend/app/farm/core.py#L85)
 
 ```python
 def resolve_scheme(existing: str | None, new: str | None, port: int) -> str
@@ -87,7 +58,7 @@ def resolve_scheme(existing: str | None, new: str | None, port: int) -> str
 
 ## parse_token
 
-[backend/app/farm/core.py:110](../../../../../backend/app/farm/core.py#L110)
+[backend/app/farm/core.py:92](../../../../../backend/app/farm/core.py#L92)
 
 ```python
 def parse_token(token: str) -> tuple[str, bool, int | None, str | None] | None
@@ -118,7 +89,7 @@ def parse_token(token: str) -> tuple[str, bool, int | None, str | None] | None
 
 ## parse_targets
 
-[backend/app/farm/core.py:160](../../../../../backend/app/farm/core.py#L160)
+[backend/app/farm/core.py:142](../../../../../backend/app/farm/core.py#L142)
 
 ```python
 def parse_targets(raw: str) -> tuple[dict[str, ParsedTarget], list[str]]
@@ -153,7 +124,7 @@ def parse_targets(raw: str) -> tuple[dict[str, ParsedTarget], list[str]]
 
 ## candidates_for
 
-[backend/app/farm/core.py:192](../../../../../backend/app/farm/core.py#L192)
+[backend/app/farm/core.py:174](../../../../../backend/app/farm/core.py#L174)
 
 ```python
 def candidates_for(tgt: ParsedTarget) -> list[ProbeCandidate]
@@ -177,7 +148,7 @@ def candidates_for(tgt: ParsedTarget) -> list[ProbeCandidate]
 
 ## trim_excess_ports
 
-[backend/app/farm/core.py:205](../../../../../backend/app/farm/core.py#L205)
+[backend/app/farm/core.py:187](../../../../../backend/app/farm/core.py#L187)
 
 ```python
 def trim_excess_ports(targets: dict[str, ParsedTarget]) -> list[str]
@@ -203,7 +174,7 @@ def trim_excess_ports(targets: dict[str, ParsedTarget]) -> list[str]
 
 ## build_transport
 
-[backend/app/farm/core.py:220](../../../../../backend/app/farm/core.py#L220)
+[backend/app/farm/core.py:202](../../../../../backend/app/farm/core.py#L202)
 
 ```python
 def build_transport(transport: httpx.AsyncBaseTransport | None, limits: httpx.Limits) -> httpx.AsyncBaseTransport
@@ -228,7 +199,7 @@ def build_transport(transport: httpx.AsyncBaseTransport | None, limits: httpx.Li
 
 ## probe_candidates
 
-[backend/app/farm/core.py:230](../../../../../backend/app/farm/core.py#L230)
+[backend/app/farm/core.py:212](../../../../../backend/app/farm/core.py#L212)
 
 ```python
 async def probe_candidates(candidates: list[ProbeCandidate], *, transport: httpx.AsyncBaseTransport | None=None) -> list[ProbeResult]
@@ -258,13 +229,13 @@ HTTP-пробив кандидатов до корня `/`. БД не трога
 
 ## probe_candidates.probe_one
 
-[backend/app/farm/core.py:248](../../../../../backend/app/farm/core.py#L248)
+[backend/app/farm/core.py:230](../../../../../backend/app/farm/core.py#L230)
 
 ```python
 async def probe_one(c: ProbeCandidate) -> ProbeResult
 ```
 
-В теле вызывает `ProbeResult`, `_cf_from_headers`, `client.stream`, `type`.
+В теле вызывает `ProbeResult`, `client.stream`, `type`.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -276,7 +247,6 @@ async def probe_one(c: ProbeCandidate) -> ProbeResult
 <summary>Прямые вызовы в теле</summary>
 
 - `ProbeResult`
-- `_cf_from_headers`
 - `client.stream`
 - `type`
 

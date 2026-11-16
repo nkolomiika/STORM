@@ -144,14 +144,6 @@ class AgentTokenCreateResponse(AgentTokenOut):
     token: str
 
 
-class UserCreate(InputBaseModel):
-    username: str = Field(min_length=1, max_length=100)
-    email: EmailStr
-    full_name: str | None = Field(default=None, max_length=255)
-    password: str | None = Field(default=None, min_length=8, max_length=128)
-    role: UserRole = UserRole.PENTESTER
-    project_role: ProjectRole = ProjectRole.PENTESTER
-    send_invite_email: bool = False
 
 
 class UserUpdate(InputBaseModel):
@@ -205,6 +197,9 @@ class InvitationOut(ORMBase):
     project_role: ProjectRole
     status: str
     is_expired: bool = False
+    email_status: str | None = None
+    email_error: str | None = None
+    email_error_code: str | None = None
     expires_at: datetime
     invited_by: int | None = None
     created_at: datetime

@@ -1,3 +1,4 @@
+import { errorMessageForCode, UserInputError, safeErrorDetail } from "./errorMessages";
 import axios from "axios";
 import type {
   TaskTrackerTaskDetail,
@@ -5,14 +6,11 @@ import type {
   AuthLoginResponse,
   SsoConfig,
   TwoFASetupResponse,
-  VulnerabilityComment,
   VulnerabilityDetails,
   VulnerabilityFile,
   Endpoint,
   EndpointComment,
   EndpointRequestHeader,
-  Service,
-  AuditLog,
   Host,
   HostDetails,
   IpAddressChangeResult,
@@ -20,8 +18,6 @@ import type {
   IpFarmJob,
   JsFarmJob,
   JsFile,
-  ImportResult,
-  OpenApiImportResult,
   Invitation,
   InvitationInfo,
   InvitationSentResult,
@@ -30,16 +26,13 @@ import type {
   PaginatedResponse,
   PasswordResetInfo,
   ReactivationInfo,
-  Port,
   Project,
   ProjectActivityItem,
-  ProjectFolder,
   ProjectMember,
   ProjectStats,
   PasswordResetResult,
   User,
   ProjectNote,
-  ProjectNoteComment,
   ProjectCredential,
   Vulnerability,
   VulnerabilityAsset,
@@ -59,24 +52,29 @@ const isBlank = (value: string | null | undefined): boolean => !value || value.t
 
 const assertRequired = (value: string | null | undefined, label: string): void => {
   if (isBlank(value)) {
-    throw new Error(`Field "${label}" is required`);
+    throw new UserInputError(`Field "${label}" is required`);
   }
 };
 
-const normalizeDetailMessage = (detail: unknown): string | null => {
+const normalizeDetailMessage = (detail: unknown, depth = 0): string | null => {
+  if (depth > 8) return null;
   if (typeof detail === "string" && detail.trim()) {
     return detail.trim();
   }
   if (Array.isArray(detail)) {
-    const messages = detail.map((item) => normalizeDetailMessage(item)).filter((item): item is string => Boolean(item));
+    const messages = detail.slice(0, 50).map((item) => normalizeDetailMessage(item, depth + 1)).filter((item): item is string => Boolean(item));
     return messages.length ? messages.join("; ") : null;
   }
   if (detail && typeof detail === "object") {
-    if ("detail" in detail) {
-      return normalizeDetailMessage((detail as { detail?: unknown }).detail);
+    if (Object.hasOwn(detail, "detail")) {
+      return normalizeDetailMessage((detail as { detail?: unknown }).detail, depth + 1);
     }
-    if ("message" in detail) {
-      return normalizeDetailMessage((detail as { message?: unknown }).message);
+    if (Object.hasOwn(detail, "message")) {
+      return normalizeDetailMessage((detail as { message?: unknown }).message, depth + 1);
+    }
+    if (Object.hasOwn(detail, "msg")) {
+      const message = normalizeDetailMessage((detail as { msg?: unknown }).msg, depth + 1);
+      return message?.startsWith("Input should") || message === "Field required" ? "Check the form fields." : message?.replace(/^Value error,\s*/, "") ?? null;
     }
   }
   return null;
@@ -86,9 +84,16 @@ const normalizeDetailMessage = (detail: unknown): string | null => {
 export const getApiErrorStatus = (error: unknown): number | null =>
   axios.isAxiosError(error) ? (error.response?.status ?? null) : null;
 
+/** Сообщение для пользователя: известный код сервера или безопасная бизнес-ошибка.
+ * Диагностика 5xx, HTML, SQL, нативные исключения и сообщения библиотек скрываются.
+ * Локальный текст разрешён только для явно созданного UserInputError.
+ */
 export const getApiErrorMessage = (error: unknown, fallback: string): string => {
   if (axios.isAxiosError(error)) {
-    const detail = normalizeDetailMessage(error.response?.data);
+    const detail = safeErrorDetail(normalizeDetailMessage(error.response?.data));
+    const code = error.response?.data && typeof error.response.data === "object" ? error.response.data.code : null;
+    const friendlyMessage = errorMessageForCode(code);
+    if (friendlyMessage) return friendlyMessage;
     const status = error.response?.status;
 
     // Нет ответа вовсе — сеть/прокси/бэкенд недоступен. Самый частый случай при
@@ -97,7 +102,7 @@ export const getApiErrorMessage = (error: unknown, fallback: string): string => 
       if (error.code === "ECONNABORTED" || error.code === "ETIMEDOUT") {
         return "The server response timed out.";
       }
-      return "Server unavailable — couldn't connect to the backend. Make sure the backend is running.";
+      return "The service is unavailable. Check your connection and try again.";
     }
 
     if (status === 401) return detail || "Invalid username or password.";
@@ -107,18 +112,13 @@ export const getApiErrorMessage = (error: unknown, fallback: string): string => 
     if (status === 422) return detail || "Check the form fields.";
     if (status === 429) return detail || "Too many attempts. Try again later.";
     if (status && status >= 500) {
-      // 500/502/503/504 — на сервере/прокси. Если это заглушка прокси Vite,
-      // тела с detail обычно нет, поэтому даём понятную подсказку.
-      const isGeneric = !detail || detail === "Internal Server Error";
-      return isGeneric
-        ? `Server error (${status}). The backend may be down or unavailable.`
-        : `Server error (${status}): ${detail}`;
+      return "Something went wrong. Try again later.";
     }
 
-    return detail || normalizeDetailMessage(error.message) || fallback;
+    return detail || fallback;
   }
-  if (error instanceof Error && error.message.trim()) {
-    return error.message;
+  if (error instanceof UserInputError && error.message.trim()) {
+    return safeErrorDetail(error.message) || fallback;
   }
   return fallback;
 };
@@ -244,7 +244,7 @@ export async function getUsers(page = 1, size = 200): Promise<PaginatedResponse<
 }
 
 /** Люди для тайпхеда исполнителя: поиск по username ИЛИ ФИО (full_name).
- *  Сервер ищет среди STORM-юзеров + (если IAM настроен) подмешивает IAM. */
+ *  Сервер ищет среди пользователей STORM; поиск по IAM пока не реализован. */
 export interface UserSearchResult {
   username: string;
   full_name: string | null;
@@ -253,24 +253,6 @@ export interface UserSearchResult {
 export async function searchUsers(q: string, limit = 10): Promise<UserSearchResult[]> {
   const { data } = await api.get<UserSearchResult[]>("/users/search", { params: { q: q.trim(), limit } });
   return data;
-}
-
-/**
- * @deprecated Прямое создание пользователя с паролем убрано в пользу приглашений
- * ({@link createInvitation}). Функция оставлена только чтобы типизировалась
- * устаревшая, НЕ подключённая к роутингу страница `pages/UsersAdminPage.tsx`
- * (живой UI — Storm — её не использует). Реального эндпоинта на бэкенде больше нет.
- */
-export async function createUser(_payload: {
-  username: string;
-  email: string;
-  full_name?: string;
-  password?: string;
-  role: User["role"];
-  project_role?: User["project_role"];
-  send_invite_email?: boolean;
-}): Promise<User> {
-  throw new Error("Direct user creation is disabled — use invitations (invite flow)");
 }
 
 /* ── Приглашения (invite-flow) ────────────────────────────────────────────
@@ -364,22 +346,8 @@ export async function completeReactivation(token: string): Promise<AuthLoginResp
   return data;
 }
 
-export async function resetUserPassword(userId: number): Promise<PasswordResetResult> {
-  const { data } = await api.patch<PasswordResetResult>(`/users/${userId}/password`);
-  return data;
-}
-
 export async function deleteUser(userId: number): Promise<void> {
   await api.delete(`/users/${userId}`);
-}
-
-export async function updateMyProfile(payload: {
-  username?: string;
-  email?: string;
-  full_name?: string;
-}): Promise<User> {
-  const { data } = await api.patch<User>("/users/me", payload);
-  return data;
 }
 
 export async function changeMyPassword(payload: { current_password: string; new_password: string }): Promise<User> {
@@ -391,7 +359,7 @@ export async function changeMyPassword(payload: { current_password: string; new_
 
 export async function uploadMyAvatar(file: File): Promise<User> {
   if (!file) {
-    throw new Error("An avatar file is required");
+    throw new UserInputError("An avatar file is required");
   }
   const formData = new FormData();
   formData.append("avatar", file);
@@ -411,31 +379,10 @@ export async function getProjectStats(): Promise<ProjectStats[]> {
   return data;
 }
 
-export async function getProjectFolders(): Promise<ProjectFolder[]> {
-  const { data } = await api.get<ProjectFolder[]>("/projects/folders");
-  return data;
-}
-
-export async function createProjectFolder(payload: { name: string; parent_id?: number | null }): Promise<ProjectFolder> {
-  assertRequired(payload.name, "Folder name");
-  const { data } = await api.post<ProjectFolder>("/projects/folders", payload);
-  return data;
-}
-
-export async function moveProjectFolder(folderId: number, payload: { parent_id?: number | null }): Promise<ProjectFolder> {
-  const { data } = await api.patch<ProjectFolder>(`/projects/folders/${folderId}/move`, payload);
-  return data;
-}
-
 export interface DeleteProjectFolderResult {
   path: string;
   deleted_folders: number;
   deleted_projects: number;
-}
-
-export async function deleteProjectFolder(folderId: number): Promise<DeleteProjectFolderResult> {
-  const { data } = await api.delete<DeleteProjectFolderResult>(`/projects/folders/${folderId}`);
-  return data;
 }
 
 export async function createProject(payload: {
@@ -493,7 +440,7 @@ export async function getProjectMembers(projectId: number): Promise<ProjectMembe
 
 export async function addProjectMember(projectId: number, userId: number): Promise<void> {
   if (!userId) {
-    throw new Error("Select a user");
+    throw new UserInputError("Select a user");
   }
   await api.post(`/projects/${projectId}/members`, { user_id: userId });
 }
@@ -523,22 +470,6 @@ export type ProjectNoteActivity = {
   created_at: string;
 };
 
-export async function listProjectNotesActivity(
-  projectId: number,
-  limit = 30,
-): Promise<ProjectNoteActivity[]> {
-  const { data } = await api.get<ProjectNoteActivity[]>(
-    `/projects/${projectId}/notes-activity`,
-    { params: { limit } },
-  );
-  return data;
-}
-
-export async function getProjectNote(projectId: number, noteId: number): Promise<ProjectNote> {
-  const { data } = await api.get<ProjectNote>(`/projects/${projectId}/notes/${noteId}`);
-  return data;
-}
-
 export async function createProjectNote(
   projectId: number,
   payload: { title: string; parent_id?: number | null; content?: string | null }
@@ -557,26 +488,6 @@ export async function updateProjectNote(
     assertRequired(payload.title, "Page title");
   }
   const { data } = await api.put<ProjectNote>(`/projects/${projectId}/notes/${noteId}`, payload);
-  return data;
-}
-
-export async function moveProjectNote(
-  projectId: number,
-  noteId: number,
-  payload: { parent_id?: number | null }
-): Promise<ProjectNote> {
-  const { data } = await api.patch<ProjectNote>(`/projects/${projectId}/notes/${noteId}/move`, payload);
-  return data;
-}
-
-export async function reorderProjectNotes(
-  projectId: number,
-  payload: { parent_id?: number | null; items: Array<{ id: number; sort_order: number }> }
-): Promise<ProjectNote[]> {
-  if (!payload.items.length) {
-    throw new Error("Provide at least one page to sort");
-  }
-  const { data } = await api.patch<ProjectNote[]>(`/projects/${projectId}/notes/reorder`, payload);
   return data;
 }
 
@@ -613,38 +524,6 @@ export async function updateProjectCredential(
 
 export async function deleteProjectCredential(projectId: number, credentialId: number): Promise<void> {
   await api.delete(`/projects/${projectId}/credentials/${credentialId}`);
-}
-
-export async function listProjectNoteComments(projectId: number, noteId: number): Promise<PaginatedResponse<ProjectNoteComment>> {
-  const { data } = await api.get<PaginatedResponse<ProjectNoteComment>>(`/projects/${projectId}/notes/${noteId}/comments`, {
-    params: { page: 1, size: 100 },
-  });
-  return data;
-}
-
-export async function createProjectNoteComment(
-  projectId: number,
-  noteId: number,
-  content: string
-): Promise<ProjectNoteComment> {
-  assertRequired(content, "Comment");
-  const { data } = await api.post<ProjectNoteComment>(`/projects/${projectId}/notes/${noteId}/comments`, { content });
-  return data;
-}
-
-export async function updateProjectNoteComment(
-  projectId: number,
-  noteId: number,
-  commentId: number,
-  content: string
-): Promise<ProjectNoteComment> {
-  assertRequired(content, "Comment");
-  const { data } = await api.put<ProjectNoteComment>(`/projects/${projectId}/notes/${noteId}/comments/${commentId}`, { content });
-  return data;
-}
-
-export async function deleteProjectNoteComment(projectId: number, noteId: number, commentId: number): Promise<void> {
-  await api.delete(`/projects/${projectId}/notes/${noteId}/comments/${commentId}`);
 }
 
 export async function deleteProject(projectId: number): Promise<void> {
@@ -690,7 +569,7 @@ export async function createHost(
   }
 ): Promise<Host> {
   if (isBlank(payload.ip_address) && isBlank(payload.hostname)) {
-    throw new Error('Provide at least "IP address" or "Hostname"');
+    throw new UserInputError('Provide at least "IP address" or "Hostname"');
   }
   const { data } = await api.post<Host>(`/projects/${projectId}/hosts`, payload);
   return data;
@@ -738,11 +617,6 @@ export async function getHiddenIps(projectId: number): Promise<string[]> {
 /** Скрывает адрес из списка IP (сносит отдельную IP-запись, привязку к хостам хранит). */
 export async function hideIp(projectId: number, ip: string): Promise<void> {
   await api.post(`/projects/${projectId}/hidden-ips`, { ip_address: ip });
-}
-
-/** Возвращает адрес в список IP. */
-export async function unhideIp(projectId: number, ip: string): Promise<void> {
-  await api.delete(`/projects/${projectId}/hidden-ips/${encodeURIComponent(ip)}`);
 }
 
 // ---- recon farm: серверный пробив вставленных списков хостов и IP ----
@@ -799,12 +673,6 @@ export async function getJsFilesPage(
   return data;
 }
 
-/** Массово удаляет JS-файлы по id. Возвращает `deleted`. */
-export async function bulkDeleteJsFiles(projectId: number, ids: number[]): Promise<number> {
-  const { data } = await api.post<{ deleted: number }>(`/projects/${projectId}/js-files/bulk-delete`, { ids });
-  return data.deleted;
-}
-
 /** Удалить все JS-находки указанного хоста в проекте. */
 export async function deleteJsFilesForHost(projectId: number, hostId: number): Promise<void> {
   await api.delete(`/projects/${projectId}/js-files/hosts/${hostId}`);
@@ -818,84 +686,6 @@ export async function downloadJsArchive(projectId: number, hostId?: number): Pro
     responseType: "blob",
   });
   return data as Blob;
-}
-
-export async function getPorts(projectId: number, hostId: number): Promise<Port[]> {
-  const { data } = await api.get<Port[]>(`/projects/${projectId}/hosts/${hostId}/ports`);
-  return data;
-}
-
-export async function createPort(
-  projectId: number,
-  hostId: number,
-  payload: {
-    ip_address_id: number;
-    port_number: number;
-    protocol?: "tcp" | "udp";
-    state?: "open" | "closed" | "filtered";
-  }
-): Promise<Port> {
-  if (!Number.isFinite(payload.port_number)) {
-    throw new Error("Port must be a number");
-  }
-  if (!payload.ip_address_id) {
-    throw new Error("No IP address selected");
-  }
-  const { data } = await api.post<Port>(`/projects/${projectId}/hosts/${hostId}/ports`, payload);
-  return data;
-}
-
-export async function updatePort(
-  projectId: number,
-  hostId: number,
-  portId: number,
-  payload: {
-    ip_address_id?: number;
-    port_number?: number;
-    protocol?: "tcp" | "udp";
-    state?: "open" | "closed" | "filtered";
-  }
-): Promise<Port> {
-  const { data } = await api.put<Port>(`/projects/${projectId}/hosts/${hostId}/ports/${portId}`, payload);
-  return data;
-}
-
-export async function deletePort(projectId: number, hostId: number, portId: number): Promise<void> {
-  await api.delete(`/projects/${projectId}/hosts/${hostId}/ports/${portId}`);
-}
-
-export async function getServices(projectId: number, hostId: number, portId: number): Promise<Service[]> {
-  const { data } = await api.get<Service[]>(`/projects/${projectId}/hosts/${hostId}/ports/${portId}/services`);
-  return data;
-}
-
-export async function createService(
-  projectId: number,
-  hostId: number,
-  portId: number,
-  payload: { name: string; version?: string; banner?: string }
-): Promise<Service> {
-  assertRequired(payload.name, "Service name");
-  const { data } = await api.post<Service>(`/projects/${projectId}/hosts/${hostId}/ports/${portId}/services`, payload);
-  return data;
-}
-
-export async function updateService(
-  projectId: number,
-  hostId: number,
-  portId: number,
-  serviceId: number,
-  payload: { name?: string; version?: string; banner?: string }
-): Promise<Service> {
-  if (payload.name !== undefined) {
-    assertRequired(payload.name, "Service name");
-  }
-  const { data } = await api.put<Service>(`/projects/${projectId}/hosts/${hostId}/ports/${portId}/services/${serviceId}`, payload);
-  return data;
-}
-
-export async function deleteService(projectId: number, hostId: number, portId: number, serviceId: number): Promise<void> {
-  await api.delete(`/projects/${projectId}/hosts/${hostId}/ports/${portId}/services/${serviceId}`);
 }
 
 /** Сохранённое обсуждение эндпоинта, новые комментарии первыми. */
@@ -930,7 +720,7 @@ export async function createEndpoint(
   }
 ): Promise<Endpoint> {
   if (isBlank(payload.path) && isBlank(payload.request_raw)) {
-    throw new Error('Provide at least "Path" or "Raw request"');
+    throw new UserInputError('Provide at least "Path" or "Raw request"');
   }
   const { data } = await api.post<Endpoint>(`/projects/${projectId}/hosts/${hostId}/endpoints`, payload);
   return data;
@@ -952,7 +742,7 @@ export async function updateEndpoint(
   }
 ): Promise<Endpoint> {
   if (payload.path !== undefined && isBlank(payload.path) && isBlank(payload.request_raw)) {
-    throw new Error('Provide at least "Path" or "Raw request"');
+    throw new UserInputError('Provide at least "Path" or "Raw request"');
   }
   const { data } = await api.put<Endpoint>(`/projects/${projectId}/hosts/${hostId}/endpoints/${endpointId}`, payload);
   return data;
@@ -1007,7 +797,7 @@ export async function createVulnerability(
   }
 ): Promise<Vulnerability> {
   if (!payload.host_id) {
-    throw new Error("Select a host");
+    throw new UserInputError("Select a host");
   }
   assertRequired(payload.title, "Vulnerability title");
   const { data } = await api.post<Vulnerability>(`/projects/${projectId}/vulnerabilities`, payload);
@@ -1102,13 +892,6 @@ export async function getVulnerability(projectId: number, vulnerabilityId: numbe
   return data;
 }
 
-export async function getHostVulnerabilities(projectId: number, hostId: number): Promise<PaginatedResponse<Vulnerability>> {
-  const { data } = await api.get<PaginatedResponse<Vulnerability>>(`/projects/${projectId}/hosts/${hostId}/vulnerabilities`, {
-    params: { page: 1, size: 100 },
-  });
-  return data;
-}
-
 export async function addVulnerabilityAsset(
   projectId: number,
   vulnerabilityId: number,
@@ -1132,7 +915,7 @@ export async function listVulnerabilityFiles(projectId: number, vulnerabilityId:
 
 export async function uploadVulnerabilityFile(projectId: number, vulnerabilityId: number, file: File): Promise<VulnerabilityFile> {
   if (!file) {
-    throw new Error("Select a file");
+    throw new UserInputError("Select a file");
   }
   const formData = new FormData();
   formData.append("file", file);
@@ -1150,7 +933,7 @@ export async function deleteVulnerabilityFile(projectId: number, vulnerabilityId
  *  served URL to embed as `![alt](url)`. Backed by POST /projects/{id}/images. */
 export async function uploadProjectImage(projectId: number, file: File): Promise<{ url: string }> {
   if (!file) {
-    throw new Error("Select an image");
+    throw new UserInputError("Select an image");
   }
   const formData = new FormData();
   formData.append("file", file);
@@ -1158,62 +941,6 @@ export async function uploadProjectImage(projectId: number, file: File): Promise
     headers: { "Content-Type": "multipart/form-data" },
   });
   return data;
-}
-
-export async function listVulnerabilityComments(projectId: number, vulnerabilityId: number): Promise<PaginatedResponse<VulnerabilityComment>> {
-  const { data } = await api.get<PaginatedResponse<VulnerabilityComment>>(`/projects/${projectId}/vulnerabilities/${vulnerabilityId}/comments`, {
-    params: { page: 1, size: 100 },
-  });
-  return data;
-}
-
-export async function createVulnerabilityComment(projectId: number, vulnerabilityId: number, content: string): Promise<VulnerabilityComment> {
-  assertRequired(content, "Comment");
-  const { data } = await api.post<VulnerabilityComment>(`/projects/${projectId}/vulnerabilities/${vulnerabilityId}/comments`, { content });
-  return data;
-}
-
-export async function updateVulnerabilityComment(
-  projectId: number,
-  vulnerabilityId: number,
-  commentId: number,
-  content: string
-): Promise<VulnerabilityComment> {
-  assertRequired(content, "Comment");
-  const { data } = await api.put<VulnerabilityComment>(`/projects/${projectId}/vulnerabilities/${vulnerabilityId}/comments/${commentId}`, { content });
-  return data;
-}
-
-export async function deleteVulnerabilityComment(projectId: number, vulnerabilityId: number, commentId: number): Promise<void> {
-  await api.delete(`/projects/${projectId}/vulnerabilities/${vulnerabilityId}/comments/${commentId}`);
-}
-
-export async function importProjectData(projectId: number, file: File): Promise<ImportResult> {
-  const formData = new FormData();
-  formData.append("file", file);
-  const { data } = await api.post<ImportResult>(`/projects/${projectId}/import`, formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
-  return data;
-}
-
-export async function importOpenApiFile(projectId: number, hostId: number, file: File): Promise<OpenApiImportResult> {
-  if (!file) {
-    throw new Error("Select a Swagger/OpenAPI file");
-  }
-  const formData = new FormData();
-  formData.append("file", file);
-  const { data } = await api.post<OpenApiImportResult>(`/projects/${projectId}/hosts/${hostId}/import-openapi`, formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
-  return data;
-}
-
-export async function exportOpenApiFile(projectId: number, hostId: number): Promise<Blob> {
-  const { data } = await api.get(`/projects/${projectId}/hosts/${hostId}/export-openapi`, {
-    responseType: "blob",
-  });
-  return data as Blob;
 }
 
 export async function downloadProjectCertificationReport(projectId: number): Promise<Blob> {
@@ -1259,38 +986,12 @@ export async function listNotifications(options?: { is_read?: boolean }): Promis
   return data;
 }
 
-export async function unreadCount(): Promise<number> {
-  const { data } = await api.get<{ count: number }>("/notifications/unread-count");
-  return data.count;
-}
-
 export async function markNotificationRead(notificationId: number): Promise<void> {
   await api.patch(`/notifications/${notificationId}/read`);
 }
 
 export async function markAllNotificationsRead(): Promise<void> {
   await api.patch("/notifications/read-all");
-}
-
-export async function getAuditLogs(
-  page = 1,
-  size = 50,
-  filters?: {
-    user_id?: string;
-    username?: string;
-    action?: string;
-    entity_type?: string;
-    entity_id?: string;
-    ip_address?: string;
-    query?: string;
-    created_from?: string;
-    created_to?: string;
-  }
-): Promise<PaginatedResponse<AuditLog>> {
-  const { data } = await api.get<PaginatedResponse<AuditLog>>("/audit-logs", {
-    params: { page, size, ...filters },
-  });
-  return data;
 }
 
 // ── TaskTracker «Tasks» (раздел Tasks) ──────────────────────────────────────────────

@@ -6,7 +6,7 @@
 
 ## readJson
 
-[frontend/src/storm/SwaggerEndpointImport.tsx:8](../../../../../frontend/src/storm/SwaggerEndpointImport.tsx#L8)
+[frontend/src/storm/SwaggerEndpointImport.tsx:10](../../../../../frontend/src/storm/SwaggerEndpointImport.tsx#L10)
 
 ```typescript
 readJson(file: File) => Promise<unknown>
@@ -22,7 +22,7 @@ readJson(file: File) => Promise<unknown>
 
 ## SwaggerEndpointImport
 
-[frontend/src/storm/SwaggerEndpointImport.tsx:18](../../../../../frontend/src/storm/SwaggerEndpointImport.tsx#L18)
+[frontend/src/storm/SwaggerEndpointImport.tsx:20](../../../../../frontend/src/storm/SwaggerEndpointImport.tsx#L20)
 
 ```typescript
 SwaggerEndpointImport({ onParsed, disabled = false }: { disabled?: boolean; onParsed: (lines: string[]) => void }) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -50,7 +50,7 @@ SwaggerEndpointImport({ onParsed, disabled = false }: { disabled?: boolean; onPa
 
 ## SwaggerEndpointImport.close
 
-[frontend/src/storm/SwaggerEndpointImport.tsx:28](../../../../../frontend/src/storm/SwaggerEndpointImport.tsx#L28)
+[frontend/src/storm/SwaggerEndpointImport.tsx:30](../../../../../frontend/src/storm/SwaggerEndpointImport.tsx#L30)
 
 ```typescript
 close() => void
@@ -70,7 +70,7 @@ close() => void
 
 ## SwaggerEndpointImport.onKey
 
-[frontend/src/storm/SwaggerEndpointImport.tsx:31](../../../../../frontend/src/storm/SwaggerEndpointImport.tsx#L31)
+[frontend/src/storm/SwaggerEndpointImport.tsx:33](../../../../../frontend/src/storm/SwaggerEndpointImport.tsx#L33)
 
 ```typescript
 onKey(event: KeyboardEvent) => void
@@ -94,13 +94,13 @@ onKey(event: KeyboardEvent) => void
 
 ## SwaggerEndpointImport.load
 
-[frontend/src/storm/SwaggerEndpointImport.tsx:35](../../../../../frontend/src/storm/SwaggerEndpointImport.tsx#L35)
+[frontend/src/storm/SwaggerEndpointImport.tsx:37](../../../../../frontend/src/storm/SwaggerEndpointImport.tsx#L37)
 
 ```typescript
 async load(files: File[]) => Promise<void>
 ```
 
-В теле вызывает `Promise.all`, `files.map`, `files.reduce`, `files.some`, `onParsed`, `parseSwaggerDocuments`, `pushToast`, `setBusy`; полный список ниже.
+В теле вызывает `Promise.all`, `files.map`, `files.reduce`, `files.some`, `getApiErrorMessage`, `onParsed`, `parseSwaggerDocuments`, `pushToast`; полный список ниже.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -111,8 +111,8 @@ async load(files: File[]) => Promise<void>
 Явные throw в теле:
 
 ```typescript
-new Error(t("Choose up to 32 JSON files, 2 MB each, 8 MB total"))
-new Error(t("Choose JSON files"))
+new UserInputError(t("Choose up to 32 JSON files, 2 MB each, 8 MB total"))
+new UserInputError(t("Choose JSON files"))
 ```
 
 <details>
@@ -122,6 +122,7 @@ new Error(t("Choose JSON files"))
 - `files.map`
 - `files.reduce`
 - `files.some`
+- `getApiErrorMessage`
 - `onParsed`
 - `parseSwaggerDocuments`
 - `pushToast`

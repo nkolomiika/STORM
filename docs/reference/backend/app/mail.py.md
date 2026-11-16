@@ -184,7 +184,7 @@ async def _get_oauth_access_token() -> str
 RuntimeError('SMTP_AUTH_METHOD=xoauth2 (grant_type=refresh_token) требует SMTP_OAUTH_REFRESH_TOKEN (или GOOGLE_OAUTH_REFRESH_TOKEN)')
 RuntimeError('SMTP_AUTH_METHOD=xoauth2 требует SMTP_OAUTH_CLIENT_ID/SECRET (или GOOGLE_OAUTH_*) в .env')
 RuntimeError('SMTP_OAUTH_GRANT_TYPE=client_credentials требует SMTP_OAUTH_SCOPE (напр. https://outlook.office365.com/.default)')
-RuntimeError(f'OAuth2 token request failed ({response.status_code}): {response.text}')
+RuntimeError(f'OAuth2 token request failed ({response.status_code})')
 ```
 
 <details>
@@ -206,7 +206,7 @@ RuntimeError(f'OAuth2 token request failed ({response.status_code}): {response.t
 
 ## _send_via_xoauth2
 
-[backend/app/mail.py:268](../../../../backend/app/mail.py#L268)
+[backend/app/mail.py:267](../../../../backend/app/mail.py#L267)
 
 ```python
 async def _send_via_xoauth2(message: EmailMessage, *, use_tls: bool, start_tls: bool) -> None
@@ -243,7 +243,7 @@ aiosmtplib.SMTPAuthenticationError(response.code, response.message)
 
 ## send_plain_text_email
 
-[backend/app/mail.py:296](../../../../backend/app/mail.py#L296)
+[backend/app/mail.py:295](../../../../backend/app/mail.py#L295)
 
 ```python
 async def send_plain_text_email(*, recipient_email: str, subject: str, body: str, html_body: str | None=None) -> None

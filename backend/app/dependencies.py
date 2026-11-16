@@ -1,4 +1,3 @@
-from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
@@ -51,6 +50,7 @@ async def enforce_csrf(request: Request, origin: str | None = Header(default=Non
 async def get_current_user(
     db: AsyncSession = Depends(get_db),
     access_token: str | None = Cookie(default=None),
+    request: Request = None,
 ) -> User:
     """Извлекает текущего пользователя из access cookie."""
     if not access_token:
@@ -59,6 +59,8 @@ async def get_current_user(
     user = await db.scalar(select(User).where(User.id == user_id))
     if not user or not user.is_active or user.is_locked:
         raise UnauthorizedError("Пользователь не найден или деактивирован")
+    if request is not None:
+        request.state.actor_id = user.id
     return user
 
 
@@ -93,9 +95,6 @@ async def require_project_access(
     return project
 
 
-def role_in(user: User, allowed: Iterable[UserRole]) -> bool:
-    """Проверяет принадлежность роли пользователя допустимому набору."""
-    return user.role in allowed
 
 
 async def get_agent_token_context(

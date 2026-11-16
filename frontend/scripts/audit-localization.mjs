@@ -18,7 +18,7 @@ function collect(node) {
 }
 collect(dictionary);
 const technical = new Set(["HTTP", "CWE ID", "2FA", "Sber", "Tech", "STORM", "cURL", "user@sbertech.ru", "ivanov", "••••••••", "000000"]);
-const branding = new Set(["STORM", "OFFENSIVE RESEARCH & MANAGEMENT", "Swagger 1.0 / 1.1 / 1.2 / 2.0 · OpenAPI 3.0 / 3.1 / 3.2"]);
+const branding = new Set(["STORM", "WORKSPACE", "OFFENSIVE RESEARCH & MANAGEMENT", "Swagger 1.0 / 1.1 / 1.2 / 2.0 · OpenAPI 3.0 / 3.1 / 3.2"]);
 const failures = [];
 let checked = 0;
 for (const name of [...fs.readdirSync(root).filter((file) => /\.tsx?$/.test(file) && !/\.test\./.test(file)), "../StormRoot.tsx"]) {

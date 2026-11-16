@@ -4,7 +4,7 @@ from app.enums import ProjectStatus, Severity
 
 from app.config import Settings
 from app.pagination import PageParams
-from app.schemas import LoginRequest, ProjectUpdate, UserCreate, VulnerabilityCreate
+from app.schemas import LoginRequest, ProjectUpdate, InvitationCreate, VulnerabilityCreate
 
 
 def test_login_rejects_empty_credentials_tc_auth_005() -> None:
@@ -12,11 +12,9 @@ def test_login_rejects_empty_credentials_tc_auth_005() -> None:
         LoginRequest(username="", password="")
 
 
-def test_user_create_accepts_admin_role_tc_usr_004() -> None:
-    payload = UserCreate(
-        username="admin2",
+def test_invitation_accepts_admin_role() -> None:
+    payload = InvitationCreate(
         email="admin2@example.com",
-        password="Admin1234!",
         role="admin",
     )
 

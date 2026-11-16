@@ -332,20 +332,6 @@ def _replace_in_paragraph(paragraph: Paragraph, old: str, new: str) -> bool:
     return True
 
 
-def _replace_xxx_in_runs(paragraph: Paragraph, replacement: str) -> bool:
-    """Заменяет каждое вхождение `XXX` в каждом run параграфа на `replacement`.
-
-    Используется для обложки, где имя продукта вшито в текстовое поле и разбито
-    на множество отдельных run-ов (часто `XXX` лежит в одном run, а соседний
-    текст — в других). Стиль рана сохраняется, лишь меняется его текст.
-    """
-    changed = False
-    for run in paragraph.runs:
-        if "XXX" in run.text:
-            run.text = run.text.replace("XXX", replacement)
-            _apply_run_font(run)
-            changed = True
-    return changed
 
 
 def _set_cell_text(
@@ -415,13 +401,6 @@ def _block_elements_until_heading(start_para: Paragraph, max_stop_level: int = 2
     return elements
 
 
-def _table_for_element(doc: DocxDocument, element) -> Table | None:
-    if element.tag != qn("w:tbl"):
-        return None
-    for table in doc.tables:
-        if table._element is element:
-            return table
-    return None
 
 
 def _normalize_label(text: str) -> str:

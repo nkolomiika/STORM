@@ -6,18 +6,17 @@ from app.schemas import (
     HostCreate,
     StormImportPayload,
     PortCreate,
-    UserCreate,
+    InvitationAcceptRequest,
     VulnerabilityCreate,
     VulnerabilityWorkflowStep,
     VulnerabilityStatusPatch,
 )
 
 
-def test_user_create_rejects_short_password_tc_usr_008() -> None:
+def test_invitation_activation_rejects_short_password() -> None:
     with pytest.raises(PydanticValidationError):
-        UserCreate(
+        InvitationAcceptRequest(
             username="new_user",
-            email="new_user@example.com",
             password="short",
         )
 

@@ -6,7 +6,7 @@
 
 ## wait_for_rabbitmq
 
-[backend/app/worker/mail_worker.py:19](../../../../../backend/app/worker/mail_worker.py#L19)
+[backend/app/worker/mail_worker.py:24](../../../../../backend/app/worker/mail_worker.py#L24)
 
 ```python
 async def wait_for_rabbitmq(host: str, port: int, retry_delay: float=2.0) -> None
@@ -35,7 +35,7 @@ async def wait_for_rabbitmq(host: str, port: int, retry_delay: float=2.0) -> Non
 
 ## relay_pending_jobs
 
-[backend/app/worker/mail_worker.py:55](../../../../../backend/app/worker/mail_worker.py#L55)
+[backend/app/worker/mail_worker.py:60](../../../../../backend/app/worker/mail_worker.py#L60)
 
 ```python
 async def relay_pending_jobs(channel: aio_pika.abc.AbstractChannel, queue_name: str) -> None
@@ -79,13 +79,13 @@ async def relay_pending_jobs(channel: aio_pika.abc.AbstractChannel, queue_name: 
 
 ## process_mail_job
 
-[backend/app/worker/mail_worker.py:91](../../../../../backend/app/worker/mail_worker.py#L91)
+[backend/app/worker/mail_worker.py:96](../../../../../backend/app/worker/mail_worker.py#L96)
 
 ```python
 async def process_mail_job(job_id: int) -> None
 ```
 
-В теле вызывает `SessionLocal`, `datetime.now`, `db.commit`, `db.scalar`, `job.payload.get`, `logger.exception`, `logger.info`, `select`; полный список ниже.
+Отправляет письмо, фиксирует ретрай и безопасный код ошибки для интерфейса.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -103,18 +103,22 @@ async def process_mail_job(job_id: int) -> None
 - `db.commit`
 - `db.scalar`
 - `job.payload.get`
+- `job.payload.items`
 - `logger.exception`
 - `logger.info`
+- `mail_error_code`
+- `redact_log`
 - `select`
 - `select(MailJob).where`
 - `send_plain_text_email`
 - `str`
+- `time.monotonic`
 
 </details>
 
 ## consume_mail_jobs
 
-[backend/app/worker/mail_worker.py:124](../../../../../backend/app/worker/mail_worker.py#L124)
+[backend/app/worker/mail_worker.py:135](../../../../../backend/app/worker/mail_worker.py#L135)
 
 ```python
 async def consume_mail_jobs(queue: aio_pika.abc.AbstractQueue) -> None
@@ -141,7 +145,7 @@ async def consume_mail_jobs(queue: aio_pika.abc.AbstractQueue) -> None
 
 ## main
 
-[backend/app/worker/mail_worker.py:131](../../../../../backend/app/worker/mail_worker.py#L131)
+[backend/app/worker/mail_worker.py:142](../../../../../backend/app/worker/mail_worker.py#L142)
 
 ```python
 async def main() -> None

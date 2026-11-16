@@ -115,7 +115,7 @@ async def run_recon_job(job_id: int) -> None:
                 # что UI показывает как окончательно «упавшую» задачу.
                 job.last_error = msg
                 if job.attempts >= settings.recon_max_attempts:
-                    job.error = msg
+                    job.error = 'Не удалось завершить проверку. Попробуйте запустить её ещё раз.'
                 job.finished_at = datetime.now(UTC)
                 await db.commit()
             logger.exception("Recon job %s (%s) failed", job_id, kind)

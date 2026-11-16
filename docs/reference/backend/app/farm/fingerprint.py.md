@@ -2,11 +2,11 @@
 
 Сгенерировано из объявлений кода. [Правила чтения](../../../../METHODS.md).
 
-Методов и именованных функций: **13**.
+Методов и именованных функций: **12**.
 
 ## url_for
 
-[backend/app/farm/fingerprint.py:56](../../../../../backend/app/farm/fingerprint.py#L56)
+[backend/app/farm/fingerprint.py:41](../../../../../backend/app/farm/fingerprint.py#L41)
 
 ```python
 def url_for(p: ProbeResult) -> str
@@ -22,7 +22,7 @@ def url_for(p: ProbeResult) -> str
 
 ## _url_key
 
-[backend/app/farm/fingerprint.py:61](../../../../../backend/app/farm/fingerprint.py#L61)
+[backend/app/farm/fingerprint.py:46](../../../../../backend/app/farm/fingerprint.py#L46)
 
 ```python
 def _url_key(u: str) -> tuple[str, str, int]
@@ -46,33 +46,9 @@ def _url_key(u: str) -> tuple[str, str, int]
 
 </details>
 
-## has_cloudflare
-
-[backend/app/farm/fingerprint.py:75](../../../../../backend/app/farm/fingerprint.py#L75)
-
-```python
-def has_cloudflare(techs: list[Tech]) -> bool
-```
-
-Есть ли среди технологий Cloudflare — для вывода CF-флага по детекту.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `techs` | `list[Tech]` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-
-Возвращает: `bool`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `any`
-- `t.name.lower`
-
-</details>
-
 ## _split_tech
 
-[backend/app/farm/fingerprint.py:83](../../../../../backend/app/farm/fingerprint.py#L83)
+[backend/app/farm/fingerprint.py:65](../../../../../backend/app/farm/fingerprint.py#L65)
 
 ```python
 def _split_tech(raw: str) -> Tech
@@ -100,7 +76,7 @@ def _split_tech(raw: str) -> Tech
 
 ## parse_httpx_jsonl
 
-[backend/app/farm/fingerprint.py:93](../../../../../backend/app/farm/fingerprint.py#L93)
+[backend/app/farm/fingerprint.py:75](../../../../../backend/app/farm/fingerprint.py#L75)
 
 ```python
 def parse_httpx_jsonl(raw: str) -> dict[str, list[Tech]]
@@ -140,7 +116,7 @@ cdn_name/webserver добавляем как технологию, если их
 
 ## _run_httpx
 
-[backend/app/farm/fingerprint.py:126](../../../../../backend/app/farm/fingerprint.py#L126)
+[backend/app/farm/fingerprint.py:108](../../../../../backend/app/farm/fingerprint.py#L108)
 
 ```python
 async def _run_httpx(urls: list[str]) -> dict[str, list[Tech]]
@@ -172,7 +148,7 @@ async def _run_httpx(urls: list[str]) -> dict[str, list[Tech]]
 
 ## parse_whatweb_json
 
-[backend/app/farm/fingerprint.py:155](../../../../../backend/app/farm/fingerprint.py#L155)
+[backend/app/farm/fingerprint.py:137](../../../../../backend/app/farm/fingerprint.py#L137)
 
 ```python
 def parse_whatweb_json(raw: str) -> list[Tech]
@@ -211,7 +187,7 @@ def parse_whatweb_json(raw: str) -> list[Tech]
 
 ## _run_whatweb_one
 
-[backend/app/farm/fingerprint.py:200](../../../../../backend/app/farm/fingerprint.py#L200)
+[backend/app/farm/fingerprint.py:182](../../../../../backend/app/farm/fingerprint.py#L182)
 
 ```python
 async def _run_whatweb_one(url: str) -> list[Tech]
@@ -240,7 +216,7 @@ async def _run_whatweb_one(url: str) -> list[Tech]
 
 ## _run_whatweb
 
-[backend/app/farm/fingerprint.py:218](../../../../../backend/app/farm/fingerprint.py#L218)
+[backend/app/farm/fingerprint.py:200](../../../../../backend/app/farm/fingerprint.py#L200)
 
 ```python
 async def _run_whatweb(urls: list[str]) -> dict[str, list[Tech]]
@@ -266,7 +242,7 @@ async def _run_whatweb(urls: list[str]) -> dict[str, list[Tech]]
 
 ## _run_whatweb.one
 
-[backend/app/farm/fingerprint.py:221](../../../../../backend/app/farm/fingerprint.py#L221)
+[backend/app/farm/fingerprint.py:203](../../../../../backend/app/farm/fingerprint.py#L203)
 
 ```python
 async def one(u: str) -> tuple[str, list[Tech]]
@@ -289,7 +265,7 @@ async def one(u: str) -> tuple[str, list[Tech]]
 
 ## _pick_engine
 
-[backend/app/farm/fingerprint.py:231](../../../../../backend/app/farm/fingerprint.py#L231)
+[backend/app/farm/fingerprint.py:213](../../../../../backend/app/farm/fingerprint.py#L213)
 
 ```python
 def _pick_engine() -> Callable[[list[str]], Awaitable[dict[str, list[Tech]]]] | None
@@ -308,7 +284,7 @@ def _pick_engine() -> Callable[[list[str]], Awaitable[dict[str, list[Tech]]]] | 
 
 ## _regate_external
 
-[backend/app/farm/fingerprint.py:244](../../../../../backend/app/farm/fingerprint.py#L244)
+[backend/app/farm/fingerprint.py:226](../../../../../backend/app/farm/fingerprint.py#L226)
 
 ```python
 async def _regate_external(responding: list[ProbeResult], resolver: Resolver) -> list[ProbeResult]
@@ -334,7 +310,7 @@ async def _regate_external(responding: list[ProbeResult], resolver: Resolver) ->
 
 ## detect_services
 
-[backend/app/farm/fingerprint.py:252](../../../../../backend/app/farm/fingerprint.py#L252)
+[backend/app/farm/fingerprint.py:234](../../../../../backend/app/farm/fingerprint.py#L234)
 
 ```python
 async def detect_services(probes: list[ProbeResult], *, detector: Callable[[list[str]], Awaitable[dict[str, list[Tech]]]] | None=None, resolver: Resolver | None=None) -> dict[tuple[str, int], list[Tech]]

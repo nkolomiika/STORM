@@ -59,6 +59,10 @@ async def test_finding_export_goes_to_sts_and_links_to_project_appsec_ticket(api
     assert creation["space"] == creation["attributes"]["space"] == "STS"
     assert creation["suit"] == "bug_appsec"
     assert link == {"source": "STS-42", "destination": "APPSEC-7", "type": "plain_connection"}
+    repeated = await client.post(f"projects/{project}/vulnerabilities/{finding.json()['id']}/works/export", json={})
+    assert repeated.status_code == 200, repeated.text
+    assert repeated.json()['works_key'] == 'STS-42'
+    assert len(calls) == 2  # Повторный экспорт не создаёт новый внешний тикет.
     if link_failure:
         # Existing partial-success policy: preserve the created STS ticket, but
         # the UI currently has no signal that its APPSEC link was rejected.
@@ -93,6 +97,32 @@ async def test_tasks_and_project_picker_share_only_appsec_units(api, monkeypatch
     count = len(calls)
     assert (await client.get("tasks/STS-42")).status_code == 404
     assert len(calls) == count
+
+
+async def test_parallel_sts_exports_create_one_external_ticket(api, monkeypatch):
+    import asyncio
+    client, ids = api
+    calls = []
+    async def handler(request):
+        calls.append(request.url.path)
+        if request.url.path.endswith('/bug_appsec/create'):
+            await asyncio.sleep(0.02)
+            return httpx.Response(200, json={'code':'STS-101'})
+        if request.url.path.endswith('/unit/v1/link'):
+            return httpx.Response(200, json={})
+        raise AssertionError(request.url.path)
+    native_tracker(monkeypatch, handler)
+    root = f"projects/{ids['project']}"
+    saved = await client.put(root, json={'appsec_ticket_key':'APPSEC-1', 'appsec_assignee':'analyst',
+                                        'appsec_versions':[{'code':'v1','name':'Platform 1.0'}]})
+    assert saved.status_code == 200, saved.text
+    finding = await client.post(root+'/vulnerabilities', json={'title':'Parallel export', 'host_id':ids['host']})
+    assert finding.status_code == 201, finding.text
+    url = root+f"/vulnerabilities/{finding.json()['id']}/works/export"
+    responses = await asyncio.gather(client.post(url, json={}), client.post(url, json={}))
+    assert [response.status_code for response in responses] == [200,200]
+    assert all(response.json()['works_key']=='STS-101' for response in responses)
+    assert sum(path.endswith('/bug_appsec/create') for path in calls) == 1
 
 
 @pytest.mark.parametrize("patch", [
@@ -208,7 +238,7 @@ async def test_missing_appsec_scope_in_search_configuration_fails_before_network
     monkeypatch.setattr(get_settings(), "works_tasks_search_body", {"space": "STS"})
     response = await client.get("tasks")
     assert response.status_code == 503
-    assert "APPSEC" in response.json()["detail"]
+    assert response.json()["code"] == "task_tracker_not_configured"
 
 
 async def test_native_card_to_project_to_sts_keeps_login_and_every_version(api, monkeypatch):

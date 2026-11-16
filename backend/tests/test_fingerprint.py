@@ -4,7 +4,6 @@ from app.farm.core import ProbeResult
 from app.farm.fingerprint import (
     Tech,
     detect_services,
-    has_cloudflare,
     parse_httpx_jsonl,
     parse_whatweb_json,
     url_for,
@@ -34,16 +33,15 @@ def test_parse_httpx_flags_cloudflare_from_tech() -> None:
     parsed = parse_httpx_jsonl(HTTPX_JSONL)
     cf = parsed["https://claude.com:443/"]
     assert [t.name for t in cf] == ["Cloudflare", "Cloudflare Bot Management", "HSTS", "HTTP/3"]
-    assert has_cloudflare(cf) is True
     # у api.acme.com Cloudflare нет
-    assert has_cloudflare(parsed["https://api.acme.com:443/"]) is False
+    assert all("cloudflare" not in item.name.lower() for item in parsed["https://api.acme.com:443/"])
 
 
 def test_parse_httpx_adds_cdn_name_as_tech() -> None:
     # tech без Cloudflare, но cdn_name говорит cloudflare → добавляем как технологию
     line = '{"input":"https://x/","tech":["Nginx"],"cdn_name":"cloudflare"}'
     techs = parse_httpx_jsonl(line)["https://x/"]
-    assert has_cloudflare(techs) is True
+    assert "cloudflare" in {item.name.lower() for item in techs}
 
 
 def test_parse_httpx_skips_garbage_lines() -> None:
@@ -85,7 +83,7 @@ async def test_detect_services_maps_engine_output_to_ports() -> None:
     result = await detect_services(probes, detector=fake)
 
     assert [t.name for t in result[("acme.com", 443)]] == ["Cloudflare", "Nginx"]
-    assert has_cloudflare(result[("acme.com", 443)]) is True
+    assert "cloudflare" in {item.name.lower() for item in result[("acme.com", 443)]}
 
 
 @pytest.mark.asyncio

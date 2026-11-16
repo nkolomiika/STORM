@@ -1,3 +1,4 @@
+import { UserInputError } from "../errorMessages";
 /** Разбирает маршруты локально: Swagger 1.x/2.0 и OpenAPI 3.0–3.2. */
 export interface SwaggerDocument { name: string; value: unknown }
 type JsonObject = Record<string, unknown>;
@@ -7,7 +8,7 @@ const methods = new Set<string>(ENDPOINT_METHODS);
 
 export function parseSwaggerDocuments(documents: SwaggerDocument[], fallbackHost = "unknown") {
   const files = new Map(documents.map((doc) => [doc.name, doc.value]));
-  if (files.size !== documents.length) throw new Error("JSON filenames must be unique");
+  if (files.size !== documents.length) throw new UserInputError("JSON filenames must be unique");
   const lines = new Set<string>();
   const warnings = new Set<string>();
   const versions = new Set<string>();
@@ -17,15 +18,15 @@ export function parseSwaggerDocuments(documents: SwaggerDocument[], fallbackHost
     const item = object(value);
     if (typeof item.$ref !== "string") return { value: item, file };
     const key = `${file}:${item.$ref}`;
-    if (chain.has(key) || chain.size >= 32) throw new Error("Circular endpoint reference");
+    if (chain.has(key) || chain.size >= 32) throw new UserInputError("Circular endpoint reference");
     const [filename, pointer = ""] = item.$ref.split("#");
     const target = filename ? new URL(filename, `https://local.invalid/${file}`).pathname.slice(1) : file;
-    if (!files.has(target)) throw new Error(`Upload the referenced JSON file: ${target}`);
+    if (!files.has(target)) throw new UserInputError(`Upload the referenced JSON file: ${target}`);
     let node: unknown = files.get(target);
-    if (pointer && !pointer.startsWith("/")) throw new Error("Unsupported JSON reference");
+    if (pointer && !pointer.startsWith("/")) throw new UserInputError("Unsupported JSON reference");
     for (const part of pointer.split("/").slice(1)) {
       const token = decodeURIComponent(part).replace(/~1/g, "/").replace(/~0/g, "~");
-      if (!Object.hasOwn(object(node), token)) throw new Error(`Endpoint reference not found: ${item.$ref}`);
+      if (!Object.hasOwn(object(node), token)) throw new UserInputError(`Endpoint reference not found: ${item.$ref}`);
       node = object(node)[token];
     }
     const resolved = resolve(node, target, new Set([...chain, key]));
@@ -33,10 +34,10 @@ export function parseSwaggerDocuments(documents: SwaggerDocument[], fallbackHost
   };
   const serverUrls = (raw: unknown): string[] => Array.isArray(raw) ? raw.map((entry) => {
     const server = object(entry);
-    if (typeof server.url !== "string") throw new Error("Invalid server URL");
+    if (typeof server.url !== "string") throw new UserInputError("Invalid server URL");
     return server.url.replace(/\{([^}]+)\}/g, (_, name: string) => {
       const variable = object(object(server.variables)[name]);
-      if (typeof variable.default !== "string") throw new Error(`Missing server variable: ${name}`);
+      if (typeof variable.default !== "string") throw new UserInputError(`Missing server variable: ${name}`);
       return variable.default;
     });
   }) : [];
@@ -44,13 +45,15 @@ export function parseSwaggerDocuments(documents: SwaggerDocument[], fallbackHost
     method = method.toUpperCase();
     if (!methods.has(method)) { warnings.add(`Unsupported HTTP method: ${method}`); return; }
     if (!base || (!/^https?:\/\//i.test(base) && !base.startsWith("//") && !fallback)) {
-      throw new Error("Select a project host for relative URLs");
+      throw new UserInputError("Select a project host for relative URLs");
     }
-    const url = new URL(base, fallback || "https://local.invalid/");
-    if (!["https:", "http:"].includes(url.protocol) || url.username || url.password) throw new Error("Only HTTP and HTTPS server URLs are supported");
+    let url: URL;
+    try { url = new URL(base, fallback || "https://local.invalid/"); }
+    catch { throw new UserInputError("Invalid server URL"); }
+    if (!["https:", "http:"].includes(url.protocol) || url.username || url.password) throw new UserInputError("Only HTTP and HTTPS server URLs are supported");
     const route = `${url.pathname.replace(/\/$/, "")}/${path.replace(/^\//, "")}`;
     lines.add(`${method} ${url.origin}${route}${url.search}`);
-    if (lines.size > 10000) throw new Error("Too many endpoints in JSON (maximum 10000)");
+    if (lines.size > 10000) throw new UserInputError("Too many endpoints in JSON (maximum 10000)");
   };
 
   for (const document of documents) {
@@ -58,7 +61,7 @@ export function parseSwaggerDocuments(documents: SwaggerDocument[], fallbackHost
     const version = spec.openapi ?? spec.swagger ?? spec.swaggerVersion;
     // Файлы компонентов для $ref могут не иметь собственного номера версии.
     if (version === undefined) continue;
-    if (typeof version !== "string" || !/^(1\.[012]|2\.0|3\.[012](?:\.\d+)?)$/.test(version)) throw new Error(`Unsupported Swagger/OpenAPI version: ${String(version)}`);
+    if (typeof version !== "string" || !/^(1\.[012]|2\.0|3\.[012](?:\.\d+)?)$/.test(version)) throw new UserInputError(`Unsupported Swagger/OpenAPI version: ${String(version)}`);
     versions.add(version);
     if (version.startsWith("1.")) {
       let declarations = 0;
@@ -104,12 +107,12 @@ export function parseSwaggerDocuments(documents: SwaggerDocument[], fallbackHost
       } catch (error) {
         // Ошибка адреса требует выбора хоста, иначе нельзя корректно заполнить поля.
         if (error instanceof Error && error.message === "Select a project host for relative URLs") throw error;
-        warnings.add(error instanceof Error ? error.message : "Invalid endpoint");
+        warnings.add(error instanceof UserInputError ? error.message : "Invalid endpoint");
       }
     }
   }
-  if (!versions.size) throw new Error("This JSON is not a Swagger/OpenAPI document");
+  if (!versions.size) throw new UserInputError("This JSON is not a Swagger/OpenAPI document");
   if (!lines.size && resourceListing) warnings.add("Swagger 1.x resource listings need their API Declaration JSON files");
-  if (!lines.size) throw new Error([...warnings].join("; ") || "No endpoints found in JSON");
+  if (!lines.size) throw new UserInputError([...warnings].join("; ") || "No endpoints found in JSON");
   return { lines: [...lines], warnings: [...warnings], versions: [...versions] };
 }

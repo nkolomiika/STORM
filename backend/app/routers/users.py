@@ -172,7 +172,9 @@ async def list_invitations(
 ) -> list[InvitationOut]:
     """Список незавершённых приглашений (pending, в т.ч. истёкших)."""
     items = await UserService(db).list_invitations()
-    return [InvitationOut.model_validate(item) for item in items]
+    from app.mail_delivery import invitation_delivery
+    deliveries = await invitation_delivery(db, items)
+    return [InvitationOut.model_validate(item).model_copy(update=deliveries.get(item.id, {})) for item in items]
 
 
 @router.post("/invitations/{invitation_id}/resend", response_model=InvitationSentOut)
@@ -212,21 +214,13 @@ async def search_users(
     _: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[UserSearchOut]:
-    """Поиск людей для назначения исполнителя: по username или ФИО (full_name).
+    """Ищет активных локальных пользователей STORM по логину или ФИО.
 
-    При настроенном IAM дополнительно подмешивает кандидатов из IAM
-    (dedup по username, локальные пользователи в приоритете).
+    SSO-вход не подключает удалённый поиск IAM: в выдаче только пользователи БД.
     """
-    service = UserService(db)
-    users = await service.search_users(q, limit)
-    out = [UserSearchOut.model_validate(u) for u in users]
-    seen = {u.username for u in out}
-    for cand in await service.iam_user_candidates(q, limit):
-        uname = cand.get("username")
-        if uname and uname not in seen:
-            out.append(UserSearchOut(username=uname, full_name=cand.get("full_name"), is_sso=True))
-            seen.add(uname)
-    return out[:limit]
+    users = await UserService(db).search_users(q, limit)
+    return [UserSearchOut.model_validate(user) for user in users]
+
 
 
 @router.get("/{user_id}", response_model=UserOut)

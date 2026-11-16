@@ -62,6 +62,9 @@ export interface Invitation {
   /** pending | accepted | revoked (в списке админа только pending). */
   status: string;
   is_expired: boolean;
+  email_status?: string | null;
+  email_error?: string | null;
+  email_error_code?: string | null;
   expires_at: string;
   invited_by: number | null;
   created_at: string;
@@ -279,16 +282,6 @@ export type OsType =
   | "ios"
   | "other"
   | "unknown";
-
-export const OS_TYPE_OPTIONS: { value: OsType; label: string }[] = [
-  { value: "windows", label: "Windows" },
-  { value: "linux", label: "Linux" },
-  { value: "macos", label: "macOS" },
-  { value: "freebsd", label: "FreeBSD" },
-  { value: "android", label: "Android" },
-  { value: "ios", label: "iOS" },
-  { value: "other", label: "Другая" },
-];
 
 export interface Host {
   id: number;

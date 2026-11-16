@@ -1,3 +1,5 @@
+import { getApiErrorMessage } from "../api";
+import { UserInputError } from "../errorMessages";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useToastStore } from "../store";
@@ -7,10 +9,10 @@ import { parseSwaggerDocuments } from "./swaggerEndpoints";
 
 const readJson = (file: File) => new Promise<unknown>((resolve, reject) => {
   const reader = new FileReader();
-  reader.onerror = () => reject(new Error(t("Couldn't read JSON file")));
+  reader.onerror = () => reject(new UserInputError(t("Couldn't read JSON file")));
   reader.onload = () => {
     try { resolve(JSON.parse(String(reader.result).replace(/^\uFEFF/, ""))); }
-    catch { reject(new Error(`${file.name}: ${t("Invalid JSON")}`)); }
+    catch { reject(new UserInputError(`${file.name}: ${t("Invalid JSON")}`)); }
   };
   reader.readAsText(file);
 });
@@ -38,8 +40,8 @@ export function SwaggerEndpointImport({ onParsed, disabled = false }: { disabled
     reading.current = true;
     setBusy(true);
     try {
-      if (files.length > 32 || files.reduce((n, file) => n + file.size, 0) > 8 * 1024 * 1024 || files.some((file) => file.size > 2 * 1024 * 1024)) throw new Error(t("Choose up to 32 JSON files, 2 MB each, 8 MB total"));
-      if (files.some((file) => !/\.json$/i.test(file.name))) throw new Error(t("Choose JSON files"));
+      if (files.length > 32 || files.reduce((n, file) => n + file.size, 0) > 8 * 1024 * 1024 || files.some((file) => file.size > 2 * 1024 * 1024)) throw new UserInputError(t("Choose up to 32 JSON files, 2 MB each, 8 MB total"));
+      if (files.some((file) => !/\.json$/i.test(file.name))) throw new UserInputError(t("Choose JSON files"));
       const documents = await Promise.all(files.map(async (file) => ({ name: file.name, value: await readJson(file) })));
       const result = parseSwaggerDocuments(documents);
       if (!mounted.current || request !== requestId.current) return;
@@ -48,7 +50,7 @@ export function SwaggerEndpointImport({ onParsed, disabled = false }: { disabled
       pushToast(`${t("Endpoints parsed")}: ${result.lines.length}`, "success");
       for (const warning of result.warnings) pushToast(t(warning), "warning");
     } catch (error) {
-      if (mounted.current && request === requestId.current) pushToast(error instanceof Error ? t(error.message) : t("Couldn't read JSON file"), "error");
+      if (mounted.current && request === requestId.current) pushToast(t(getApiErrorMessage(error, "Couldn't read JSON file")), "error");
     } finally {
       if (request === requestId.current) { reading.current = false; if (mounted.current) setBusy(false); }
     }

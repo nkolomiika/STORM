@@ -1,3 +1,4 @@
+import { UserInputError } from "./errorMessages";
 import axios, { AxiosError, type AxiosResponse, type InternalAxiosRequestConfig } from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -17,6 +18,25 @@ beforeEach(() => {
 });
 
 describe("API error messages", () => {
+  it.each([400, 401, 403, 404, 409, 422, 429, 500, 502, 503, 504])("never displays SQL/SMTP diagnostics for HTTP %s", (status) => {
+    const error = failure({} as InternalAxiosRequestConfig, status, { detail: "SMTPAuthenticationError password=private-secret / asyncpg SELECT password FROM users" });
+    const message = api.getApiErrorMessage(error, "Please try again");
+    expect(message).not.toMatch(/private-secret|SMTP|asyncpg|SELECT/);
+  });
+  it("uses a stable mail error code and ignores the raw server body", () => {
+    const error = failure({} as InternalAxiosRequestConfig, 503, { code: "mail_not_configured", detail: "SMTP_PASSWORD=secret" });
+    expect(api.getApiErrorMessage(error, "Fallback")).toBe("Email delivery is not configured. Contact an administrator.");
+  });
+  it("hides native exceptions, unknown error codes and deeply nested responses", () => {
+    expect(api.getApiErrorMessage(new SyntaxError("raw parser detail"), "Check the file")).toBe("Check the file");
+    const circular: { detail?: unknown } = {}; circular.detail = circular;
+    expect(api.getApiErrorMessage(failure({} as InternalAxiosRequestConfig, 422, circular), "Fallback")).toBe("Check the form fields.");
+    expect(api.getApiErrorMessage(failure({} as InternalAxiosRequestConfig, 503, { code: "__proto__" }), "Fallback")).toBe("Something went wrong. Try again later.");
+  });
+  it("turns old Pydantic validation responses into a form hint", () => {
+    const error = failure({} as InternalAxiosRequestConfig, 422, { detail: [{ type: "string_type", loc: ["body", "password"], msg: "Input should be a valid string", input: "never-display" }] });
+    expect(api.getApiErrorMessage(error, "Fallback")).toBe("Check the form fields.");
+  });
   it.each([
     [401, "Invalid username or password."], [403, "You don't have permission for this action."],
     [404, "The requested resource was not found."], [409, "Conflict: the resource already exists or was changed."],
@@ -34,18 +54,18 @@ describe("API error messages", () => {
   });
   it.each([500, 502, 503, 504])("handles generic HTTP %s without losing the status", (status) => {
     expect(api.getApiErrorMessage(failure({} as InternalAxiosRequestConfig, status, "Internal Server Error"), "Fallback"))
-      .toContain(`Server error (${status}).`);
+      .toBe("Something went wrong. Try again later.");
   });
-  it("retains the server detail for an unexpected server error", () => {
+  it("hides technical detail for an unexpected server error", () => {
     expect(api.getApiErrorMessage(failure({} as InternalAxiosRequestConfig, 500, { detail: "Storage failed" }), "Fallback"))
-      .toBe("Server error (500): Storage failed");
+      .toBe("Something went wrong. Try again later.");
   });
   it.each(["ECONNABORTED", "ETIMEDOUT"])("recognizes a timeout (%s)", (code) => {
     expect(api.getApiErrorMessage(new AxiosError("Timeout", code), "Fallback")).toBe("The server response timed out.");
   });
   it("distinguishes no response from other thrown values", () => {
-    expect(api.getApiErrorMessage(new AxiosError("Offline"), "Fallback")).toContain("Server unavailable");
-    expect(api.getApiErrorMessage(new Error("Local validation"), "Fallback")).toBe("Local validation");
+    expect(api.getApiErrorMessage(new AxiosError("Offline"), "Fallback")).toContain("The service is unavailable");
+    expect(api.getApiErrorMessage(new UserInputError("Local validation"), "Fallback")).toBe("Local validation");
     expect(api.getApiErrorMessage({}, "Fallback")).toBe("Fallback");
     expect(api.getApiErrorStatus(new Error("Local validation"))).toBeNull();
   });

@@ -6,7 +6,7 @@
 
 ## object
 
-[frontend/src/storm/swaggerEndpoints.ts:4](../../../../../frontend/src/storm/swaggerEndpoints.ts#L4)
+[frontend/src/storm/swaggerEndpoints.ts:5](../../../../../frontend/src/storm/swaggerEndpoints.ts#L5)
 
 ```typescript
 object(value: unknown) => JsonObject
@@ -29,7 +29,7 @@ object(value: unknown) => JsonObject
 
 ## parseSwaggerDocuments
 
-[frontend/src/storm/swaggerEndpoints.ts:8](../../../../../frontend/src/storm/swaggerEndpoints.ts#L8)
+[frontend/src/storm/swaggerEndpoints.ts:9](../../../../../frontend/src/storm/swaggerEndpoints.ts#L9)
 
 ```typescript
 parseSwaggerDocuments(documents: SwaggerDocument[], fallbackHost = "unknown") => { lines: string[]; warnings: string[]; versions: string[]; }
@@ -47,11 +47,11 @@ parseSwaggerDocuments(documents: SwaggerDocument[], fallbackHost = "unknown") =>
 Явные throw в теле:
 
 ```typescript
-new Error("JSON filenames must be unique")
-new Error(`Unsupported Swagger/OpenAPI version: ${String(version)}`)
+new UserInputError("JSON filenames must be unique")
+new UserInputError(`Unsupported Swagger/OpenAPI version: ${String(version)}`)
 error
-new Error("This JSON is not a Swagger/OpenAPI document")
-new Error([...warnings].join("; ") || "No endpoints found in JSON")
+new UserInputError("This JSON is not a Swagger/OpenAPI document")
+new UserInputError([...warnings].join("; ") || "No endpoints found in JSON")
 ```
 
 <details>
@@ -81,7 +81,7 @@ new Error([...warnings].join("; ") || "No endpoints found in JSON")
 
 ## parseSwaggerDocuments.resolve
 
-[frontend/src/storm/swaggerEndpoints.ts:16](../../../../../frontend/src/storm/swaggerEndpoints.ts#L16)
+[frontend/src/storm/swaggerEndpoints.ts:17](../../../../../frontend/src/storm/swaggerEndpoints.ts#L17)
 
 ```typescript
 resolve(value: unknown, file: string, chain = new Set<string>()) => { value: JsonObject; file: string }
@@ -100,10 +100,10 @@ resolve(value: unknown, file: string, chain = new Set<string>()) => { value: Jso
 Явные throw в теле:
 
 ```typescript
-new Error("Circular endpoint reference")
-new Error(`Upload the referenced JSON file: ${target}`)
-new Error("Unsupported JSON reference")
-new Error(`Endpoint reference not found: ${item.$ref}`)
+new UserInputError("Circular endpoint reference")
+new UserInputError(`Upload the referenced JSON file: ${target}`)
+new UserInputError("Unsupported JSON reference")
+new UserInputError(`Endpoint reference not found: ${item.$ref}`)
 ```
 
 <details>
@@ -131,7 +131,7 @@ new Error(`Endpoint reference not found: ${item.$ref}`)
 
 ## parseSwaggerDocuments.serverUrls
 
-[frontend/src/storm/swaggerEndpoints.ts:34](../../../../../frontend/src/storm/swaggerEndpoints.ts#L34)
+[frontend/src/storm/swaggerEndpoints.ts:35](../../../../../frontend/src/storm/swaggerEndpoints.ts#L35)
 
 ```typescript
 serverUrls(raw: unknown) => string[]
@@ -155,7 +155,7 @@ serverUrls(raw: unknown) => string[]
 
 ## parseSwaggerDocuments.add
 
-[frontend/src/storm/swaggerEndpoints.ts:43](../../../../../frontend/src/storm/swaggerEndpoints.ts#L43)
+[frontend/src/storm/swaggerEndpoints.ts:44](../../../../../frontend/src/storm/swaggerEndpoints.ts#L44)
 
 ```typescript
 add(method: string, base: string, path: string) => void
@@ -174,9 +174,10 @@ add(method: string, base: string, path: string) => void
 Явные throw в теле:
 
 ```typescript
-new Error("Select a project host for relative URLs")
-new Error("Only HTTP and HTTPS server URLs are supported")
-new Error("Too many endpoints in JSON (maximum 10000)")
+new UserInputError("Select a project host for relative URLs")
+new UserInputError("Invalid server URL")
+new UserInputError("Only HTTP and HTTPS server URLs are supported")
+new UserInputError("Too many endpoints in JSON (maximum 10000)")
 ```
 
 <details>

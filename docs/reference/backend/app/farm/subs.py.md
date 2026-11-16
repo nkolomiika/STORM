@@ -6,7 +6,7 @@
 
 ## _normalize
 
-[backend/app/farm/subs.py:48](../../../../../backend/app/farm/subs.py#L48)
+[backend/app/farm/subs.py:49](../../../../../backend/app/farm/subs.py#L49)
 
 ```python
 def _normalize(name: str) -> str
@@ -32,7 +32,7 @@ def _normalize(name: str) -> str
 
 ## parse_roots
 
-[backend/app/farm/subs.py:56](../../../../../backend/app/farm/subs.py#L56)
+[backend/app/farm/subs.py:57](../../../../../backend/app/farm/subs.py#L57)
 
 ```python
 def parse_roots(raw: str) -> list[str]
@@ -62,7 +62,7 @@ def parse_roots(raw: str) -> list[str]
 
 ## in_scope
 
-[backend/app/farm/subs.py:70](../../../../../backend/app/farm/subs.py#L70)
+[backend/app/farm/subs.py:71](../../../../../backend/app/farm/subs.py#L71)
 
 ```python
 def in_scope(name: str, root: str) -> bool
@@ -86,7 +86,7 @@ name принадлежит поддереву root (сам root тоже в sco
 
 ## parse_crtsh
 
-[backend/app/farm/subs.py:75](../../../../../backend/app/farm/subs.py#L75)
+[backend/app/farm/subs.py:76](../../../../../backend/app/farm/subs.py#L76)
 
 ```python
 def parse_crtsh(raw_json: str, root: str) -> set[str]
@@ -120,7 +120,7 @@ def parse_crtsh(raw_json: str, root: str) -> set[str]
 
 ## parse_subfinder
 
-[backend/app/farm/subs.py:99](../../../../../backend/app/farm/subs.py#L99)
+[backend/app/farm/subs.py:100](../../../../../backend/app/farm/subs.py#L100)
 
 ```python
 def parse_subfinder(text: str, root: str) -> set[str]
@@ -149,7 +149,7 @@ def parse_subfinder(text: str, root: str) -> set[str]
 
 ## _fetch_crtsh
 
-[backend/app/farm/subs.py:112](../../../../../backend/app/farm/subs.py#L112)
+[backend/app/farm/subs.py:113](../../../../../backend/app/farm/subs.py#L113)
 
 ```python
 async def _fetch_crtsh(root: str) -> tuple[set[str], str | None]
@@ -178,7 +178,7 @@ crt.sh по корню. Хост фиксированный (не пользов
 
 ## _run_subfinder
 
-[backend/app/farm/subs.py:128](../../../../../backend/app/farm/subs.py#L128)
+[backend/app/farm/subs.py:129](../../../../../backend/app/farm/subs.py#L129)
 
 ```python
 async def _run_subfinder(root: str) -> tuple[set[str], str | None]
@@ -208,7 +208,7 @@ subfinder -d root -silent. Нет бинаря — тихо пропускаем
 
 ## _default_collector
 
-[backend/app/farm/subs.py:145](../../../../../backend/app/farm/subs.py#L145)
+[backend/app/farm/subs.py:146](../../../../../backend/app/farm/subs.py#L146)
 
 ```python
 async def _default_collector(roots: list[str]) -> dict[str, tuple[set[str], list[str], list[str]]]
@@ -233,7 +233,7 @@ async def _default_collector(roots: list[str]) -> dict[str, tuple[set[str], list
 
 ## _default_collector.one
 
-[backend/app/farm/subs.py:147](../../../../../backend/app/farm/subs.py#L147)
+[backend/app/farm/subs.py:148](../../../../../backend/app/farm/subs.py#L148)
 
 ```python
 async def one(root: str) -> tuple[str, tuple[set[str], list[str], list[str]]]
@@ -260,7 +260,7 @@ async def one(root: str) -> tuple[str, tuple[set[str], list[str], list[str]]]
 
 ## SubdomainFarmService.__init__
 
-[backend/app/farm/subs.py:178](../../../../../backend/app/farm/subs.py#L178)
+[backend/app/farm/subs.py:179](../../../../../backend/app/farm/subs.py#L179)
 
 ```python
 def __init__(self, db: AsyncSession) -> None
@@ -283,7 +283,7 @@ def __init__(self, db: AsyncSession) -> None
 
 ## SubdomainFarmService._project_roots
 
-[backend/app/farm/subs.py:182](../../../../../backend/app/farm/subs.py#L182)
+[backend/app/farm/subs.py:183](../../../../../backend/app/farm/subs.py#L183)
 
 ```python
 async def _project_roots(self, project_id: int) -> list[str]
@@ -316,7 +316,7 @@ async def _project_roots(self, project_id: int) -> list[str]
 
 ## SubdomainFarmService._project_hostnames
 
-[backend/app/farm/subs.py:196](../../../../../backend/app/farm/subs.py#L196)
+[backend/app/farm/subs.py:197](../../../../../backend/app/farm/subs.py#L197)
 
 ```python
 async def _project_hostnames(self, project_id: int) -> set[str]
@@ -347,7 +347,7 @@ async def _project_hostnames(self, project_id: int) -> set[str]
 
 ## SubdomainFarmService._collect
 
-[backend/app/farm/subs.py:204](../../../../../backend/app/farm/subs.py#L204)
+[backend/app/farm/subs.py:205](../../../../../backend/app/farm/subs.py#L205)
 
 ```python
 async def _collect(self, roots: list[str], collector: Collector | None) -> tuple[set[str], list[str], list[str]]
@@ -375,7 +375,7 @@ async def _collect(self, roots: list[str], collector: Collector | None) -> tuple
 
 ## SubdomainFarmService.probe_and_import
 
-[backend/app/farm/subs.py:221](../../../../../backend/app/farm/subs.py#L221)
+[backend/app/farm/subs.py:222](../../../../../backend/app/farm/subs.py#L222)
 
 ```python
 async def probe_and_import(self, project_id: int, raw: str, actor_id: int, *, transport=None, detector=None, skip_targets: list[str] | None=None, collector: Collector | None=None) -> SubFarmResult
@@ -419,7 +419,7 @@ async def probe_and_import(self, project_id: int, raw: str, actor_id: int, *, tr
 
 ## SubdomainFarmService.create_job
 
-[backend/app/farm/subs.py:278](../../../../../backend/app/farm/subs.py#L278)
+[backend/app/farm/subs.py:279](../../../../../backend/app/farm/subs.py#L279)
 
 ```python
 async def create_job(self, project_id: int, raw: str, actor_id: int) -> HostFarmJob
@@ -460,13 +460,13 @@ ValidationError('Не удалось распознать ни одного ко
 
 ## SubdomainFarmService.get_job
 
-[backend/app/farm/subs.py:296](../../../../../backend/app/farm/subs.py#L296)
+[backend/app/farm/subs.py:297](../../../../../backend/app/farm/subs.py#L297)
 
 ```python
 async def get_job(self, project_id: int, job_id: int) -> HostFarmJob
 ```
 
-В теле вызывает `NotFoundError`, `and_`, `select`, `select(HostFarmJob).where`, `self.db.scalar`.
+Читает только задание данного вида и проекта.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -475,21 +475,9 @@ async def get_job(self, project_id: int, job_id: int) -> HostFarmJob
 
 Возвращает: `HostFarmJob`.
 
-Прямые операции с БД: `self.db.scalar`.
-
-Явные raise в теле (исключения вызываемых методов могут добавляться):
-
-```python
-NotFoundError('Задача scanner не найдена')
-```
-
 <details>
 <summary>Прямые вызовы в теле</summary>
 
-- `NotFoundError`
-- `and_`
-- `select`
-- `select(HostFarmJob).where`
-- `self.db.scalar`
+- `get_recon_job`
 
 </details>
