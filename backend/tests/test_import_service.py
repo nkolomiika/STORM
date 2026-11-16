@@ -1,3 +1,4 @@
+from app.endpoint_fields import merge_endpoint_fields
 from types import SimpleNamespace
 from itertools import count as _id_count
 
@@ -52,7 +53,7 @@ def test_merge_endpoint_fields_preserves_existing_data_and_fills_missing() -> No
         request_headers=[],
     )
 
-    ImportService._merge_endpoint_fields(
+    merge_endpoint_fields(
         endpoint,
         {
             "description": "Imported endpoint",

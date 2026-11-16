@@ -2,7 +2,7 @@
 
 Сгенерировано из объявлений кода. [Правила чтения](../../../../METHODS.md).
 
-Методов и именованных функций: **128**.
+Методов и именованных функций: **126**.
 
 ## _heading_size_pt_for_level
 
@@ -347,38 +347,9 @@ def _replace_in_paragraph(paragraph: Paragraph, old: str, new: str) -> bool
 
 </details>
 
-## _replace_xxx_in_runs
-
-[backend/app/reports/word_builder.py:335](../../../../../backend/app/reports/word_builder.py#L335)
-
-```python
-def _replace_xxx_in_runs(paragraph: Paragraph, replacement: str) -> bool
-```
-
-Заменяет каждое вхождение `XXX` в каждом run параграфа на `replacement`.
-
-Используется для обложки, где имя продукта вшито в текстовое поле и разбито
-на множество отдельных run-ов (часто `XXX` лежит в одном run, а соседний
-текст — в других). Стиль рана сохраняется, лишь меняется его текст.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `paragraph` | `Paragraph` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-| `replacement` | `str` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-
-Возвращает: `bool`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `_apply_run_font`
-- `run.text.replace`
-
-</details>
-
 ## _set_cell_text
 
-[backend/app/reports/word_builder.py:351](../../../../../backend/app/reports/word_builder.py#L351)
+[backend/app/reports/word_builder.py:337](../../../../../backend/app/reports/word_builder.py#L337)
 
 ```python
 def _set_cell_text(cell: _Cell, text: str, *, font_size_pt: float | None=REPORT_FONT_SIZE_PT, color: RGBColor | None=None, bold: bool | None=None) -> None
@@ -410,7 +381,7 @@ def _set_cell_text(cell: _Cell, text: str, *, font_size_pt: float | None=REPORT_
 
 ## _heading_level
 
-[backend/app/reports/word_builder.py:371](../../../../../backend/app/reports/word_builder.py#L371)
+[backend/app/reports/word_builder.py:357](../../../../../backend/app/reports/word_builder.py#L357)
 
 ```python
 def _heading_level(paragraph: Paragraph) -> int | None
@@ -436,7 +407,7 @@ def _heading_level(paragraph: Paragraph) -> int | None
 
 ## _iter_body_paragraphs
 
-[backend/app/reports/word_builder.py:383](../../../../../backend/app/reports/word_builder.py#L383)
+[backend/app/reports/word_builder.py:369](../../../../../backend/app/reports/word_builder.py#L369)
 
 ```python
 def _iter_body_paragraphs(doc: DocxDocument) -> list[Paragraph]
@@ -459,7 +430,7 @@ def _iter_body_paragraphs(doc: DocxDocument) -> list[Paragraph]
 
 ## _iter_all_paragraphs
 
-[backend/app/reports/word_builder.py:388](../../../../../backend/app/reports/word_builder.py#L388)
+[backend/app/reports/word_builder.py:374](../../../../../backend/app/reports/word_builder.py#L374)
 
 ```python
 def _iter_all_paragraphs(doc: DocxDocument) -> list[Paragraph]
@@ -488,7 +459,7 @@ def _iter_all_paragraphs(doc: DocxDocument) -> list[Paragraph]
 
 ## _block_elements_until_heading
 
-[backend/app/reports/word_builder.py:401](../../../../../backend/app/reports/word_builder.py#L401)
+[backend/app/reports/word_builder.py:387](../../../../../backend/app/reports/word_builder.py#L387)
 
 ```python
 def _block_elements_until_heading(start_para: Paragraph, max_stop_level: int=2) -> list
@@ -517,33 +488,9 @@ def _block_elements_until_heading(start_para: Paragraph, max_stop_level: int=2) 
 
 </details>
 
-## _table_for_element
-
-[backend/app/reports/word_builder.py:418](../../../../../backend/app/reports/word_builder.py#L418)
-
-```python
-def _table_for_element(doc: DocxDocument, element) -> Table | None
-```
-
-В теле вызывает `qn`.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `doc` | `DocxDocument` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-| `element` | `не аннотирован` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-
-Возвращает: `Table \| None`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `qn`
-
-</details>
-
 ## _normalize_label
 
-[backend/app/reports/word_builder.py:427](../../../../../backend/app/reports/word_builder.py#L427)
+[backend/app/reports/word_builder.py:406](../../../../../backend/app/reports/word_builder.py#L406)
 
 ```python
 def _normalize_label(text: str) -> str
@@ -568,7 +515,7 @@ def _normalize_label(text: str) -> str
 
 ## _hosts_text
 
-[backend/app/reports/word_builder.py:431](../../../../../backend/app/reports/word_builder.py#L431)
+[backend/app/reports/word_builder.py:410](../../../../../backend/app/reports/word_builder.py#L410)
 
 ```python
 def _hosts_text(hosts: Iterable[Host]) -> str
@@ -592,7 +539,7 @@ def _hosts_text(hosts: Iterable[Host]) -> str
 
 ## _vuln_host_address
 
-[backend/app/reports/word_builder.py:440](../../../../../backend/app/reports/word_builder.py#L440)
+[backend/app/reports/word_builder.py:419](../../../../../backend/app/reports/word_builder.py#L419)
 
 ```python
 def _vuln_host_address(vuln: Vulnerability, indexes: dict) -> str
@@ -617,7 +564,7 @@ def _vuln_host_address(vuln: Vulnerability, indexes: dict) -> str
 
 ## _vuln_card_label
 
-[backend/app/reports/word_builder.py:450](../../../../../backend/app/reports/word_builder.py#L450)
+[backend/app/reports/word_builder.py:429](../../../../../backend/app/reports/word_builder.py#L429)
 
 ```python
 def _vuln_card_label(value: str, *, kind: ReportKind, vuln: Vulnerability, indexes: dict, project: Project) -> str
@@ -651,7 +598,7 @@ def _vuln_card_label(value: str, *, kind: ReportKind, vuln: Vulnerability, index
 
 ## _set_cell_label_and_score
 
-[backend/app/reports/word_builder.py:499](../../../../../backend/app/reports/word_builder.py#L499)
+[backend/app/reports/word_builder.py:478](../../../../../backend/app/reports/word_builder.py#L478)
 
 ```python
 def _set_cell_label_and_score(cell: _Cell, *, score_text: str, vector_text: str, color: RGBColor | None, font_size_pt: float=VULN_TABLE_FONT_SIZE_PT) -> None
@@ -683,7 +630,7 @@ def _set_cell_label_and_score(cell: _Cell, *, score_text: str, vector_text: str,
 
 ## _set_cell_shading
 
-[backend/app/reports/word_builder.py:535](../../../../../backend/app/reports/word_builder.py#L535)
+[backend/app/reports/word_builder.py:514](../../../../../backend/app/reports/word_builder.py#L514)
 
 ```python
 def _set_cell_shading(cell: _Cell, fill_hex: str) -> None
@@ -713,7 +660,7 @@ def _set_cell_shading(cell: _Cell, fill_hex: str) -> None
 
 ## _set_cell_width_pct
 
-[backend/app/reports/word_builder.py:551](../../../../../backend/app/reports/word_builder.py#L551)
+[backend/app/reports/word_builder.py:530](../../../../../backend/app/reports/word_builder.py#L530)
 
 ```python
 def _set_cell_width_pct(cell: _Cell, pct_w: str) -> None
@@ -743,7 +690,7 @@ def _set_cell_width_pct(cell: _Cell, pct_w: str) -> None
 
 ## _apply_szi_vuln_table_geometry
 
-[backend/app/reports/word_builder.py:566](../../../../../backend/app/reports/word_builder.py#L566)
+[backend/app/reports/word_builder.py:545](../../../../../backend/app/reports/word_builder.py#L545)
 
 ```python
 def _apply_szi_vuln_table_geometry(table: Table) -> None
@@ -772,7 +719,7 @@ def _apply_szi_vuln_table_geometry(table: Table) -> None
 
 ## _normalize_vuln_card_table_to_szi
 
-[backend/app/reports/word_builder.py:581](../../../../../backend/app/reports/word_builder.py#L581)
+[backend/app/reports/word_builder.py:560](../../../../../backend/app/reports/word_builder.py#L560)
 
 ```python
 def _normalize_vuln_card_table_to_szi(table: Table) -> None
@@ -822,7 +769,7 @@ CVSS 4.0-разметка из 18 строк.
 
 ## _normalize_vuln_card_table_to_szi._find_row_idx
 
-[backend/app/reports/word_builder.py:614](../../../../../backend/app/reports/word_builder.py#L614)
+[backend/app/reports/word_builder.py:593](../../../../../backend/app/reports/word_builder.py#L593)
 
 ```python
 def _find_row_idx(predicate) -> int | None
@@ -846,7 +793,7 @@ def _find_row_idx(predicate) -> int | None
 
 ## _normalize_vuln_card_table_to_szi._rename
 
-[backend/app/reports/word_builder.py:620](../../../../../backend/app/reports/word_builder.py#L620)
+[backend/app/reports/word_builder.py:599](../../../../../backend/app/reports/word_builder.py#L599)
 
 ```python
 def _rename(idx: int, new_label: str) -> None
@@ -872,7 +819,7 @@ def _rename(idx: int, new_label: str) -> None
 
 ## _normalize_vuln_card_table_to_szi._clone_row_at
 
-[backend/app/reports/word_builder.py:627](../../../../../backend/app/reports/word_builder.py#L627)
+[backend/app/reports/word_builder.py:606](../../../../../backend/app/reports/word_builder.py#L606)
 
 ```python
 def _clone_row_at(template_idx: int, new_label: str, after_idx: int) -> int
@@ -904,7 +851,7 @@ def _clone_row_at(template_idx: int, new_label: str, after_idx: int) -> int
 
 ## _fill_card_table
 
-[backend/app/reports/word_builder.py:703](../../../../../backend/app/reports/word_builder.py#L703)
+[backend/app/reports/word_builder.py:682](../../../../../backend/app/reports/word_builder.py#L682)
 
 ```python
 def _fill_card_table(table: Table, *, kind: ReportKind, vuln: Vulnerability, indexes: dict, project: Project) -> None
@@ -941,7 +888,7 @@ def _fill_card_table(table: Table, *, kind: ReportKind, vuln: Vulnerability, ind
 
 ## _identify_section
 
-[backend/app/reports/word_builder.py:754](../../../../../backend/app/reports/word_builder.py#L754)
+[backend/app/reports/word_builder.py:733](../../../../../backend/app/reports/word_builder.py#L733)
 
 ```python
 def _identify_section(text: str) -> str | None
@@ -964,7 +911,7 @@ def _identify_section(text: str) -> str | None
 
 ## _double_paragraph_left_indent
 
-[backend/app/reports/word_builder.py:771](../../../../../backend/app/reports/word_builder.py#L771)
+[backend/app/reports/word_builder.py:750](../../../../../backend/app/reports/word_builder.py#L750)
 
 ```python
 def _double_paragraph_left_indent(paragraph: Paragraph) -> None
@@ -1009,7 +956,7 @@ def _double_paragraph_left_indent(paragraph: Paragraph) -> None
 
 ## _fill_card_prose
 
-[backend/app/reports/word_builder.py:807](../../../../../backend/app/reports/word_builder.py#L807)
+[backend/app/reports/word_builder.py:786](../../../../../backend/app/reports/word_builder.py#L786)
 
 ```python
 def _fill_card_prose(card_paragraphs: list[Paragraph], vuln: Vulnerability) -> None
@@ -1065,7 +1012,7 @@ def _fill_card_prose(card_paragraphs: list[Paragraph], vuln: Vulnerability) -> N
 
 ## _flatten_step_description
 
-[backend/app/reports/word_builder.py:881](../../../../../backend/app/reports/word_builder.py#L881)
+[backend/app/reports/word_builder.py:860](../../../../../backend/app/reports/word_builder.py#L860)
 
 ```python
 def _flatten_step_description(description: str | None) -> str
@@ -1098,7 +1045,7 @@ def _flatten_step_description(description: str | None) -> str
 
 ## _step_one_line
 
-[backend/app/reports/word_builder.py:896](../../../../../backend/app/reports/word_builder.py#L896)
+[backend/app/reports/word_builder.py:875](../../../../../backend/app/reports/word_builder.py#L875)
 
 ```python
 def _step_one_line(index: int, step: dict) -> str
@@ -1135,7 +1082,7 @@ def _step_one_line(index: int, step: dict) -> str
 
 ## _workflow_steps_text
 
-[backend/app/reports/word_builder.py:921](../../../../../backend/app/reports/word_builder.py#L921)
+[backend/app/reports/word_builder.py:900](../../../../../backend/app/reports/word_builder.py#L900)
 
 ```python
 def _workflow_steps_text(vuln: Vulnerability) -> str
@@ -1161,7 +1108,7 @@ def _workflow_steps_text(vuln: Vulnerability) -> str
 
 ## _find_card_anchor
 
-[backend/app/reports/word_builder.py:928](../../../../../backend/app/reports/word_builder.py#L928)
+[backend/app/reports/word_builder.py:907](../../../../../backend/app/reports/word_builder.py#L907)
 
 ```python
 def _find_card_anchor(doc: DocxDocument, section_h2_text: str) -> Paragraph | None
@@ -1188,7 +1135,7 @@ def _find_card_anchor(doc: DocxDocument, section_h2_text: str) -> Paragraph | No
 
 ## _card_block
 
-[backend/app/reports/word_builder.py:947](../../../../../backend/app/reports/word_builder.py#L947)
+[backend/app/reports/word_builder.py:926](../../../../../backend/app/reports/word_builder.py#L926)
 
 ```python
 def _card_block(start_para: Paragraph) -> list
@@ -1211,7 +1158,7 @@ XML-элементы карточки (заголовок + таблица + п�
 
 ## _strip_paragraph_numbering
 
-[backend/app/reports/word_builder.py:952](../../../../../backend/app/reports/word_builder.py#L952)
+[backend/app/reports/word_builder.py:931](../../../../../backend/app/reports/word_builder.py#L931)
 
 ```python
 def _strip_paragraph_numbering(paragraph_element) -> None
@@ -1249,7 +1196,7 @@ Word'у «не нумеровать этот параграф», перекры�
 
 ## _force_center_paragraph
 
-[backend/app/reports/word_builder.py:976](../../../../../backend/app/reports/word_builder.py#L976)
+[backend/app/reports/word_builder.py:955](../../../../../backend/app/reports/word_builder.py#L955)
 
 ```python
 def _force_center_paragraph(paragraph_element) -> None
@@ -1281,7 +1228,7 @@ def _force_center_paragraph(paragraph_element) -> None
 
 ## _add_picture_after
 
-[backend/app/reports/word_builder.py:993](../../../../../backend/app/reports/word_builder.py#L993)
+[backend/app/reports/word_builder.py:972](../../../../../backend/app/reports/word_builder.py#L972)
 
 ```python
 def _add_picture_after(reference_element, doc: DocxDocument, image_bytes: bytes, width_in: float=5.5) -> не аннотирован
@@ -1319,7 +1266,7 @@ def _add_picture_after(reference_element, doc: DocxDocument, image_bytes: bytes,
 
 ## _apply_run_highlight
 
-[backend/app/reports/word_builder.py:1015](../../../../../backend/app/reports/word_builder.py#L1015)
+[backend/app/reports/word_builder.py:994](../../../../../backend/app/reports/word_builder.py#L994)
 
 ```python
 def _apply_run_highlight(run: Run, value: str='yellow') -> None
@@ -1348,7 +1295,7 @@ def _apply_run_highlight(run: Run, value: str='yellow') -> None
 
 ## _find_caption_style_id
 
-[backend/app/reports/word_builder.py:1033](../../../../../backend/app/reports/word_builder.py#L1033)
+[backend/app/reports/word_builder.py:1012](../../../../../backend/app/reports/word_builder.py#L1012)
 
 ```python
 def _find_caption_style_id(doc: DocxDocument) -> str | None
@@ -1384,7 +1331,7 @@ def _find_caption_style_id(doc: DocxDocument) -> str | None
 
 ## _apply_paragraph_style
 
-[backend/app/reports/word_builder.py:1060](../../../../../backend/app/reports/word_builder.py#L1060)
+[backend/app/reports/word_builder.py:1039](../../../../../backend/app/reports/word_builder.py#L1039)
 
 ```python
 def _apply_paragraph_style(p_element, style_id: str) -> None
@@ -1414,7 +1361,7 @@ def _apply_paragraph_style(p_element, style_id: str) -> None
 
 ## _add_figure_caption_after
 
-[backend/app/reports/word_builder.py:1073](../../../../../backend/app/reports/word_builder.py#L1073)
+[backend/app/reports/word_builder.py:1052](../../../../../backend/app/reports/word_builder.py#L1052)
 
 ```python
 def _add_figure_caption_after(reference_element, doc: DocxDocument, *, figure_number: int, caption_text: str) -> не аннотирован
@@ -1464,7 +1411,7 @@ def _add_figure_caption_after(reference_element, doc: DocxDocument, *, figure_nu
 
 ## _append_seq_field
 
-[backend/app/reports/word_builder.py:1123](../../../../../backend/app/reports/word_builder.py#L1123)
+[backend/app/reports/word_builder.py:1102](../../../../../backend/app/reports/word_builder.py#L1102)
 
 ```python
 def _append_seq_field(paragraph: Paragraph, *, sequence_name: str, initial_value: int) -> None
@@ -1515,7 +1462,7 @@ def _append_seq_field(paragraph: Paragraph, *, sequence_name: str, initial_value
 
 ## _append_seq_field._make_field_rpr
 
-[backend/app/reports/word_builder.py:1141](../../../../../backend/app/reports/word_builder.py#L1141)
+[backend/app/reports/word_builder.py:1120](../../../../../backend/app/reports/word_builder.py#L1120)
 
 ```python
 def _make_field_rpr() -> OxmlElement
@@ -1537,7 +1484,7 @@ def _make_field_rpr() -> OxmlElement
 
 ## _apply_run_highlight_xml
 
-[backend/app/reports/word_builder.py:1188](../../../../../backend/app/reports/word_builder.py#L1188)
+[backend/app/reports/word_builder.py:1167](../../../../../backend/app/reports/word_builder.py#L1167)
 
 ```python
 def _apply_run_highlight_xml(rpr_element, value: str) -> None
@@ -1565,7 +1512,7 @@ def _apply_run_highlight_xml(rpr_element, value: str) -> None
 
 ## _force_caption_run_appearance
 
-[backend/app/reports/word_builder.py:1197](../../../../../backend/app/reports/word_builder.py#L1197)
+[backend/app/reports/word_builder.py:1176](../../../../../backend/app/reports/word_builder.py#L1176)
 
 ```python
 def _force_caption_run_appearance(rpr_element) -> None
@@ -1601,7 +1548,7 @@ def _force_caption_run_appearance(rpr_element) -> None
 
 ## _force_caption_run
 
-[backend/app/reports/word_builder.py:1229](../../../../../backend/app/reports/word_builder.py#L1229)
+[backend/app/reports/word_builder.py:1208](../../../../../backend/app/reports/word_builder.py#L1208)
 
 ```python
 def _force_caption_run(run: Run) -> None
@@ -1625,7 +1572,7 @@ def _force_caption_run(run: Run) -> None
 
 ## _apply_run_font_xml
 
-[backend/app/reports/word_builder.py:1235](../../../../../backend/app/reports/word_builder.py#L1235)
+[backend/app/reports/word_builder.py:1214](../../../../../backend/app/reports/word_builder.py#L1214)
 
 ```python
 def _apply_run_font_xml(rpr_element) -> None
@@ -1656,7 +1603,7 @@ def _apply_run_font_xml(rpr_element) -> None
 
 ## _extract_file_ids_from_markdown
 
-[backend/app/reports/word_builder.py:1263](../../../../../backend/app/reports/word_builder.py#L1263)
+[backend/app/reports/word_builder.py:1242](../../../../../backend/app/reports/word_builder.py#L1242)
 
 ```python
 def _extract_file_ids_from_markdown(text: str | None) -> list[int]
@@ -1688,7 +1635,7 @@ def _extract_file_ids_from_markdown(text: str | None) -> list[int]
 
 ## _strip_markdown_images
 
-[backend/app/reports/word_builder.py:1286](../../../../../backend/app/reports/word_builder.py#L1286)
+[backend/app/reports/word_builder.py:1265](../../../../../backend/app/reports/word_builder.py#L1265)
 
 ```python
 def _strip_markdown_images(text: str | None) -> str
@@ -1711,7 +1658,7 @@ def _strip_markdown_images(text: str | None) -> str
 
 ## _strip_markdown_formatting
 
-[backend/app/reports/word_builder.py:1310](../../../../../backend/app/reports/word_builder.py#L1310)
+[backend/app/reports/word_builder.py:1289](../../../../../backend/app/reports/word_builder.py#L1289)
 
 ```python
 def _strip_markdown_formatting(text: str | None) -> str
@@ -1748,7 +1695,7 @@ def _strip_markdown_formatting(text: str | None) -> str
 
 ## _step_image_file_ids
 
-[backend/app/reports/word_builder.py:1333](../../../../../backend/app/reports/word_builder.py#L1333)
+[backend/app/reports/word_builder.py:1312](../../../../../backend/app/reports/word_builder.py#L1312)
 
 ```python
 def _step_image_file_ids(step: dict) -> list[int]
@@ -1776,7 +1723,7 @@ def _step_image_file_ids(step: dict) -> list[int]
 
 ## _collect_step_image_ids
 
-[backend/app/reports/word_builder.py:1358](../../../../../backend/app/reports/word_builder.py#L1358)
+[backend/app/reports/word_builder.py:1337](../../../../../backend/app/reports/word_builder.py#L1337)
 
 ```python
 def _collect_step_image_ids(steps: list[dict] | None) -> set[int]
@@ -1801,7 +1748,7 @@ def _collect_step_image_ids(steps: list[dict] | None) -> set[int]
 
 ## _next_figure_number
 
-[backend/app/reports/word_builder.py:1366](../../../../../backend/app/reports/word_builder.py#L1366)
+[backend/app/reports/word_builder.py:1345](../../../../../backend/app/reports/word_builder.py#L1345)
 
 ```python
 def _next_figure_number(image_state: dict) -> int
@@ -1824,7 +1771,7 @@ def _next_figure_number(image_state: dict) -> int
 
 ## _figure_caption_text
 
-[backend/app/reports/word_builder.py:1373](../../../../../backend/app/reports/word_builder.py#L1373)
+[backend/app/reports/word_builder.py:1352](../../../../../backend/app/reports/word_builder.py#L1352)
 
 ```python
 def _figure_caption_text(*, step: dict | None, file_name: str | None, fallback_index: int) -> str
@@ -1854,7 +1801,7 @@ def _figure_caption_text(*, step: dict | None, file_name: str | None, fallback_i
 
 ## _insert_image_with_caption
 
-[backend/app/reports/word_builder.py:1390](../../../../../backend/app/reports/word_builder.py#L1390)
+[backend/app/reports/word_builder.py:1369](../../../../../backend/app/reports/word_builder.py#L1369)
 
 ```python
 def _insert_image_with_caption(*, anchor_element, doc: DocxDocument, image_bytes: bytes, caption_text: str, image_state: dict) -> не аннотирован
@@ -1887,7 +1834,7 @@ def _insert_image_with_caption(*, anchor_element, doc: DocxDocument, image_bytes
 
 ## _fill_card
 
-[backend/app/reports/word_builder.py:1414](../../../../../backend/app/reports/word_builder.py#L1414)
+[backend/app/reports/word_builder.py:1393](../../../../../backend/app/reports/word_builder.py#L1393)
 
 ```python
 def _fill_card(block_elements: list, *, kind: ReportKind, doc: DocxDocument, vuln: Vulnerability, sequence: int, indexes: dict, project: Project, image_bytes_by_id: dict[int, bytes], image_state: dict) -> None
@@ -1927,7 +1874,7 @@ def _fill_card(block_elements: list, *, kind: ReportKind, doc: DocxDocument, vul
 
 ## _attach_workflow_images
 
-[backend/app/reports/word_builder.py:1475](../../../../../backend/app/reports/word_builder.py#L1475)
+[backend/app/reports/word_builder.py:1454](../../../../../backend/app/reports/word_builder.py#L1454)
 
 ```python
 def _attach_workflow_images(card_paragraphs: list[Paragraph], vuln: Vulnerability, *, image_bytes_by_id: dict[int, bytes], files_by_id: dict[int, File], files_by_vuln_id: dict[int, list[File]], image_state: dict, doc: DocxDocument) -> None
@@ -1976,7 +1923,7 @@ def _attach_workflow_images(card_paragraphs: list[Paragraph], vuln: Vulnerabilit
 
 ## _replicate_card
 
-[backend/app/reports/word_builder.py:1553](../../../../../backend/app/reports/word_builder.py#L1553)
+[backend/app/reports/word_builder.py:1532](../../../../../backend/app/reports/word_builder.py#L1532)
 
 ```python
 def _replicate_card(template_block: list, count: int) -> list[list]
@@ -2004,7 +1951,7 @@ def _replicate_card(template_block: list, count: int) -> list[list]
 
 ## _remove_block
 
-[backend/app/reports/word_builder.py:1570](../../../../../backend/app/reports/word_builder.py#L1570)
+[backend/app/reports/word_builder.py:1549](../../../../../backend/app/reports/word_builder.py#L1549)
 
 ```python
 def _remove_block(elements: list) -> None
@@ -2028,7 +1975,7 @@ def _remove_block(elements: list) -> None
 
 ## _split_vulnerabilities
 
-[backend/app/reports/word_builder.py:1577](../../../../../backend/app/reports/word_builder.py#L1577)
+[backend/app/reports/word_builder.py:1556](../../../../../backend/app/reports/word_builder.py#L1556)
 
 ```python
 def _split_vulnerabilities(vulnerabilities: list[Vulnerability]) -> tuple[list[Vulnerability], list[Vulnerability], list[Vulnerability]]
@@ -2054,7 +2001,7 @@ def _split_vulnerabilities(vulnerabilities: list[Vulnerability]) -> tuple[list[V
 
 ## _sort_vulns_by_host_and_severity
 
-[backend/app/reports/word_builder.py:1595](../../../../../backend/app/reports/word_builder.py#L1595)
+[backend/app/reports/word_builder.py:1574](../../../../../backend/app/reports/word_builder.py#L1574)
 
 ```python
 def _sort_vulns_by_host_and_severity(vulnerabilities: list[Vulnerability], *, indexes: dict, hosts: list[Host]) -> list[Vulnerability]
@@ -2085,7 +2032,7 @@ def _sort_vulns_by_host_and_severity(vulnerabilities: list[Vulnerability], *, in
 
 ## _sort_vulns_by_host_and_severity.sort_key
 
-[backend/app/reports/word_builder.py:1614](../../../../../backend/app/reports/word_builder.py#L1614)
+[backend/app/reports/word_builder.py:1593](../../../../../backend/app/reports/word_builder.py#L1593)
 
 ```python
 def sort_key(vuln: Vulnerability) -> tuple[int, int]
@@ -2111,7 +2058,7 @@ def sort_key(vuln: Vulnerability) -> tuple[int, int]
 
 ## _strip_run_highlight
 
-[backend/app/reports/word_builder.py:1623](../../../../../backend/app/reports/word_builder.py#L1623)
+[backend/app/reports/word_builder.py:1602](../../../../../backend/app/reports/word_builder.py#L1602)
 
 ```python
 def _strip_run_highlight(run: Run) -> None
@@ -2137,7 +2084,7 @@ def _strip_run_highlight(run: Run) -> None
 
 ## _strip_cell_highlight
 
-[backend/app/reports/word_builder.py:1632](../../../../../backend/app/reports/word_builder.py#L1632)
+[backend/app/reports/word_builder.py:1611](../../../../../backend/app/reports/word_builder.py#L1611)
 
 ```python
 def _strip_cell_highlight(cell: _Cell) -> None
@@ -2160,7 +2107,7 @@ def _strip_cell_highlight(cell: _Cell) -> None
 
 ## _update_severity_summary_table
 
-[backend/app/reports/word_builder.py:1639](../../../../../backend/app/reports/word_builder.py#L1639)
+[backend/app/reports/word_builder.py:1618](../../../../../backend/app/reports/word_builder.py#L1618)
 
 ```python
 def _update_severity_summary_table(doc: DocxDocument, severity_counts: dict[Severity, int]) -> None
@@ -2190,7 +2137,7 @@ def _update_severity_summary_table(doc: DocxDocument, severity_counts: dict[Seve
 
 ## _update_project_intro
 
-[backend/app/reports/word_builder.py:1663](../../../../../backend/app/reports/word_builder.py#L1663)
+[backend/app/reports/word_builder.py:1642](../../../../../backend/app/reports/word_builder.py#L1642)
 
 ```python
 def _update_project_intro(doc: DocxDocument, project: Project) -> None
@@ -2221,7 +2168,7 @@ def _update_project_intro(doc: DocxDocument, project: Project) -> None
 
 ## _update_task_link
 
-[backend/app/reports/word_builder.py:1692](../../../../../backend/app/reports/word_builder.py#L1692)
+[backend/app/reports/word_builder.py:1671](../../../../../backend/app/reports/word_builder.py#L1671)
 
 ```python
 def _update_task_link(doc: DocxDocument, project: Project) -> None
@@ -2253,7 +2200,7 @@ def _update_task_link(doc: DocxDocument, project: Project) -> None
 
 ## _fill_credentials_table
 
-[backend/app/reports/word_builder.py:1713](../../../../../backend/app/reports/word_builder.py#L1713)
+[backend/app/reports/word_builder.py:1692](../../../../../backend/app/reports/word_builder.py#L1692)
 
 ```python
 def _fill_credentials_table(doc: DocxDocument, credentials: list[dict]) -> None
@@ -2286,7 +2233,7 @@ def _fill_credentials_table(doc: DocxDocument, credentials: list[dict]) -> None
 
 ## _fill_credentials_table._fill_row
 
-[backend/app/reports/word_builder.py:1735](../../../../../backend/app/reports/word_builder.py#L1735)
+[backend/app/reports/word_builder.py:1714](../../../../../backend/app/reports/word_builder.py#L1714)
 
 ```python
 def _fill_row(row, cred: dict) -> None
@@ -2313,7 +2260,7 @@ def _fill_row(row, cred: dict) -> None
 
 ## _report_version
 
-[backend/app/reports/word_builder.py:1756](../../../../../backend/app/reports/word_builder.py#L1756)
+[backend/app/reports/word_builder.py:1735](../../../../../backend/app/reports/word_builder.py#L1735)
 
 ```python
 def _report_version(name: str) -> str
@@ -2338,7 +2285,7 @@ Remove the product prefix only; preserve the entire original version suffix.
 
 ## _distrib_version
 
-[backend/app/reports/word_builder.py:1764](../../../../../backend/app/reports/word_builder.py#L1764)
+[backend/app/reports/word_builder.py:1743](../../../../../backend/app/reports/word_builder.py#L1743)
 
 ```python
 def _distrib_version(project: Project) -> str
@@ -2373,7 +2320,7 @@ def _distrib_version(project: Project) -> str
 
 ## _update_cover_distrib_version
 
-[backend/app/reports/word_builder.py:1778](../../../../../backend/app/reports/word_builder.py#L1778)
+[backend/app/reports/word_builder.py:1757](../../../../../backend/app/reports/word_builder.py#L1757)
 
 ```python
 def _update_cover_distrib_version(doc: DocxDocument, project: Project) -> None
@@ -2407,7 +2354,7 @@ def _update_cover_distrib_version(doc: DocxDocument, project: Project) -> None
 
 ## _update_cover_page
 
-[backend/app/reports/word_builder.py:1811](../../../../../backend/app/reports/word_builder.py#L1811)
+[backend/app/reports/word_builder.py:1790](../../../../../backend/app/reports/word_builder.py#L1790)
 
 ```python
 def _update_cover_page(doc: DocxDocument, project: Project) -> None
@@ -2445,7 +2392,7 @@ def _update_cover_page(doc: DocxDocument, project: Project) -> None
 
 ## _update_cover_date
 
-[backend/app/reports/word_builder.py:1849](../../../../../backend/app/reports/word_builder.py#L1849)
+[backend/app/reports/word_builder.py:1828](../../../../../backend/app/reports/word_builder.py#L1828)
 
 ```python
 def _update_cover_date(doc: DocxDocument, project: Project) -> None
@@ -2485,7 +2432,7 @@ def _update_cover_date(doc: DocxDocument, project: Project) -> None
 
 ## _enable_auto_field_update
 
-[backend/app/reports/word_builder.py:1886](../../../../../backend/app/reports/word_builder.py#L1886)
+[backend/app/reports/word_builder.py:1865](../../../../../backend/app/reports/word_builder.py#L1865)
 
 ```python
 def _enable_auto_field_update(doc: DocxDocument) -> None
@@ -2521,7 +2468,7 @@ Word покажет предупреждение «Update fields» (Yes по-у�
 
 ## _find_outer_toc_field
 
-[backend/app/reports/word_builder.py:1915](../../../../../backend/app/reports/word_builder.py#L1915)
+[backend/app/reports/word_builder.py:1894](../../../../../backend/app/reports/word_builder.py#L1894)
 
 ```python
 def _find_outer_toc_field(doc: DocxDocument) -> не аннотирован
@@ -2556,7 +2503,7 @@ def _find_outer_toc_field(doc: DocxDocument) -> не аннотирован
 
 ## _find_toc_style_ids_by_name
 
-[backend/app/reports/word_builder.py:1945](../../../../../backend/app/reports/word_builder.py#L1945)
+[backend/app/reports/word_builder.py:1924](../../../../../backend/app/reports/word_builder.py#L1924)
 
 ```python
 def _find_toc_style_ids_by_name(doc: DocxDocument) -> dict[int, str]
@@ -2595,7 +2542,7 @@ def _find_toc_style_ids_by_name(doc: DocxDocument) -> dict[int, str]
 
 ## _detect_toc_pstyles
 
-[backend/app/reports/word_builder.py:1975](../../../../../backend/app/reports/word_builder.py#L1975)
+[backend/app/reports/word_builder.py:1954](../../../../../backend/app/reports/word_builder.py#L1954)
 
 ```python
 def _detect_toc_pstyles(cached_entries: list) -> dict[int, str]
@@ -2627,7 +2574,7 @@ Fallback: вытаскивает pStyle из существующих запис
 
 ## _detect_hyperlink_rstyle
 
-[backend/app/reports/word_builder.py:1997](../../../../../backend/app/reports/word_builder.py#L1997)
+[backend/app/reports/word_builder.py:1976](../../../../../backend/app/reports/word_builder.py#L1976)
 
 ```python
 def _detect_hyperlink_rstyle(cached_entries: list) -> str | None
@@ -2654,7 +2601,7 @@ def _detect_hyperlink_rstyle(cached_entries: list) -> str | None
 
 ## _xml_escape
 
-[backend/app/reports/word_builder.py:2010](../../../../../backend/app/reports/word_builder.py#L2010)
+[backend/app/reports/word_builder.py:1989](../../../../../backend/app/reports/word_builder.py#L1989)
 
 ```python
 def _xml_escape(text: str) -> str
@@ -2680,7 +2627,7 @@ def _xml_escape(text: str) -> str
 
 ## _build_toc_entry_p
 
-[backend/app/reports/word_builder.py:2019](../../../../../backend/app/reports/word_builder.py#L2019)
+[backend/app/reports/word_builder.py:1998](../../../../../backend/app/reports/word_builder.py#L1998)
 
 ```python
 def _build_toc_entry_p(toc_style: str, bookmark: str, text: str, hyperlink_style: str | None) -> не аннотирован
@@ -2712,7 +2659,7 @@ Display, чтобы оглавление выглядело как осталь�
 
 ## _assign_unique_heading_bookmarks
 
-[backend/app/reports/word_builder.py:2052](../../../../../backend/app/reports/word_builder.py#L2052)
+[backend/app/reports/word_builder.py:2031](../../../../../backend/app/reports/word_builder.py#L2031)
 
 ```python
 def _assign_unique_heading_bookmarks(doc: DocxDocument) -> list[tuple[int, str, str]]
@@ -2756,7 +2703,7 @@ def _assign_unique_heading_bookmarks(doc: DocxDocument) -> list[tuple[int, str, 
 
 ## _rebuild_toc
 
-[backend/app/reports/word_builder.py:2101](../../../../../backend/app/reports/word_builder.py#L2101)
+[backend/app/reports/word_builder.py:2080](../../../../../backend/app/reports/word_builder.py#L2080)
 
 ```python
 def _rebuild_toc(doc: DocxDocument) -> None
@@ -2818,7 +2765,7 @@ def _rebuild_toc(doc: DocxDocument) -> None
 
 ## _remove_field_result
 
-[backend/app/reports/word_builder.py:2170](../../../../../backend/app/reports/word_builder.py#L2170)
+[backend/app/reports/word_builder.py:2149](../../../../../backend/app/reports/word_builder.py#L2149)
 
 ```python
 def _remove_field_result(separate_node, end_node) -> None
@@ -2863,7 +2810,7 @@ def _remove_field_result(separate_node, end_node) -> None
 
 ## _ancestor_paragraph
 
-[backend/app/reports/word_builder.py:2245](../../../../../backend/app/reports/word_builder.py#L2245)
+[backend/app/reports/word_builder.py:2224](../../../../../backend/app/reports/word_builder.py#L2224)
 
 ```python
 def _ancestor_paragraph(node) -> не аннотирован
@@ -2888,7 +2835,7 @@ def _ancestor_paragraph(node) -> не аннотирован
 
 ## _ancestor_run
 
-[backend/app/reports/word_builder.py:2253](../../../../../backend/app/reports/word_builder.py#L2253)
+[backend/app/reports/word_builder.py:2232](../../../../../backend/app/reports/word_builder.py#L2232)
 
 ```python
 def _ancestor_run(node) -> не аннотирован
@@ -2913,7 +2860,7 @@ def _ancestor_run(node) -> не аннотирован
 
 ## _normalize_heading_sizes
 
-[backend/app/reports/word_builder.py:2261](../../../../../backend/app/reports/word_builder.py#L2261)
+[backend/app/reports/word_builder.py:2240](../../../../../backend/app/reports/word_builder.py#L2240)
 
 ```python
 def _normalize_heading_sizes(doc: DocxDocument) -> None
@@ -2943,7 +2890,7 @@ H1-H3 → 14 pt, H4 → 13.5 pt (см. `HEADING_FONT_SIZE_PT`). Размер в�
 
 ## _force_h3_non_bold
 
-[backend/app/reports/word_builder.py:2277](../../../../../backend/app/reports/word_builder.py#L2277)
+[backend/app/reports/word_builder.py:2256](../../../../../backend/app/reports/word_builder.py#L2256)
 
 ```python
 def _force_h3_non_bold(doc: DocxDocument) -> None
@@ -2977,7 +2924,7 @@ def _force_h3_non_bold(doc: DocxDocument) -> None
 
 ## _update_test_stand_paragraphs
 
-[backend/app/reports/word_builder.py:2299](../../../../../backend/app/reports/word_builder.py#L2299)
+[backend/app/reports/word_builder.py:2278](../../../../../backend/app/reports/word_builder.py#L2278)
 
 ```python
 def _update_test_stand_paragraphs(doc: DocxDocument, hosts: list[Host]) -> None
@@ -3012,7 +2959,7 @@ H3-разделу на хост). Здесь обрабатываем тольк
 
 ## _update_findings_summary_text
 
-[backend/app/reports/word_builder.py:2322](../../../../../backend/app/reports/word_builder.py#L2322)
+[backend/app/reports/word_builder.py:2301](../../../../../backend/app/reports/word_builder.py#L2301)
 
 ```python
 def _update_findings_summary_text(doc: DocxDocument, *, vulnerability_count: int, weakness_count: int) -> None
@@ -3047,7 +2994,7 @@ PP: «выявлено XXX уязвимостей …» — XXX → vulnerabilit
 
 ## _replace_pp_xxx_in_text
 
-[backend/app/reports/word_builder.py:2369](../../../../../backend/app/reports/word_builder.py#L2369)
+[backend/app/reports/word_builder.py:2348](../../../../../backend/app/reports/word_builder.py#L2348)
 
 ```python
 def _replace_pp_xxx_in_text(text: str, name: str) -> str
@@ -3072,7 +3019,7 @@ def _replace_pp_xxx_in_text(text: str, name: str) -> str
 
 ## _update_pp_headings
 
-[backend/app/reports/word_builder.py:2377](../../../../../backend/app/reports/word_builder.py#L2377)
+[backend/app/reports/word_builder.py:2356](../../../../../backend/app/reports/word_builder.py#L2356)
 
 ```python
 def _update_pp_headings(doc: DocxDocument, project: Project) -> None
@@ -3098,7 +3045,7 @@ def _update_pp_headings(doc: DocxDocument, project: Project) -> None
 
 ## _update_pp_headings._maybe_update
 
-[backend/app/reports/word_builder.py:2383](../../../../../backend/app/reports/word_builder.py#L2383)
+[backend/app/reports/word_builder.py:2362](../../../../../backend/app/reports/word_builder.py#L2362)
 
 ```python
 def _maybe_update(paragraph: Paragraph) -> None
@@ -3122,7 +3069,7 @@ def _maybe_update(paragraph: Paragraph) -> None
 
 ## _direct_text_elements
 
-[backend/app/reports/word_builder.py:2398](../../../../../backend/app/reports/word_builder.py#L2398)
+[backend/app/reports/word_builder.py:2377](../../../../../backend/app/reports/word_builder.py#L2377)
 
 ```python
 def _direct_text_elements(paragraph_element) -> list
@@ -3154,7 +3101,7 @@ def _direct_text_elements(paragraph_element) -> list
 
 ## _replace_xxx_in_xml_subtree
 
-[backend/app/reports/word_builder.py:2417](../../../../../backend/app/reports/word_builder.py#L2417)
+[backend/app/reports/word_builder.py:2396](../../../../../backend/app/reports/word_builder.py#L2396)
 
 ```python
 def _replace_xxx_in_xml_subtree(element, name: str) -> None
@@ -3197,7 +3144,7 @@ def _replace_xxx_in_xml_subtree(element, name: str) -> None
 
 ## _flatten_alternate_content
 
-[backend/app/reports/word_builder.py:2456](../../../../../backend/app/reports/word_builder.py#L2456)
+[backend/app/reports/word_builder.py:2435](../../../../../backend/app/reports/word_builder.py#L2435)
 
 ```python
 def _flatten_alternate_content(element) -> None
@@ -3238,7 +3185,7 @@ def _flatten_alternate_content(element) -> None
 
 ## _update_footers_and_headers
 
-[backend/app/reports/word_builder.py:2499](../../../../../backend/app/reports/word_builder.py#L2499)
+[backend/app/reports/word_builder.py:2478](../../../../../backend/app/reports/word_builder.py#L2478)
 
 ```python
 def _update_footers_and_headers(doc: DocxDocument, project: Project) -> None
@@ -3271,7 +3218,7 @@ def _update_footers_and_headers(doc: DocxDocument, project: Project) -> None
 
 ## _update_object_under_test
 
-[backend/app/reports/word_builder.py:2529](../../../../../backend/app/reports/word_builder.py#L2529)
+[backend/app/reports/word_builder.py:2508](../../../../../backend/app/reports/word_builder.py#L2508)
 
 ```python
 def _update_object_under_test(doc: DocxDocument, project: Project, hosts: list[Host]) -> None
@@ -3328,7 +3275,7 @@ def _update_object_under_test(doc: DocxDocument, project: Project, hosts: list[H
 
 ## _update_object_under_test._normalize_ws
 
-[backend/app/reports/word_builder.py:2549](../../../../../backend/app/reports/word_builder.py#L2549)
+[backend/app/reports/word_builder.py:2528](../../../../../backend/app/reports/word_builder.py#L2528)
 
 ```python
 def _normalize_ws(value: str) -> str
@@ -3353,7 +3300,7 @@ def _normalize_ws(value: str) -> str
 
 ## _update_object_under_test._append_bullets
 
-[backend/app/reports/word_builder.py:2552](../../../../../backend/app/reports/word_builder.py#L2552)
+[backend/app/reports/word_builder.py:2531](../../../../../backend/app/reports/word_builder.py#L2531)
 
 ```python
 def _append_bullets(template_para: Paragraph, labels: list[str]) -> None
@@ -3386,7 +3333,7 @@ def _append_bullets(template_para: Paragraph, labels: list[str]) -> None
 
 ## _find_research_h3
 
-[backend/app/reports/word_builder.py:2612](../../../../../backend/app/reports/word_builder.py#L2612)
+[backend/app/reports/word_builder.py:2591](../../../../../backend/app/reports/word_builder.py#L2591)
 
 ```python
 def _find_research_h3(start_para: Paragraph) -> Paragraph | None
@@ -3417,7 +3364,7 @@ def _find_research_h3(start_para: Paragraph) -> Paragraph | None
 
 ## _block_until_heading_lt
 
-[backend/app/reports/word_builder.py:2629](../../../../../backend/app/reports/word_builder.py#L2629)
+[backend/app/reports/word_builder.py:2608](../../../../../backend/app/reports/word_builder.py#L2608)
 
 ```python
 def _block_until_heading_lt(start_para: Paragraph, max_level_exclusive: int) -> list
@@ -3450,7 +3397,7 @@ def _block_until_heading_lt(start_para: Paragraph, max_level_exclusive: int) -> 
 
 ## _group_items_by_host
 
-[backend/app/reports/word_builder.py:2649](../../../../../backend/app/reports/word_builder.py#L2649)
+[backend/app/reports/word_builder.py:2628](../../../../../backend/app/reports/word_builder.py#L2628)
 
 ```python
 def _group_items_by_host(items: list[Vulnerability], *, indexes: dict, hosts: list[Host]) -> list[tuple[str, list[Vulnerability]]]
@@ -3484,7 +3431,7 @@ def _group_items_by_host(items: list[Vulnerability], *, indexes: dict, hosts: li
 
 ## _replicate_h3_with_cards
 
-[backend/app/reports/word_builder.py:2686](../../../../../backend/app/reports/word_builder.py#L2686)
+[backend/app/reports/word_builder.py:2665](../../../../../backend/app/reports/word_builder.py#L2665)
 
 ```python
 def _replicate_h3_with_cards(doc: DocxDocument, *, h2: Paragraph, items: list[Vulnerability], indexes: dict, hosts: list[Host]) -> list[tuple[Vulnerability, list]] | None
@@ -3527,7 +3474,7 @@ def _replicate_h3_with_cards(doc: DocxDocument, *, h2: Paragraph, items: list[Vu
 
 ## _remove_section
 
-[backend/app/reports/word_builder.py:2743](../../../../../backend/app/reports/word_builder.py#L2743)
+[backend/app/reports/word_builder.py:2722](../../../../../backend/app/reports/word_builder.py#L2722)
 
 ```python
 def _remove_section(doc: DocxDocument, h2: Paragraph) -> None
@@ -3557,7 +3504,7 @@ def _remove_section(doc: DocxDocument, h2: Paragraph) -> None
 
 ## _build_section
 
-[backend/app/reports/word_builder.py:2757](../../../../../backend/app/reports/word_builder.py#L2757)
+[backend/app/reports/word_builder.py:2736](../../../../../backend/app/reports/word_builder.py#L2736)
 
 ```python
 def _build_section(doc: DocxDocument, *, section_h2_text: str, items: list[Vulnerability], kind: ReportKind, indexes: dict, project: Project, hosts: list[Host], image_bytes_by_id: dict[int, bytes], image_state: dict, remove_section_if_empty: bool=False) -> None
@@ -3606,7 +3553,7 @@ low-уязвимостей, ни info-находок нет).
 
 ## _find_h2_paragraph
 
-[backend/app/reports/word_builder.py:2825](../../../../../backend/app/reports/word_builder.py#L2825)
+[backend/app/reports/word_builder.py:2804](../../../../../backend/app/reports/word_builder.py#L2804)
 
 ```python
 def _find_h2_paragraph(doc: DocxDocument, section_h2_text: str) -> Paragraph | None
@@ -3632,7 +3579,7 @@ def _find_h2_paragraph(doc: DocxDocument, section_h2_text: str) -> Paragraph | N
 
 ## _is_test_list_item
 
-[backend/app/reports/word_builder.py:2834](../../../../../backend/app/reports/word_builder.py#L2834)
+[backend/app/reports/word_builder.py:2813](../../../../../backend/app/reports/word_builder.py#L2813)
 
 ```python
 def _is_test_list_item(paragraph: Paragraph) -> bool
@@ -3657,7 +3604,7 @@ def _is_test_list_item(paragraph: Paragraph) -> bool
 
 ## _build_test_procedures_list
 
-[backend/app/reports/word_builder.py:2840](../../../../../backend/app/reports/word_builder.py#L2840)
+[backend/app/reports/word_builder.py:2819](../../../../../backend/app/reports/word_builder.py#L2819)
 
 ```python
 def _build_test_procedures_list(doc: DocxDocument, items: list[Vulnerability]) -> None
@@ -3706,7 +3653,7 @@ def _build_test_procedures_list(doc: DocxDocument, items: list[Vulnerability]) -
 
 ## _fill_analysis_result_placeholders
 
-[backend/app/reports/word_builder.py:2903](../../../../../backend/app/reports/word_builder.py#L2903)
+[backend/app/reports/word_builder.py:2882](../../../../../backend/app/reports/word_builder.py#L2882)
 
 ```python
 def _fill_analysis_result_placeholders(doc: DocxDocument) -> None
@@ -3741,7 +3688,7 @@ def _fill_analysis_result_placeholders(doc: DocxDocument) -> None
 
 ## _identify_test_header
 
-[backend/app/reports/word_builder.py:2947](../../../../../backend/app/reports/word_builder.py#L2947)
+[backend/app/reports/word_builder.py:2926](../../../../../backend/app/reports/word_builder.py#L2926)
 
 ```python
 def _identify_test_header(text: str) -> str | None
@@ -3764,7 +3711,7 @@ def _identify_test_header(text: str) -> str | None
 
 ## _find_first_h4_after
 
-[backend/app/reports/word_builder.py:2955](../../../../../backend/app/reports/word_builder.py#L2955)
+[backend/app/reports/word_builder.py:2934](../../../../../backend/app/reports/word_builder.py#L2934)
 
 ```python
 def _find_first_h4_after(start_para: Paragraph, max_stop_level: int=2) -> Paragraph | None
@@ -3794,7 +3741,7 @@ def _find_first_h4_after(start_para: Paragraph, max_stop_level: int=2) -> Paragr
 
 ## _block_until_heading_lte
 
-[backend/app/reports/word_builder.py:2972](../../../../../backend/app/reports/word_builder.py#L2972)
+[backend/app/reports/word_builder.py:2951](../../../../../backend/app/reports/word_builder.py#L2951)
 
 ```python
 def _block_until_heading_lte(start_para: Paragraph, max_stop_level: int) -> list
@@ -3825,7 +3772,7 @@ def _block_until_heading_lte(start_para: Paragraph, max_stop_level: int) -> list
 
 ## _filter_paragraph_elements
 
-[backend/app/reports/word_builder.py:2989](../../../../../backend/app/reports/word_builder.py#L2989)
+[backend/app/reports/word_builder.py:2968](../../../../../backend/app/reports/word_builder.py#L2968)
 
 ```python
 def _filter_paragraph_elements(elements: list, doc: DocxDocument) -> list[Paragraph]
@@ -3850,7 +3797,7 @@ def _filter_paragraph_elements(elements: list, doc: DocxDocument) -> list[Paragr
 
 ## _fill_test_card
 
-[backend/app/reports/word_builder.py:2993](../../../../../backend/app/reports/word_builder.py#L2993)
+[backend/app/reports/word_builder.py:2972](../../../../../backend/app/reports/word_builder.py#L2972)
 
 ```python
 def _fill_test_card(block_elements: list, *, doc: DocxDocument, vuln: Vulnerability, sequence: int, image_bytes_by_id: dict[int, bytes], files_by_id: dict[int, File], files_by_vuln_id: dict[int, list[File]], image_state: dict) -> None
@@ -3909,7 +3856,7 @@ H4 → «Тест на проникновение Test-N «<title>»».
 
 ## _split_to_lines
 
-[backend/app/reports/word_builder.py:3100](../../../../../backend/app/reports/word_builder.py#L3100)
+[backend/app/reports/word_builder.py:3079](../../../../../backend/app/reports/word_builder.py#L3079)
 
 ```python
 def _split_to_lines(value: str) -> list[str]
@@ -3934,7 +3881,7 @@ def _split_to_lines(value: str) -> list[str]
 
 ## _replace_section_with_lines
 
-[backend/app/reports/word_builder.py:3105](../../../../../backend/app/reports/word_builder.py#L3105)
+[backend/app/reports/word_builder.py:3084](../../../../../backend/app/reports/word_builder.py#L3084)
 
 ```python
 def _replace_section_with_lines(*, paragraphs: list[Paragraph], lines: list[str], strip_numbering: bool=False) -> list[Paragraph]
@@ -3980,7 +3927,7 @@ def _replace_section_with_lines(*, paragraphs: list[Paragraph], lines: list[str]
 
 ## _fill_actual_result_section
 
-[backend/app/reports/word_builder.py:3152](../../../../../backend/app/reports/word_builder.py#L3152)
+[backend/app/reports/word_builder.py:3131](../../../../../backend/app/reports/word_builder.py#L3131)
 
 ```python
 def _fill_actual_result_section(*, paragraphs: list[Paragraph], steps: list[dict], vuln: Vulnerability, image_bytes_by_id: dict[int, bytes], files_by_id: dict[int, File], files_by_vuln_id: dict[int, list[File]], image_state: dict, doc: DocxDocument) -> list[Paragraph]
@@ -4038,7 +3985,7 @@ def _fill_actual_result_section(*, paragraphs: list[Paragraph], steps: list[dict
 
 ## _build_test_executions
 
-[backend/app/reports/word_builder.py:3227](../../../../../backend/app/reports/word_builder.py#L3227)
+[backend/app/reports/word_builder.py:3206](../../../../../backend/app/reports/word_builder.py#L3206)
 
 ```python
 def _build_test_executions(doc: DocxDocument, items: list[Vulnerability], image_bytes_by_id: dict[int, bytes], *, files_by_id: dict[int, File], files_by_vuln_id: dict[int, list[File]], indexes: dict, hosts: list[Host], image_state: dict) -> None
@@ -4082,7 +4029,7 @@ def _build_test_executions(doc: DocxDocument, items: list[Vulnerability], image_
 
 ## _build_common
 
-[backend/app/reports/word_builder.py:3291](../../../../../backend/app/reports/word_builder.py#L3291)
+[backend/app/reports/word_builder.py:3270](../../../../../backend/app/reports/word_builder.py#L3270)
 
 ```python
 def _build_common(kind: ReportKind, data: dict, indexes: dict, image_bytes_by_id: dict[int, bytes]) -> bytes
@@ -4138,7 +4085,7 @@ def _build_common(kind: ReportKind, data: dict, indexes: dict, image_bytes_by_id
 
 ## build_szi
 
-[backend/app/reports/word_builder.py:3393](../../../../../backend/app/reports/word_builder.py#L3393)
+[backend/app/reports/word_builder.py:3372](../../../../../backend/app/reports/word_builder.py#L3372)
 
 ```python
 def build_szi(data: dict, indexes: dict, image_bytes_by_id: dict[int, bytes]) -> bytes
@@ -4163,7 +4110,7 @@ def build_szi(data: dict, indexes: dict, image_bytes_by_id: dict[int, bytes]) ->
 
 ## build_pp
 
-[backend/app/reports/word_builder.py:3398](../../../../../backend/app/reports/word_builder.py#L3398)
+[backend/app/reports/word_builder.py:3377](../../../../../backend/app/reports/word_builder.py#L3377)
 
 ```python
 def build_pp(data: dict, indexes: dict, image_bytes_by_id: dict[int, bytes]) -> bytes

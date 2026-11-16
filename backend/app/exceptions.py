@@ -20,3 +20,10 @@ class UnauthorizedError(StormError):
 
 class ValidationError(StormError):
     """Ошибка бизнес-валидации."""
+
+
+class ServiceUnavailableError(StormError):
+    """Недоступная интеграция; code и текст предназначены для интерфейса."""
+    def __init__(self, message: str, code: str = 'service_unavailable') -> None:
+        super().__init__(message)
+        self.code = code

@@ -6,7 +6,7 @@
 
 ## parse_nmap_xml
 
-[backend/app/farm/portscan.py:45](../../../../../backend/app/farm/portscan.py#L45)
+[backend/app/farm/portscan.py:46](../../../../../backend/app/farm/portscan.py#L46)
 
 ```python
 def parse_nmap_xml(xml: str) -> dict[str, list[int]]
@@ -41,7 +41,7 @@ def parse_nmap_xml(xml: str) -> dict[str, list[int]]
 
 ## _run_nmap
 
-[backend/app/farm/portscan.py:78](../../../../../backend/app/farm/portscan.py#L78)
+[backend/app/farm/portscan.py:79](../../../../../backend/app/farm/portscan.py#L79)
 
 ```python
 async def _run_nmap(ips: list[str]) -> tuple[dict[str, list[int]], str | None]
@@ -71,7 +71,7 @@ nmap по списку IP одной командой. Нет бинаря — �
 
 ## PortScanFarmService._project_targets
 
-[backend/app/farm/portscan.py:108](../../../../../backend/app/farm/portscan.py#L108)
+[backend/app/farm/portscan.py:109](../../../../../backend/app/farm/portscan.py#L109)
 
 ```python
 async def _project_targets(self, project_id: int) -> list[str]
@@ -101,7 +101,7 @@ async def _project_targets(self, project_id: int) -> list[str]
 
 ## PortScanFarmService._upsert_scan_port
 
-[backend/app/farm/portscan.py:120](../../../../../backend/app/farm/portscan.py#L120)
+[backend/app/farm/portscan.py:121](../../../../../backend/app/farm/portscan.py#L121)
 
 ```python
 async def _upsert_scan_port(self, host: Host, ip_row, port_number: int) -> bool
@@ -134,7 +134,7 @@ async def _upsert_scan_port(self, host: Host, ip_row, port_number: int) -> bool
 
 ## PortScanFarmService._persist_scan
 
-[backend/app/farm/portscan.py:146](../../../../../backend/app/farm/portscan.py#L146)
+[backend/app/farm/portscan.py:147](../../../../../backend/app/farm/portscan.py#L147)
 
 ```python
 async def _persist_scan(self, project_id: int, targets: dict[str, ParsedTarget], resolved: dict[str, ResolvedHost], scan: dict[str, list[int]], actor_id: int) -> PortScanResult
@@ -181,7 +181,7 @@ async def _persist_scan(self, project_id: int, targets: dict[str, ParsedTarget],
 
 ## PortScanFarmService.probe_and_import
 
-[backend/app/farm/portscan.py:200](../../../../../backend/app/farm/portscan.py#L200)
+[backend/app/farm/portscan.py:201](../../../../../backend/app/farm/portscan.py#L201)
 
 ```python
 async def probe_and_import(self, project_id: int, raw: str, actor_id: int, *, transport=None, detector=None, skip_targets: list[str] | None=None, scanner: Scanner | None=None) -> PortScanResult
@@ -229,7 +229,7 @@ ValidationError(f'Слишком много целей: {len(targets)} (макс
 
 ## PortScanFarmService.create_job
 
-[backend/app/farm/portscan.py:237](../../../../../backend/app/farm/portscan.py#L237)
+[backend/app/farm/portscan.py:238](../../../../../backend/app/farm/portscan.py#L238)
 
 ```python
 async def create_job(self, project_id: int, raw: str, actor_id: int) -> HostFarmJob
@@ -272,13 +272,13 @@ ValidationError(f'Слишком много целей: {len(target_keys)} (ма
 
 ## PortScanFarmService.get_job
 
-[backend/app/farm/portscan.py:259](../../../../../backend/app/farm/portscan.py#L259)
+[backend/app/farm/portscan.py:260](../../../../../backend/app/farm/portscan.py#L260)
 
 ```python
 async def get_job(self, project_id: int, job_id: int) -> HostFarmJob
 ```
 
-В теле вызывает `NotFoundError`, `and_`, `select`, `select(HostFarmJob).where`, `self.db.scalar`.
+Читает только задание данного вида и проекта.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -287,21 +287,9 @@ async def get_job(self, project_id: int, job_id: int) -> HostFarmJob
 
 Возвращает: `HostFarmJob`.
 
-Прямые операции с БД: `self.db.scalar`.
-
-Явные raise в теле (исключения вызываемых методов могут добавляться):
-
-```python
-NotFoundError('Задача scanner не найдена')
-```
-
 <details>
 <summary>Прямые вызовы в теле</summary>
 
-- `NotFoundError`
-- `and_`
-- `select`
-- `select(HostFarmJob).where`
-- `self.db.scalar`
+- `get_recon_job`
 
 </details>

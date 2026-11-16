@@ -482,6 +482,9 @@
 | `project_role` | `ProjectRole` | да | — |
 | `status` | `string` | да | — |
 | `is_expired` | `boolean` | нет | {"default": false} |
+| `email_status` | `string \| null` | нет | — |
+| `email_error` | `string \| null` | нет | — |
+| `email_error_code` | `string \| null` | нет | — |
 | `expires_at` | `string` | да | {"format": "date-time"} |
 | `invited_by` | `integer \| null` | нет | — |
 | `created_at` | `string` | да | {"format": "date-time"} |

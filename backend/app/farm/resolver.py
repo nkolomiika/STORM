@@ -84,9 +84,6 @@ def order_addrs(infos: list) -> list[str]:
     return list(dict.fromkeys(ordered))
 
 
-def pick_addr(infos: list) -> str | None:
-    addrs = order_addrs(infos)
-    return addrs[0] if addrs else None
 
 
 async def _getaddrinfo(host: str, timeout: float | None = None) -> list:

@@ -16,7 +16,7 @@ Healthcheck эндпоинт для проверки доступности се
 
 Operation ID: `health_health_get`.
 
-Обработчик: `health` — [backend/app/main.py:358](../backend/app/main.py#L358).
+Обработчик: `health` — [backend/app/main.py:387](../backend/app/main.py#L387).
 
 | HTTP | Ответ | Тип/схема |
 | --- | --- | --- |
@@ -618,7 +618,7 @@ Operation ID: `list_invitations_api_v1_users_invitations_get`.
 
 Operation ID: `resend_invitation_api_v1_users_invitations__invitation_id__resend_post`.
 
-Обработчик: `resend_invitation` — [backend/app/routers/users.py:179](../backend/app/routers/users.py#L179).
+Обработчик: `resend_invitation` — [backend/app/routers/users.py:181](../backend/app/routers/users.py#L181).
 
 Явные dependencies: `enforce_csrf`, `require_admin`, `get_db`.
 
@@ -639,7 +639,7 @@ Operation ID: `resend_invitation_api_v1_users_invitations__invitation_id__resend
 
 Operation ID: `revoke_invitation_api_v1_users_invitations__invitation_id__delete`.
 
-Обработчик: `revoke_invitation` — [backend/app/routers/users.py:197](../backend/app/routers/users.py#L197).
+Обработчик: `revoke_invitation` — [backend/app/routers/users.py:199](../backend/app/routers/users.py#L199).
 
 Явные dependencies: `enforce_csrf`, `require_admin`, `get_db`.
 
@@ -656,14 +656,13 @@ Operation ID: `revoke_invitation_api_v1_users_invitations__invitation_id__delete
 
 ### GET /api/v1/users/search
 
-Поиск людей для назначения исполнителя: по username или ФИО (full_name).
+Ищет активных локальных пользователей STORM по логину или ФИО.
 
-При настроенном IAM дополнительно подмешивает кандидатов из IAM
-(dedup по username, локальные пользователи в приоритете).
+SSO-вход не подключает удалённый поиск IAM: в выдаче только пользователи БД.
 
 Operation ID: `search_users_api_v1_users_search_get`.
 
-Обработчик: `search_users` — [backend/app/routers/users.py:209](../backend/app/routers/users.py#L209).
+Обработчик: `search_users` — [backend/app/routers/users.py:211](../backend/app/routers/users.py#L211).
 
 Явные dependencies: `get_current_user`, `get_db`.
 
@@ -684,7 +683,7 @@ Operation ID: `search_users_api_v1_users_search_get`.
 
 Operation ID: `get_user_api_v1_users__user_id__get`.
 
-Обработчик: `get_user` — [backend/app/routers/users.py:233](../backend/app/routers/users.py#L233).
+Обработчик: `get_user` — [backend/app/routers/users.py:227](../backend/app/routers/users.py#L227).
 
 Явные dependencies: `require_admin`, `get_db`.
 
@@ -704,7 +703,7 @@ Operation ID: `get_user_api_v1_users__user_id__get`.
 
 Operation ID: `update_user_api_v1_users__user_id__put`.
 
-Обработчик: `update_user` — [backend/app/routers/users.py:257](../backend/app/routers/users.py#L257).
+Обработчик: `update_user` — [backend/app/routers/users.py:251](../backend/app/routers/users.py#L251).
 
 Явные dependencies: `enforce_csrf`, `require_admin`, `get_db`.
 
@@ -727,7 +726,7 @@ Operation ID: `update_user_api_v1_users__user_id__put`.
 
 Operation ID: `delete_user_api_v1_users__user_id__delete`.
 
-Обработчик: `delete_user` — [backend/app/routers/users.py:271](../backend/app/routers/users.py#L271).
+Обработчик: `delete_user` — [backend/app/routers/users.py:265](../backend/app/routers/users.py#L265).
 
 Явные dependencies: `enforce_csrf`, `require_admin`, `get_db`.
 
@@ -748,7 +747,7 @@ Operation ID: `delete_user_api_v1_users__user_id__delete`.
 
 Operation ID: `get_user_avatar_api_v1_users__user_id__avatar_get`.
 
-Обработчик: `get_user_avatar` — [backend/app/routers/users.py:244](../backend/app/routers/users.py#L244).
+Обработчик: `get_user_avatar` — [backend/app/routers/users.py:238](../backend/app/routers/users.py#L238).
 
 Явные dependencies: `get_current_user`, `get_db`.
 
@@ -771,7 +770,7 @@ Operation ID: `get_user_avatar_api_v1_users__user_id__avatar_get`.
 
 Operation ID: `reactivate_user_api_v1_users__user_id__reactivate_post`.
 
-Обработчик: `reactivate_user` — [backend/app/routers/users.py:283](../backend/app/routers/users.py#L283).
+Обработчик: `reactivate_user` — [backend/app/routers/users.py:277](../backend/app/routers/users.py#L277).
 
 Явные dependencies: `enforce_csrf`, `require_admin`, `get_db`.
 
@@ -792,7 +791,7 @@ Operation ID: `reactivate_user_api_v1_users__user_id__reactivate_post`.
 
 Operation ID: `reset_password_api_v1_users__user_id__password_patch`.
 
-Обработчик: `reset_password` — [backend/app/routers/users.py:301](../backend/app/routers/users.py#L301).
+Обработчик: `reset_password` — [backend/app/routers/users.py:295](../backend/app/routers/users.py#L295).
 
 Явные dependencies: `enforce_csrf`, `require_admin`, `get_db`.
 
@@ -813,7 +812,7 @@ Operation ID: `reset_password_api_v1_users__user_id__password_patch`.
 
 Operation ID: `reset_2fa_api_v1_users__user_id__2fa_reset_post`.
 
-Обработчик: `reset_2fa` — [backend/app/routers/users.py:315](../backend/app/routers/users.py#L315).
+Обработчик: `reset_2fa` — [backend/app/routers/users.py:309](../backend/app/routers/users.py#L309).
 
 Явные dependencies: `enforce_csrf`, `require_admin`, `get_db`.
 

@@ -3,7 +3,6 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.cloudflare import is_cloudflare_ip
 from app.enums import HostStatus
 from app.farm import HostFarmService, IpFarmService, ProbeResult, ResolvedHost
 from app.farm.resolver import ResolvedName, ReverseResult, merge_names, reverse_resolve
@@ -38,24 +37,8 @@ def test_parse_rejects_hostnames_with_a_hint() -> None:
     assert any("example.com: не IP-адрес" in e for e in errors)
 
 
-# ---------------------------------------------------------------- cloudflare
 
 
-@pytest.mark.parametrize(
-    ("addr", "expected"),
-    [
-        ("104.16.0.1", True),  # 104.16.0.0/13
-        ("172.64.1.1", True),  # 172.64.0.0/13
-        ("2606:4700::1", True),  # 2606:4700::/32
-        ("93.184.216.34", False),
-        ("8.8.8.8", False),
-        ("не-адрес", False),
-        ("", False),
-        (None, False),
-    ],
-)
-def test_is_cloudflare_ip(addr: str | None, expected: bool) -> None:
-    assert is_cloudflare_ip(addr) is expected
 
 
 # ------------------------------------------------------------------- reverse

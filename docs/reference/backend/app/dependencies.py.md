@@ -2,11 +2,11 @@
 
 Сгенерировано из объявлений кода. [Правила чтения](../../../METHODS.md).
 
-Методов и именованных функций: **10**.
+Методов и именованных функций: **9**.
 
 ## get_client_ip
 
-[backend/app/dependencies.py:34](../../../../backend/app/dependencies.py#L34)
+[backend/app/dependencies.py:33](../../../../backend/app/dependencies.py#L33)
 
 ```python
 def get_client_ip(request: Request) -> str | None
@@ -22,7 +22,7 @@ def get_client_ip(request: Request) -> str | None
 
 ## enforce_csrf
 
-[backend/app/dependencies.py:41](../../../../backend/app/dependencies.py#L41)
+[backend/app/dependencies.py:40](../../../../backend/app/dependencies.py#L40)
 
 ```python
 async def enforce_csrf(request: Request, origin: str | None=Header(default=None, alias='Origin')) -> None
@@ -54,10 +54,10 @@ ForbiddenError('Отсутствует заголовок Origin')
 
 ## get_current_user
 
-[backend/app/dependencies.py:51](../../../../backend/app/dependencies.py#L51)
+[backend/app/dependencies.py:50](../../../../backend/app/dependencies.py#L50)
 
 ```python
-async def get_current_user(db: AsyncSession=Depends(get_db), access_token: str | None=Cookie(default=None)) -> User
+async def get_current_user(db: AsyncSession=Depends(get_db), access_token: str | None=Cookie(default=None), request: Request=None) -> User
 ```
 
 Извлекает текущего пользователя из access cookie.
@@ -66,6 +66,7 @@ async def get_current_user(db: AsyncSession=Depends(get_db), access_token: str |
 | --- | --- | --- | --- |
 | `db` | `AsyncSession` | `Depends(get_db)` | Асинхронная SQLAlchemy-сессия текущего запроса. |
 | `access_token` | `str \| None` | `Cookie(default=None)` | Определяется именем/типом и контрактом вызывающего кода. |
+| `request` | `Request` | `None` | HTTP-запрос Starlette/FastAPI. |
 
 Возвращает: `User`.
 
@@ -93,7 +94,7 @@ UnauthorizedError('Требуется авторизация')
 
 ## require_admin
 
-[backend/app/dependencies.py:65](../../../../backend/app/dependencies.py#L65)
+[backend/app/dependencies.py:67](../../../../backend/app/dependencies.py#L67)
 
 ```python
 async def require_admin(current_user: User=Depends(get_current_user)) -> User
@@ -124,7 +125,7 @@ ForbiddenError('Недостаточно прав')
 
 ## require_project_access
 
-[backend/app/dependencies.py:72](../../../../backend/app/dependencies.py#L72)
+[backend/app/dependencies.py:74](../../../../backend/app/dependencies.py#L74)
 
 ```python
 async def require_project_access(project_id: int, db: AsyncSession=Depends(get_db), current_user: User=Depends(get_current_user)) -> Project
@@ -163,26 +164,9 @@ ForbiddenError('Проект не найден или недоступен')
 
 </details>
 
-## role_in
-
-[backend/app/dependencies.py:96](../../../../backend/app/dependencies.py#L96)
-
-```python
-def role_in(user: User, allowed: Iterable[UserRole]) -> bool
-```
-
-Проверяет принадлежность роли пользователя допустимому набору.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `user` | `User` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-| `allowed` | `Iterable[UserRole]` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-
-Возвращает: `bool`.
-
 ## get_agent_token_context
 
-[backend/app/dependencies.py:101](../../../../backend/app/dependencies.py#L101)
+[backend/app/dependencies.py:100](../../../../backend/app/dependencies.py#L100)
 
 ```python
 async def get_agent_token_context(authorization: str | None=Header(default=None, alias='Authorization'), db: AsyncSession=Depends(get_db)) -> AgentTokenContext
@@ -236,7 +220,7 @@ UnauthorizedError('Требуется Bearer token')
 
 ## require_agent_scope
 
-[backend/app/dependencies.py:153](../../../../backend/app/dependencies.py#L153)
+[backend/app/dependencies.py:152](../../../../backend/app/dependencies.py#L152)
 
 ```python
 def require_agent_scope(scope: str) -> не аннотирован
@@ -252,7 +236,7 @@ def require_agent_scope(scope: str) -> не аннотирован
 
 ## require_agent_scope.dependency
 
-[backend/app/dependencies.py:154](../../../../backend/app/dependencies.py#L154)
+[backend/app/dependencies.py:153](../../../../backend/app/dependencies.py#L153)
 
 ```python
 async def dependency(context: AgentTokenContext=Depends(get_agent_token_context)) -> AgentTokenContext
@@ -283,7 +267,7 @@ ForbiddenError(f'Недостаточно прав agent token: требуетс
 
 ## require_agent_project_access
 
-[backend/app/dependencies.py:162](../../../../backend/app/dependencies.py#L162)
+[backend/app/dependencies.py:161](../../../../backend/app/dependencies.py#L161)
 
 ```python
 async def require_agent_project_access(project_id: int, context: AgentTokenContext=Depends(get_agent_token_context), db: AsyncSession=Depends(get_db)) -> Project

@@ -103,19 +103,6 @@ export const VSTATUS_OPEN: VStatus[] = ["open", "in_progress", "problem_analysis
 /** Статусы в фильтре раздела Issues — только основные состояния воркфлоу (без «паузных» подстатусов). */
 export const VSTATUS_FILTER: VStatus[] = ["open", "in_progress", "resolved", "closed", "cancelled"];
 
-/** Default HTTP status shown per method in the endpoints view. */
-export const EPSTATUS: Record<Method, string> = {
-  GET: "200",
-  POST: "201",
-  PUT: "200",
-  PATCH: "200",
-  DELETE: "204",
-  HEAD: "200",
-  OPTIONS: "200",
-  TRACE: "200",
-  QUERY: "200",
-};
-
 /** Project status chip: label + colours + dot. Mirrors the backend's ProjectStatus. */
 export const PROJ_STATUS: Record<string, { label: string; bg: string; color: string; dot: string }> = {
   active: { label: "Active", bg: "var(--st-success-soft)", color: "var(--st-success)", dot: "var(--st-success)" },
@@ -142,34 +129,6 @@ export const WS_ROLE: Record<WsRole, ColorPair> = {
 export const WS_ROLE_LABEL: Record<WsRole, string> = {
   admin: "Admin",
   user: "User",
-};
-
-/** Activity log tag colours (dark chips — dark in both themes by design). */
-export const ATAG: Record<string, ColorPair> = {
-  new: { bg: "var(--st-tag-green-bg)", color: "var(--st-tag-green)" },
-  down: { bg: "var(--st-tag-red-bg)", color: "var(--st-tag-red)" },
-  changed: { bg: "var(--st-tag-amber-bg)", color: "var(--st-tag-amber)" },
-  dns: { bg: "var(--st-tag-blue-bg)", color: "var(--st-tag-blue)" },
-};
-
-/** Host-status summary tiles. */
-export const HSTAT: Record<HostStatus, { label: string; color: string; bg: string }> = {
-  up: { label: "Up", color: "var(--st-success)", bg: "var(--st-success-soft)" },
-  down: { label: "Down", color: "var(--st-danger)", bg: "var(--st-danger-soft)" },
-  unknown: { label: "Unknown", color: "var(--st-warn)", bg: "var(--st-warn-soft)" },
-};
-
-/** Vulnerability-status summary tiles. */
-export const VSTAT: Record<VStatus, { label: string; color: string; bg: string }> = {
-  open: { label: "Open", color: "var(--st-text-3)", bg: "var(--st-elevated)" },
-  need_info: { label: "Need info", color: "var(--st-text-3)", bg: "var(--st-elevated)" },
-  paused: { label: "Paused", color: "var(--st-text-3)", bg: "var(--st-elevated)" },
-  in_progress: { label: "In progress", color: "var(--st-accent-2)", bg: "var(--st-accent-soft)" },
-  problem_analysis: { label: "Problem analysis", color: "var(--st-accent-2)", bg: "var(--st-accent-soft)" },
-  resolved: { label: "Resolved", color: "var(--st-success)", bg: "var(--st-success-soft)" },
-  closed: { label: "Closed", color: "var(--st-success)", bg: "var(--st-success-soft)" },
-  cancelled: { label: "Cancelled", color: "var(--st-success)", bg: "var(--st-success-soft)" },
-  sent_by_mistake: { label: "Sent by mistake", color: "var(--st-success)", bg: "var(--st-success-soft)" },
 };
 
 /** Project-list "findings" badge colours. */

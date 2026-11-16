@@ -1,4 +1,6 @@
 from __future__ import annotations
+from app.entity_access import get_project, get_vulnerability
+from app.endpoint_fields import merge_endpoint_fields
 
 import asyncio
 import base64
@@ -198,6 +200,8 @@ class AuditService:
             await self.db.commit()
         else:
             await self.db.flush()
+        logging.getLogger('storm.audit').info('audit_%s action=%s actor_id=%s entity_type=%s entity_id=%s',
+                                              'committed' if commit else 'prepared', action, user_id, entity_type, entity_id)
 
 
 class AgentTokenService:
@@ -400,6 +404,12 @@ class WorksService:
     async def export_vulnerability(
         self, project_id: int, vuln_id: int, user: User, assignee: str | None
     ) -> WorksIssueLink:
+        """Создаёт один тикет STS для находки и сохраняет его связь с проектом.
+
+        Сначала проверяет обязательные метаданные. Блокировка строки находки
+        сериализует повторные экспорты; уже сохранённая связь возвращается без
+        внешнего запроса. Сбой внешнего API не оставляет локальную связь.
+        """
         project = await self.db.scalar(select(Project).where(Project.id == project_id))
         if project is None:
             raise NotFoundError("Проект не найден")
@@ -414,6 +424,14 @@ class WorksService:
             raise ValidationError('Заполните данные по проекту. Не заполнено: ' + ', '.join(missing))
         if not settings.works_configured:
             raise ValidationError("Интеграция с Works не настроена или отключена")
+        finding_id = await self.db.scalar(select(Vulnerability.id).where(
+            Vulnerability.id == vuln_id, Vulnerability.project_id == project_id).with_for_update())
+        if finding_id is None:
+            raise NotFoundError('Уязвимость не найдена')
+        existing = await self.db.scalar(select(WorksIssueLink).where(WorksIssueLink.vulnerability_id == vuln_id))
+        if existing is not None:
+            logging.getLogger('storm.works').info('sts_export_reused project_id=%s vulnerability_id=%s actor_id=%s', project_id, vuln_id, user.id)
+            return existing
         ticket = {"appsec_ticket_key": project.appsec_ticket_key, "appsec_ticket_url": project.appsec_ticket_url}
         normalize_project_ticket(ticket, required=True)
         vuln_data = await VulnerabilityService(self.db).get(project_id, vuln_id)
@@ -728,8 +746,10 @@ class UserService:
 
     @staticmethod
     def _ensure_mail_delivery_enabled() -> None:
-        if not settings.mail_enabled:
-            raise ValidationError("Отправка email отключена. Включите SMTP/mail worker или задайте пароль вручную.")
+        from app.exceptions import ServiceUnavailableError
+        if not settings.mail_enabled or not settings.smtp_host.strip() or not 1 <= settings.smtp_port <= 65535:
+            logging.getLogger('storm.mail').warning('mail_not_configured enabled=%s host_present=%s', settings.mail_enabled, bool(settings.smtp_host.strip()))
+            raise ServiceUnavailableError('Отправка писем пока не настроена. Обратитесь к администратору.', 'mail_not_configured')
 
     @staticmethod
     def ensure_can_view_avatar(requester: User, target_user_id: int) -> None:
@@ -781,18 +801,21 @@ class UserService:
         return job
 
     async def _publish_mail_job(self, job: MailJob) -> None:
+        """Публикует задание; при сбое брокера сохраняет его для повторной доставки."""
         try:
             await publish_mail_job(job.id)
         except Exception as exc:
             job.status = "pending"
-            job.last_error = str(exc)
+            from app.observability import redact_log
+            job.last_error = redact_log(str(exc))[:2000]
+            job.payload = {**job.payload, 'delivery_error_code': 'mail_unavailable'}
+            logging.getLogger('storm.mail').exception('mail_enqueue_failed job_id=%s template=%s status=pending', job.id, job.template)
         else:
             job.status = "queued"
             job.published_at = datetime.now(UTC)
+        logging.getLogger('storm.mail').info('mail_enqueued job_id=%s template=%s actor_id=%s status=%s', job.id, job.template, job.created_by, job.status)
         await self.db.commit()
 
-    async def get_user_profile(self, user_id: int) -> User:
-        return await self.get_user(user_id)
 
     async def bootstrap_admin(self) -> None:
         """Создаёт стартового администратора при пустой таблице users."""
@@ -844,21 +867,6 @@ class UserService:
         stmt = stmt.order_by(func.lower(func.coalesce(User.full_name, User.username))).limit(limit)
         return list((await self.db.scalars(stmt)).all())
 
-    async def iam_user_candidates(self, q: str, limit: int = 10) -> list[dict]:
-        """Живой поиск людей в IAM (Keycloak) — дополняет локальных пользователей.
-
-        Gated: при ненастроенном IAM возвращает [] и никогда не валит запрос.
-        TODO: live IAM user search when IAM admin creds are configured — нужен admin-API
-        клиент Keycloak (service account с realm-management:view-users) и вызов
-        GET /admin/realms/{realm}/users?search={q}. Пока структурно готово: гейт + merge
-        по username делает роутер. Возвращаемая форма: [{"username","full_name"}].
-        """
-        if not settings.sso_configured:
-            return []
-        try:  # pragma: no cover - заглушка до реальных кредов IAM
-            return []
-        except Exception:
-            return []
 
     async def get_user(self, user_id: int) -> User:
         """Возвращает пользователя по идентификатору."""
@@ -867,45 +875,6 @@ class UserService:
             raise NotFoundError("User not found")
         return user
 
-    async def create_user(self, payload: dict, actor_id: int, ip_address: str | None = None) -> User:
-        """Создаёт нового пользователя."""
-        await self._ensure_unique_identity(username=payload["username"], email=payload["email"])
-        send_invite_email = bool(payload.get("send_invite_email"))
-        temporary_password = payload.get("password")
-        if send_invite_email:
-            self._ensure_mail_delivery_enabled()
-        if not temporary_password and not send_invite_email:
-            raise ValidationError("Provide a password or enable sending an email invitation")
-        if not temporary_password:
-            temporary_password = self._generate_temporary_password()
-        user = User(
-            username=payload["username"],
-            email=payload["email"],
-            full_name=payload.get("full_name"),
-            password_hash=hash_password(temporary_password),
-            password_changed_at=datetime.now(UTC),
-            role=payload.get("role", UserRole.PENTESTER),
-            project_role=payload.get("project_role", ProjectRole.PENTESTER),
-            is_active=True,
-        )
-        self.db.add(user)
-        mail_job: MailJob | None = None
-        if send_invite_email:
-            await self.db.flush()
-            mail_job = await self._enqueue_temporary_password_mail(user=user, temporary_password=temporary_password, actor_id=actor_id)
-        await self.db.flush()
-        await self.db.refresh(user)
-        await self.audit.log(
-            "CREATE",
-            user_id=actor_id,
-            entity_type="user",
-            entity_id=user.id,
-            details={"email": user.email, "invite_sent": send_invite_email},
-            ip_address=ip_address,
-        )
-        if mail_job:
-            await self._publish_mail_job(mail_job)
-        return user
 
     # ------------------------------------------------------------------
     # Приглашения (invite-flow): админ зовёт по email, пользователь сам
@@ -1536,11 +1505,8 @@ class ProjectService:
         return list(items), total
 
     async def get_project(self, project_id: int) -> Project:
-        """Возвращает проект по ID."""
-        project = await self.db.scalar(select(Project).where(Project.id == project_id))
-        if not project:
-            raise NotFoundError("Проект не найден")
-        return project
+        """Читает проект через общую проверку существования; авторизацию выполняет API."""
+        return await get_project(self.db, project_id)
 
     async def create_project(self, payload: dict, actor_id: int, ip_address: str | None = None) -> Project:
         """Создаёт проект и членство его автора одной транзакцией с аудитом."""
@@ -2256,18 +2222,6 @@ class AssetService:
         payload.pop("request_raw", None)
         return payload
 
-    @staticmethod
-    def _merge_endpoint_fields(endpoint: Endpoint, endpoint_payload: dict) -> None:
-        if not endpoint.description and endpoint_payload.get("description"):
-            endpoint.description = endpoint_payload["description"]
-        if not endpoint.query_params and endpoint_payload.get("query_params"):
-            endpoint.query_params = endpoint_payload["query_params"]
-        if not endpoint.request_body and endpoint_payload.get("request_body"):
-            endpoint.request_body = endpoint_payload["request_body"]
-        if not endpoint.request_content_type and endpoint_payload.get("request_content_type"):
-            endpoint.request_content_type = endpoint_payload["request_content_type"]
-        if not endpoint.request_headers and endpoint_payload.get("request_headers"):
-            endpoint.request_headers = endpoint_payload["request_headers"]
 
     async def _ensure_host(self, project_id: int, host_id: int) -> None:
         """Проверка принадлежности без загрузки IP, портов и всех эндпоинтов."""
@@ -2921,7 +2875,7 @@ class AssetService:
         )
         if duplicate:
             previous_description = duplicate.description or ""
-            self._merge_endpoint_fields(duplicate, payload)
+            merge_endpoint_fields(duplicate, payload)
             await self.db.flush()
             await self.db.refresh(duplicate)
             events = await notification_events.queue_mentions(self.db, project_id, duplicate.description or "", actor_id, {"endpoint_id": duplicate.id, "host_id": host_id}, previous=previous_description)
@@ -3518,10 +3472,8 @@ class FileService:
         self.storage = storage or MinioStorage()
 
     async def _ensure_vuln(self, project_id: int, vuln_id: int) -> Vulnerability:
-        vuln = await self.db.scalar(select(Vulnerability).where(and_(Vulnerability.id == vuln_id, Vulnerability.project_id == project_id)))
-        if not vuln:
-            raise NotFoundError("Уязвимость не найдена")
-        return vuln
+        """Проверяет существование находки и принадлежность проекту."""
+        return await get_vulnerability(self.db, project_id, vuln_id)
 
     async def list(self, project_id: int, vuln_id: int) -> list[File]:
         await self._ensure_vuln(project_id, vuln_id)
@@ -3594,10 +3546,8 @@ class CommentService:
         self.audit = AuditService(db)
 
     async def _ensure_vuln(self, project_id: int, vuln_id: int) -> Vulnerability:
-        vuln = await self.db.scalar(select(Vulnerability).where(and_(Vulnerability.id == vuln_id, Vulnerability.project_id == project_id)))
-        if not vuln:
-            raise NotFoundError("Уязвимость не найдена")
-        return vuln
+        """Проверяет существование находки и принадлежность проекту."""
+        return await get_vulnerability(self.db, project_id, vuln_id)
 
     async def _extract_mentions(self, project_id: int, content: str) -> list[User]:
         return await notification_events.mentioned_users(self.db, project_id, content)
@@ -3762,10 +3712,8 @@ class ProjectNoteService:
         await self.db.scalar(select(Project.id).where(Project.id == project_id).with_for_update())
 
     async def _ensure_project(self, project_id: int) -> Project:
-        project = await self.db.scalar(select(Project).where(Project.id == project_id))
-        if not project:
-            raise NotFoundError("Проект не найден")
-        return project
+        """Возвращает проект или NotFoundError без загрузки его дочерних сущностей."""
+        return await get_project(self.db, project_id)
 
     async def _get_note(self, project_id: int, note_id: int) -> ProjectNote:
         note = await self.db.scalar(select(ProjectNote).where(and_(ProjectNote.id == note_id, ProjectNote.project_id == project_id)))
@@ -4236,10 +4184,8 @@ class ProjectCredentialService:
         self.audit = AuditService(db)
 
     async def _ensure_project(self, project_id: int) -> Project:
-        project = await self.db.scalar(select(Project).where(Project.id == project_id))
-        if not project:
-            raise NotFoundError("Проект не найден")
-        return project
+        """Возвращает проект или NotFoundError без загрузки его дочерних сущностей."""
+        return await get_project(self.db, project_id)
 
     async def _get_credential(self, project_id: int, credential_id: int) -> ProjectCredential:
         credential = await self.db.scalar(
@@ -4511,18 +4457,6 @@ class ImportService:
         if not service.banner and service_data.banner:
             service.banner = service_data.banner
 
-    @staticmethod
-    def _merge_endpoint_fields(endpoint: Endpoint, endpoint_payload: dict) -> None:
-        if not endpoint.description and endpoint_payload.get("description"):
-            endpoint.description = endpoint_payload["description"]
-        if not endpoint.query_params and endpoint_payload.get("query_params"):
-            endpoint.query_params = endpoint_payload["query_params"]
-        if not endpoint.request_body and endpoint_payload.get("request_body"):
-            endpoint.request_body = endpoint_payload["request_body"]
-        if not endpoint.request_content_type and endpoint_payload.get("request_content_type"):
-            endpoint.request_content_type = endpoint_payload["request_content_type"]
-        if not endpoint.request_headers and endpoint_payload.get("request_headers"):
-            endpoint.request_headers = endpoint_payload["request_headers"]
 
     @staticmethod
     def _decode_text_payload(payload: bytes) -> str:
@@ -5069,7 +5003,7 @@ class ImportService:
                         )
                         result.endpoints_created += 1
                     else:
-                        self._merge_endpoint_fields(endpoint, endpoint_payload)
+                        merge_endpoint_fields(endpoint, endpoint_payload)
                         result.endpoints_skipped += 1
 
             if result.endpoints_created == 0 and result.endpoints_skipped == 0:
@@ -5317,7 +5251,7 @@ class ImportService:
                         )
                         result.endpoints_created += 1
                     else:
-                        self._merge_endpoint_fields(endpoint, endpoint_payload)
+                        merge_endpoint_fields(endpoint, endpoint_payload)
 
             await self.db.flush()
         except Exception:

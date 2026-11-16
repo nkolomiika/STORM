@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import socket
+import time
 from datetime import UTC, datetime
 from urllib.parse import urlsplit
 
@@ -11,6 +12,10 @@ from app.config import get_settings
 from app.database import SessionLocal
 from app.mail import send_plain_text_email
 from app.models import MailJob
+from app.mail_delivery import mail_error_code
+from app.observability import configure_logging, redact_log
+
+configure_logging()
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -89,6 +94,8 @@ async def relay_pending_jobs(channel: aio_pika.abc.AbstractChannel, queue_name: 
 
 
 async def process_mail_job(job_id: int) -> None:
+    """Отправляет письмо, фиксирует ретрай и безопасный код ошибки для интерфейса."""
+    started = time.monotonic()
     async with SessionLocal() as db:
         job = await db.scalar(select(MailJob).where(MailJob.id == job_id))
         if not job or job.status == "sent":
@@ -106,19 +113,23 @@ async def process_mail_job(job_id: int) -> None:
                 html_body=str(html_body) if html_body else None,
             )
         except Exception as exc:
-            job.last_error = str(exc)
+            job.last_error = redact_log(str(exc))[:2000]
+            code = mail_error_code(exc)
+            job.payload = {**job.payload, 'delivery_error_code': code}
             if job.attempts >= settings.mail_max_attempts:
                 job.status = "failed"
             else:
                 job.status = "pending"
             await db.commit()
-            logger.exception("Mail job %s failed on attempt %s", job.id, job.attempts)
+            logger.exception('mail_delivery_failed job_id=%s template=%s attempt=%s max_attempts=%s status=%s code=%s duration_ms=%.1f',
+                             job.id, job.template, job.attempts, settings.mail_max_attempts, job.status, code, (time.monotonic()-started)*1000)
             return
         job.status = "sent"
         job.sent_at = datetime.now(UTC)
         job.last_error = None
+        job.payload = {key: value for key, value in job.payload.items() if key != 'delivery_error_code'}
         await db.commit()
-        logger.info("Mail job %s sent to %s", job.id, job.recipient_email)
+        logger.info('mail_delivered job_id=%s template=%s attempt=%s duration_ms=%.1f', job.id, job.template, job.attempts, (time.monotonic()-started)*1000)
 
 
 async def consume_mail_jobs(queue: aio_pika.abc.AbstractQueue) -> None:

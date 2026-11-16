@@ -6,7 +6,7 @@
 
 ## JsFarmService.__init__
 
-[backend/app/farm/js.py:65](../../../../../backend/app/farm/js.py#L65)
+[backend/app/farm/js.py:66](../../../../../backend/app/farm/js.py#L66)
 
 ```python
 def __init__(self, db: AsyncSession) -> None
@@ -30,7 +30,7 @@ def __init__(self, db: AsyncSession) -> None
 
 ## JsFarmService._project_domains
 
-[backend/app/farm/js.py:79](../../../../../backend/app/farm/js.py#L79)
+[backend/app/farm/js.py:80](../../../../../backend/app/farm/js.py#L80)
 
 ```python
 async def _project_domains(self, project_id: int) -> list[str]
@@ -64,7 +64,7 @@ async def _project_domains(self, project_id: int) -> list[str]
 
 ## JsFarmService._parse_raw
 
-[backend/app/farm/js.py:95](../../../../../backend/app/farm/js.py#L95)
+[backend/app/farm/js.py:96](../../../../../backend/app/farm/js.py#L96)
 
 ```python
 def _parse_raw(raw: str) -> list[str]
@@ -90,7 +90,7 @@ def _parse_raw(raw: str) -> list[str]
 
 ## JsFarmService._fetch
 
-[backend/app/farm/js.py:105](../../../../../backend/app/farm/js.py#L105)
+[backend/app/farm/js.py:106](../../../../../backend/app/farm/js.py#L106)
 
 ```python
 async def _fetch(self, client: httpx.AsyncClient, url: str, *, max_bytes: int) -> tuple[str | None, bytes | None, str | None, str | None]
@@ -123,7 +123,7 @@ status: ok | too_large | failed. Тело читаем потоково и об�
 
 ## JsFarmService._discover_and_scan
 
-[backend/app/farm/js.py:129](../../../../../backend/app/farm/js.py#L129)
+[backend/app/farm/js.py:130](../../../../../backend/app/farm/js.py#L130)
 
 ```python
 async def _discover_and_scan(self, domains: list[str], *, transport: httpx.AsyncBaseTransport | None=None) -> tuple[list[ScannedFile], list[str]]
@@ -158,7 +158,7 @@ async def _discover_and_scan(self, domains: list[str], *, transport: httpx.Async
 
 ## JsFarmService._discover_and_scan.discover
 
-[backend/app/farm/js.py:148](../../../../../backend/app/farm/js.py#L148)
+[backend/app/farm/js.py:149](../../../../../backend/app/farm/js.py#L149)
 
 ```python
 async def discover(domain: str) -> tuple[str, list[str]]
@@ -185,7 +185,7 @@ async def discover(domain: str) -> tuple[str, list[str]]
 
 ## JsFarmService._discover_and_scan.scan
 
-[backend/app/farm/js.py:176](../../../../../backend/app/farm/js.py#L176)
+[backend/app/farm/js.py:177](../../../../../backend/app/farm/js.py#L177)
 
 ```python
 async def scan(domain: str, url: str) -> ScannedFile
@@ -215,7 +215,7 @@ async def scan(domain: str, url: str) -> ScannedFile
 
 ## JsFarmService._persist
 
-[backend/app/farm/js.py:202](../../../../../backend/app/farm/js.py#L202)
+[backend/app/farm/js.py:203](../../../../../backend/app/farm/js.py#L203)
 
 ```python
 async def _persist(self, project_id: int, files: list[ScannedFile], errors: list[str], actor_id: int, targets: list[str] | None=None) -> JsFarmResult
@@ -275,7 +275,7 @@ async def _persist(self, project_id: int, files: list[ScannedFile], errors: list
 
 ## JsFarmService.probe_and_import
 
-[backend/app/farm/js.py:298](../../../../../backend/app/farm/js.py#L298)
+[backend/app/farm/js.py:299](../../../../../backend/app/farm/js.py#L299)
 
 ```python
 async def probe_and_import(self, project_id: int, raw: str, actor_id: int, *, transport: httpx.AsyncBaseTransport | None=None) -> JsFarmResult
@@ -305,7 +305,7 @@ async def probe_and_import(self, project_id: int, raw: str, actor_id: int, *, tr
 
 ## JsFarmService.create_job
 
-[backend/app/farm/js.py:307](../../../../../backend/app/farm/js.py#L307)
+[backend/app/farm/js.py:308](../../../../../backend/app/farm/js.py#L308)
 
 ```python
 async def create_job(self, project_id: int, raw: str, actor_id: int) -> HostFarmJob
@@ -348,13 +348,13 @@ ValidationError('В проекте нет доменов для скана JS')
 
 ## JsFarmService.get_job
 
-[backend/app/farm/js.py:329](../../../../../backend/app/farm/js.py#L329)
+[backend/app/farm/js.py:330](../../../../../backend/app/farm/js.py#L330)
 
 ```python
 async def get_job(self, project_id: int, job_id: int) -> HostFarmJob
 ```
 
-В теле вызывает `NotFoundError`, `and_`, `select`, `select(HostFarmJob).where`, `self.db.scalar`.
+Читает только задание данного вида и проекта.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -363,28 +363,16 @@ async def get_job(self, project_id: int, job_id: int) -> HostFarmJob
 
 Возвращает: `HostFarmJob`.
 
-Прямые операции с БД: `self.db.scalar`.
-
-Явные raise в теле (исключения вызываемых методов могут добавляться):
-
-```python
-NotFoundError('Задача фермы не найдена')
-```
-
 <details>
 <summary>Прямые вызовы в теле</summary>
 
-- `NotFoundError`
-- `and_`
-- `select`
-- `select(HostFarmJob).where`
-- `self.db.scalar`
+- `get_recon_job`
 
 </details>
 
 ## JsFarmService._entry_name
 
-[backend/app/farm/js.py:346](../../../../../backend/app/farm/js.py#L346)
+[backend/app/farm/js.py:337](../../../../../backend/app/farm/js.py#L337)
 
 ```python
 def _entry_name(url: str, used: set[str]) -> str
@@ -417,7 +405,7 @@ def _entry_name(url: str, used: set[str]) -> str
 
 ## JsFarmService.build_archive
 
-[backend/app/farm/js.py:370](../../../../../backend/app/farm/js.py#L370)
+[backend/app/farm/js.py:361](../../../../../backend/app/farm/js.py#L361)
 
 ```python
 async def build_archive(self, project_id: int, host_id: int | None=None, *, transport: httpx.AsyncBaseTransport | None=None) -> tuple[str, bytes]
@@ -476,7 +464,7 @@ NotFoundError('Нет JS-файлов для скачивания')
 
 ## JsFarmService.build_archive.grab
 
-[backend/app/farm/js.py:405](../../../../../backend/app/farm/js.py#L405)
+[backend/app/farm/js.py:396](../../../../../backend/app/farm/js.py#L396)
 
 ```python
 async def grab(url: str) -> tuple[str, bytes | None]

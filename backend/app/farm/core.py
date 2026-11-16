@@ -57,24 +57,6 @@ class ProbeResult:
     responded: bool
     http_status: int | None
     error: str | None = None
-    # Cloudflare по заголовкам ответа этого пробива (см. _cf_from_headers).
-    cloudflare: bool = False
-
-
-# Служебные заголовки Cloudflare — их наличие однозначно выдаёт CF-edge.
-_CF_HEADERS: frozenset[str] = frozenset({"cf-ray", "cf-cache-status", "cf-mitigated"})
-
-
-def _cf_from_headers(headers) -> bool:
-    """CF прямо из ответа пробива: server=cloudflare либо любой cf-* заголовок.
-
-    Не зависит от внешнего движка детекта (httpx-pd может отсутствовать/таймаутить)
-    и надёжнее статического CIDR — BYOIP вроде claude.com (160.79.104.x) в
-    опубликованные диапазоны CF не входит, но заголовки CF отдаёт всегда.
-    """
-    if "cloudflare" in (headers.get("server") or "").lower():
-        return True
-    return any(h in headers for h in _CF_HEADERS)
 
 
 class ProbeTransport(httpx.AsyncHTTPTransport):
@@ -254,7 +236,6 @@ async def probe_candidates(
                     async with client.stream("GET", url) as resp:
                         return ProbeResult(
                             c.hostname, c.port, c.scheme, c.inferred, True, resp.status_code,
-                            cloudflare=_cf_from_headers(resp.headers),
                         )
                 except Exception as exc:  # noqa: BLE001 — любой сбой = порт не ответил
                     return ProbeResult(

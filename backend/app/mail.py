@@ -253,9 +253,8 @@ async def _get_oauth_access_token() -> str:
     async with httpx.AsyncClient(timeout=settings.smtp_timeout_seconds) as client:
         response = await client.post(token_url, data=form)
     if response.status_code != 200:
-        # Тело содержит {"error": ..., "error_description": ...} — полезно для диагностики
-        # (invalid_grant = refresh token отозван/протух; invalid_client = неверные client creds).
-        raise RuntimeError(f"OAuth2 token request failed ({response.status_code}): {response.text}")
+        # Не включаем тело ответа: оно может содержать секреты OAuth.
+        raise RuntimeError(f"OAuth2 token request failed ({response.status_code})")
 
     data = response.json()
     access_token = data["access_token"]

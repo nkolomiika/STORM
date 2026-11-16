@@ -171,14 +171,19 @@ class WorksClient:
 
     @staticmethod
     def _raise_for_status(resp: httpx.Response, what: str) -> None:
+        try:
+            duration = round(resp.elapsed.total_seconds() * 1000, 1)
+        except RuntimeError:
+            duration = None
+        logger.info('task_tracker_request operation=%s method=%s status=%s duration_ms=%s', what, resp.request.method, resp.status_code, duration)
         if resp.status_code < 400:
             return
         body = resp.text[:500]
         detail = f"{resp.request.method} {resp.request.url} -> {resp.status_code}\n{body}"
-        logger.warning("Works %s failed: %s", what, detail)
+        logger.warning('task_tracker_request_failed operation=%s status=%s', what, resp.status_code)
         if resp.status_code in (401, 403):
-            raise WorksError("Works отклонил авторизацию сервисной учётки.", detail)
-        raise WorksError(f"Works вернул {resp.status_code} при «{what}».", detail)
+            raise WorksError("Не удалось подключиться к Task Tracker. Обратитесь к администратору.", detail)
+        raise WorksError("Task Tracker отклонил запрос. Проверьте данные и попробуйте позже.", detail)
 
     async def _find(self, path: str, query: str, limit: int) -> list[dict[str, str]]:
         body = {

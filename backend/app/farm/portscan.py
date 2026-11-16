@@ -14,6 +14,7 @@ IP-литерал (не имя) — поэтому rebind-окна нет, nmap 
 """
 
 from __future__ import annotations
+from app.farm.job_access import get_recon_job
 
 import asyncio
 import shutil
@@ -257,15 +258,5 @@ class PortScanFarmService(HostFarmService):
         return job
 
     async def get_job(self, project_id: int, job_id: int) -> HostFarmJob:
-        job = await self.db.scalar(
-            select(HostFarmJob).where(
-                and_(
-                    HostFarmJob.id == job_id,
-                    HostFarmJob.project_id == project_id,
-                    HostFarmJob.kind == self.kind,
-                )
-            )
-        )
-        if not job:
-            raise NotFoundError("Задача scanner не найдена")
-        return job
+        """Читает только задание данного вида и проекта."""
+        return await get_recon_job(self.db, project_id, job_id, self.kind, 'Задача scanner не найдена')

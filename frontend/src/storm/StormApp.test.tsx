@@ -291,6 +291,7 @@ describe("StormApp (design prototype port)", () => {
   beforeEach(() => {
     useLangStore.getState().setLang("en");
     vi.clearAllMocks();
+    vi.mocked(api.getInvitations).mockReset().mockResolvedValue([]);
     vi.mocked(api.getTasks).mockReset().mockResolvedValue({ items: [], next_page_token: null, is_last: true });
     vi.mocked(api.getTask).mockReset().mockRejectedValue(new Error("Task not configured"));
     vi.mocked(api.listEndpointComments).mockReset().mockResolvedValue({ items: [], total: 0, page: 1, size: 50, pages: 1 });
@@ -728,7 +729,7 @@ describe("StormApp (design prototype port)", () => {
     render(<MemoryRouter initialEntries={["/tasks"]}><StormApp /></MemoryRouter>);
     await screen.findByText("Native APPSEC assessment");
     fireEvent.click(screen.getByRole("button", { name: "Create project from this ticket" }));
-    await waitFor(() => expect(useToastStore.getState().toasts.some((toast) => toast.message.includes("Tracker offline"))).toBe(true));
+    await waitFor(() => expect(useToastStore.getState().toasts.some((toast) => toast.message.includes("Couldn't load this task"))).toBe(true));
     expect(screen.getByRole("heading", { name: "New project" }).closest(".modalback")).not.toHaveClass("open");
   });
 
@@ -799,6 +800,22 @@ describe("StormApp (design prototype port)", () => {
     expect(screen.getByRole("heading", { name: "Members" })).toBeInTheDocument();
     expect(await screen.findByText("alice@example.com")).toBeInTheDocument();
     expect(screen.getByText("diana@example.com")).toBeInTheDocument();
+  });
+
+  it("shows a friendly mail-delivery failure for an invitation", async () => {
+    vi.mocked(api.getInvitations).mockResolvedValue([{
+      id: 999, email: "waiting@example.com", full_name: null, role: "pentester", project_role: "pentester",
+      status: "pending", is_expired: false, expires_at: "2026-12-01T00:00:00Z", invited_by: 1,
+      created_at: "2026-11-16T00:00:00Z", email_status: "failed", email_error_code: "mail_auth_failed",
+      email_error: "SMTPAuthenticationError password=must-never-display",
+    }]);
+    render(<MemoryRouter initialEntries={["/members"]}><StormApp /></MemoryRouter>);
+    await screen.findByText("waiting@example.com");
+    expect(screen.getByText("Email could not be sent. Ask an administrator to check the mail settings.")).toBeInTheDocument();
+    expect(document.body.textContent).not.toContain("must-never-display");
+    expect(useToastStore.getState().toasts).toEqual(expect.arrayContaining([
+      expect.objectContaining({ severity: "error", message: "Email could not be sent. Ask an administrator to check the mail settings." }),
+    ]));
   });
 
   const openHostsSection = async () => {
@@ -1072,7 +1089,7 @@ describe("StormApp (design prototype port)", () => {
     const modal = screen.getByRole("heading", { name: "Edit IP address" }).closest(".modalcard") as HTMLElement;
     fireEvent.change(within(modal).getByDisplayValue("203.0.113.10"), { target: { value: "203.0.113.11" } });
     fireEvent.click(within(modal).getByRole("button", { name: "Save changes" }));
-    await waitFor(() => expect(useToastStore.getState().toasts.some((toast) => toast.message === "IP already exists")).toBe(true));
+    await waitFor(() => expect(useToastStore.getState().toasts.some((toast) => toast.message === "Couldn't update IP address")).toBe(true));
     expect(modal.closest(".modalback")).toHaveClass("open");
     expect(within(modal).getByDisplayValue("203.0.113.11")).toBeInTheDocument();
     expect(within(modal).getByRole("button", { name: "Save changes" })).not.toBeDisabled();

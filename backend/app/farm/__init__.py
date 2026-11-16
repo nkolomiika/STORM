@@ -21,10 +21,9 @@
   jobs.py     — постановка в очередь и прогон задач
 
 Чистые предикаты адреса лежат уровнем выше и переиспользуются вне фермы:
-app.netguard.is_disallowed_ip (SSRF) и app.cloudflare.is_cloudflare_ip.
+app.netguard.is_disallowed_ip (SSRF).
 """
 
-from app.cloudflare import is_cloudflare_ip
 from app.farm.core import (
     HTTPS_PORTS,
     TOP_WEB_PORTS,
@@ -66,7 +65,6 @@ __all__ = [
     "ResolvedName",
     "ReverseResult",
     "enqueue_job",
-    "is_cloudflare_ip",
     "parse_targets",
     "resolve_forward",
     "reverse_resolve",

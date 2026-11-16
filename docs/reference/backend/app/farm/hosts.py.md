@@ -6,7 +6,7 @@
 
 ## HostFarmService.__init__
 
-[backend/app/farm/hosts.py:41](../../../../../backend/app/farm/hosts.py#L41)
+[backend/app/farm/hosts.py:42](../../../../../backend/app/farm/hosts.py#L42)
 
 ```python
 def __init__(self, db: AsyncSession) -> None
@@ -29,7 +29,7 @@ def __init__(self, db: AsyncSession) -> None
 
 ## HostFarmService._candidates_for
 
-[backend/app/farm/hosts.py:50](../../../../../backend/app/farm/hosts.py#L50)
+[backend/app/farm/hosts.py:51](../../../../../backend/app/farm/hosts.py#L51)
 
 ```python
 def _candidates_for(self, tgt: ParsedTarget) -> list[ProbeCandidate]
@@ -52,7 +52,7 @@ def _candidates_for(self, tgt: ParsedTarget) -> list[ProbeCandidate]
 
 ## HostFarmService._resolve_dns
 
-[backend/app/farm/hosts.py:55](../../../../../backend/app/farm/hosts.py#L55)
+[backend/app/farm/hosts.py:56](../../../../../backend/app/farm/hosts.py#L56)
 
 ```python
 async def _resolve_dns(self, hostnames: list[str]) -> dict[str, ResolvedHost]
@@ -75,7 +75,7 @@ async def _resolve_dns(self, hostnames: list[str]) -> dict[str, ResolvedHost]
 
 ## HostFarmService._probe_all
 
-[backend/app/farm/hosts.py:60](../../../../../backend/app/farm/hosts.py#L60)
+[backend/app/farm/hosts.py:61](../../../../../backend/app/farm/hosts.py#L61)
 
 ```python
 async def _probe_all(self, targets: dict[str, ParsedTarget], resolved: dict[str, ResolvedHost], *, transport=None) -> list[ProbeResult]
@@ -104,7 +104,7 @@ async def _probe_all(self, targets: dict[str, ParsedTarget], resolved: dict[str,
 
 ## HostFarmService._find_or_create_host
 
-[backend/app/farm/hosts.py:77](../../../../../backend/app/farm/hosts.py#L77)
+[backend/app/farm/hosts.py:78](../../../../../backend/app/farm/hosts.py#L78)
 
 ```python
 async def _find_or_create_host(self, project_id: int, tgt: ParsedTarget, r: ResolvedHost | None, status: HostStatus) -> tuple[Host, bool]
@@ -141,7 +141,7 @@ async def _find_or_create_host(self, project_id: int, tgt: ParsedTarget, r: Reso
 
 ## HostFarmService._ensure_ips
 
-[backend/app/farm/hosts.py:105](../../../../../backend/app/farm/hosts.py#L105)
+[backend/app/farm/hosts.py:106](../../../../../backend/app/farm/hosts.py#L106)
 
 ```python
 async def _ensure_ips(self, host: Host, ips: list[str]) -> HostIpAddress | None
@@ -174,7 +174,7 @@ async def _ensure_ips(self, host: Host, ips: list[str]) -> HostIpAddress | None
 
 ## HostFarmService._upsert_port
 
-[backend/app/farm/hosts.py:127](../../../../../backend/app/farm/hosts.py#L127)
+[backend/app/farm/hosts.py:128](../../../../../backend/app/farm/hosts.py#L128)
 
 ```python
 async def _upsert_port(self, host: Host, ip_row: HostIpAddress, p: ProbeResult, state: PortState, techs: list[Tech] | None=None) -> bool
@@ -210,7 +210,7 @@ async def _upsert_port(self, host: Host, ip_row: HostIpAddress, p: ProbeResult, 
 
 ## HostFarmService._replace_services
 
-[backend/app/farm/hosts.py:162](../../../../../backend/app/farm/hosts.py#L162)
+[backend/app/farm/hosts.py:163](../../../../../backend/app/farm/hosts.py#L163)
 
 ```python
 async def _replace_services(self, port: Port, techs: list[Tech] | None) -> None
@@ -246,7 +246,7 @@ techs=None — детект не запускался (whatweb выключен/
 
 ## HostFarmService._write_ports
 
-[backend/app/farm/hosts.py:177](../../../../../backend/app/farm/hosts.py#L177)
+[backend/app/farm/hosts.py:178](../../../../../backend/app/farm/hosts.py#L178)
 
 ```python
 async def _write_ports(self, host: Host, ip_row: HostIpAddress, probes: list[ProbeResult], techs_by_port: dict[tuple[str, int], list[Tech]]) -> tuple[list[HostFarmPortResult], int, int]
@@ -280,7 +280,7 @@ techs=None у портов, для которых детект не запуск
 
 ## HostFarmService._persist
 
-[backend/app/farm/hosts.py:213](../../../../../backend/app/farm/hosts.py#L213)
+[backend/app/farm/hosts.py:214](../../../../../backend/app/farm/hosts.py#L214)
 
 ```python
 async def _persist(self, project_id: int, targets: dict[str, ParsedTarget], resolved: dict[str, ResolvedHost], probes: list[ProbeResult], actor_id: int, techs_by_port: dict[tuple[str, int], list[Tech]] | None=None) -> HostFarmResult
@@ -330,7 +330,7 @@ async def _persist(self, project_id: int, targets: dict[str, ParsedTarget], reso
 
 ## HostFarmService.probe_and_import
 
-[backend/app/farm/hosts.py:290](../../../../../backend/app/farm/hosts.py#L290)
+[backend/app/farm/hosts.py:291](../../../../../backend/app/farm/hosts.py#L291)
 
 ```python
 async def probe_and_import(self, project_id: int, raw: str, actor_id: int, *, transport=None, detector=None, skip_targets: list[str] | None=None, resolve_ips: bool=True) -> HostFarmResult
@@ -385,7 +385,7 @@ ValidationError(f'Слишком много хостов: {len(targets)} (мак
 
 ## HostFarmService._existing_target_keys
 
-[backend/app/farm/hosts.py:352](../../../../../backend/app/farm/hosts.py#L352)
+[backend/app/farm/hosts.py:353](../../../../../backend/app/farm/hosts.py#L353)
 
 ```python
 async def _existing_target_keys(self, project_id: int, targets: dict[str, ParsedTarget]) -> set[str]
@@ -425,7 +425,7 @@ _find_or_create_host): домен — по hostname, IP-литерал — по 
 
 ## HostFarmService._ensure_skeletons
 
-[backend/app/farm/hosts.py:378](../../../../../backend/app/farm/hosts.py#L378)
+[backend/app/farm/hosts.py:379](../../../../../backend/app/farm/hosts.py#L379)
 
 ```python
 async def _ensure_skeletons(self, project_id: int, targets: dict[str, ParsedTarget], existing: set[str]) -> None
@@ -457,7 +457,7 @@ async def _ensure_skeletons(self, project_id: int, targets: dict[str, ParsedTarg
 
 ## HostFarmService.create_job
 
-[backend/app/farm/hosts.py:398](../../../../../backend/app/farm/hosts.py#L398)
+[backend/app/farm/hosts.py:399](../../../../../backend/app/farm/hosts.py#L399)
 
 ```python
 async def create_job(self, project_id: int, raw: str, actor_id: int) -> HostFarmJob
@@ -503,13 +503,13 @@ ValidationError(f'Слишком много хостов: {len(targets)} (мак
 
 ## HostFarmService.get_job
 
-[backend/app/farm/hosts.py:430](../../../../../backend/app/farm/hosts.py#L430)
+[backend/app/farm/hosts.py:431](../../../../../backend/app/farm/hosts.py#L431)
 
 ```python
 async def get_job(self, project_id: int, job_id: int) -> HostFarmJob
 ```
 
-В теле вызывает `NotFoundError`, `and_`, `select`, `select(HostFarmJob).where`, `self.db.scalar`.
+Читает только задание данного вида и проекта.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -518,21 +518,9 @@ async def get_job(self, project_id: int, job_id: int) -> HostFarmJob
 
 Возвращает: `HostFarmJob`.
 
-Прямые операции с БД: `self.db.scalar`.
-
-Явные raise в теле (исключения вызываемых методов могут добавляться):
-
-```python
-NotFoundError('Задача фермы не найдена')
-```
-
 <details>
 <summary>Прямые вызовы в теле</summary>
 
-- `NotFoundError`
-- `and_`
-- `select`
-- `select(HostFarmJob).where`
-- `self.db.scalar`
+- `get_recon_job`
 
 </details>

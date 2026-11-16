@@ -279,7 +279,7 @@ def _url(self, path: str) -> str
 def _raise_for_status(resp: httpx.Response, what: str) -> None
 ```
 
-В теле вызывает `WorksError`, `logger.warning`.
+В теле вызывает `WorksError`, `logger.info`, `logger.warning`, `resp.elapsed.total_seconds`, `round`.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -291,21 +291,24 @@ def _raise_for_status(resp: httpx.Response, what: str) -> None
 Явные raise в теле (исключения вызываемых методов могут добавляться):
 
 ```python
-WorksError('Works отклонил авторизацию сервисной учётки.', detail)
-WorksError(f'Works вернул {resp.status_code} при «{what}».', detail)
+WorksError('Task Tracker отклонил запрос. Проверьте данные и попробуйте позже.', detail)
+WorksError('Не удалось подключиться к Task Tracker. Обратитесь к администратору.', detail)
 ```
 
 <details>
 <summary>Прямые вызовы в теле</summary>
 
 - `WorksError`
+- `logger.info`
 - `logger.warning`
+- `resp.elapsed.total_seconds`
+- `round`
 
 </details>
 
 ## WorksClient._find
 
-[backend/app/works.py:183](../../../../backend/app/works.py#L183)
+[backend/app/works.py:188](../../../../backend/app/works.py#L188)
 
 ```python
 async def _find(self, path: str, query: str, limit: int) -> list[dict[str, str]]
@@ -346,7 +349,7 @@ WorksError('Не удалось соединиться с Works.', str(exc))
 
 ## WorksClient.find_components
 
-[backend/app/works.py:202](../../../../backend/app/works.py#L202)
+[backend/app/works.py:207](../../../../backend/app/works.py#L207)
 
 ```python
 async def find_components(self, query: str='', limit: int=50) -> list[dict[str, str]]
@@ -370,7 +373,7 @@ async def find_components(self, query: str='', limit: int=50) -> list[dict[str, 
 
 ## WorksClient.find_versions
 
-[backend/app/works.py:205](../../../../backend/app/works.py#L205)
+[backend/app/works.py:210](../../../../backend/app/works.py#L210)
 
 ```python
 async def find_versions(self, query: str='', limit: int=50) -> list[dict[str, str]]
@@ -394,7 +397,7 @@ async def find_versions(self, query: str='', limit: int=50) -> list[dict[str, st
 
 ## WorksClient.get_ticket_status
 
-[backend/app/works.py:208](../../../../backend/app/works.py#L208)
+[backend/app/works.py:213](../../../../backend/app/works.py#L213)
 
 ```python
 async def get_ticket_status(self, key: str) -> str | None
@@ -432,7 +435,7 @@ WorksError('Не удалось получить статус тикета из 
 
 ## WorksClient.upload_draft_file
 
-[backend/app/works.py:229](../../../../backend/app/works.py#L229)
+[backend/app/works.py:234](../../../../backend/app/works.py#L234)
 
 ```python
 async def upload_draft_file(self, *, draft_id: str, filename: str, content: bytes, content_type: str | None, relative_path: str) -> str
@@ -470,7 +473,7 @@ WorksError('Не удалось загрузить файл в Works.', str(exc)
 
 ## WorksClient.create_bug_appsec
 
-[backend/app/works.py:248](../../../../backend/app/works.py#L248)
+[backend/app/works.py:253](../../../../backend/app/works.py#L253)
 
 ```python
 async def create_bug_appsec(self, *, summary: str, description_text: str | None, assigned_to: str, reporter: str, priority: str, component: dict[str, str] | None, versions: list[dict[str, str]], drafts_info: list[dict[str, str]] | None=None) -> dict[str, Any]
@@ -516,7 +519,7 @@ WorksError('Не удалось создать тикет в Works.', str(exc))
 
 ## WorksClient.link_units
 
-[backend/app/works.py:310](../../../../backend/app/works.py#L310)
+[backend/app/works.py:315](../../../../backend/app/works.py#L315)
 
 ```python
 async def link_units(self, *, source: str, destination: str, link_type: str | None=None) -> dict[str, Any]
@@ -556,7 +559,7 @@ WorksError('Не удалось создать связь тикетов в Work
 
 ## works_issue_url
 
-[backend/app/works.py:335](../../../../backend/app/works.py#L335)
+[backend/app/works.py:340](../../../../backend/app/works.py#L340)
 
 ```python
 def works_issue_url(key: str, *, space: str | None=None) -> str

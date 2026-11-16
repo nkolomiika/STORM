@@ -6,7 +6,7 @@
 
 ## ReverseFarmService.__init__
 
-[backend/app/farm/reverse.py:33](../../../../../backend/app/farm/reverse.py#L33)
+[backend/app/farm/reverse.py:34](../../../../../backend/app/farm/reverse.py#L34)
 
 ```python
 def __init__(self, db: AsyncSession) -> None
@@ -29,7 +29,7 @@ def __init__(self, db: AsyncSession) -> None
 
 ## ReverseFarmService._project_ips
 
-[backend/app/farm/reverse.py:37](../../../../../backend/app/farm/reverse.py#L37)
+[backend/app/farm/reverse.py:38](../../../../../backend/app/farm/reverse.py#L38)
 
 ```python
 async def _project_ips(self, project_id: int) -> list[str]
@@ -63,7 +63,7 @@ async def _project_ips(self, project_id: int) -> list[str]
 
 ## ReverseFarmService._targets
 
-[backend/app/farm/reverse.py:54](../../../../../backend/app/farm/reverse.py#L54)
+[backend/app/farm/reverse.py:55](../../../../../backend/app/farm/reverse.py#L55)
 
 ```python
 async def _targets(self, project_id: int, raw: str) -> list[str]
@@ -89,7 +89,7 @@ async def _targets(self, project_id: int, raw: str) -> list[str]
 
 ## ReverseFarmService.probe_and_import
 
-[backend/app/farm/reverse.py:59](../../../../../backend/app/farm/reverse.py#L59)
+[backend/app/farm/reverse.py:60](../../../../../backend/app/farm/reverse.py#L60)
 
 ```python
 async def probe_and_import(self, project_id: int, raw: str, actor_id: int, *, transport=None, detector=None, skip_targets: list[str] | None=None) -> ReverseFarmResult
@@ -127,7 +127,7 @@ async def probe_and_import(self, project_id: int, raw: str, actor_id: int, *, tr
 
 ## ReverseFarmService.create_job
 
-[backend/app/farm/reverse.py:103](../../../../../backend/app/farm/reverse.py#L103)
+[backend/app/farm/reverse.py:104](../../../../../backend/app/farm/reverse.py#L104)
 
 ```python
 async def create_job(self, project_id: int, raw: str, actor_id: int) -> HostFarmJob
@@ -167,13 +167,13 @@ ValidationError('В проекте нет IP-адресов для обратн�
 
 ## ReverseFarmService.get_job
 
-[backend/app/farm/reverse.py:121](../../../../../backend/app/farm/reverse.py#L121)
+[backend/app/farm/reverse.py:122](../../../../../backend/app/farm/reverse.py#L122)
 
 ```python
 async def get_job(self, project_id: int, job_id: int) -> HostFarmJob
 ```
 
-В теле вызывает `NotFoundError`, `and_`, `select`, `select(HostFarmJob).where`, `self.db.scalar`.
+Читает только задание данного вида и проекта.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -182,21 +182,9 @@ async def get_job(self, project_id: int, job_id: int) -> HostFarmJob
 
 Возвращает: `HostFarmJob`.
 
-Прямые операции с БД: `self.db.scalar`.
-
-Явные raise в теле (исключения вызываемых методов могут добавляться):
-
-```python
-NotFoundError('Задача scanner не найдена')
-```
-
 <details>
 <summary>Прямые вызовы в теле</summary>
 
-- `NotFoundError`
-- `and_`
-- `select`
-- `select(HostFarmJob).where`
-- `self.db.scalar`
+- `get_recon_job`
 
 </details>

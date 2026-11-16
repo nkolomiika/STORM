@@ -81,7 +81,7 @@ it("requires matching passwords and allows retry after a reset failure", async (
   fireEvent.click(save);
   await waitFor(() => expect(save).toBeEnabled());
   expect(screen.getByLabelText("New password")).toHaveValue("new-password");
-  expect(useToastStore.getState().toasts.at(-1)?.message).toBe("Try again");
+  expect(useToastStore.getState().toasts.at(-1)?.message).toBe("Couldn't reset the password");
   vi.mocked(api.confirmPasswordReset).mockResolvedValueOnce(undefined);
   fireEvent.click(save);
   await waitFor(() => expect(screen.getByTestId("location")).toHaveTextContent("/login"));

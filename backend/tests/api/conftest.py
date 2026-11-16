@@ -25,6 +25,7 @@ async def api(monkeypatch):
     if not url:
         pytest.skip("Задайте STORM_TEST_DATABASE_URL для HTTP-тестов с PostgreSQL")
     monkeypatch.setattr(get_settings(), "mail_enabled", False)
+    monkeypatch.setattr(get_settings(), "smtp_host", "mail.test")
     monkeypatch.setattr(get_settings(), "sso_enabled", False)
     def unexpected_storage(*args, **kwargs):
         raise AssertionError("External storage must be mocked explicitly in API tests")

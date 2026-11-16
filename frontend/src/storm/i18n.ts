@@ -48,6 +48,17 @@ export const useLangStore = create<LangState>((set) => ({
    partial coverage is safe. Russian infosec idiom + accepted anglicisms
    (хост, эндпоинт, воркспейс, пентест) — deliberately, per product preference. */
 const RU: Record<string, string> = {
+  "Reactivation link queued for": "Ссылка возврата поставлена в очередь для",
+  "Email delivery is not configured. Contact an administrator.": "Отправка писем пока не настроена. Обратитесь к администратору.",
+  "Email could not be sent. The mail service is unavailable. Try again later.": "Письмо не отправлено: почтовый сервис недоступен. Попробуйте позже.",
+  "Email could not be sent. Ask an administrator to check the mail settings.": "Письмо не отправлено. Администратору нужно проверить настройки почты.",
+  "Task Tracker is not configured. Contact an administrator.": "Подключение к Task Tracker пока не настроено. Обратитесь к администратору.",
+  "Task Tracker is temporarily unavailable. Try again later.": "Task Tracker временно недоступен. Попробуйте позже.",
+  "Something went wrong. Try again later.": "Не удалось выполнить действие. Попробуйте позже.",
+  "The service is unavailable. Check your connection and try again.": "Не удалось связаться с сервером. Проверьте подключение и попробуйте ещё раз.",
+  "Invitation queued for {email}{preview}": "Приглашение для {email} поставлено в очередь отправки{preview}",
+  "The check could not be completed. Try starting it again.": "Не удалось завершить проверку. Попробуйте запустить её ещё раз.",
+
   // ── navigation / sections ──
   Projects: "Проекты",
   Tasks: "Задачи",

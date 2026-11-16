@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from contextlib import suppress
 
 from fastapi import Depends, FastAPI, Request
@@ -6,6 +7,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from sqlalchemy import inspect, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -42,6 +44,12 @@ from app.services import UserService
 from app.storage.minio_client import MinioStorage
 from app.input_safety import SecurityHeadersMiddleware, validate_request_parameters
 from app.notification_events import deadline_loop
+from app.exceptions import ServiceUnavailableError
+from app.observability import RequestLogMiddleware, configure_logging
+from app.public_errors import public_message
+
+configure_logging()
+logger = logging.getLogger('storm.errors')
 
 settings = get_settings()
 
@@ -59,6 +67,7 @@ agent_api_v2 = FastAPI(
 )
 app.add_middleware(SecurityHeadersMiddleware)
 agent_api_v2.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(RequestLogMiddleware)
 
 
 def _register_protected_docs(fastapi_app: FastAPI, *, openapi_route: str, docs_route: str, redoc_route: str) -> None:
@@ -151,42 +160,62 @@ def _register_error_handlers() -> None:
                 value = item.get("ctx", {}).get("le")
                 message = f"Значение должно быть не больше {value}"
             else:
-                message = item.get("msg", "Некорректные входные данные")
+                message = public_message(item.get('msg', '').removeprefix('Value error, '), 'Проверьте значение поля') if error_type == 'value_error' else {
+                    'extra_forbidden': 'Это поле не поддерживается',
+                    'json_invalid': 'Не удалось прочитать данные запроса. Проверьте формат JSON',
+                    'enum': 'Выберите одно из допустимых значений',
+                    'string_type': 'Введите текст',
+                    'int_parsing': 'Введите целое число',
+                    'int_type': 'Введите целое число',
+                    'list_type': 'Ожидается список значений',
+                    'string_pattern_mismatch': 'Проверьте формат поля',
+                }.get(error_type, 'Проверьте значение поля')
             messages.append(f"{loc}: {message}" if loc else message)
         return "; ".join(messages) or "Некорректные входные данные"
 
     async def request_validation_handler(_: Request, exc: RequestValidationError) -> JSONResponse:
+        logger.warning('request_validation_failed error_count=%s types=%s', len(exc.errors()), sorted({item['type'] for item in exc.errors()}))
         return JSONResponse(status_code=422, content={"detail": _format_request_validation(exc)})
 
-    async def not_found_handler(_: Request, exc: NotFoundError) -> JSONResponse:
-        return JSONResponse(status_code=404, content={"detail": str(exc)})
-
-    async def unauthorized_handler(_: Request, exc: UnauthorizedError) -> JSONResponse:
-        return JSONResponse(status_code=401, content={"detail": str(exc)})
-
-    async def forbidden_handler(_: Request, exc: ForbiddenError) -> JSONResponse:
-        return JSONResponse(status_code=403, content={"detail": str(exc)})
-
-    async def conflict_handler(_: Request, exc: ConflictError) -> JSONResponse:
-        return JSONResponse(status_code=409, content={"detail": str(exc)})
-
-    async def validation_handler(_: Request, exc: ValidationError) -> JSONResponse:
-        return JSONResponse(status_code=422, content={"detail": str(exc)})
-
     async def app_error_handler(_: Request, exc: StormError) -> JSONResponse:
-        return JSONResponse(status_code=400, content={"detail": str(exc)})
+        statuses = ((ServiceUnavailableError, 503), (NotFoundError, 404), (UnauthorizedError, 401),
+                    (ForbiddenError, 403), (ConflictError, 409), (ValidationError, 422))
+        status_code = next((status for error_type, status in statuses if isinstance(exc, error_type)), 400)
+        message = public_message(str(exc))
+        if message != str(exc).strip():
+            logger.warning('application_error_redacted exception_type=%s', type(exc).__name__,
+                           exc_info=(type(exc), exc, exc.__traceback__))
+        payload = {'detail': message}
+        if isinstance(exc, ServiceUnavailableError):
+            payload['code'] = exc.code
+        return JSONResponse(status_code=status_code, content=payload)
+
+    async def http_error_handler(_: Request, exc: StarletteHTTPException) -> JSONResponse:
+        if exc.status_code >= 500:
+            tracker = any(word in str(exc.detail) for word in ('Task Tracker', 'WORKS_', 'Демо-тикеты'))
+            code = ('task_tracker_not_configured' if exc.status_code == 503 else 'task_tracker_unavailable') if tracker else 'internal_error'
+            logger.warning('service_error code=%s status=%s reason=%s', code, exc.status_code, exc.detail)
+            message = 'Подключение к Task Tracker пока не настроено. Обратитесь к администратору.' if tracker and exc.status_code == 503 else 'Сервис временно недоступен. Попробуйте позже.'
+            return JSONResponse(status_code=exc.status_code, headers=exc.headers, content={'detail': message, 'code': code})
+        return JSONResponse(status_code=exc.status_code, headers=exc.headers,
+                            content={'detail': public_message(exc.detail)})
+
+    async def unexpected_error_handler(request: Request, exc: Exception) -> JSONResponse:
+        identifier = getattr(request.state, 'request_id', '')
+        logger.error('unexpected_error request_id=%s exception_type=%s', identifier, type(exc).__name__,
+                     exc_info=(type(exc), exc, exc.__traceback__))
+        return JSONResponse(status_code=500, headers={'X-Request-ID': identifier},
+                            content={'detail': 'Не удалось выполнить действие. Попробуйте ещё раз.',
+                                     'code': 'internal_error', 'request_id': identifier})
 
     # Регистрируем и на основном приложении, и на под-аппе Agent API (/v2): у
     # смонтированного приложения собственные обработчики — родительские на него не
     # распространяются (иначе UnauthorizedError из /v2 отдавал бы 500 вместо 401).
     _handlers = [
         (RequestValidationError, request_validation_handler),
-        (NotFoundError, not_found_handler),
-        (UnauthorizedError, unauthorized_handler),
-        (ForbiddenError, forbidden_handler),
-        (ConflictError, conflict_handler),
-        (ValidationError, validation_handler),
         (StormError, app_error_handler),
+        (StarletteHTTPException, http_error_handler),
+        (Exception, unexpected_error_handler),
     ]
     for _target in (app, agent_api_v2):
         for _exc_type, _handler in _handlers:

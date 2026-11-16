@@ -1,5 +1,4 @@
-"""Тесты поиска пользователей для тайпхеда исполнителя (GET /users/search):
-сервисный метод search_users (пл′aминг + clamp лимита) и гейт IAM-прокси."""
+"""Поиск исполнителя среди локальных пользователей, включая учётные записи SSO."""
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -56,8 +55,12 @@ async def test_search_users_clamps_limit() -> None:
 # --------------------------- IAM-прокси (гейт) ---------------------------
 
 @pytest.mark.asyncio
-async def test_iam_candidates_empty_when_sso_off(monkeypatch) -> None:
+@pytest.mark.parametrize('enabled', [False, True])
+async def test_search_stays_local_regardless_of_sso_configuration(monkeypatch, enabled) -> None:
     import app.services as services_mod
-    monkeypatch.setattr(services_mod.settings, "sso_enabled", False, raising=False)
+    monkeypatch.setattr(services_mod.settings, "sso_enabled", enabled, raising=False)
     db = AsyncMock()
-    assert await UserService(db).iam_user_candidates("кол", 10) == []
+    people = [SimpleNamespace(username='analyst', full_name='Аналитик', is_sso=True)]
+    db.scalars = _scalars_returning(people)
+    assert await UserService(db).search_users('аналитик', 10) == people
+    db.scalars.assert_awaited_once()
