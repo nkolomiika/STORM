@@ -3,7 +3,7 @@
 Запуск: python3 one_time_download.py --config /защищённый/каталог/config.json
 Конфигурация: archive, token, consumed_file; необязательно host, port, commit,
 sha256, certificate, private_key. По умолчанию слушает 127.0.0.1:8765 за HTTPS-прокси.
-Секретный URL открывает страницу. Только POST кнопки расходует скачивание.
+Секретный URL сразу отдаёт архив. GET расходует скачивание, HEAD — нет.
 Начатое скачивание необратимо, включая обрыв соединения; повторная выдача запрещена.
 """
 import argparse
@@ -42,7 +42,7 @@ class DownloadConfig:
 
 
 def create_server(config: DownloadConfig, address: tuple[str, int] = ('127.0.0.1', 8765)) -> ThreadingHTTPServer:
-    """Создаёт сервер: GET/HEAD не расходуют ссылку, O_EXCL разрешает ровно один POST.
+    """Создаёт сервер: HEAD проверяет ссылку, O_EXCL разрешает ровно один GET.
 
     Маркер сохраняется после перезапуска. Архив удаляется после начатой выдачи.
     Недействительные URL и Range-запросы не получают содержимого архива.
@@ -76,35 +76,41 @@ def create_server(config: DownloadConfig, address: tuple[str, int] = ('127.0.0.1
             self.send_header('X-Robots-Tag', 'noindex, nofollow, noarchive')
             self.send_header('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'")
 
-        def _page(self, status: int, message: str, button: bool = False) -> None:
+        def _page(self, status: int, message: str) -> None:
             """Показывает русскую страницу без внешних ресурсов; HEAD не отдаёт тело."""
-            form = f'<form action="/{config.token}/download" method="post"><button type="submit">Скачать архив</button></form>' if button else ''
-            details = f'<p class="meta">Версия: {html.escape(config.commit[:12])}</p><p class="meta">SHA-256: {html.escape(config.sha256)}</p>' if button else ''
             data = f'''<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>STORM — скачать архив</title><style>body{{margin:0;min-height:100vh;display:grid;place-items:center;background:#eef1f6;color:#0f1b2d;font:16px system-ui,sans-serif}}main{{max-width:560px;margin:24px;padding:36px;background:#fff;border-radius:18px;box-shadow:0 10px 40px #0f1b2d12}}h1{{margin-top:0}}p{{line-height:1.6}}button{{border:0;border-radius:10px;background:#2e5fbf;color:white;font:600 16px system-ui;padding:14px 22px;cursor:pointer}}button:hover{{background:#214b9f}}.meta{{font-size:12px;color:#5a6b84;overflow-wrap:anywhere}}</style>
-<main><h1>Архив STORM</h1><p>{html.escape(message)}</p>{form}{details}</main></html>'''.encode()
+<main><h1>Архив STORM</h1><p>{html.escape(message)}</p></main></html>'''.encode()
             self._headers(status, len(data))
             self.end_headers()
             if self.command != 'HEAD':
                 self.wfile.write(data)
 
         def do_GET(self) -> None:
-            """Показывает кнопку без расходования ссылки; использованная ссылка возвращает 410."""
+            """Сразу отдаёт архив и расходует единственную попытку скачивания."""
+            self._download()
+
+        def do_HEAD(self) -> None:
+            """Возвращает метаданные архива без тела и без расходования ссылки."""
             if not self._route():
                 return self._page(404, 'Страница не найдена.')
             if config.consumed_file.exists():
                 return self._page(410, 'Ссылка уже использована. Повторное скачивание недоступно.')
-            if not config.archive.is_file():
+            try:
+                size = config.archive.stat().st_size
+            except OSError:
                 return self._page(503, 'Архив пока недоступен. Попробуйте позже.')
-            self._page(200, 'Архив можно скачать только один раз. Ссылка будет использована при нажатии кнопки. Дождитесь завершения загрузки: повторное скачивание после обрыва недоступно.', True)
-
-        def do_HEAD(self) -> None:
-            """Проверка ссылки и предпросмотр не расходуют скачивание."""
-            self.do_GET()
+            self._headers(200, size, 'application/gzip')
+            self.send_header('Content-Disposition', 'attachment; filename="storm.tar.gz"')
+            self.end_headers()
 
         def do_POST(self) -> None:
+            """Отклоняет старый способ выдачи; скачивание выполняется только GET."""
+            self._page(405, 'Для скачивания откройте ссылку в браузере.')
+
+        def _download(self) -> None:
             """Атомарно резервирует единственную выдачу и удаляет архив после попытки."""
-            if not self._route('/download'):
+            if not self._route():
                 return self._page(404, 'Страница не найдена.')
             if self.headers.get('Range'):
                 return self._page(416, 'Частичное скачивание не поддерживается.')
