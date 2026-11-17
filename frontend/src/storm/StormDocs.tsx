@@ -11,9 +11,10 @@
  * storm.css). Ленивый компонент (default export), как StormMarkdownEditor. */
 import { useMemo, useState, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { markdownUrlTransform, normalizeMarkdownForRender } from "../markdownUrlTransform";
 import { Icon } from "./icons";
-import { t as translate } from "./i18n";
+import { t as translate, useLangStore } from "./i18n";
 import { DOC_GROUPS, chaptersForRole, type DocChapter } from "./docs";
 
 interface Props {
@@ -24,13 +25,14 @@ interface Props {
 
 const ACCENT = "var(--st-accent)";
 
-/** Документация всегда русская, независимо от языка остального интерфейса. */
+/** Интерфейс документации локализован; Markdown-содержимое всегда русское. */
 function t(source: string, values?: Record<string, string | number>): string {
-  return translate(source, values, "ru");
+  return translate(source, values);
 }
 
 /** Русское склонение: 1 страница / 2 страницы / 5 страниц. */
 function pagesWord(n: number): string {
+  if (useLangStore.getState().lang === "en") return `${n} ${n === 1 ? "page" : "pages"}`;
   const m10 = n % 10;
   const m100 = n % 100;
   const word = m10 === 1 && m100 !== 11 ? "страница" : m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? "страницы" : "страниц";
@@ -78,7 +80,8 @@ function highlight(text: string, q: string): ReactNode {
 }
 
 export function StormDocs({ isAdmin, onNavigateWorkspace }: Props) {
-  const visible = useMemo(() => chaptersForRole(isAdmin).map((chapter) => ({ ...chapter, title: t(chapter.title) })), [isAdmin]);
+  const lang = useLangStore((state) => state.lang);
+  const visible = useMemo(() => chaptersForRole(isAdmin).map((chapter) => ({ ...chapter, title: t(chapter.title) })), [isAdmin, lang]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -214,9 +217,9 @@ export function StormDocs({ isAdmin, onNavigateWorkspace }: Props) {
             <div className="mono" style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18, fontSize: 11, letterSpacing: 1.2, textTransform: "uppercase", color: "var(--st-text-faint)", fontWeight: 700, flexWrap: "wrap" }}>
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: ACCENT, flex: "none" }} />
               {onNavigateWorkspace ? (
-                <span className="stdoc-crumb clk" onClick={onNavigateWorkspace}>WORKSPACE</span>
+                <span className="stdoc-crumb clk" onClick={onNavigateWorkspace}>{t("WORKSPACE")}</span>
               ) : (
-                <span>WORKSPACE</span>
+                <span>{t("WORKSPACE")}</span>
               )}
               <span>/</span>
               <span className="stdoc-crumb clk" onClick={goHome}>{t("Docs")}</span>
@@ -230,7 +233,7 @@ export function StormDocs({ isAdmin, onNavigateWorkspace }: Props) {
               <span style={{ color: "var(--st-text-3)" }}>{active.title}</span>
             </div>
             <div className="stormmd-input" style={{ fontSize: 14.5 }}>
-              <ReactMarkdown urlTransform={markdownUrlTransform}>{normalizeMarkdownForRender(active.body)}</ReactMarkdown>
+              <ReactMarkdown remarkPlugins={[remarkGfm]} urlTransform={markdownUrlTransform}>{normalizeMarkdownForRender(active.body)}</ReactMarkdown>
             </div>
           </div>
         ) : q ? (
@@ -264,9 +267,9 @@ export function StormDocs({ isAdmin, onNavigateWorkspace }: Props) {
             <div className="mono" style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, fontSize: 11, letterSpacing: 1.2, textTransform: "uppercase", color: "var(--st-text-faint)", fontWeight: 700, flexWrap: "wrap" }}>
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: ACCENT, flex: "none" }} />
               {onNavigateWorkspace ? (
-                <span className="stdoc-crumb clk" onClick={onNavigateWorkspace}>WORKSPACE</span>
+                <span className="stdoc-crumb clk" onClick={onNavigateWorkspace}>{t("WORKSPACE")}</span>
               ) : (
-                <span>WORKSPACE</span>
+                <span>{t("WORKSPACE")}</span>
               )}
               <span>/</span>
               <span style={{ color: "var(--st-text-3)" }}>{t("Docs")}</span>

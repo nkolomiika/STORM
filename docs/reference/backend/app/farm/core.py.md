@@ -2,45 +2,148 @@
 
 Сгенерировано из объявлений кода. [Правила чтения](../../../../METHODS.md).
 
-Методов и именованных функций: **9**.
+Методов и именованных функций: **13**.
 
-## ProbeTransport.handle_async_request
+## PublicNetworkBackend.__init__
 
-[backend/app/farm/core.py:66](../../../../../backend/app/farm/core.py#L66)
+[backend/app/farm/core.py:69](../../../../../backend/app/farm/core.py#L69)
 
 ```python
-async def handle_async_request(self, request: httpx.Request) -> httpx.Response
+def __init__(self) -> не аннотирован
 ```
 
-В теле вызывает `asyncio.to_thread`, `httpx.ConnectError`, `is_disallowed_ip`, `super`, `super().handle_async_request`.
+Создаёт экземпляр и сохраняет его зависимости; параметры перечислены ниже.
+
+Возвращает: `не аннотирован`.
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `httpcore.AnyIOBackend`
+
+</details>
+
+## PublicNetworkBackend.connect_tcp
+
+[backend/app/farm/core.py:72](../../../../../backend/app/farm/core.py#L72)
+
+```python
+async def connect_tcp(self, host, port, timeout=None, local_address=None, socket_options=None) -> не аннотирован
+```
+
+Никаких подключений к частично приватному или недоступному DNS-ответу.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
-| `request` | `httpx.Request` | `обязательный` | HTTP-запрос Starlette/FastAPI. |
+| `host` | `не аннотирован` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
+| `port` | `не аннотирован` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
+| `timeout` | `не аннотирован` | `None` | Предельное время ожидания операции. |
+| `local_address` | `не аннотирован` | `None` | Определяется именем/типом и контрактом вызывающего кода. |
+| `socket_options` | `не аннотирован` | `None` | Определяется именем/типом и контрактом вызывающего кода. |
 
-Возвращает: `httpx.Response`.
+Возвращает: `не аннотирован`.
 
 Явные raise в теле (исключения вызываемых методов могут добавляться):
 
 ```python
-httpx.ConnectError(f'DNS не разрешает {host}: {exc}')
-httpx.ConnectError(f'{addr} для {host} запрещён (SSRF)')
+httpcore.ConnectError('Цель недоступна или запрещена политикой сети')
 ```
 
 <details>
 <summary>Прямые вызовы в теле</summary>
 
+- `any`
 - `asyncio.to_thread`
-- `httpx.ConnectError`
+- `asyncio.wait_for`
+- `dict.fromkeys`
+- `httpcore.ConnectError`
 - `is_disallowed_ip`
+- `list`
+- `self.backend.connect_tcp`
+
+</details>
+
+## PublicNetworkBackend.connect_unix_socket
+
+[backend/app/farm/core.py:88](../../../../../backend/app/farm/core.py#L88)
+
+```python
+async def connect_unix_socket(self, *args, **kwargs) -> не аннотирован
+```
+
+Сканеры не имеют доступа к Unix-сокетам сервисов контейнера.
+
+| Параметр | Тип | По умолчанию | Назначение |
+| --- | --- | --- | --- |
+| `args` | `не аннотирован` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
+| `kwargs` | `не аннотирован` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
+
+Возвращает: `не аннотирован`.
+
+Явные raise в теле (исключения вызываемых методов могут добавляться):
+
+```python
+httpcore.ConnectError('Цель недоступна или запрещена политикой сети')
+```
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `httpcore.ConnectError`
+
+</details>
+
+## PublicNetworkBackend.sleep
+
+[backend/app/farm/core.py:92](../../../../../backend/app/farm/core.py#L92)
+
+```python
+async def sleep(self, seconds) -> не аннотирован
+```
+
+В теле вызывает `asyncio.sleep`.
+
+| Параметр | Тип | По умолчанию | Назначение |
+| --- | --- | --- | --- |
+| `seconds` | `не аннотирован` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
+
+Возвращает: `не аннотирован`.
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `asyncio.sleep`
+
+</details>
+
+## ProbeTransport.__init__
+
+[backend/app/farm/core.py:98](../../../../../backend/app/farm/core.py#L98)
+
+```python
+def __init__(self, **kwargs) -> не аннотирован
+```
+
+Создаёт экземпляр и сохраняет его зависимости; параметры перечислены ниже.
+
+| Параметр | Тип | По умолчанию | Назначение |
+| --- | --- | --- | --- |
+| `kwargs` | `не аннотирован` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
+
+Возвращает: `не аннотирован`.
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `PublicNetworkBackend`
 - `super`
-- `super().handle_async_request`
+- `super().__init__`
 
 </details>
 
 ## resolve_scheme
 
-[backend/app/farm/core.py:85](../../../../../backend/app/farm/core.py#L85)
+[backend/app/farm/core.py:106](../../../../../backend/app/farm/core.py#L106)
 
 ```python
 def resolve_scheme(existing: str | None, new: str | None, port: int) -> str
@@ -58,7 +161,7 @@ def resolve_scheme(existing: str | None, new: str | None, port: int) -> str
 
 ## parse_token
 
-[backend/app/farm/core.py:92](../../../../../backend/app/farm/core.py#L92)
+[backend/app/farm/core.py:113](../../../../../backend/app/farm/core.py#L113)
 
 ```python
 def parse_token(token: str) -> tuple[str, bool, int | None, str | None] | None
@@ -89,7 +192,7 @@ def parse_token(token: str) -> tuple[str, bool, int | None, str | None] | None
 
 ## parse_targets
 
-[backend/app/farm/core.py:142](../../../../../backend/app/farm/core.py#L142)
+[backend/app/farm/core.py:163](../../../../../backend/app/farm/core.py#L163)
 
 ```python
 def parse_targets(raw: str) -> tuple[dict[str, ParsedTarget], list[str]]
@@ -124,7 +227,7 @@ def parse_targets(raw: str) -> tuple[dict[str, ParsedTarget], list[str]]
 
 ## candidates_for
 
-[backend/app/farm/core.py:174](../../../../../backend/app/farm/core.py#L174)
+[backend/app/farm/core.py:195](../../../../../backend/app/farm/core.py#L195)
 
 ```python
 def candidates_for(tgt: ParsedTarget) -> list[ProbeCandidate]
@@ -148,7 +251,7 @@ def candidates_for(tgt: ParsedTarget) -> list[ProbeCandidate]
 
 ## trim_excess_ports
 
-[backend/app/farm/core.py:187](../../../../../backend/app/farm/core.py#L187)
+[backend/app/farm/core.py:208](../../../../../backend/app/farm/core.py#L208)
 
 ```python
 def trim_excess_ports(targets: dict[str, ParsedTarget]) -> list[str]
@@ -174,13 +277,13 @@ def trim_excess_ports(targets: dict[str, ParsedTarget]) -> list[str]
 
 ## build_transport
 
-[backend/app/farm/core.py:202](../../../../../backend/app/farm/core.py#L202)
+[backend/app/farm/core.py:223](../../../../../backend/app/farm/core.py#L223)
 
 ```python
 def build_transport(transport: httpx.AsyncBaseTransport | None, limits: httpx.Limits) -> httpx.AsyncBaseTransport
 ```
 
-В теле вызывает `ProbeTransport`, `httpx.AsyncHTTPTransport`.
+В теле вызывает `ProbeTransport`.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -193,13 +296,12 @@ def build_transport(transport: httpx.AsyncBaseTransport | None, limits: httpx.Li
 <summary>Прямые вызовы в теле</summary>
 
 - `ProbeTransport`
-- `httpx.AsyncHTTPTransport`
 
 </details>
 
 ## probe_candidates
 
-[backend/app/farm/core.py:212](../../../../../backend/app/farm/core.py#L212)
+[backend/app/farm/core.py:231](../../../../../backend/app/farm/core.py#L231)
 
 ```python
 async def probe_candidates(candidates: list[ProbeCandidate], *, transport: httpx.AsyncBaseTransport | None=None) -> list[ProbeResult]
@@ -229,7 +331,7 @@ HTTP-пробив кандидатов до корня `/`. БД не трога
 
 ## probe_candidates.probe_one
 
-[backend/app/farm/core.py:230](../../../../../backend/app/farm/core.py#L230)
+[backend/app/farm/core.py:249](../../../../../backend/app/farm/core.py#L249)
 
 ```python
 async def probe_one(c: ProbeCandidate) -> ProbeResult

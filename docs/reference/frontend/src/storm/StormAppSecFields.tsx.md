@@ -65,14 +65,14 @@ appsecMetadataFromTask(task?: TaskTrackerTask) => Partial<AppSecFieldsValue>
 [frontend/src/storm/StormAppSecFields.tsx:55](../../../../../frontend/src/storm/StormAppSecFields.tsx#L55)
 
 ```typescript
-Typeahead({ label, placeholder, value, fetchOptions, onPick, clearOnPick = false, t, }: { label: string; placeholder: string; value: string; fetchOptions: (q: string) => Promise<Opt[]>; onPick: (opt: Opt) => void; clearOnPick?: boolean; t: (s: string) => string; }) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
+Typeahead({ label, placeholder, value, fetchOptions, onPick, clearOnPick = false, onInputChange, codeAsValue = false, t, }: { label: string; placeholder: string; value: string; fetchOptions: (q: string) => Promise<Opt[]>; onPick: (opt: Opt) => void; clearOnPick?: boolean; onInputChange?: (value: string) => void; codeAsValue?: boolean; t: (s: string) => string; }) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
 ```
 
-В теле вызывает `opts.slice`, `opts.slice(0, 5).map`, `useEffect`, `useRef`, `useState`.
+В теле вызывает `opts.slice`, `opts.slice(0, 5).map`, `useEffect`, `useId`, `useRef`, `useState`.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
-| `{ label, placeholder, value, fetchOptions, onPick, clearOnPick = false, t, }` | `{ label: string; placeholder: string; value: string; fetchOptions: (q: string) => Promise<Opt[]>; onPick: (opt: Opt) => void; clearOnPick?: boolean; t: (s: string) => string; }` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
+| `{ label, placeholder, value, fetchOptions, onPick, clearOnPick = false, onInputChange, codeAsValue = false, t, }` | `{ label: string; placeholder: string; value: string; fetchOptions: (q: string) => Promise<Opt[]>; onPick: (opt: Opt) => void; clearOnPick?: boolean; onInputChange?: (value: string) => void; codeAsValue?: boolean; t: (s: string) => string; }` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
 
 Возвращает: `import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element`.
 
@@ -82,6 +82,7 @@ Typeahead({ label, placeholder, value, fetchOptions, onPick, clearOnPick = false
 - `opts.slice`
 - `opts.slice(0, 5).map`
 - `useEffect`
+- `useId`
 - `useRef`
 - `useState`
 
@@ -89,7 +90,7 @@ Typeahead({ label, placeholder, value, fetchOptions, onPick, clearOnPick = false
 
 ## TicketField
 
-[frontend/src/storm/StormAppSecFields.tsx:168](../../../../../frontend/src/storm/StormAppSecFields.tsx#L168)
+[frontend/src/storm/StormAppSecFields.tsx:176](../../../../../frontend/src/storm/StormAppSecFields.tsx#L176)
 
 ```typescript
 TicketField({ url, taskKey, onChange, t, }: { url: string; taskKey: string | null; onChange: (patch: Partial<AppSecFieldsValue>) => void; t: (s: string) => string; }) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -118,7 +119,7 @@ TicketField({ url, taskKey, onChange, t, }: { url: string; taskKey: string | nul
 
 ## TicketField.looksLikeUrl
 
-[frontend/src/storm/StormAppSecFields.tsx:191](../../../../../frontend/src/storm/StormAppSecFields.tsx#L191)
+[frontend/src/storm/StormAppSecFields.tsx:199](../../../../../frontend/src/storm/StormAppSecFields.tsx#L199)
 
 ```typescript
 looksLikeUrl(s: string) => boolean
@@ -142,13 +143,13 @@ looksLikeUrl(s: string) => boolean
 
 ## StormAppSecFields
 
-[frontend/src/storm/StormAppSecFields.tsx:298](../../../../../frontend/src/storm/StormAppSecFields.tsx#L298)
+[frontend/src/storm/StormAppSecFields.tsx:306](../../../../../frontend/src/storm/StormAppSecFields.tsx#L306)
 
 ```typescript
 StormAppSecFields({ value, onChange, works, t, }: { value: AppSecFieldsValue; onChange: (patch: Partial<AppSecFieldsValue>) => void; // true — показывать поля экспорта в Works (компонент/версия/исполнитель). // Поле тикета показывается всегда (нужно для отчёта независимо от Works). works: boolean; t: (s: string) => string; }) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
 ```
 
-В теле вызывает `fio2fi`, `t`, `useId`, `value.appsec_components.map`, `value.appsec_versions.map`.
+В теле вызывает `fio2fi`, `t`, `value.appsec_components.map`, `value.appsec_versions.map`.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -161,7 +162,6 @@ StormAppSecFields({ value, onChange, works, t, }: { value: AppSecFieldsValue; on
 
 - `fio2fi`
 - `t`
-- `useId`
 - `value.appsec_components.map`
 - `value.appsec_versions.map`
 

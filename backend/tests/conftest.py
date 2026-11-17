@@ -15,6 +15,7 @@ import pytest
 REQUIRED_TEST_ENV = {
     "DATABASE_URL": "postgresql+asyncpg://user:password@localhost:5432/storm_test",
     "JWT_SECRET_KEY": "test_secret_key_that_has_minimum_length_32_chars",
+    "DATA_ENCRYPTION_KEY": "independent_test_data_key_minimum_32_chars",
     "MINIO_ENDPOINT": "localhost:9000",
     "MINIO_ACCESS_KEY": "minioadmin",
     "MINIO_SECRET_KEY": "minioadmin",
@@ -25,6 +26,10 @@ REQUIRED_TEST_ENV = {
 
 for key, value in REQUIRED_TEST_ENV.items():
     os.environ.setdefault(key, value)
+
+# Моки процессов проверяют исходные аргументы; отдельные sandbox-тесты явно
+# включают профиль и проверяют setpriv/очистку env. Реальный firewall — отдельный smoke.
+os.environ['STORM_SCANNER_SANDBOX'] = '0'
 
 if not hasattr(datetime, "UTC"):
     datetime.UTC = datetime.timezone.utc  # type: ignore[attr-defined]

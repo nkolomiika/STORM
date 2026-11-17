@@ -1,14 +1,17 @@
 import asyncio
+import logging
 import re
 from io import BytesIO
 from uuid import uuid4
 from PIL import Image, UnidentifiedImageError
+from minio.error import S3Error
+from urllib3.exceptions import HTTPError as StorageHTTPError
 
 from fastapi import APIRouter, Depends, File as UploadApiFile, UploadFile
 from fastapi.responses import Response
 
 from app.dependencies import enforce_csrf, get_current_user, require_project_access
-from app.exceptions import NotFoundError, ValidationError
+from app.exceptions import NotFoundError, ServiceUnavailableError, ValidationError
 from app.models import User
 from app.storage.minio_client import MinioStorage
 from app.input_safety import read_upload
@@ -53,10 +56,14 @@ async def upload_project_image(
         raise ValidationError("Файл не является корректным изображением") from exc
 
     storage = MinioStorage()
-    await asyncio.to_thread(storage.ensure_bucket)
     image_name = f"{uuid4()}{_ALLOWED_EXT[detected]}"
     key = f"images/{project_id}/{image_name}"
-    await asyncio.to_thread(storage.upload_bytes_with_key, key, content, detected)
+    try:
+        await asyncio.to_thread(storage.ensure_bucket)
+        await asyncio.to_thread(storage.upload_bytes_with_key, key, content, detected)
+    except (S3Error, StorageHTTPError, OSError) as exc:
+        logging.getLogger('storm.storage').warning('project_image_upload_failed project_id=%s error_type=%s storage_code=%s', project_id, type(exc).__name__, getattr(exc, 'code', None))
+        raise ServiceUnavailableError('Не удалось загрузить изображение: хранилище временно недоступно.', 'storage_unavailable') from exc
     return {"url": f"/api/v1/projects/{project_id}/images/{image_name}/download"}
 
 
@@ -74,6 +81,10 @@ async def download_project_image(
     storage = MinioStorage()
     try:
         content, content_type = await asyncio.to_thread(storage.download_with_content_type, key)
-    except Exception as exc:
-        raise NotFoundError("Изображение не найдено") from exc
+    except S3Error as exc:
+        if exc.code in ('NoSuchKey', 'NoSuchObject'):
+            raise NotFoundError('Изображение не найдено') from exc
+        raise ServiceUnavailableError('Хранилище изображений временно недоступно.', 'storage_unavailable') from exc
+    except (StorageHTTPError, OSError) as exc:
+        raise ServiceUnavailableError('Хранилище изображений временно недоступно.', 'storage_unavailable') from exc
     return Response(content=content, media_type=content_type, headers={"Cache-Control": "private, max-age=86400"})

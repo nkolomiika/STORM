@@ -868,6 +868,12 @@ export async function findWorksVersions(q: string): Promise<WorksRef[]> {
   return data;
 }
 
+/** Подсказки продуктов STS; code сохраняется без преобразования регистра. */
+export async function findWorksProductCodes(q: string): Promise<WorksRef[]> {
+  const { data } = await api.get<WorksRef[]>("/works/product-codes", { params: { q } });
+  return data;
+}
+
 /** Текущая связь уязвимости с тикетом Works (или null). */
 export async function getVulnerabilityWorksLink(projectId: number, vulnerabilityId: number): Promise<WorksIssueLink | null> {
   const { data } = await api.get<WorksIssueLink | null>(`/projects/${projectId}/vulnerabilities/${vulnerabilityId}/works`);

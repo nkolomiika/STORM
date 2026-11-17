@@ -2,11 +2,11 @@
 
 Сгенерировано из объявлений кода. [Правила чтения](../../../METHODS.md).
 
-Методов и именованных функций: **11**.
+Методов и именованных функций: **15**.
 
 ## Settings._parse_sso_verify_tls
 
-[backend/app/config.py:268](../../../../backend/app/config.py#L268)
+[backend/app/config.py:275](../../../../backend/app/config.py#L275)
 
 ```python
 def _parse_sso_verify_tls(cls, v) -> не аннотирован
@@ -31,7 +31,7 @@ def _parse_sso_verify_tls(cls, v) -> не аннотирован
 
 ## Settings.sso_discovery_url
 
-[backend/app/config.py:281](../../../../backend/app/config.py#L281)
+[backend/app/config.py:288](../../../../backend/app/config.py#L288)
 
 ```python
 def sso_discovery_url(self) -> str
@@ -52,7 +52,7 @@ def sso_discovery_url(self) -> str
 
 ## Settings.sso_configured
 
-[backend/app/config.py:289](../../../../backend/app/config.py#L289)
+[backend/app/config.py:296](../../../../backend/app/config.py#L296)
 
 ```python
 def sso_configured(self) -> bool
@@ -71,7 +71,7 @@ def sso_configured(self) -> bool
 
 ## Settings.sso_scope_list
 
-[backend/app/config.py:294](../../../../backend/app/config.py#L294)
+[backend/app/config.py:301](../../../../backend/app/config.py#L301)
 
 ```python
 def sso_scope_list(self) -> list[str]
@@ -92,7 +92,7 @@ def sso_scope_list(self) -> list[str]
 
 ## Settings.sso_redirect_uri
 
-[backend/app/config.py:299](../../../../backend/app/config.py#L299)
+[backend/app/config.py:306](../../../../backend/app/config.py#L306)
 
 ```python
 def sso_redirect_uri(self) -> str
@@ -112,7 +112,7 @@ def sso_redirect_uri(self) -> str
 
 ## Settings.validate_secret_key
 
-[backend/app/config.py:306](../../../../backend/app/config.py#L306)
+[backend/app/config.py:313](../../../../backend/app/config.py#L313)
 
 ```python
 def validate_secret_key(cls, value: str) -> str
@@ -140,9 +140,125 @@ ValueError('JWT_SECRET_KEY должен содержать минимум 32 с�
 
 </details>
 
+## Settings.validate_data_encryption_key
+
+[backend/app/config.py:321](../../../../backend/app/config.py#L321)
+
+```python
+def validate_data_encryption_key(cls, value: str) -> str
+```
+
+Не допускает отсутствующий, пустой или короткий ключ данных.
+
+| Параметр | Тип | По умолчанию | Назначение |
+| --- | --- | --- | --- |
+| `value` | `str` | `обязательный` | Входное значение преобразования/проверки. |
+
+Возвращает: `str`.
+
+Явные raise в теле (исключения вызываемых методов могут добавляться):
+
+```python
+ValueError('DATA_ENCRYPTION_KEY должен содержать минимум 32 символа')
+```
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `ValueError`
+- `len`
+- `value.strip`
+
+</details>
+
+## Settings.reject_private_scan_targets
+
+[backend/app/config.py:329](../../../../backend/app/config.py#L329)
+
+```python
+def reject_private_scan_targets(cls, value: bool) -> bool
+```
+
+Не допускает отключение SSRF-защиты настройкой окружения.
+
+| Параметр | Тип | По умолчанию | Назначение |
+| --- | --- | --- | --- |
+| `value` | `bool` | `обязательный` | Входное значение преобразования/проверки. |
+
+Возвращает: `bool`.
+
+Явные raise в теле (исключения вызываемых методов могут добавляться):
+
+```python
+ValueError('Сканирование внутренних адресов запрещено политикой SSRF')
+```
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `ValueError`
+
+</details>
+
+## Settings.validate_previous_encryption_keys
+
+[backend/app/config.py:337](../../../../backend/app/config.py#L337)
+
+```python
+def validate_previous_encryption_keys(cls, values: list[str]) -> list[str]
+```
+
+Не допускает слабые ключи чтения; значения не включаются в сообщение ошибки.
+
+| Параметр | Тип | По умолчанию | Назначение |
+| --- | --- | --- | --- |
+| `values` | `list[str]` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
+
+Возвращает: `list[str]`.
+
+Явные raise в теле (исключения вызываемых методов могут добавляться):
+
+```python
+ValueError('Предыдущие ключи шифрования должны содержать минимум 32 символа')
+```
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `ValueError`
+- `any`
+- `len`
+
+</details>
+
+## Settings.validate_independent_encryption_keys
+
+[backend/app/config.py:344](../../../../backend/app/config.py#L344)
+
+```python
+def validate_independent_encryption_keys(self) -> 'Settings'
+```
+
+Запрещает использование JWT-ключа как активного или прежнего ключа данных.
+
+Возвращает: `'Settings'`.
+
+Явные raise в теле (исключения вызываемых методов могут добавляться):
+
+```python
+ValueError('JWT_SECRET_KEY и ключи шифрования данных должны различаться')
+```
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `ValueError`
+
+</details>
+
 ## Settings.cors_origins
 
-[backend/app/config.py:313](../../../../backend/app/config.py#L313)
+[backend/app/config.py:351](../../../../backend/app/config.py#L351)
 
 ```python
 def cors_origins(self) -> list[str]
@@ -162,7 +278,7 @@ def cors_origins(self) -> list[str]
 
 ## Settings.csrf_origins
 
-[backend/app/config.py:318](../../../../backend/app/config.py#L318)
+[backend/app/config.py:356](../../../../backend/app/config.py#L356)
 
 ```python
 def csrf_origins(self) -> list[str]
@@ -182,7 +298,7 @@ def csrf_origins(self) -> list[str]
 
 ## Settings.works_configured
 
-[backend/app/config.py:323](../../../../backend/app/config.py#L323)
+[backend/app/config.py:361](../../../../backend/app/config.py#L361)
 
 ```python
 def works_configured(self) -> bool
@@ -203,7 +319,7 @@ def works_configured(self) -> bool
 
 ## Settings.works_cookies_dict
 
-[backend/app/config.py:328](../../../../backend/app/config.py#L328)
+[backend/app/config.py:366](../../../../backend/app/config.py#L366)
 
 ```python
 def works_cookies_dict(self) -> dict[str, str]
@@ -225,7 +341,7 @@ def works_cookies_dict(self) -> dict[str, str]
 
 ## get_settings
 
-[backend/app/config.py:340](../../../../backend/app/config.py#L340)
+[backend/app/config.py:378](../../../../backend/app/config.py#L378)
 
 ```python
 def get_settings() -> Settings

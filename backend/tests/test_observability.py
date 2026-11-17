@@ -8,6 +8,9 @@ from app.observability import SafeLogFilter, redact_log, request_id
 
 @pytest.mark.parametrize('message,secret', [
     ('password=hunter2', 'hunter2'),
+    ('DATA_ENCRYPTION_KEY=private-key', 'private-key'),
+    ('JWT_SECRET_KEY=private-jwt-key', 'private-jwt-key'),
+    ('{"data_encryption_previous_keys": ["old-private", "second-private"]}', 'second-private'),
     ('{"access_token":"private-token","status":401}', 'private-token'),
     ('Authorization: Bearer private-token', 'private-token'),
     ('Cookie: session=private-token; other=also-private', 'also-private'),
@@ -45,6 +48,22 @@ def test_uvicorn_access_log_does_not_expose_raw_url():
                                ('client', 'GET', '/secret-path?token=private-token', '1.1', 200), None)
     SafeLogFilter().filter(record)
     assert '/secret-path' not in record.getMessage() and 'private-token' not in record.getMessage()
+
+
+@pytest.mark.parametrize('status', [200, 401, 403, 500, 502])
+def test_real_uvicorn_access_formatter_accepts_filtered_record(status):
+    from uvicorn.logging import AccessFormatter
+    record = logging.LogRecord('uvicorn.access', logging.INFO, __file__, 1,
+        '%s - "%s %s HTTP/%s" %d', ('client:1234', 'GET', '/auth/callback?code=private-token', '1.0', status), None)
+    context = request_id.set('request-uvicorn')
+    try:
+        SafeLogFilter().filter(record)
+        SafeLogFilter().filter(record)
+        output = AccessFormatter('%(client_addr)s - "%(request_line)s" %(status_code)s', use_colors=False).format(record)
+    finally:
+        request_id.reset(context)
+    assert str(status) in output and 'GET' in output
+    assert 'private-token' not in output and '/auth/callback' not in output
 
 
 def test_database_debug_logging_hides_bound_values():

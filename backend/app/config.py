@@ -1,18 +1,24 @@
 from functools import lru_cache
 from typing import Literal, Union
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     """Настройки приложения, загружаемые из переменных окружения."""
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", hide_input_in_errors=True)
 
     database_url: str
 
     jwt_secret_key: str
+    # Обязательный независимый секрет шифрования credentials и TOTP.
+    data_encryption_key: str
+    # Предыдущие секреты для чтения старых данных при ротации; в API не выдаются.
+    data_encryption_previous_keys: list[str] = Field(default_factory=list, max_length=5)
+    # Дополнительные доверенные интеграции (URL: точный host+port), только для приложения.
+    storm_trusted_egress: list[str] = Field(default_factory=list)
     jwt_access_token_expire_minutes: int = 30
     jwt_refresh_token_expire_days: int = 30
 
@@ -144,6 +150,8 @@ class Settings(BaseSettings):
     works_upload_path: str = "/rest/api/draft/files/v1/upload"
     works_component_find_path: str = "/extension/plugin/v2/rest/api/sber_components_plugin/v1/component/find"
     works_version_find_path: str = "/extension/plugin/v2/rest/api/swtr_task_tracker_plugin/v1/version/find"
+    works_product_codes_path: str = '/rest/api/suit/v1/bug_appsec'
+    works_product_codes_attribute: str = 'product_code_list_sts'
     # Поиск юнитов по ключам — для получения текущего workflow_status тикета (как в qg-sa).
     works_unit_find_path: str = "/rest/api/unit/v3/find"
     works_unit_detail_path: str = '/rest/api/unit/v2/{key}'
@@ -178,8 +186,7 @@ class Settings(BaseSettings):
     farm_max_concurrency: int = 20
     # Максимальный размер вставленного текста (и max_length схемы запроса), байт.
     farm_max_raw_bytes: int = 262144
-    # Разрешать ли пробив приватных/внутренних IP. По умолчанию НЕТ: ферма ходит
-    # только во внешнюю сеть (SSRF-guard). Включать осознанно на изолированном стенде.
+    # Совместимое имя настройки; включение приватных целей больше не допускается.
     farm_allow_private_targets: bool = False
     # Обратный резолв (PTR + forward-confirm) при импорте IP. Выключать на
     # изолированном стенде без DNS, чтобы не ждать таймаутов на каждом адресе.
@@ -308,6 +315,37 @@ class Settings(BaseSettings):
         if len(value) < 32:
             raise ValueError("JWT_SECRET_KEY должен содержать минимум 32 символа")
         return value
+
+    @field_validator('data_encryption_key')
+    @classmethod
+    def validate_data_encryption_key(cls, value: str) -> str:
+        """Не допускает отсутствующий, пустой или короткий ключ данных."""
+        if len(value.strip()) < 32:
+            raise ValueError('DATA_ENCRYPTION_KEY должен содержать минимум 32 символа')
+        return value
+
+    @field_validator('farm_allow_private_targets')
+    @classmethod
+    def reject_private_scan_targets(cls, value: bool) -> bool:
+        """Не допускает отключение SSRF-защиты настройкой окружения."""
+        if value:
+            raise ValueError('Сканирование внутренних адресов запрещено политикой SSRF')
+        return False
+
+    @field_validator('data_encryption_previous_keys')
+    @classmethod
+    def validate_previous_encryption_keys(cls, values: list[str]) -> list[str]:
+        """Не допускает слабые ключи чтения; значения не включаются в сообщение ошибки."""
+        if any(len(value) < 32 for value in values):
+            raise ValueError('Предыдущие ключи шифрования должны содержать минимум 32 символа')
+        return values
+
+    @model_validator(mode='after')
+    def validate_independent_encryption_keys(self) -> 'Settings':
+        """Запрещает использование JWT-ключа как активного или прежнего ключа данных."""
+        if self.jwt_secret_key in [self.data_encryption_key, *self.data_encryption_previous_keys]:
+            raise ValueError('JWT_SECRET_KEY и ключи шифрования данных должны различаться')
+        return self
 
     @property
     def cors_origins(self) -> list[str]:

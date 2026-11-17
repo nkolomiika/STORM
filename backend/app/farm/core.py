@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 from urllib.parse import urlsplit
 
 import httpx
+import httpcore
 
 from app.config import get_settings
 from app.netguard import is_disallowed_ip
@@ -59,24 +60,44 @@ class ProbeResult:
     error: str | None = None
 
 
-class ProbeTransport(httpx.AsyncHTTPTransport):
-    """Повторно резолвит host и отклоняет приватные IP
-    (защита от DNS-rebinding между нашим резолвом и реальным подключением)."""
+class PublicNetworkBackend(httpcore.AsyncNetworkBackend):
+    """Проверяет все DNS-адреса и подключается к проверенному IP без второго DNS.
 
-    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
-        host = request.url.host
-        if host:
-            # getaddrinfo блокирующий — уводим в поток, чтобы не стопорить event-loop
-            # на каждом соединении (пробив — это десятки параллельных connect'ов).
+    Имя origin остаётся у httpcore: Host, SNI и ключ пула соединений сохраняются.
+    Каждый новый socket, в том числе после redirect, проходит ту же проверку.
+    """
+    def __init__(self):
+        self.backend = httpcore.AnyIOBackend()
+
+    async def connect_tcp(self, host, port, timeout=None, local_address=None, socket_options=None):
+        """Никаких подключений к частично приватному или недоступному DNS-ответу."""
+        try:
+            infos = await asyncio.wait_for(asyncio.to_thread(socket.getaddrinfo, host, port, type=socket.SOCK_STREAM), timeout=timeout)
+            addresses = list(dict.fromkeys(info[4][0] for info in infos))
+        except (OSError, TimeoutError):
+            raise httpcore.ConnectError('Цель недоступна или запрещена политикой сети') from None
+        if not addresses or any(is_disallowed_ip(addr) for addr in addresses):
+            raise httpcore.ConnectError('Цель недоступна или запрещена политикой сети')
+        for address in addresses:
             try:
-                infos = await asyncio.to_thread(socket.getaddrinfo, host, None)
-            except socket.gaierror as exc:
-                raise httpx.ConnectError(f"DNS не разрешает {host}: {exc}") from exc
-            resolved = {info[4][0] for info in infos}
-            for addr in resolved:
-                if is_disallowed_ip(addr):
-                    raise httpx.ConnectError(f"{addr} для {host} запрещён (SSRF)")
-        return await super().handle_async_request(request)
+                return await self.backend.connect_tcp(address, port, timeout, local_address, socket_options)
+            except (httpcore.ConnectError, httpcore.ConnectTimeout):
+                continue
+        raise httpcore.ConnectError('Цель недоступна или запрещена политикой сети')
+
+    async def connect_unix_socket(self, *args, **kwargs):
+        """Сканеры не имеют доступа к Unix-сокетам сервисов контейнера."""
+        raise httpcore.ConnectError('Цель недоступна или запрещена политикой сети')
+
+    async def sleep(self, seconds):
+        await asyncio.sleep(seconds)
+
+
+class ProbeTransport(httpx.AsyncHTTPTransport):
+    """HTTPX 0.28: закрепляет безопасный сетевой backend в новом пуле httpcore."""
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._pool._network_backend = PublicNetworkBackend()
 
 
 # ---------------------------------------------------------------------- parse
@@ -204,8 +225,6 @@ def build_transport(
 ) -> httpx.AsyncBaseTransport:
     if transport is not None:  # test-seam (httpx.MockTransport)
         return transport
-    if settings.farm_allow_private_targets:
-        return httpx.AsyncHTTPTransport(verify=False, limits=limits)
     return ProbeTransport(verify=False, limits=limits)
 
 

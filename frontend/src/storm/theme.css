@@ -16,6 +16,8 @@
    ──────────────────────────────────────────────────────────────────────────── */
 
 :root {
+  color-scheme: light;
+  --st-control-border: var(--st-border);
   /* surfaces */
   --st-bg: #eef1f6;
   --st-surface: #ffffff;
@@ -80,6 +82,8 @@
 }
 
 :root[data-theme="dark"] {
+  color-scheme: dark;
+  --st-control-border: #77879f;
   /* surfaces — soft slate, not pure black; low glare, gentle step between levels */
   --st-bg: #171b22;
   --st-surface: #1e232c;
@@ -96,16 +100,16 @@
 
   /* text — softened so it doesn't glare against the dark surfaces */
   --st-text: #dbe1ea;
-  --st-text-2: #a6b1c1;
-  --st-text-3: #7e8a9b;
-  --st-text-faint: #616c7b;
+  --st-text-2: #bac5d6;
+  --st-text-3: #aebbcf;
+  --st-text-faint: #9baac0;
 
   /* brand / accent — a touch desaturated so it reads calm on dark */
-  --st-accent: #5b86df;
+  --st-accent: #8ab0fa;
   --st-accent-2: #78a0ef;
   --st-accent-soft: #21304c;
-  --st-accent-muted: #3d557f;
-  --st-on-accent: #ffffff;
+  --st-accent-muted: #9aaed0;
+  --st-on-accent: #101b2d;
 
   /* status — muted, readable hues (soft bg = deep tint of the same colour) */
   --st-success: #57b585;

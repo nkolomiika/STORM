@@ -12,6 +12,7 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
+    css: { include: [/theme\.css/] },
     setupFiles: "./src/setupTests.ts",
     /** Дубликаты компилированных *.test.js рядом с *.test.tsx давали двойной запуск одних и тех же тестов. */
     exclude: ["**/node_modules/**", "**/dist/**", "**/*.test.js"],

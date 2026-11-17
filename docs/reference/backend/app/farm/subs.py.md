@@ -6,7 +6,7 @@
 
 ## _normalize
 
-[backend/app/farm/subs.py:49](../../../../../backend/app/farm/subs.py#L49)
+[backend/app/farm/subs.py:51](../../../../../backend/app/farm/subs.py#L51)
 
 ```python
 def _normalize(name: str) -> str
@@ -32,7 +32,7 @@ def _normalize(name: str) -> str
 
 ## parse_roots
 
-[backend/app/farm/subs.py:57](../../../../../backend/app/farm/subs.py#L57)
+[backend/app/farm/subs.py:59](../../../../../backend/app/farm/subs.py#L59)
 
 ```python
 def parse_roots(raw: str) -> list[str]
@@ -62,7 +62,7 @@ def parse_roots(raw: str) -> list[str]
 
 ## in_scope
 
-[backend/app/farm/subs.py:71](../../../../../backend/app/farm/subs.py#L71)
+[backend/app/farm/subs.py:73](../../../../../backend/app/farm/subs.py#L73)
 
 ```python
 def in_scope(name: str, root: str) -> bool
@@ -86,7 +86,7 @@ name принадлежит поддереву root (сам root тоже в sco
 
 ## parse_crtsh
 
-[backend/app/farm/subs.py:76](../../../../../backend/app/farm/subs.py#L76)
+[backend/app/farm/subs.py:78](../../../../../backend/app/farm/subs.py#L78)
 
 ```python
 def parse_crtsh(raw_json: str, root: str) -> set[str]
@@ -120,7 +120,7 @@ def parse_crtsh(raw_json: str, root: str) -> set[str]
 
 ## parse_subfinder
 
-[backend/app/farm/subs.py:100](../../../../../backend/app/farm/subs.py#L100)
+[backend/app/farm/subs.py:102](../../../../../backend/app/farm/subs.py#L102)
 
 ```python
 def parse_subfinder(text: str, root: str) -> set[str]
@@ -149,14 +149,13 @@ def parse_subfinder(text: str, root: str) -> set[str]
 
 ## _fetch_crtsh
 
-[backend/app/farm/subs.py:113](../../../../../backend/app/farm/subs.py#L113)
+[backend/app/farm/subs.py:115](../../../../../backend/app/farm/subs.py#L115)
 
 ```python
 async def _fetch_crtsh(root: str) -> tuple[set[str], str | None]
 ```
 
-crt.sh по корню. Хост фиксированный (не пользовательский) — SSRF-transport
-не нужен; таймаут ограничивает зависание.
+crt.sh: закреплённый публичный IP и повторная проверка каждого redirect.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -167,6 +166,7 @@ crt.sh по корню. Хост фиксированный (не пользов
 <details>
 <summary>Прямые вызовы в теле</summary>
 
+- `ProbeTransport`
 - `client.get`
 - `httpx.AsyncClient`
 - `httpx.Timeout`
@@ -178,7 +178,7 @@ crt.sh по корню. Хост фиксированный (не пользов
 
 ## _run_subfinder
 
-[backend/app/farm/subs.py:129](../../../../../backend/app/farm/subs.py#L129)
+[backend/app/farm/subs.py:131](../../../../../backend/app/farm/subs.py#L131)
 
 ```python
 async def _run_subfinder(root: str) -> tuple[set[str], str | None]
@@ -200,6 +200,7 @@ subfinder -d root -silent. Нет бинаря — тихо пропускаем
 - `out.decode`
 - `parse_subfinder`
 - `proc.communicate`
+- `scanner_options`
 - `set`
 - `shutil.which`
 - `type`
@@ -208,7 +209,7 @@ subfinder -d root -silent. Нет бинаря — тихо пропускаем
 
 ## _default_collector
 
-[backend/app/farm/subs.py:146](../../../../../backend/app/farm/subs.py#L146)
+[backend/app/farm/subs.py:149](../../../../../backend/app/farm/subs.py#L149)
 
 ```python
 async def _default_collector(roots: list[str]) -> dict[str, tuple[set[str], list[str], list[str]]]
@@ -233,7 +234,7 @@ async def _default_collector(roots: list[str]) -> dict[str, tuple[set[str], list
 
 ## _default_collector.one
 
-[backend/app/farm/subs.py:148](../../../../../backend/app/farm/subs.py#L148)
+[backend/app/farm/subs.py:151](../../../../../backend/app/farm/subs.py#L151)
 
 ```python
 async def one(root: str) -> tuple[str, tuple[set[str], list[str], list[str]]]
@@ -260,7 +261,7 @@ async def one(root: str) -> tuple[str, tuple[set[str], list[str], list[str]]]
 
 ## SubdomainFarmService.__init__
 
-[backend/app/farm/subs.py:179](../../../../../backend/app/farm/subs.py#L179)
+[backend/app/farm/subs.py:182](../../../../../backend/app/farm/subs.py#L182)
 
 ```python
 def __init__(self, db: AsyncSession) -> None
@@ -283,7 +284,7 @@ def __init__(self, db: AsyncSession) -> None
 
 ## SubdomainFarmService._project_roots
 
-[backend/app/farm/subs.py:183](../../../../../backend/app/farm/subs.py#L183)
+[backend/app/farm/subs.py:186](../../../../../backend/app/farm/subs.py#L186)
 
 ```python
 async def _project_roots(self, project_id: int) -> list[str]
@@ -316,7 +317,7 @@ async def _project_roots(self, project_id: int) -> list[str]
 
 ## SubdomainFarmService._project_hostnames
 
-[backend/app/farm/subs.py:197](../../../../../backend/app/farm/subs.py#L197)
+[backend/app/farm/subs.py:200](../../../../../backend/app/farm/subs.py#L200)
 
 ```python
 async def _project_hostnames(self, project_id: int) -> set[str]
@@ -347,7 +348,7 @@ async def _project_hostnames(self, project_id: int) -> set[str]
 
 ## SubdomainFarmService._collect
 
-[backend/app/farm/subs.py:205](../../../../../backend/app/farm/subs.py#L205)
+[backend/app/farm/subs.py:208](../../../../../backend/app/farm/subs.py#L208)
 
 ```python
 async def _collect(self, roots: list[str], collector: Collector | None) -> tuple[set[str], list[str], list[str]]
@@ -375,7 +376,7 @@ async def _collect(self, roots: list[str], collector: Collector | None) -> tuple
 
 ## SubdomainFarmService.probe_and_import
 
-[backend/app/farm/subs.py:222](../../../../../backend/app/farm/subs.py#L222)
+[backend/app/farm/subs.py:225](../../../../../backend/app/farm/subs.py#L225)
 
 ```python
 async def probe_and_import(self, project_id: int, raw: str, actor_id: int, *, transport=None, detector=None, skip_targets: list[str] | None=None, collector: Collector | None=None) -> SubFarmResult
@@ -419,7 +420,7 @@ async def probe_and_import(self, project_id: int, raw: str, actor_id: int, *, tr
 
 ## SubdomainFarmService.create_job
 
-[backend/app/farm/subs.py:279](../../../../../backend/app/farm/subs.py#L279)
+[backend/app/farm/subs.py:282](../../../../../backend/app/farm/subs.py#L282)
 
 ```python
 async def create_job(self, project_id: int, raw: str, actor_id: int) -> HostFarmJob
@@ -460,7 +461,7 @@ ValidationError('Не удалось распознать ни одного ко
 
 ## SubdomainFarmService.get_job
 
-[backend/app/farm/subs.py:297](../../../../../backend/app/farm/subs.py#L297)
+[backend/app/farm/subs.py:300](../../../../../backend/app/farm/subs.py#L300)
 
 ```python
 async def get_job(self, project_id: int, job_id: int) -> HostFarmJob

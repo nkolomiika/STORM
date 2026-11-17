@@ -12,7 +12,7 @@ from app.config import get_settings
 from app.input_safety import validate_json_value
 from app.tracker_spaces import is_project_ticket
 from app.tracker_metadata import affected_versions, assignee_identity, unit_attributes, component_references
-from app.works import WorksClient, WorksError, _extract_items, _workflow_status_name, works_issue_url
+from app.works import WorksClient, WorksError, _extract_items, _workflow_status_name, works_issue_url, tracker_service_error
 
 
 def display(value) -> str:
@@ -150,9 +150,10 @@ class TaskTrackerService:
                     response = await client._client.post(client._url(path), json=body)
                 client._raise_for_status(response, 'task search')
                 payload = response.json()
-        except (WorksError,httpx.HTTPError,ValueError,RecursionError) as exc:
-            message = exc.message if isinstance(exc,WorksError) else 'Task Tracker недоступен или вернул некорректный ответ'
-            raise HTTPException(502,message) from exc
+        except WorksError as exc:
+            raise tracker_service_error(exc) from exc
+        except (httpx.HTTPError, ValueError, RecursionError) as exc:
+            raise HTTPException(502, 'Task Tracker недоступен или вернул некорректный ответ') from exc
         try:
             validate_json_value(payload)
         except ValueError as exc:

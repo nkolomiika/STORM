@@ -22,7 +22,7 @@ async def test_unconfigured_mail_is_friendly_and_creates_no_invitation(api, monk
     monkeypatch.setattr(get_settings(), 'smtp_host', host)
     response = await client.post('users/invitations', json={'email':'new@example.com'})
     assert response.status_code == 503, response.text
-    assert response.json() == {'detail':'Отправка писем пока не настроена. Обратитесь к администратору.', 'code':'mail_not_configured'}
+    assert response.json() == {'detail':'Отправка писем пока не настроена. Обратитесь к администратору.', 'code':'mail_not_configured', 'request_id': response.headers['x-request-id']}
     assert response.headers['x-request-id']
     async with aclosing(app.dependency_overrides[get_db]()) as stream:
         db = await anext(stream)
@@ -35,7 +35,7 @@ async def test_reset_with_disabled_mail_does_not_disclose_account_existence(api)
     known = await client.post('auth/password-reset/request', json={'email':'tester@example.com'})
     unknown = await client.post('auth/password-reset/request', json={'email':'unknown@example.com'})
     assert known.status_code == unknown.status_code == 503
-    assert known.json() == unknown.json()
+    assert {k:v for k,v in known.json().items() if k != 'request_id'} == {k:v for k,v in unknown.json().items() if k != 'request_id'}
 
 
 async def test_unexpected_error_is_safe_and_correlated_with_debug_log(api, monkeypatch, caplog):
@@ -51,7 +51,7 @@ async def test_unexpected_error_is_safe_and_correlated_with_debug_log(api, monke
     assert 'asyncpg' not in response.text and 'raw-secret' not in response.text
     assert data['request_id'] in caplog.text
     assert 'RuntimeError' in caplog.text and 'raw-secret' not in caplog.text
-    assert 'route=/api/v1/projects' in caplog.text and 'duration_ms=' in caplog.text
+    assert 'route=/projects' in caplog.text and 'duration_ms=' in caplog.text
 
 
 async def test_validation_does_not_echo_password_or_raw_pydantic_diagnostics(api):

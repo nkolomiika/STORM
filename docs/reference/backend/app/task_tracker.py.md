@@ -180,13 +180,14 @@ async def _request(self, *, key: str | None=None, query: str='') -> dict
 ```python
 HTTPException(502, 'Task Tracker вернул недопустимые данные')
 HTTPException(502, 'Task Tracker вернул неожиданный формат ответа')
-HTTPException(502, message)
+HTTPException(502, 'Task Tracker недоступен или вернул некорректный ответ')
 HTTPException(503, 'Task Tracker не настроен: проверьте WORKS_ENABLED, WORKS_BASE_URL и WORKS_API_TOKEN')
 HTTPException(503, 'Task Tracker: неверно настроен путь карточки задачи')
 HTTPException(503, 'Task Tracker: путь поиска должен быть относительным к WORKS_BASE_URL')
 HTTPException(503, 'WORKS_TASKS_SEARCH_BODY должен ограничивать поиск пространством APPSEC: используйте {space} в фильтре пространства')
 HTTPException(503, 'Демо-тикеты и реальная интеграция Task Tracker не могут быть включены одновременно')
 HTTPException(503, 'Для поиска задач Task Tracker требуется WORKS_TASKS_SEARCH_BODY — тело рабочего запроса unit/find из вашего инстанса')
+tracker_service_error(exc)
 ```
 
 <details>
@@ -208,6 +209,7 @@ HTTPException(503, 'Для поиска задач Task Tracker требуетс
 - `quote`
 - `response.json`
 - `settings.works_unit_detail_path.format`
+- `tracker_service_error`
 - `validate_json_value`
 
 </details>
@@ -270,7 +272,7 @@ def expand(value) -> не аннотирован
 
 ## TaskTrackerService.list_tasks
 
-[backend/app/task_tracker.py:164](../../../../backend/app/task_tracker.py#L164)
+[backend/app/task_tracker.py:165](../../../../backend/app/task_tracker.py#L165)
 
 ```python
 async def list_tasks(self, query: str | None=None, category: str | None=None) -> dict
@@ -307,7 +309,7 @@ async def list_tasks(self, query: str | None=None, category: str | None=None) ->
 
 ## TaskTrackerService.get_task
 
-[backend/app/task_tracker.py:185](../../../../backend/app/task_tracker.py#L185)
+[backend/app/task_tracker.py:186](../../../../backend/app/task_tracker.py#L186)
 
 ```python
 async def get_task(self, key: str) -> dict

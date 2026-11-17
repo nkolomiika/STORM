@@ -137,6 +137,7 @@ export interface Cred {
   username: string;
   /** Decrypted password — masked in the table until revealed. */
   password: string;
+  passwordAvailable?: boolean;
   /** Which host these creds are for (IP / name / cluster) — free text. */
   host: string;
   author: string;

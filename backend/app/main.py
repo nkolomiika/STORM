@@ -44,9 +44,9 @@ from app.services import UserService
 from app.storage.minio_client import MinioStorage
 from app.input_safety import SecurityHeadersMiddleware, validate_request_parameters
 from app.notification_events import deadline_loop
-from app.exceptions import ServiceUnavailableError
+from app.exceptions import ServiceUnavailableError, UpstreamServiceError
 from app.observability import RequestLogMiddleware, configure_logging
-from app.public_errors import public_message
+from app.public_errors import public_message, error_payload
 
 configure_logging()
 logger = logging.getLogger('storm.errors')
@@ -67,7 +67,6 @@ agent_api_v2 = FastAPI(
 )
 app.add_middleware(SecurityHeadersMiddleware)
 agent_api_v2.add_middleware(SecurityHeadersMiddleware)
-app.add_middleware(RequestLogMiddleware)
 
 
 def _register_protected_docs(fastapi_app: FastAPI, *, openapi_route: str, docs_route: str, redoc_route: str) -> None:
@@ -101,6 +100,7 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-Requested-With", "Origin", "Accept"],
 )
+app.add_middleware(RequestLogMiddleware)
 
 
 def _register_routes() -> None:
@@ -175,12 +175,12 @@ def _register_error_handlers() -> None:
             messages.append(f"{loc}: {message}" if loc else message)
         return "; ".join(messages) or "Некорректные входные данные"
 
-    async def request_validation_handler(_: Request, exc: RequestValidationError) -> JSONResponse:
+    async def request_validation_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
         logger.warning('request_validation_failed error_count=%s types=%s', len(exc.errors()), sorted({item['type'] for item in exc.errors()}))
-        return JSONResponse(status_code=422, content={"detail": _format_request_validation(exc)})
+        return JSONResponse(status_code=422, content=error_payload(422, _format_request_validation(exc), getattr(request.state, 'request_id', '')))
 
     async def app_error_handler(_: Request, exc: StormError) -> JSONResponse:
-        statuses = ((ServiceUnavailableError, 503), (NotFoundError, 404), (UnauthorizedError, 401),
+        statuses = ((UpstreamServiceError, 502), (ServiceUnavailableError, 503), (NotFoundError, 404), (UnauthorizedError, 401),
                     (ForbiddenError, 403), (ConflictError, 409), (ValidationError, 422))
         status_code = next((status for error_type, status in statuses if isinstance(exc, error_type)), 400)
         message = public_message(str(exc))

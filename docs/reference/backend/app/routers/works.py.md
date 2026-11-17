@@ -2,7 +2,7 @@
 
 Сгенерировано из объявлений кода. [Правила чтения](../../../../METHODS.md).
 
-Методов и именованных функций: **5**.
+Методов и именованных функций: **6**.
 
 ## get_works_config
 
@@ -43,7 +43,7 @@ router.get('/works/config', response_model=WorksConfigOut)
 async def find_works_components(q: str='', _user: User=Depends(get_current_user), db: AsyncSession=Depends(get_db)) -> list[WorksRefOut]
 ```
 
-Typeahead по компонентам Works (имя→UUID). Пусто, если не настроено.
+Подсказки компонентов STS; отказ интеграции возвращает 502/503.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -78,7 +78,7 @@ router.get('/works/components', response_model=list[WorksRefOut])
 async def find_works_versions(q: str='', _user: User=Depends(get_current_user), db: AsyncSession=Depends(get_db)) -> list[WorksRefOut]
 ```
 
-Typeahead по версиям Works (имя→UUID). Пусто, если не настроено.
+Подсказки версий STS; отказ интеграции возвращает 502/503.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -105,9 +105,44 @@ router.get('/works/versions', response_model=list[WorksRefOut])
 
 </details>
 
+## find_works_product_codes
+
+[backend/app/routers/works.py:50](../../../../../backend/app/routers/works.py#L50)
+
+```python
+async def find_works_product_codes(q: str='', _user: User=Depends(get_current_user), db: AsyncSession=Depends(get_db)) -> list[WorksRefOut]
+```
+
+Коды продуктов из taxonomy формы STS с точными значениями code.
+
+| Параметр | Тип | По умолчанию | Назначение |
+| --- | --- | --- | --- |
+| `q` | `str` | `''` | Определяется именем/типом и контрактом вызывающего кода. |
+| `_user` | `User` | `Depends(get_current_user)` | Определяется именем/типом и контрактом вызывающего кода. |
+| `db` | `AsyncSession` | `Depends(get_db)` | Асинхронная SQLAlchemy-сессия текущего запроса. |
+
+Возвращает: `list[WorksRefOut]`.
+
+Dependencies: `get_current_user`, `get_db`.
+
+Маршруты:
+
+```python
+router.get('/works/product-codes', response_model=list[WorksRefOut])
+```
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `WorksRefOut`
+- `WorksService`
+- `WorksService(db).find_product_codes`
+
+</details>
+
 ## get_vulnerability_works_link
 
-[backend/app/routers/works.py:53](../../../../../backend/app/routers/works.py#L53)
+[backend/app/routers/works.py:64](../../../../../backend/app/routers/works.py#L64)
 
 ```python
 async def get_vulnerability_works_link(project_id: int, vuln_id: int, _project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> WorksIssueLinkOut | None
@@ -142,7 +177,7 @@ router.get('/projects/{project_id}/vulnerabilities/{vuln_id}/works', response_mo
 
 ## export_vulnerability_to_works
 
-[backend/app/routers/works.py:67](../../../../../backend/app/routers/works.py#L67)
+[backend/app/routers/works.py:77](../../../../../backend/app/routers/works.py#L77)
 
 ```python
 async def export_vulnerability_to_works(project_id: int, vuln_id: int, payload: WorksExportRequest, _: None=Depends(enforce_csrf), current_user: User=Depends(get_current_user), _project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> WorksIssueLinkOut

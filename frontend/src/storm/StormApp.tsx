@@ -22,10 +22,10 @@ import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 import "./storm.css";
 import { Icon, SberMark } from "./icons";
-import { imageTitleSize } from "./imageSize";
 import { EndpointDiscussion } from "./EndpointDiscussion";
 import { buildHostIndex } from "./hostIndex";
 import { SwaggerEndpointImport } from "./SwaggerEndpointImport";
+import StormMarkdown from "./StormMarkdown";
 import { ENDPOINT_METHODS } from "./swaggerEndpoints";
 
 /* TipTap/ProseMirror is ~460 kB — more than the rest of the app put together, and
@@ -41,7 +41,6 @@ import { PasswordInput } from "./PasswordInput";
 import { StormAppSecFields, emptyAppsecFields, appsecMetadataFromTask, type AppSecFieldsValue } from "./StormAppSecFields";
 import { missingStsProjectFields } from "./projectExport";
 import { t, useLangStore, formatRelativeTime as relTime, activityNoun, activityVerb } from "./i18n";
-import { markdownUrlTransform } from "../markdownUrlTransform";
 import {
   getApiErrorMessage as rawGetApiErrorMessage,
   getApiErrorStatus,
@@ -982,6 +981,7 @@ interface ApiProjectRow {
   hostsCount: number;
   /** AppSec-тикет проекта — чтобы в разделе Tasks показать ссылку на проект. */
   appsec_ticket_key: string | null;
+  stsMissing: string[];
 }
 
 function initialsOf(name: string): string {
@@ -1007,96 +1007,9 @@ function computeCvss4(vector?: string): { score: number; sev: Severity } | null 
   return { score, sev: severityFromCvssScore(score) as Severity };
 }
 
-/** Minimal Markdown → React renderer for the read-only note viewer. */
-function mdInline(text: string, kb: string): ReactNode[] {
-  const nodes: ReactNode[] = [];
-  let rest = text;
-  let key = 0;
-  // Image (`![alt](src)`) must come first so it wins over the link rule below.
-  const re = /(!\[([^\]]*)\]\(([^)\s]+)(?:\s+"(?:\\.|[^"\\])*")?\)|\*\*([^*]+)\*\*|\*([^*]+)\*|`([^`]+)`|\[([^\]]+)\]\(([^)]+)\))/;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(rest))) {
-    if (m.index > 0) nodes.push(rest.slice(0, m.index));
-    if (m[2] != null) {
-      // Image: sanitise the URL the same way the Markdown viewer does (allows
-      // data:image and same-origin/http, drops javascript: and other schemes).
-      const safe = markdownUrlTransform(m[3]);
-      const metadata = imageTitleSize(/\s+"((?:\\.|[^"\\])*)"\)$/.exec(m[0])?.[1]?.replace(/\\"/g, '"'));
-      if (safe)
-        nodes.push(
-          <a key={`${kb}-${key++}`} href={safe} target="_blank" rel="noopener noreferrer" style={{ display: "block", margin: "6px 0" }}>
-            <img src={safe} alt={m[2] || ""} width={metadata.width ?? undefined} title={metadata.title || undefined} style={{ height: "auto", maxWidth: "100%", borderRadius: 8, border: "1px solid var(--st-border)", cursor: "zoom-in", display: "block" }} />
-          </a>
-        );
-    } else if (m[4] != null) nodes.push(<strong key={`${kb}-${key++}`}>{m[4]}</strong>);
-    else if (m[5] != null) nodes.push(<em key={`${kb}-${key++}`}>{m[5]}</em>);
-    else if (m[6] != null)
-      nodes.push(
-        <code key={`${kb}-${key++}`} style={{ background: "var(--st-divider)", borderRadius: 5, padding: "1px 5px", fontFamily: "ui-monospace,Menlo,monospace", fontSize: ".9em" }}>
-          {m[6]}
-        </code>
-      );
-    else if (m[7] != null)
-      nodes.push(
-        <a key={`${kb}-${key++}`} href={m[8]} style={{ color: "var(--st-accent-2)" }}>
-          {m[7]}
-        </a>
-      );
-    rest = rest.slice(m.index + m[0].length);
-  }
-  if (rest) nodes.push(rest);
-  return nodes;
-}
+/** Единый безопасный GFM-рендерер для заметок и Markdown-полей. */
 function renderMarkdown(src: string): ReactNode {
-  const lines = src.replace(/\r/g, "").split("\n");
-  const blocks: ReactNode[] = [];
-  let list: string[] | null = null;
-  let key = 0;
-  const flush = () => {
-    if (list) {
-      const items = list;
-      const k = key++;
-      blocks.push(
-        <ul key={`b${k}`} style={{ margin: "4px 0 8px", paddingLeft: 20 }}>
-          {items.map((it, i) => (
-            <li key={i} style={{ margin: "2px 0" }}>
-              {mdInline(it, `li${k}-${i}`)}
-            </li>
-          ))}
-        </ul>
-      );
-      list = null;
-    }
-  };
-  for (const ln of lines) {
-    const hm = ln.match(/^(#{1,3})\s+(.*)$/);
-    const li = ln.match(/^\s*[-*]\s+(.*)$/);
-    if (hm) {
-      flush();
-      const lvl = hm[1].length;
-      const size = lvl === 1 ? 18 : lvl === 2 ? 15.5 : 13.5;
-      const k = key++;
-      blocks.push(
-        <div key={`b${k}`} style={{ fontWeight: 800, fontSize: size, color: "var(--st-text)", margin: "8px 0 4px" }}>
-          {mdInline(hm[2], `h${k}`)}
-        </div>
-      );
-    } else if (li) {
-      (list = list || []).push(li[1]);
-    } else if (ln.trim() === "") {
-      flush();
-    } else {
-      flush();
-      const k = key++;
-      blocks.push(
-        <div key={`b${k}`} style={{ margin: "3px 0" }}>
-          {mdInline(ln, `p${k}`)}
-        </div>
-      );
-    }
-  }
-  flush();
-  return <div style={{ fontSize: 13.5, lineHeight: 1.6, color: "var(--st-text-2)" }}>{blocks}</div>;
+  return <StormMarkdown value={src} />;
 }
 
 /** Deterministic sparkline point string (ported from prototype). */
@@ -1266,6 +1179,7 @@ function toStormCred(c: ApiProjectCredential): Cred {
     id: c.id,
     username: c.username || "",
     password: c.password || "",
+    passwordAvailable: c.password_available !== false && c.password !== null,
     host: c.host || "",
     author: c.created_by_username || "—",
     when: toDispDate((c.updated_at || c.created_at || "").slice(0, 10)),
@@ -1478,7 +1392,14 @@ function elapsedPct(startISO: string, endISO: string): number {
 }
 
 export function StormApp() {
-  const [state, setStateRaw] = useState<StormState>(initialState);
+  const [state, setStateRaw] = useState<StormState>(() => ({ ...initialState, sidebarCollapsed: window.matchMedia('(max-width: 1100px)').matches }));
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 1100px)');
+    const sync = () => setStateRaw((current) => ({ ...current, sidebarCollapsed: query.matches }));
+    query.addEventListener('change', sync);
+    return () => query.removeEventListener('change', sync);
+  }, []);
+  const sidebarCollapsed = state.sidebarCollapsed;
   const taskProjectRequest = useRef(0);
   useEffect(() => {
     setStateRaw((s) => s.tasksCreatingKey ? { ...s, tasksCreatingKey: null } : s);
@@ -1644,6 +1565,7 @@ export function StormApp() {
             totalFindings: st?.total_findings ?? 0,
             hostsCount: st?.hosts_count ?? 0,
             appsec_ticket_key: p.appsec_ticket_key ?? null,
+            stsMissing: missingStsProjectFields(p),
           };
         });
         if (!cancelled) setStateRaw((s) => ({ ...s, apiProjects: rows, projectsLoading: false }));
@@ -2052,6 +1974,9 @@ export function StormApp() {
      bumps the matching `*Tick` to reload. */
   const projRow = state.apiProjects?.find((p) => p.id === state.openProjectId) ?? null;
   const projName = projRow?.name ?? "";
+  const stsMissing = projRow?.stsMissing ?? ["AppSec ticket", "Assignee", "Affected versions", "Product code", "Component"];
+  const canExportSts = projRow != null && stsMissing.length === 0;
+  const stsExportHint = canExportSts ? t("Export to Task Tracker") : t("Complete project details to export. Missing: {fields}", { fields: stsMissing.map((field) => t(field)).join(", ") });
   const d: ProjectDetail = {
     status: projRow && (projRow.status === "archived" || projRow.status === "completed") ? "archived" : "active",
     start: toDispDate(projRow?.startISO),
@@ -4096,7 +4021,7 @@ export function StormApp() {
   const newCount = notifs.filter((n) => n.unread).length;
   const hasUnread = newCount > 0;
 
-  const sideW = state.sidebarCollapsed ? "76px" : "236px";
+  const sideW = sidebarCollapsed ? "76px" : "236px";
 
   // ---- section tab styling ----
   const sec = state.section;
@@ -4670,7 +4595,7 @@ export function StormApp() {
       </div>
 
       {/* stat cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(5,minmax(0,1fr))", gap: 16, margin: "26px 0 22px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,180px),1fr))", gap: 16, margin: "26px 0 22px" }}>
         {[
           { icon: "trend-up" as const, iconColor: "var(--st-accent-2)", label: "Active", value: String(activeCount), spark: cumulativeSpark(projCreatedTimes(activeRows), ...projWindow(activeRows)), stroke: "var(--st-accent-2)", w: 111 },
           { icon: "archive" as const, iconColor: "var(--st-text-3)", label: "Archived", value: String(archivedCount), spark: cumulativeSpark(projCreatedTimes(archivedRows), ...projWindow(archivedRows)), stroke: "var(--st-text-faint)", w: 111 },
@@ -4678,14 +4603,14 @@ export function StormApp() {
           { icon: "star" as const, iconColor: "var(--st-accent-2)", label: "Projects", value: String(tabProjects.length), spark: cumulativeSpark(projCreatedTimes(tabProjects), ...projWindow(tabProjects)), stroke: "var(--st-accent-muted)", w: 111 },
           { icon: "server" as const, iconColor: "var(--st-success)", label: "Hosts", value: String(tabProjects.reduce((s, p) => s + p.hostsCount, 0)), spark: cumulativeSpark(aggHostTimes(tabProjects), ...projWindow(tabProjects)), stroke: "var(--st-success)", w: 111 },
         ].map((c) => (
-          <div key={c.label} className="statc" style={{ ...CARD, padding: "16px 18px" }}>
+          <div key={t(c.label)} className="statc" style={{ ...CARD, padding: "16px 18px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--st-text-3)", font: "600 11.5px Inter,sans-serif", letterSpacing: ".5px", textTransform: "uppercase" }}>
               <Icon name={c.icon} size={15} color={c.iconColor} sw={2.1} />
-              {c.label}
+              {t(c.label)}
             </div>
             <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginTop: 8 }}>
               <div className="mono" style={{ fontWeight: 800, fontSize: 26, color: "var(--st-text)", lineHeight: 1, letterSpacing: "-1px" }}>{c.value}</div>
-              <svg width={c.w} height="30" viewBox={`0 0 ${c.w} 30`} fill="none" style={{ flex: "none" }}>
+              <svg width={c.w} height="30" viewBox={`0 0 ${c.w} 30`} fill="none" style={{ flex: "0 1 111px", maxWidth: "60%", minWidth: 0 }}>
                 <polygon points={sparkArea(c.spark, c.w)} fill={c.stroke} fillOpacity={0.15} />
                 <polyline points={c.spark} stroke={c.stroke} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
@@ -4716,10 +4641,10 @@ export function StormApp() {
           </svg>
           <input placeholder={t("Filter projects…")} value={state.query} onChange={(e) => setState({ query: e.target.value })} />
         </label>
-        <div className="clk iconbtn" onClick={() => setState((s) => ({ projSort: s.projSort === "first" ? "last" : "first" }))} style={{ display: "flex", alignItems: "center", gap: 9, height: 40, padding: "0 16px", border: "1px solid var(--st-border)", borderRadius: 20, background: "var(--st-surface)", font: "500 13.5px Inter,sans-serif", color: "var(--st-text-2)" }}>
-          <Icon name="sort" size={16} />
+        <button type="button" className="clk iconbtn" onClick={() => setState((s) => ({ projSort: s.projSort === "first" ? "last" : "first" }))} style={{ display: "flex", alignItems: "center", gap: 9, height: 40, width: 172, flexShrink: 0, justifyContent: "center", boxSizing: "border-box", padding: "0 16px", border: "1px solid var(--st-border)", borderRadius: 20, background: "var(--st-surface)", font: "500 13.5px Inter,sans-serif", color: "var(--st-text-2)" }}>
+          <Icon name={state.projSort === "first" ? "sort-asc" : "sort-desc"} size={16} />
           {state.projSort === "first" ? t("First updated") : t("Last updated")}
-        </div>
+        </button>
       </div>
 
       {/* table */}
@@ -4729,7 +4654,7 @@ export function StormApp() {
             <div>#</div>
             <div>{t("Project")}</div>
             <div>{t("Findings")}</div>
-            <div>{t("Last updated")}</div>
+            <div>{t("Updated")}</div>
             <div style={{ textAlign: "right" }}>{t("Actions")}</div>
           </div>
         )}
@@ -4859,9 +4784,9 @@ export function StormApp() {
           </div>
           <div style={{ flex: 1 }} />
           {searchBox(t("Filter tasks by title…"), state.tasksQuery, (v) => setState({ tasksQuery: v }), 280)}
-          <div className="clk iconbtn" onClick={() => setState((s) => ({ tasksSort: s.tasksSort === "first" ? "last" : "first" }))} style={{ display: "flex", alignItems: "center", gap: 9, height: 40, padding: "0 16px", border: "1px solid var(--st-border)", borderRadius: 20, background: "var(--st-surface)", font: "500 13.5px Inter,sans-serif", color: "var(--st-text-2)" }}>
-            <Icon name="sort" size={16} />{state.tasksSort === "first" ? t("First updated") : t("Last updated")}
-          </div>
+          <button type="button" className="clk iconbtn" onClick={() => setState((s) => ({ tasksSort: s.tasksSort === "first" ? "last" : "first" }))} style={{ display: "flex", alignItems: "center", gap: 9, height: 40, width: 172, flexShrink: 0, justifyContent: "center", boxSizing: "border-box", padding: "0 16px", border: "1px solid var(--st-border)", borderRadius: 20, background: "var(--st-surface)", font: "500 13.5px Inter,sans-serif", color: "var(--st-text-2)" }}>
+            <Icon name={state.tasksSort === "first" ? "sort-asc" : "sort-desc"} size={16} />{state.tasksSort === "first" ? t("First updated") : t("Last updated")}
+          </button>
         </div>
         <div style={{ ...CARD, overflow: "hidden" }}>
           {filtered.length > 0 && (
@@ -5138,7 +5063,7 @@ export function StormApp() {
               // view only counts as active when Recon itself is the open section.
               const on = sec === "hosts" && rv === it.v;
               return (
-                <div key={it.v} className={`reconrow clk${on ? " on" : ""}`} onClick={() => selRecon(it.v)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 11px", borderRadius: 10, font: "600 13.5px Inter,sans-serif" }}>
+                <div key={it.v} className={`reconrow clk${on ? " on" : ""}`} onClick={() => selRecon(it.v)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 11px", marginTop: 2, borderRadius: 10, font: "600 13.5px Inter,sans-serif" }}>
                   <Icon name={it.icon} size={17} />
                   {t(it.label)}
                   <span className="mono" style={{ marginLeft: "auto", minWidth: 22, textAlign: "center", fontSize: 11, fontWeight: 700, color: on ? "var(--st-accent)" : "var(--st-text-3)", background: on ? "var(--st-accent-soft)" : "var(--st-hover)", border: `1px solid ${on ? "var(--st-accent-muted)" : "var(--st-border-light)"}`, borderRadius: 6, padding: "1px 6px" }}>{it.count}</span>
@@ -5248,6 +5173,9 @@ export function StormApp() {
                   <Icon name="edit" size={15} color="var(--st-on-accent)" sw={2.4} />{t("Edit IP")}
                 </button>
               )}
+              {sec === "hosts" && rv === "endpoints" && state.epImportOpen && (
+                <SwaggerEndpointImport disabled={state.epImportBusy} onParsed={importSwaggerEndpoints} />
+              )}
               {sec === "hosts" && rv === "endpoints" && !state.epImportOpen && (
                 <>
                   <button className="clk" onClick={() => openReconExport("endpoints")} style={{ height: 42, padding: "0 16px", border: "1px solid var(--st-border)", borderRadius: 10, background: "var(--st-surface)", font: "700 13px Inter,sans-serif", color: "var(--st-accent-2)", display: "inline-flex", alignItems: "center", gap: 7 }}>
@@ -5274,9 +5202,9 @@ export function StormApp() {
               )}
               {sec === "vulns" && state.openVulnId == null && (
                 <>
-                  <button className="clk" onClick={openBulkTaskTracker} style={{ height: 42, padding: "0 16px", border: "1px solid var(--st-border)", borderRadius: 10, background: "var(--st-surface)", font: "700 13px Inter,sans-serif", color: "var(--st-accent-2)", display: "inline-flex", alignItems: "center", gap: 7 }}>
+                  <span className="export-availability" title={stsExportHint}><button className="clk" disabled={!canExportSts} title={stsExportHint} onClick={openBulkTaskTracker} style={{ height: 42, padding: "0 16px", border: "1px solid var(--st-border)", borderRadius: 10, background: "var(--st-surface)", font: "700 13px Inter,sans-serif", color: "var(--st-accent-2)", display: "inline-flex", alignItems: "center", gap: 7 }}>
                     <Icon name="upload" size={15} sw={2.2} color="var(--st-accent-2)" />{t("Export all to Task Tracker")}
-                  </button>
+                  </button></span>
                   <button className="addbtn clk" onClick={() => openEditor("vuln", "add", -1)} style={{ height: 42 }}><Icon name="plus" size={15} color="var(--st-on-accent)" sw={2.6} />{t("Add issue")}</button>
                 </>
               )}
@@ -5288,9 +5216,11 @@ export function StormApp() {
                       <Icon name="check-circle" size={15} color="var(--st-success)" sw={2.2} />{state.vulnWorksLink.works_key}{state.vulnWorksLink.works_status ? ` · ${state.vulnWorksLink.works_status}` : ""}
                     </a>
                   )}
-                  <button className="addbtn clk" onClick={() => state.openVulnId != null && openTaskTrackerExport(state.openVulnId)} style={{ height: 42 }}>
-                    <Icon name="upload" size={15} color="var(--st-on-accent)" sw={2.4} />{t("Export to Task Tracker")}
-                  </button>
+                  <span className="export-availability" title={stsExportHint}>
+                    <button className="addbtn clk" disabled={!canExportSts} onClick={() => state.openVulnId != null && openTaskTrackerExport(state.openVulnId)} style={{ height: 42 }}>
+                      <Icon name="upload" size={15} color="currentColor" sw={2.4} />{t("Export to Task Tracker")}
+                    </button>
+                  </span>
                 </>
               )}
               {sec === "notes" && (
@@ -5388,9 +5318,9 @@ export function StormApp() {
           { icon: "star" as const, color: "var(--st-purple)", label: "My findings", value: myFindingsCount, spark: cumulativeSpark(myVulns.map((v) => v.created), wStart, wEnd), stroke: "var(--st-purple)", onClick: goToMyFindings },
           ];
         })().map((c) => (
-          <div key={c.label} className="statc clk" onClick={c.onClick} style={{ ...CARD, padding: "16px 18px", cursor: "pointer" }}>
+          <div key={t(c.label)} className="statc clk" onClick={c.onClick} style={{ ...CARD, padding: "16px 18px", cursor: "pointer" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--st-text-3)", font: "600 11.5px Inter,sans-serif", letterSpacing: ".5px", textTransform: "uppercase" }}>
-              <Icon name={c.icon} size={15} color={c.color} sw={2.1} />{c.label}
+              <Icon name={c.icon} size={15} color={c.color} sw={2.1} />{t(c.label)}
             </div>
             <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginTop: 8 }}>
               <div className="mono" style={{ fontWeight: 800, fontSize: 26, color: "var(--st-text)", lineHeight: 1, letterSpacing: "-1px" }}>{c.value}</div>
@@ -5410,10 +5340,10 @@ export function StormApp() {
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(6,minmax(0,1fr))", gap: 12 }}>
           {sevBars.map((b) => (
-            <div key={b.label} className="statc clk" onClick={b.onClick} style={{ border: "1px solid var(--st-bg)", borderRadius: 13, padding: "15px 16px", background: b.tileBg, cursor: "pointer" }}>
+            <div key={t(b.label)} className="statc clk" onClick={b.onClick} style={{ border: "1px solid var(--st-bg)", borderRadius: 13, padding: "15px 16px", background: b.tileBg, cursor: "pointer" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                 <span style={{ width: 9, height: 9, borderRadius: 3, background: b.color }} />
-                <span style={{ font: "700 10.5px Inter,sans-serif", textTransform: "uppercase", letterSpacing: ".5px", color: b.color }}>{b.label}</span>
+                <span style={{ font: "700 10.5px Inter,sans-serif", textTransform: "uppercase", letterSpacing: ".5px", color: b.color }}>{t(b.label)}</span>
               </div>
               <div className="mono" style={{ fontSize: 30, fontWeight: 800, color: "var(--st-text)", marginTop: 10, lineHeight: 1 }}>{b.count}</div>
             </div>
@@ -5513,7 +5443,6 @@ export function StormApp() {
     preview: string;
     busy: boolean;
     submitLabel?: string;
-    headerAction?: ReactNode;
     busyLabel?: string;
     onRaw: (v: string) => void;
     onPreview: (v: string) => void;
@@ -5529,7 +5458,6 @@ export function StormApp() {
         <div style={{ flex: "none", display: "flex", alignItems: "center", gap: 10, padding: "16px 22px", borderBottom: "1px solid var(--st-divider)" }}>
           <span className="clk" onClick={cfg.onCancel} style={{ display: "flex", color: "var(--st-text-3)", cursor: "pointer" }}><Icon name="chevron-left" size={20} /></span>
           <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "var(--st-text)" }}>{cfg.title}</h2>
-          {cfg.headerAction && <div style={{ marginLeft: "auto" }}>{cfg.headerAction}</div>}
         </div>
         <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", padding: "18px 22px 20px" }}>
           <div style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
@@ -5584,7 +5512,6 @@ export function StormApp() {
   const renderEpImport = () =>
     renderImportPage({
       title: t("Add endpoints"),
-      headerAction: <SwaggerEndpointImport disabled={state.epImportBusy} onParsed={importSwaggerEndpoints} />,
       pasteLabel: t("Paste endpoints"),
       placeholder: "https://api.example.com/v1/login\nhttps://example.com/admin\nPOST https://example.com/api/users",
       previewPlaceholder: t("parsed endpoints appear here…"),
@@ -6351,11 +6278,11 @@ export function StormApp() {
               <div style={{ font: "600 14px Inter,sans-serif", color: "var(--st-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.title}</div>
               <div className="mono" style={{ fontSize: 12, color: "var(--st-text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.host}</div>
               <div style={{ display: "flex", alignItems: "center", gap: 7, font: "600 12px Inter,sans-serif", color: VSTATUS[v.status] ?? "var(--st-text-3)" }}><span style={{ width: 6, height: 6, flex: "none", borderRadius: "50%", background: VSTATUS[v.status] ?? "var(--st-text-3)" }} />{t(VSTATUS_LABEL[v.status] ?? v.status)}</div>
-              <span style={{ justifySelf: "start", font: "700 10.5px Inter,sans-serif", textTransform: "uppercase", letterSpacing: ".5px", borderRadius: 7, padding: "4px 9px", background: SEV[v.sev].bg, color: SEV[v.sev].color }}>{v.sev}</span>
+              <span style={{ justifySelf: "start", font: "700 10.5px Inter,sans-serif", textTransform: "uppercase", letterSpacing: ".5px", borderRadius: 7, padding: "4px 9px", background: SEV[v.sev].bg, color: SEV[v.sev].color }}>{t(v.sev)}</span>
               <div className="mono" style={{ fontSize: 12, color: "var(--st-text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.author}</div>
               <div className="mono" style={{ fontSize: 11.5, color: "var(--st-text-faint)" }}>{relTime(v.updated)}</div>
               <div style={{ display: "flex", justifyContent: "center", gap: 2 }}>
-                <div className="actbtn" title={t("Export to Task Tracker")} onClick={(e) => { e.stopPropagation(); openTaskTrackerExport(v.id); }}><Icon name="upload" size={15} /></div>
+                <span className="export-availability" title={stsExportHint}><button type="button" className="actbtn" aria-label={t("Export to Task Tracker")} disabled={!canExportSts} onClick={(e) => { e.stopPropagation(); openTaskTrackerExport(v.id); }}><Icon name="upload" size={15} /></button></span>
                 <div className="actbtn del" onClick={v.onDelete}><Icon name="trash" size={15} /></div>
               </div>
             </div>
@@ -6621,9 +6548,11 @@ export function StormApp() {
               {/* password (masked) + reveal + copy — the value box is a fixed width so
                   revealing never shifts the icons */}
               <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                {c.passwordAvailable === false ? <span style={{ ...monoCell, flex: '0 1 auto', color: 'var(--st-text-faint)' }} title={t('Ask an administrator to restore the encryption key, or set a new password.')}>{t('Password unavailable')}</span> : <>
                 <span style={{ ...monoCell, flex: "0 1 18ch" }}>{revealed ? c.password : CRED_MASK}</span>
                 <div className="actbtn" title={revealed ? t("Hide password") : t("Reveal password")} onClick={() => toggleCredReveal(c.id)}><Icon name={revealed ? "lock" : "eye"} size={14} /></div>
                 <div className="actbtn" title={t("Copy password")} onClick={() => copyText(c.password, "Password")}><Icon name="copy" size={14} /></div>
+                </>}
               </div>
               {/* host — which host these creds belong to */}
               <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
@@ -7183,10 +7112,12 @@ export function StormApp() {
       {/* top app bar */}
       <header style={{ height: 58, flex: "none", display: "flex", alignItems: "center", gap: 14, padding: "0 22px", background: "var(--st-surface)", borderBottom: "1px solid var(--st-border-light)", zIndex: 30 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button type="button" className="brand-home" aria-label={t("Go to home page")} onClick={selProjects} style={{ display: "flex", alignItems: "center", gap: 10, padding: 0, border: 0, background: "transparent", cursor: "pointer" }}>
           <SberMark size={23} />
           <div style={{ fontWeight: 800, fontSize: 18, letterSpacing: "-.3px" }}><span style={{ color: "var(--st-text)" }}>{t("Sber")}</span><span style={{ color: "var(--st-accent-2)" }}>{t("Tech")}</span></div>
+          </button>
           <div style={{ width: 1, height: 22, background: "var(--st-border-strong)", margin: "0 4px" }} />
-          <div className="mono" style={{ fontSize: 10.5, letterSpacing: 2, color: "var(--st-text-faint)", fontWeight: 600 }}>OFFENSIVE RESEARCH &amp; MANAGEMENT</div>
+          <div className="mono brand-tagline" style={{ fontSize: 10.5, letterSpacing: 2, color: "var(--st-text-faint)", fontWeight: 600 }}>{t("OFFENSIVE RESEARCH & MANAGEMENT")}</div>
         </div>
         <div style={{ flex: 1 }} />
         <div className="clk nav iconbtn" onClick={() => toggle("notifOpen")} style={{ width: 40, height: 40, borderRadius: 11, display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
@@ -7216,13 +7147,13 @@ export function StormApp() {
 
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
         {/* sidebar */}
-        <aside className={`sb ${state.sidebarCollapsed ? "collapsed" : ""}`} style={{ width: sideW, flex: "none", background: "var(--st-surface)", borderRight: "1px solid var(--st-border-light)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <aside className={`sb ${sidebarCollapsed ? "collapsed" : ""}`} style={{ width: sideW, flex: "none", background: "var(--st-surface)", borderRight: "1px solid var(--st-border-light)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
           <div className="sbhead" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 14px 18px 18px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, overflow: "hidden" }}>
               <div className="lbl" style={{ fontWeight: 800, fontSize: 16, letterSpacing: 3, color: "var(--st-text)" }}>{t("STORM")}</div>
             </div>
             <div className="clk nav iconbtn" onClick={() => toggle("sidebarCollapsed")} style={{ width: 26, height: 26, flex: "none", borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--st-text-faint)" }}>
-              <Icon name="chevrons-left" size={18} color="currentColor" sw={2.4} style={{ transform: state.sidebarCollapsed ? "rotate(180deg)" : "none", transition: "transform .26s ease" }} />
+              <Icon name="chevrons-left" size={18} color="currentColor" sw={2.4} style={{ transform: sidebarCollapsed ? "rotate(180deg)" : "none", transition: "transform .26s ease" }} />
             </div>
           </div>
           <div className="lbl mono" style={{ padding: "0 20px 8px", fontSize: 10, letterSpacing: 1.5, color: "var(--st-text-faint)", fontWeight: 700 }}>{t("WORKSPACE")}</div>
@@ -7233,7 +7164,7 @@ export function StormApp() {
               { id: "docs" as const, icon: "doc" as const, label: "Docs", onClick: () => setState({ nav: "docs", view: "list" }) },
               ...(isAdmin ? [{ id: "members" as const, icon: "users" as const, label: "Members", onClick: selWSMembers }] : []),
             ]).map((it) => (
-              <div key={it.id} className="nav clk" onClick={it.onClick} style={{ display: "flex", alignItems: "center", gap: 13, padding: "10px 12px", borderRadius: 11, font: "600 14px Inter,sans-serif", color: navColor(it.id), background: navBg(it.id) }}>
+              <div key={it.id} className="nav clk" title={t(it.label)} onClick={it.onClick} style={{ display: "flex", alignItems: "center", gap: 13, padding: "10px 12px", borderRadius: 11, font: "600 14px Inter,sans-serif", color: navColor(it.id), background: navBg(it.id) }}>
                 <Icon name={it.icon} size={19} color="currentColor" style={{ flex: "none" }} />
                 <span className="lbl">{t(it.label)}</span>
               </div>
@@ -7515,7 +7446,7 @@ export function StormApp() {
 
               {v && (
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 16, padding: "12px 14px", border: "1px solid var(--st-divider)", borderRadius: 12 }}>
-                  <span style={{ font: "700 10px Inter,sans-serif", textTransform: "uppercase", letterSpacing: ".5px", borderRadius: 7, padding: "4px 9px", background: SEV[v.sev].bg, color: SEV[v.sev].color, flex: "none" }}>{v.sev}</span>
+                  <span style={{ font: "700 10px Inter,sans-serif", textTransform: "uppercase", letterSpacing: ".5px", borderRadius: 7, padding: "4px 9px", background: SEV[v.sev].bg, color: SEV[v.sev].color, flex: "none" }}>{t(v.sev)}</span>
                   <div style={{ minWidth: 0 }}>
                     <div style={{ font: "600 14px Inter,sans-serif", color: "var(--st-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.title}</div>
                     <div className="mono" style={{ fontSize: 12, color: "var(--st-text-3)", marginTop: 2 }}>{v.host}</div>

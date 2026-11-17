@@ -1672,11 +1672,10 @@ def _update_task_link(doc: DocxDocument, project: Project) -> None:
     """Подставляет ссылку на связанный AppSec-тикет после «по задаче …».
 
     В PP-шаблоне стоит плейсхолдер «по задаче XXX», в SZI — пример-URL. Заменяем
-    токен сразу после «по задаче » на project.appsec_ticket_url. Пусто → не трогаем.
+    токен после «по задаче » на URL; при отсутствии ссылки — жёлтая инструкция.
     """
     url = (getattr(project, "appsec_ticket_url", None) or "").strip()
-    if not url:
-        return
+    prompt = 'Заполните ссылку на APPSEC-тикет'
     # _iter_all_paragraphs — чтобы покрыть и таблицы/текстовые поля (в PP фраза
     # «по задаче XXX» лежит в таблице, не в основном потоке). Заменяем ВСЮ фразу
     # «по задаче <токен>», а не просто токен — иначе можно задеть посторонний XXX.
@@ -1686,7 +1685,11 @@ def _update_task_link(doc: DocxDocument, project: Project) -> None:
         match = _TASK_LINK_RE.search(paragraph.text)
         if not match:
             continue
-        _replace_in_paragraph(paragraph, match.group(0), f"по задаче {url}")
+        _replace_in_paragraph(paragraph, match.group(0), f"по задаче {url or prompt}")
+        if not url:
+            for run in paragraph.runs:
+                if prompt in run.text:
+                    _apply_run_highlight(run, 'yellow')
 
 
 def _fill_credentials_table(doc: DocxDocument, credentials: list[dict]) -> None:

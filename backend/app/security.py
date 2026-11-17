@@ -125,15 +125,18 @@ def decode_token(token: str, expected_type: str) -> int:
 
 
 # ---------------------------------------------------------------------------
-# Шифрование секретов «at rest» (Fernet поверх производного от JWT-секрета ключа).
-# Общий механизм шифрования секретов интеграций.
+# Fernet поверх независимого DATA_ENCRYPTION_KEY. JWT здесь не используется.
 # ---------------------------------------------------------------------------
 
 
-def _fernet():
+def _fernet(secret: str | None = None):
+    """Строит Fernet из постоянного секрета, сохраняя прежний алгоритм SHA-256."""
     from cryptography.fernet import Fernet
 
-    key = base64.urlsafe_b64encode(hashlib.sha256(settings.jwt_secret_key.encode("utf-8")).digest())
+    secret = secret if secret is not None else settings.data_encryption_key
+    if len(secret.strip()) < 32:
+        raise ValueError('Не настроен независимый ключ шифрования данных')
+    key = base64.urlsafe_b64encode(hashlib.sha256(secret.encode("utf-8")).digest())
     return Fernet(key)
 
 
@@ -143,8 +146,17 @@ def encrypt_secret(value: str) -> str:
 
 
 def decrypt_secret(value: str) -> str:
-    """Расшифровывает секрет, зашифрованный encrypt_secret."""
-    return _fernet().decrypt(value.encode("utf-8")).decode("utf-8")
+    """Читает секрет активным или явно настроенным прежним ключом, не переписывая БД."""
+    from cryptography.fernet import InvalidToken
+    if not isinstance(value, str):
+        raise InvalidToken
+    keys = [settings.data_encryption_key, *settings.data_encryption_previous_keys]
+    for secret in dict.fromkeys(keys):
+        try:
+            return _fernet(secret).decrypt(value.encode('utf-8')).decode('utf-8')
+        except (InvalidToken, UnicodeDecodeError):
+            continue
+    raise InvalidToken
 
 
 # ---------------------------------------------------------------------------

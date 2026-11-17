@@ -226,3 +226,18 @@ def test_word_builder_splits_vulnerabilities_and_weaknesses() -> None:
 
     assert "SQL injection in login form" in vuln_section
     assert "Verbose error messages" in weakness_section
+
+
+@pytest.mark.parametrize('builder', [build_pp, build_szi])
+def test_missing_optional_ticket_has_yellow_instruction_in_report(builder):
+    from app.reports.word_builder import _iter_all_paragraphs
+    project = _make_project()
+    project.appsec_ticket_url = None
+    payload, indexes = _build_payload()
+    payload['project'] = project
+    data = builder(payload, indexes, image_bytes_by_id={})
+    doc = Document(BytesIO(data))
+    matching = [p for p in _iter_all_paragraphs(doc) if 'Заполните ссылку на APPSEC-тикет' in p.text]
+    assert matching
+    for paragraph in matching:
+        assert any('Заполните ссылку' in run.text and run._element.xpath('.//w:highlight[@w:val="yellow"]') for run in paragraph.runs)

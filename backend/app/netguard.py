@@ -16,7 +16,9 @@ _IpAddr = ipaddress.IPv4Address | ipaddress.IPv6Address
 def _is_internal(ip: _IpAddr) -> bool:
     """Внутренний/системный адрес — цель SSRF-защиты."""
     return (
-        ip.is_loopback
+        not ip.is_global
+        or str(ip) == '168.63.129.16'  # Azure WireServer/metadata
+        or ip.is_loopback
         or ip.is_private
         or ip.is_link_local
         or ip.is_reserved
@@ -57,4 +59,6 @@ def is_disallowed_ip(addr: str) -> bool:
         return True
     if _is_internal(ip_obj):
         return True
+    if ip_obj.version == 6 and (ip_obj.sixtofour or ip_obj.teredo or ip_obj in ipaddress.ip_network('64:ff9b::/96') or ip_obj in ipaddress.ip_network('64:ff9b:1::/48')):
+        return True  # Переходные туннели/NAT64 не обходят IPv4-политику.
     return any(_is_internal(v4) for v4 in _embedded_v4(ip_obj))

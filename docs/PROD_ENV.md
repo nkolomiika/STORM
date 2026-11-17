@@ -10,6 +10,10 @@
 ## Что заполнить DevOps
 
 - `JWT_SECRET_KEY` — постоянный секрет длиной не менее 32 символов.
+- `DATA_ENCRYPTION_KEY` — обязательный независимый случайный секрет credentials
+  и TOTP, минимум 32 символа. Пустой ключ или совпадение с JWT не допускаются.
+  Старые записи переносите утилитой из раздела ниже, не назначайте прежний JWT
+  постоянным ключом данных.
 - `INITIAL_ADMIN_PASSWORD` и `INITIAL_ADMIN_EMAIL` — стартовый администратор;
   эти значения используются только при первой инициализации пользователей.
 - `SSO_ISSUER` либо полный `SSO_METADATA_URL` — адрес корпоративной IAM/realm.
@@ -77,6 +81,8 @@ WORKS_UNIT_DETAIL_PATH=/rest/api/unit/v2/{key}
 WORKS_UNIT_FIND_PATH=/rest/api/unit/v3/find
 WORKS_COMPONENT_FIND_PATH=/extension/plugin/v2/rest/api/sber_components_plugin/v1/component/find
 WORKS_VERSION_FIND_PATH=/extension/plugin/v2/rest/api/swtr_task_tracker_plugin/v1/version/find
+WORKS_PRODUCT_CODES_PATH=/rest/api/suit/v1/bug_appsec
+WORKS_PRODUCT_CODES_ATTRIBUTE=product_code_list_sts
 WORKS_CREATE_PATH=/rest/api/unit/v2/bug_appsec/create
 WORKS_LINK_PATH=/rest/api/unit/v1/link
 WORKS_LINK_TYPE=plain_connection
@@ -133,3 +139,75 @@ ENV_FILE=.env.prod docker compose -f docker-compose.yml -f docker-compose.prod.y
 и секреты при этом не подменяются шаблоном.
 
 Контракт и ограничения интеграции описаны в [TASK_TRACKER.md](TASK_TRACKER.md).
+
+## Шифрование после смены JWT
+
+`JWT_SECRET_KEY` используется только для подписи access/refresh/SSO-токенов.
+`DATA_ENCRYPTION_KEY` используется только для Fernet-шифрования credentials и
+TOTP. Нет автоматического fallback на JWT. Совпадение JWT с активным или прежним
+ключом данных запрещено при старте. Без независимого ключа приложение не запускается.
+`DATA_ENCRYPTION_PREVIOUS_KEYS` содержит только прежние независимые ключи данных.
+
+Переход старой установки требует перешифрования, а не переименования секрета.
+Порядок и команды — [перенос ключей](SECRET_MIGRATION.md). Проверка утилитой
+без `--apply` ничего не записывает. Перенос атомарный: при одной нечитаемой
+записи отменяется вся транзакция; повторный запуск не меняет уже перенесённые
+значения и даты. Credentials и TOTP обрабатываются вместе, страницами по 500.
+
+Если JWT уже менялся, потребуется именно тот прежний секрет, которым записаны
+данные. Передайте его только утилите через `STORM_LEGACY_ENCRYPTION_KEYS` в
+защищённом окружении, затем удалите переменную. Без прежнего секрета восстановление
+невозможно: можно задать новые пароли и штатно сбросить/настроить 2FA.
+
+API сохраняет недоступный пароль как `null`, `password_available=false`.
+Отчёты и 2FA возвращают безопасную 503 `secret_decryption_failed`.
+Ключи храните отдельно от БД и Git; сохраняйте защищённые резервные копии.
+Разделение ключей защищает шифртекст от одного лишь JWT-ключа, но не устраняет
+подделку сессий при утечке JWT: такой JWT нужно немедленно заменить.
+
+## Контейнерная SSRF-защита и журналы
+
+Backend, mail-worker и recon-worker запускаются только после установки
+`STORM_EGRESS` для IPv4/IPv6 в своём namespace. `NET_ADMIN` нужен bootstrap;
+перед приложением он и `NET_RAW` удаляются из bounding set. Внешние инструменты
+работают UID 65532, без capabilities и секретов интеграций. Не переопределяйте
+ENTRYPOINT и не запускайте сервисы в host network / privileged.
+
+Точные IP+порты БД, MinIO, RabbitMQ, настроенных IAM/TT/SMTP разрешены только
+процессу приложения. Сканеру недоступны даже эти исключения. Если endpoint IAM
+или корпоративный прокси размещён на другом внутреннем host/port, DevOps может
+указать его дополнительно в `STORM_TRUSTED_EGRESS` — JSON-массив URL, например
+`["https://iam-token.example:443"]`. Пользовательские цели сюда не добавляются.
+Адреса закрепляются при старте: после изменения DNS интеграции пересоздайте сервисы.
+Обычный доступ к публичным IP остаётся доступен. `FARM_ALLOW_PRIVATE_TARGETS=true`
+теперь запрещён. Проверка — [SSRF_PROTECTION.md](SSRF_PROTECTION.md).
+
+Compose задаёт `logging.driver=local`, `max-size=10m`, `max-file=3`, сжатие для
+каждого сервиса. Настройка применяется при **пересоздании**, а не простом restart.
+Она ограничивает stdout/stderr одного контейнера примерно 30 МБ до сжатия;
+число контейнеров, данные БД, вложения и старые остановленные контейнеры учитываются
+отдельно. Эти изменения не удаляют исторические журналы или тома VPS.
+
+## Отказы авторизации Task Tracker
+
+HTTP 502 STORM при запросах `/tasks`, `/works/components`, `/works/versions` и
+`/works/product-codes` может означать отказ внешнего Task Tracker:
+
+- `task_tracker_auth_failed`: TT вернул 401 — DevOps проверяет срок и корректность
+  `WORKS_API_TOKEN`, окружение и перезапуск контейнеров после изменения секрета.
+- `task_tracker_forbidden`: TT вернул 403 — проверьте права сервисной учётки на
+  APPSEC, STS, справочники plugin API и формы suit API, а также требования gateway.
+- `task_tracker_unavailable`: транспортный сбой, неверный формат ответа либо
+  другой статус TT. В логах ищите `task_tracker_request_failed` и
+  `task_tracker_lookup_failed` с `upstream_status` по соответствующему request ID.
+
+Тело запросов компонентов/версий соответствует нативному POST в пространстве
+STS; замена тела не устраняет отказ авторизации. Смена `JWT_SECRET_KEY` STORM
+не обновляет `WORKS_API_TOKEN`. Не пересылайте токены или браузерные cookie для
+диагностики; достаточно кода ошибки, HTTP-статуса TT и request ID.
+
+Коды продуктов читаются GET-запросом к `WORKS_PRODUCT_CODES_PATH` с
+`validatorEnabled=true`, без привязки к конкретному STS-тикету. Из атрибута
+`product_code_list_sts` выбираются `directoryValues`. Например, название DBC
+сохраняет код `dbc`, #AM — `_am`, OST — `285902`, AIS — `AIS`. Не используйте
+для этого `customfield_24900` формы `appsec`: у неё другой набор идентификаторов.

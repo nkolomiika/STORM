@@ -10,11 +10,15 @@ export function safeErrorDetail(value: string | null): string | null {
 
 /** Сообщения по стабильному коду сервера; внутренние detail при 5xx не отображаются. */
 export const ERROR_MESSAGES: Record<string, string> = {
+  storage_unavailable: "File storage is temporarily unavailable. Try again later.",
   mail_not_configured: "Email delivery is not configured. Contact an administrator.",
   mail_unavailable: "Email could not be sent. The mail service is unavailable. Try again later.",
   mail_auth_failed: "Email could not be sent. Ask an administrator to check the mail settings.",
   task_tracker_not_configured: "Task Tracker is not configured. Contact an administrator.",
   task_tracker_unavailable: "Task Tracker is temporarily unavailable. Try again later.",
+  task_tracker_auth_failed: "Task Tracker rejected authentication. Ask an administrator to check the integration token.",
+  task_tracker_forbidden: "The integration account does not have permission in Task Tracker. Contact an administrator.",
+  secret_decryption_failed: "Saved secrets could not be decrypted. Ask an administrator to restore the encryption key.",
   internal_error: "Something went wrong. Try again later.",
 };
 

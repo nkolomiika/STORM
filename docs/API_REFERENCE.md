@@ -1,6 +1,6 @@
 # HTTP API: контракты методов
 
-Документированных HTTP-операций: **160**.
+Документированных HTTP-операций: **161**.
 
 Справочник сгенерирован из актуальных OpenAPI v1/v2. Тела запросов и ответы описаны в [схемах](API_SCHEMAS.md). Для удобного вызова используйте защищённый Swagger `/api/v1/docs` или `/api/v2/docs` в запущенном приложении.
 
@@ -2704,7 +2704,7 @@ Operation ID: `delete_file_api_v1_projects__project_id__vulnerabilities__vuln_id
 
 Operation ID: `upload_project_image_api_v1_projects__project_id__images_post`.
 
-Обработчик: `upload_project_image` — [backend/app/routers/images.py:30](../backend/app/routers/images.py#L30).
+Обработчик: `upload_project_image` — [backend/app/routers/images.py:33](../backend/app/routers/images.py#L33).
 
 Явные dependencies: `enforce_csrf`, `get_current_user`, `require_project_access`.
 
@@ -2727,7 +2727,7 @@ Operation ID: `upload_project_image_api_v1_projects__project_id__images_post`.
 
 Operation ID: `download_project_image_api_v1_projects__project_id__images__image_name__download_get`.
 
-Обработчик: `download_project_image` — [backend/app/routers/images.py:64](../backend/app/routers/images.py#L64).
+Обработчик: `download_project_image` — [backend/app/routers/images.py:71](../backend/app/routers/images.py#L71).
 
 Явные dependencies: `get_current_user`, `require_project_access`.
 
@@ -3098,7 +3098,7 @@ Operation ID: `get_works_config_api_v1_works_config_get`.
 
 ### GET /api/v1/works/components
 
-Typeahead по компонентам Works (имя→UUID). Пусто, если не настроено.
+Подсказки компонентов STS; отказ интеграции возвращает 502/503.
 
 Operation ID: `find_works_components_api_v1_works_components_get`.
 
@@ -3118,11 +3118,31 @@ Operation ID: `find_works_components_api_v1_works_components_get`.
 
 ### GET /api/v1/works/versions
 
-Typeahead по версиям Works (имя→UUID). Пусто, если не настроено.
+Подсказки версий STS; отказ интеграции возвращает 502/503.
 
 Operation ID: `find_works_versions_api_v1_works_versions_get`.
 
 Обработчик: `find_works_versions` — [backend/app/routers/works.py:39](../backend/app/routers/works.py#L39).
+
+Явные dependencies: `get_current_user`, `get_db`.
+
+| Параметр | Где | Тип | Обязательный | Ограничения/по умолчанию |
+| --- | --- | --- | --- | --- |
+| `q` | query | `string` | нет | {"default": ""} |
+| `access_token` | cookie | `string \| null` | нет | — |
+
+| HTTP | Ответ | Тип/схема |
+| --- | --- | --- |
+| 200 | Successful Response | application/json: list[WorksRefOut] |
+| 422 | Validation Error | application/json: HTTPValidationError |
+
+### GET /api/v1/works/product-codes
+
+Коды продуктов из taxonomy формы STS с точными значениями code.
+
+Operation ID: `find_works_product_codes_api_v1_works_product_codes_get`.
+
+Обработчик: `find_works_product_codes` — [backend/app/routers/works.py:50](../backend/app/routers/works.py#L50).
 
 Явные dependencies: `get_current_user`, `get_db`.
 
@@ -3142,7 +3162,7 @@ Get Vulnerability Works Link
 
 Operation ID: `get_vulnerability_works_link_api_v1_projects__project_id__vulnerabilities__vuln_id__works_get`.
 
-Обработчик: `get_vulnerability_works_link` — [backend/app/routers/works.py:53](../backend/app/routers/works.py#L53).
+Обработчик: `get_vulnerability_works_link` — [backend/app/routers/works.py:64](../backend/app/routers/works.py#L64).
 
 Явные dependencies: `require_project_access`, `get_db`.
 
@@ -3163,7 +3183,7 @@ Export Vulnerability To Works
 
 Operation ID: `export_vulnerability_to_works_api_v1_projects__project_id__vulnerabilities__vuln_id__works_export_post`.
 
-Обработчик: `export_vulnerability_to_works` — [backend/app/routers/works.py:67](../backend/app/routers/works.py#L67).
+Обработчик: `export_vulnerability_to_works` — [backend/app/routers/works.py:77](../backend/app/routers/works.py#L77).
 
 Явные dependencies: `enforce_csrf`, `get_current_user`, `require_project_access`, `get_db`.
 

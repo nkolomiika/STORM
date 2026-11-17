@@ -301,3 +301,37 @@ async def test_version_picker_reads_sts_reference_space(monkeypatch):
     client._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
     async with client:
         assert await client.find_versions('4.3') == [{'code': 'v1', 'name': 'Product 4.3.0'}]
+
+
+@pytest.mark.asyncio
+async def test_product_catalog_cache_expires_and_has_bounded_connections(monkeypatch):
+    import httpx
+    from app.works import WorksClient, _product_catalog_cache
+    _product_catalog_cache.clear()
+    settings = get_settings()
+    now = [100.0]
+    from types import SimpleNamespace
+    monkeypatch.setattr('app.works.time', SimpleNamespace(monotonic=lambda: now[0]))
+    requests = []
+    def handler(request):
+        requests.append(request)
+        return httpx.Response(200, json={'attributes': [{'code': 'product_code_list_sts',
+            'directoryValues': [{'code': 'dbc', 'name': 'DBC'}]}]})
+    client = WorksClient.__new__(WorksClient)
+    client._base = 'https://tracker.example/swtr'
+    client._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    try:
+        async with client:
+            await client.find_product_codes()
+            now[0] += 59
+            await client.find_product_codes('dbc')
+            assert len(requests) == 1
+            now[0] += 2
+            await client.find_product_codes('dbc')
+            assert len(requests) == 2
+            for n in range(10):
+                monkeypatch.setattr(settings, 'works_api_token', f'new-token-{n}')
+                await client.find_product_codes()
+            assert len(_product_catalog_cache) <= 8
+    finally:
+        _product_catalog_cache.clear()

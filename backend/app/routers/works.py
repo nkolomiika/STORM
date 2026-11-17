@@ -30,7 +30,7 @@ async def find_works_components(
     _user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[WorksRefOut]:
-    """Typeahead по компонентам Works (имя→UUID). Пусто, если не настроено."""
+    """Подсказки компонентов STS; отказ интеграции возвращает 502/503."""
     rows = await WorksService(db).find_components(q)
     return [WorksRefOut(**r) for r in rows]
 
@@ -41,9 +41,20 @@ async def find_works_versions(
     _user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[WorksRefOut]:
-    """Typeahead по версиям Works (имя→UUID). Пусто, если не настроено."""
+    """Подсказки версий STS; отказ интеграции возвращает 502/503."""
     rows = await WorksService(db).find_versions(q)
     return [WorksRefOut(**r) for r in rows]
+
+
+@router.get('/works/product-codes', response_model=list[WorksRefOut])
+async def find_works_product_codes(
+    q: str = '',
+    _user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[WorksRefOut]:
+    """Коды продуктов из taxonomy формы STS с точными значениями code."""
+    rows = await WorksService(db).find_product_codes(q)
+    return [WorksRefOut(**row) for row in rows]
 
 
 @router.get(
@@ -56,8 +67,7 @@ async def get_vulnerability_works_link(
     _project=Depends(require_project_access),
     db: AsyncSession = Depends(get_db),
 ) -> WorksIssueLinkOut | None:
-    _ = project_id
-    return await WorksService(db).get_link(vuln_id)
+    return await WorksService(db).get_link(project_id, vuln_id)
 
 
 @router.post(

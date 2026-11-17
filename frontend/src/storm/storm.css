@@ -81,7 +81,18 @@ html, body, #root {
 .storm .clk { cursor: pointer; }
 
 .storm .iconbtn { transition: background .12s; }
-.storm .iconbtn:hover { background: var(--st-hover); }
+.storm .iconbtn:not(:disabled):is(:hover, :focus-visible),
+.storm button.clk:not(:disabled)[style*="var(--st-surface)"]:is(:hover, :focus-visible) {
+  background: var(--st-accent-soft) !important;
+  color: var(--st-accent-2) !important;
+  box-shadow: inset 0 0 0 1px var(--st-focus-border);
+}
+.storm .export-availability { display: inline-flex; }
+.storm .export-availability > :disabled { pointer-events: none; }
+.storm :is(.addbtn, .actbtn, button.clk):disabled { cursor: not-allowed; }
+.storm .addbtn:disabled { background: var(--st-border-strong) !important; color: var(--st-text-faint) !important; }
+.storm .actbtn:disabled { opacity: .4; }
+.storm button.clk:disabled:not(.addbtn):not(.actbtn) { color: var(--st-text-faint) !important; }
 
 .storm .actbtn { width: 28px; height: 28px; padding: 0; border: 0; background: transparent; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--st-text-faint); cursor: pointer; transition: background .12s, color .12s; }
 .storm .actbtn:not(:disabled):hover { background: var(--st-accent-soft) !important; color: var(--st-accent-2) !important; }
@@ -134,7 +145,7 @@ html, body, #root {
 /* Неактивный таб (Active/Archived и т.п.) фон inline не задаёт (undefined),
    поэтому наведение подсвечивает его через этот hover; активный таб со своим
    inline-фоном hover перекрывает — ему подсветка не нужна. */
-.storm .tab:hover { background: var(--st-hover); }
+.storm .tab:hover { background: var(--st-accent-soft); }
 
 /* Section tabs (Overview / Recon / Vulnerabilities / …). The selected tab is
    marked by the blue underline plus accent text; hovering a tab previews that
@@ -214,3 +225,21 @@ html, body, #root {
 
 /* Ссылка-ключ тикета: подчёркивание при наведении (чтобы было видно, что это ссылка). */
 .storm a.keylink:hover { text-decoration: underline; }
+
+/* Клавиатурный фокус и границы полей различимы в тёмной теме. */
+.storm :is(button, a, [role="button"], input, textarea, select):focus-visible {
+  outline: 2px solid var(--st-focus-border);
+  outline-offset: 3px;
+}
+:root[data-theme="dark"] .storm :is(.finp, .esel, .pillinp, .fq input) { border-color: var(--st-control-border); }
+:root[data-theme="dark"] .storm ::placeholder { opacity: 1; }
+
+.storm :is(.storm-markdown, .stormmd-input) table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+.storm :is(.storm-markdown, .stormmd-input) :is(th, td) { border: 1px solid var(--st-control-border); padding: 9px 12px; vertical-align: top; min-width: 80px; }
+.storm :is(.storm-markdown, .stormmd-input) th { background: var(--st-elevated); color: var(--st-text); font-weight: 700; }
+.storm :is(.stormmd-table-wrap, .stormmd-input .tableWrapper) { overflow-x: auto; max-width: 100%; }
+.storm .storm-markdown a { color: var(--st-accent-2); }
+.storm .storm-markdown pre { overflow-x: auto; background: var(--st-code-bg); color: var(--st-code-text); padding: 12px; border-radius: 8px; }
+.storm .storm-markdown code { font-family: ui-monospace, Menlo, monospace; }
+
+@media (max-width: 1100px) { .storm .brand-tagline { display: none; } }

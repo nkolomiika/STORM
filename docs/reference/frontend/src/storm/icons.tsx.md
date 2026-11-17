@@ -6,7 +6,7 @@
 
 ## Icon
 
-[frontend/src/storm/icons.tsx:259](../../../../../frontend/src/storm/icons.tsx#L259)
+[frontend/src/storm/icons.tsx:261](../../../../../frontend/src/storm/icons.tsx#L261)
 
 ```typescript
 Icon({ name, size = 16, color = "currentColor", sw = 2, style }: IconProps) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -22,7 +22,7 @@ Icon({ name, size = 16, color = "currentColor", sw = 2, style }: IconProps) => i
 
 ## SberMark
 
-[frontend/src/storm/icons.tsx:284](../../../../../frontend/src/storm/icons.tsx#L284)
+[frontend/src/storm/icons.tsx:286](../../../../../frontend/src/storm/icons.tsx#L286)
 
 ```typescript
 SberMark({ size = 28, color = "var(--st-text)" }: { size?: number; color?: string }) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element

@@ -1,0 +1,18 @@
+{
+  "space": "STS", "suit": "bug_appsec", "summary": "STORM: диагностический тест", "description": null,
+  "code": null, "draftsInfo": [], "links": [],
+  "attributes": {
+    "space": "APPSEC", "tenant": "default", "reporter": "REPLACE_REPORTER", "assigned_to": "REPLACE_ASSIGNEE",
+    "priority": "major", "sber_component": [{"code": "REPLACE_COMPONENT_UUID", "name": "REPLACE_COMPONENT_NAME", "title": "REPLACE_COMPONENT_NAME"}],
+    "affects_version_s_crpv": [{"code": "REPLACE_VERSION_UUID", "name": "REPLACE_FULL_VERSION_NAME"}],
+    "fix_version_s": null, "label": ["Vuln_Pentest", "vuln"], "triage_result": null,
+    "Resolution_appsec": null, "result_text_field_multi_line_crpv": null, "workflow_status": {"command": "NEW"},
+    "external_link": null, "product_code_list_sts": "REPLACE_EXACT_PRODUCT_CODE", "vulnerable_package_sts": null,
+    "version_vulnerable_package": null, "vulnerability_identifier_sts": null,
+    "vulnerability_detection_practice": ["security_analysis"],
+    "original_cvss": "AV:N/AC:H/AT:P/PR:L/UI:P/VC:L/VI:L/VA:L/SC:N/SI:N/SA:N",
+    "revised_cvss_vector": null, "initial_criticality_cvss": ["medium_cvss"], "revised_criticality_cvss": null,
+    "exclusion_from_sla_calculation": "noo", "watchers": null, "affects_version_s": null,
+    "customfield_24900": null, "resolution_appsec": null, "customfield_24413": null
+  }
+}

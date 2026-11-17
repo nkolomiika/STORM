@@ -230,7 +230,8 @@ export interface ProjectCredential {
   project_id: number;
   username: string | null;
   /** Расшифрованный пароль — бэкенд шифрует его at rest. */
-  password: string;
+  password: string | null;
+  password_available?: boolean;
   /** К какому хосту относятся креды (IP/имя/кластер) — свободная строка. */
   host: string | null;
   created_by: number;

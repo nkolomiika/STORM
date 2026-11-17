@@ -19,6 +19,9 @@ from uuid import uuid4
 
 import magic
 import httpx
+from cryptography.fernet import InvalidToken
+from minio.error import S3Error
+from urllib3.exceptions import HTTPError as StorageHTTPError
 import yaml
 from cvss import CVSS4
 from fastapi import HTTPException, UploadFile
@@ -50,7 +53,7 @@ from app.enums import (
 from app.reports import ReportKind, build_pp, build_szi
 from app.exceptions import ConflictError, ForbiddenError, NotFoundError, UnauthorizedError, ValidationError
 from app.exceptions import ServiceUnavailableError
-from app.works import WorksClient, WorksError, priority_for_severity, works_issue_url
+from app.works import WorksClient, WorksError, priority_for_severity, works_issue_url, tracker_service_error
 from app.models import (
     AccountReactivationToken,
     AgentApiToken,
@@ -345,16 +348,20 @@ class WorksService:
         """Получает компоненты формы проекта из справочника STS."""
         return await self._find_reference('components', q)
 
-    async def _find_reference(self, kind: Literal['components', 'versions'], q: str) -> list[dict[str, str]]:
+    async def find_product_codes(self, q: str = '') -> list[dict[str, str]]:
+        """Подсказки по taxonomy product_code_list_sts формы bug_appsec."""
+        return await self._find_reference('product_codes', q)
+
+    async def _find_reference(self, kind: Literal['components', 'versions', 'product_codes'], q: str) -> list[dict[str, str]]:
         """Отделяет отказ внешнего справочника от ошибки пользовательских полей."""
         if not settings.works_configured:
             raise ServiceUnavailableError('Подключение к Task Tracker пока не настроено.', 'task_tracker_not_configured')
         try:
             async with WorksClient() as wc:
-                return await (wc.find_components(q) if kind == 'components' else wc.find_versions(q))
+                return await getattr(wc, 'find_' + kind)(q)
         except WorksError as exc:
             logging.getLogger('storm.works').warning('task_tracker_lookup_failed kind=%s upstream_status=%s', kind, exc.status_code)
-            raise HTTPException(502, 'Task Tracker: не удалось загрузить справочник. Попробуйте позже.') from exc
+            raise tracker_service_error(exc) from exc
 
     async def find_versions(self, q: str = "") -> list[dict[str, str]]:
         if settings.works_tasks_demo_file:
@@ -365,7 +372,9 @@ class WorksService:
             return [version for version in versions.values() if needle in (version['name'] + ' ' + version['code']).casefold()][:50]
         return await self._find_reference('versions', q)
 
-    async def get_link(self, vulnerability_id: int) -> WorksIssueLink | None:
+    async def get_link(self, project_id: int, vulnerability_id: int) -> WorksIssueLink | None:
+        """Проверяет родительский проект до чтения ссылки и синхронизации с TT."""
+        await get_vulnerability(self.db, project_id, vulnerability_id)
         link = await self.db.scalar(
             select(WorksIssueLink).where(WorksIssueLink.vulnerability_id == vulnerability_id)
         )
@@ -682,7 +691,11 @@ class AuthService:
             raise UnauthorizedError("Пользователь не найден или деактивирован")
         if not user.totp_enabled or not user.totp_secret:
             raise UnauthorizedError("Двухфакторная аутентификация не настроена")
-        if not verify_totp(decrypt_secret(user.totp_secret), code):
+        try:
+            totp_secret = decrypt_secret(user.totp_secret)
+        except InvalidToken as exc:
+            raise ServiceUnavailableError('Не удалось прочитать данные 2FA. Обратитесь к администратору.', 'secret_decryption_failed') from exc
+        if not verify_totp(totp_secret, code):
             raise UnauthorizedError("Неверный код подтверждения")
 
         access_token, refresh_token = await self._issue_session(user.id)
@@ -1415,7 +1428,11 @@ class UserService:
             raise ValidationError("Двухфакторная аутентификация уже включена")
         if not user.totp_secret:
             raise ValidationError("Сначала запросите настройку 2FA")
-        if not verify_totp(decrypt_secret(user.totp_secret), code):
+        try:
+            totp_secret = decrypt_secret(user.totp_secret)
+        except InvalidToken as exc:
+            raise ServiceUnavailableError('Не удалось прочитать данные 2FA. Повторите настройку или обратитесь к администратору.', 'secret_decryption_failed') from exc
+        if not verify_totp(totp_secret, code):
             raise ValidationError("Неверный код из приложения-аутентификатора")
         user.totp_enabled = True
         user.totp_confirmed_at = datetime.now(UTC)
@@ -1455,32 +1472,60 @@ class UserService:
         return user
 
     async def upload_avatar(self, user_id: int, upload: UploadFile, ip_address: str | None = None) -> User:
+        """Проверяет реальное изображение; прежний аватар удаляет после сохранения нового."""
         user = await self.get_user(user_id)
         content = await read_upload(upload, 5 * 1024 * 1024)
-        if len(content) > 5 * 1024 * 1024:
-            raise ValidationError("Размер аватара превышает 5 МБ")
-        mime_type = magic.from_buffer(content, mime=True)
-        if mime_type not in {"image/png", "image/jpeg", "image/webp", "image/gif"}:
-            raise ValidationError("Аватар должен быть изображением PNG, JPEG, WEBP или GIF")
-        if user.avatar_minio_key:
-            await asyncio.to_thread(self.storage.delete, user.avatar_minio_key)
+        try:
+            with PillowImage.open(BytesIO(content)) as image:
+                mime_type = PillowImage.MIME.get(image.format)
+                if mime_type not in {"image/png", "image/jpeg", "image/webp", "image/gif"} or image.width * image.height > 16_000_000:
+                    raise ValueError('Unsupported avatar')
+                image.verify()
+        except (ValueError, OSError, UnidentifiedImageError, PillowImage.DecompressionBombError) as exc:
+            raise ValidationError('Аватар должен быть корректным изображением PNG, JPEG, WEBP или GIF, не более 16 мегапикселей') from exc
+        previous_key = user.avatar_minio_key
         safe_name = _sanitize_filename(upload.filename, fallback="avatar.bin")
-        await asyncio.to_thread(self.storage.ensure_bucket)
-        object_key = await asyncio.to_thread(self.storage.upload_bytes, content, mime_type, safe_name)
+        try:
+            await asyncio.to_thread(self.storage.ensure_bucket)
+            object_key = await asyncio.to_thread(self.storage.upload_bytes, content, mime_type, safe_name)
+        except (S3Error, StorageHTTPError, OSError) as exc:
+            logging.getLogger('storm.storage').warning('avatar_upload_failed user_id=%s error_type=%s storage_code=%s', user.id, type(exc).__name__, getattr(exc, 'code', None))
+            raise ServiceUnavailableError('Не удалось загрузить аватар: хранилище временно недоступно.', 'storage_unavailable') from exc
         user.avatar_minio_bucket = settings.minio_bucket_name
         user.avatar_minio_key = object_key
         user.avatar_content_type = mime_type
         user.avatar_uploaded_at = datetime.now(UTC)
-        await self.db.flush()
-        await self.db.refresh(user)
-        await self.audit.log("FILE_UPLOAD", user_id=user.id, entity_type="user_avatar", entity_id=user.id, ip_address=ip_address)
+        try:
+            await self.db.flush()
+            await self.db.refresh(user)
+            await self.audit.log("FILE_UPLOAD", user_id=user.id, entity_type="user_avatar", entity_id=user.id, ip_address=ip_address, commit=False)
+        except Exception:
+            await self.db.rollback()
+            try:
+                await asyncio.to_thread(self.storage.delete, object_key)
+            except (S3Error, StorageHTTPError, OSError):
+                logging.getLogger('storm.storage').warning('avatar_cleanup_failed user_id=%s', user_id)
+            raise
+        await self.db.commit()
+        if previous_key and previous_key != object_key:
+            try:
+                await asyncio.to_thread(self.storage.delete, previous_key)
+            except (S3Error, StorageHTTPError, OSError):
+                logging.getLogger('storm.storage').warning('avatar_previous_cleanup_failed user_id=%s', user_id)
         return user
 
     async def download_avatar(self, user_id: int) -> tuple[User, bytes]:
         user = await self.get_user(user_id)
         if not user.avatar_minio_key:
             raise NotFoundError("Аватар не найден")
-        blob = await asyncio.to_thread(self.storage.download_bytes, user.avatar_minio_key)
+        try:
+            blob = await asyncio.to_thread(self.storage.download_bytes, user.avatar_minio_key)
+        except S3Error as exc:
+            if exc.code in ('NoSuchKey', 'NoSuchObject'):
+                raise NotFoundError('Аватар не найден') from exc
+            raise ServiceUnavailableError('Хранилище аватаров временно недоступно.', 'storage_unavailable') from exc
+        except (StorageHTTPError, OSError) as exc:
+            raise ServiceUnavailableError('Хранилище аватаров временно недоступно.', 'storage_unavailable') from exc
         return user, blob
 
 
@@ -4220,13 +4265,25 @@ class ProjectCredentialService:
         return credential
 
     @staticmethod
+    def _read_password(credential: ProjectCredential) -> str | None:
+        """Недоступный пароль помечает отдельно, сохраняя шифртекст и остальные строки."""
+        try:
+            return decrypt_secret(credential.password_encrypted)
+        except InvalidToken:
+            logging.getLogger('storm.credentials').warning(
+                'credential_decryption_failed project_id=%s credential_id=%s', credential.project_id, credential.id)
+            return None
+
+    @staticmethod
     def _serialize(credential: ProjectCredential) -> dict:
         """Отдаёт креды с расшифрованным паролем (для ProjectCredentialOut)."""
+        password = ProjectCredentialService._read_password(credential)
         return {
             "id": credential.id,
             "project_id": credential.project_id,
             "username": credential.username,
-            "password": decrypt_secret(credential.password_encrypted),
+            "password": password,
+            'password_available': password is not None,
             "host": credential.host,
             "created_by": credential.created_by,
             "created_by_username": credential.created_by_username,
@@ -5330,14 +5387,16 @@ class ReportService:
                 .order_by(ProjectCredential.created_at.asc(), ProjectCredential.id.asc())
             )
         ).all()
-        credentials = [
-            {
+        credentials = []
+        for c in credential_rows:
+            password = ProjectCredentialService._read_password(c)
+            if password is None:
+                raise ServiceUnavailableError('Не удалось расшифровать сохранённые пароли для отчёта. Обратитесь к администратору.', 'secret_decryption_failed')
+            credentials.append({
                 "username": c.username or "",
-                "password": decrypt_secret(c.password_encrypted) if c.password_encrypted else "",
+                "password": password,
                 "host": c.host or "",
-            }
-            for c in credential_rows
-        ]
+            })
         return {
             "project": project,
             "members": [m[0] for m in members],

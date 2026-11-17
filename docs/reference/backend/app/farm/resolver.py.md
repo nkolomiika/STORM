@@ -119,13 +119,13 @@ async def resolve_forward(hostnames: list[str]) -> dict[str, ResolvedHost]
 
 ## resolve_forward.resolve_one
 
-[backend/app/farm/resolver.py:101](../../../../../backend/app/farm/resolver.py#L101)
+[backend/app/farm/resolver.py:100](../../../../../backend/app/farm/resolver.py#L100)
 
 ```python
 async def resolve_one(host: str) -> tuple[str, ResolvedHost]
 ```
 
-В теле вызывает `ResolvedHost`, `_getaddrinfo`, `is_disallowed_ip`, `is_ip_literal`, `order_addrs`.
+В теле вызывает `ResolvedHost`, `_getaddrinfo`, `any`, `is_disallowed_ip`, `is_ip_literal`, `order_addrs`.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -138,6 +138,7 @@ async def resolve_one(host: str) -> tuple[str, ResolvedHost]
 
 - `ResolvedHost`
 - `_getaddrinfo`
+- `any`
 - `is_disallowed_ip`
 - `is_ip_literal`
 - `order_addrs`
@@ -146,7 +147,7 @@ async def resolve_one(host: str) -> tuple[str, ResolvedHost]
 
 ## merge_names
 
-[backend/app/farm/resolver.py:124](../../../../../backend/app/farm/resolver.py#L124)
+[backend/app/farm/resolver.py:123](../../../../../backend/app/farm/resolver.py#L123)
 
 ```python
 def merge_names(names: list[ResolvedName]) -> list[ResolvedName]
@@ -175,7 +176,7 @@ def merge_names(names: list[ResolvedName]) -> list[ResolvedName]
 
 ## reverse_resolve
 
-[backend/app/farm/resolver.py:145](../../../../../backend/app/farm/resolver.py#L145)
+[backend/app/farm/resolver.py:144](../../../../../backend/app/farm/resolver.py#L144)
 
 ```python
 async def reverse_resolve(ips: list[str], project_hostnames: list[str]) -> dict[str, ReverseResult]
@@ -204,6 +205,7 @@ async def reverse_resolve(ips: list[str], project_hostnames: list[str]) -> dict[
 - `forward.get`
 - `h.lower`
 - `h.lower().rstrip`
+- `is_disallowed_ip`
 - `merge_names`
 - `ptr_by_ip.values`
 - `ptr_names`
@@ -215,7 +217,7 @@ async def reverse_resolve(ips: list[str], project_hostnames: list[str]) -> dict[
 
 ## reverse_resolve.addrs_of
 
-[backend/app/farm/resolver.py:154](../../../../../backend/app/farm/resolver.py#L154)
+[backend/app/farm/resolver.py:159](../../../../../backend/app/farm/resolver.py#L159)
 
 ```python
 async def addrs_of(hostname: str) -> set[str]
@@ -240,7 +242,7 @@ async def addrs_of(hostname: str) -> set[str]
 
 ## reverse_resolve.ptr_names
 
-[backend/app/farm/resolver.py:163](../../../../../backend/app/farm/resolver.py#L163)
+[backend/app/farm/resolver.py:168](../../../../../backend/app/farm/resolver.py#L168)
 
 ```python
 async def ptr_names(ip: str) -> tuple[list[str], str | None]

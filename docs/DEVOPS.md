@@ -213,7 +213,7 @@ app-only, либо `refresh_token`). Если `SMTP_OAUTH_*` пусты — fall
 | `MAIL_QUEUE_NAME` / `MAIL_ENABLED` / `MAIL_MAX_ATTEMPTS` | почтовая очередь | — |
 | `SMTP_*` | SMTP (профили: Gmail / корпоративный / XOAUTH2) | в проде — внешний SMTP |
 | `RECON_WORKER_ENABLED` / `RECON_QUEUE_NAME` / `RECON_MAX_ATTEMPTS` | рекон-ферма | `true` в проде |
-| `FARM_ALLOW_PRIVATE_TARGETS` | разрешить пробив приватных адресов (SSRF) | `false` |
+| `FARM_ALLOW_PRIVATE_TARGETS` | совместимая настройка; `true` запрещён политикой SSRF | `false` |
 | `FARM_REVERSE_DNS_ENABLED` | обратный резолв IP | `false` на стенде без DNS |
 | `SERVICES_DETECT_ENGINE` | `httpx` \| `whatweb` | `httpx` |
 | `SSO_*` | OIDC/Keycloak-вход (опционально) | см. ниже |

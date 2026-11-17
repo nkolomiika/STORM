@@ -6,7 +6,7 @@
 
 ## getMarkdown
 
-[frontend/src/storm/StormMarkdownEditor.tsx:34](../../../../../frontend/src/storm/StormMarkdownEditor.tsx#L34)
+[frontend/src/storm/StormMarkdownEditor.tsx:35](../../../../../frontend/src/storm/StormMarkdownEditor.tsx#L35)
 
 ```typescript
 getMarkdown(storage: unknown) => string
@@ -29,7 +29,7 @@ tiptap-markdown hangs its serialiser off the editor's storage.
 
 ## StormMarkdownEditor
 
-[frontend/src/storm/StormMarkdownEditor.tsx:37](../../../../../frontend/src/storm/StormMarkdownEditor.tsx#L37)
+[frontend/src/storm/StormMarkdownEditor.tsx:38](../../../../../frontend/src/storm/StormMarkdownEditor.tsx#L38)
 
 ```typescript
 StormMarkdownEditor({ value, onChange, placeholder = "", minHeight = 260, onImagePaste }: Props) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -55,7 +55,7 @@ StormMarkdownEditor({ value, onChange, placeholder = "", minHeight = 260, onImag
 
 ## StormMarkdownEditor.handlePaste
 
-[frontend/src/storm/StormMarkdownEditor.tsx:76](../../../../../frontend/src/storm/StormMarkdownEditor.tsx#L76)
+[frontend/src/storm/StormMarkdownEditor.tsx:78](../../../../../frontend/src/storm/StormMarkdownEditor.tsx#L78)
 
 ```typescript
 handlePaste(_view, event) => boolean
@@ -82,7 +82,7 @@ handlePaste(_view, event) => boolean
 
 ## StormMarkdownEditor.onUpdate
 
-[frontend/src/storm/StormMarkdownEditor.tsx:86](../../../../../frontend/src/storm/StormMarkdownEditor.tsx#L86)
+[frontend/src/storm/StormMarkdownEditor.tsx:88](../../../../../frontend/src/storm/StormMarkdownEditor.tsx#L88)
 
 ```typescript
 onUpdate({ editor: ed }) => void

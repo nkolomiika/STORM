@@ -437,7 +437,7 @@ class WorksConfigOut(BaseModel):
 
 
 class WorksRefOut(BaseModel):
-    """Справочный элемент Works (компонент/версия): UUID + имя."""
+    """Справочный элемент Task Tracker: точный код и отображаемое имя."""
 
     code: str
     name: str
@@ -556,7 +556,8 @@ class ProjectCredentialOut(ORMBase):
     username: str | None
     # Расшифрованный пароль — отдаётся участникам проекта (это и есть смысл
     # хранилища кредов); на фронте маскируется до нажатия «показать».
-    password: str
+    password: str | None
+    password_available: bool = True
     host: str | None
     created_by: int
     created_by_username: str | None = None

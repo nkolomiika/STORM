@@ -30,13 +30,13 @@ describe("localized surfaces", () => {
     expect(onChange).toHaveBeenCalledWith("2026-11-15");
   });
 
-  it("keeps documentation navigation Russian under English UI and keeps admin chapters private", () => {
+  it("localizes documentation controls while keeping admin chapters private", () => {
     useLangStore.getState().setLang("en");
     render(<StormDocs isAdmin={false} />);
-    expect(screen.getByPlaceholderText("Поиск по документации…")).toBeInTheDocument();
-    expect(screen.getByText("Справочник API (Swagger)")).toBeInTheDocument();
-    expect(screen.getByText("10 страниц")).toBeInTheDocument();
-    expect(screen.getByText("3 страницы")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Search Docs…")).toBeInTheDocument();
+    expect(screen.getByText("API reference (Swagger)")).toBeInTheDocument();
+    expect(screen.getByText("10 pages")).toBeInTheDocument();
+    expect(screen.getByText("3 pages")).toBeInTheDocument();
     expect(screen.queryByText("User management")).not.toBeInTheDocument();
     expect(screen.queryByText("Управление пользователями")).not.toBeInTheDocument();
     expect(useLangStore.getState().lang).toBe("en");
@@ -50,7 +50,7 @@ describe("localized surfaces", () => {
   it("keeps an open article in Russian when the interface language changes", () => {
     useLangStore.getState().setLang("en");
     render(<StormDocs isAdmin={false} />);
-    fireEvent.click(screen.getByText("Начало работы"));
+    fireEvent.click(screen.getByText("Getting started"));
     expect(screen.getByRole("heading", { name: "Вход в систему" })).toBeInTheDocument();
     act(() => useLangStore.getState().setLang("ru"));
     act(() => useLangStore.getState().setLang("en"));

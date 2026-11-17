@@ -1,11 +1,8 @@
 /* Light/Dark theme for the STORM UI.
 
-   The whole interface is authored in light-mode inline styles — hundreds of
-   hard-coded colours across StormApp — so threading a colour token through each
-   one is impractical. Dark mode is instead a single root-level inversion
-   (see the [data-theme="dark"] rules in storm.css): the preference lives here,
-   is persisted to localStorage, and is reflected onto <html data-theme> so the
-   stylesheet can flip the app. */
+   Semantic colours come from theme.css. The preference is persisted to
+   localStorage and reflected onto <html data-theme>; images and brand assets
+   retain their original colours. */
 
 import { create } from "zustand";
 

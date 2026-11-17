@@ -535,6 +535,23 @@ describe("StormApp (design prototype port)", () => {
     expect(vi.mocked(api.listProjectCredentials)).toHaveBeenCalledWith(2);
   });
 
+  it("marks an unreadable credential without offering reveal or copy, and still allows editing", async () => {
+    vi.mocked(api.listProjectCredentials).mockResolvedValueOnce([{
+      id: 991, project_id: 2, username: 'legacy-account', password: null,
+      password_available: false, host: 'db.internal', created_by: 1,
+      created_by_username: 'admin', created_at: '', updated_at: '',
+    }]);
+    render(<MemoryRouter><StormApp /></MemoryRouter>);
+    fireEvent.click(await screen.findByText("Northwind API"));
+    fireEvent.click(screen.getByText("Creds"));
+    const row = (await screen.findByText('legacy-account')).closest('.prow') as HTMLElement;
+    expect(within(row).getByText('Password unavailable')).toBeInTheDocument();
+    expect(within(row).queryByTitle('Reveal password')).not.toBeInTheDocument();
+    expect(within(row).queryByTitle('Copy password')).not.toBeInTheDocument();
+    expect(within(row).getByTitle('Edit')).toBeInTheDocument();
+    expect(within(row).getByTitle('Delete')).toBeInTheDocument();
+  });
+
   it("keeps the note editor and draft open after saving, then updates the same note", async () => {
     const Path = () => <span data-testid="note-path">{useLocation().pathname}</span>;
     render(<MemoryRouter initialEntries={["/projects/2/notes"]}><StormApp /><Path /></MemoryRouter>);
@@ -712,21 +729,35 @@ describe("StormApp (design prototype port)", () => {
     expect(api.createProject).not.toHaveBeenCalled();
   });
 
-  it("shows missing project fields in an error toast when exporting findings", async () => {
+  it("disables bulk export until all optional project metadata is configured", async () => {
     render(<MemoryRouter initialEntries={["/projects/2/vulns"]}><StormApp /></MemoryRouter>);
     const button = await screen.findByRole("button", { name: "Export all to Task Tracker" });
+    expect(button).toBeDisabled();
+    expect(button.closest('.export-availability')).toHaveAttribute('title', 'Complete project details to export. Missing: AppSec ticket, Assignee, Affected versions, Product code, Component');
     fireEvent.click(button);
-    await waitFor(() => expect(useToastStore.getState().toasts).toEqual(expect.arrayContaining([
-      expect.objectContaining({ severity: "error", message: "Fill in project details. Missing: AppSec ticket, Assignee, Affected versions, Product code, Component" }),
-    ])));
     expect(screen.queryByRole("button", { name: "Start export" })).not.toBeInTheDocument();
   });
 
-  it("checks incomplete project data before exporting an individual finding", async () => {
+  it("disables individual export and explains incomplete metadata on hover", async () => {
     render(<MemoryRouter initialEntries={["/projects/2/vulns/72"]}><StormApp /></MemoryRouter>);
-    fireEvent.click(await screen.findByRole("button", { name: "Export to Task Tracker" }));
-    await waitFor(() => expect(useToastStore.getState().toasts.some((toast) => toast.severity === "error" && toast.message.includes("AppSec ticket, Assignee, Affected versions"))).toBe(true));
+    const button = await screen.findByRole("button", { name: "Export to Task Tracker" });
+    expect(button).toBeDisabled();
+    expect(button.closest('.export-availability')).toHaveAttribute('title', expect.stringContaining('AppSec ticket, Assignee, Affected versions'));
+    fireEvent.click(button);
     expect(screen.getByRole("heading", { name: "Export to Task Tracker" }).closest(".modalback")).not.toHaveClass("open");
+  });
+
+  it.each([['/projects/2/vulns', 'Export all to Task Tracker'], ['/projects/2/vulns/72', 'Export to Task Tracker']])('enables export with complete project metadata (%s)', async (path, label) => {
+    const current = await api.getProjects();
+    vi.mocked(api.getProjects).mockResolvedValueOnce({ ...current, items: current.items.map((project) => project.id === 2 ? {
+      ...project, appsec_ticket_key: 'APPSEC-123', appsec_assignee: 'Pentester.A',
+      appsec_versions: [{ code: 'version-1', name: 'Platform 1.0' }],
+      appsec_product_code: 'evp', appsec_components: [{ code: 'component-1', name: 'EVPC' }],
+    } : project) });
+    render(<MemoryRouter initialEntries={[path]}><StormApp /></MemoryRouter>);
+    const button = await screen.findByRole('button', { name: label });
+    await waitFor(() => expect(button).toBeEnabled());
+    expect(button.closest('.export-availability')).not.toHaveAttribute('title', expect.stringContaining('Missing:'));
   });
 
   it("shows a task loading error without opening a partially populated project form", async () => {
@@ -1507,4 +1538,10 @@ describe("StormApp (design prototype port)", () => {
     expect(await screen.findByText("No access")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Back to projects/i })).toBeInTheDocument();
   });
+});
+
+it('returns to the project list when the SberTech logo is clicked', async () => {
+  render(<MemoryRouter initialEntries={['/projects/2/notes']}><StormApp /></MemoryRouter>);
+  fireEvent.click(await screen.findByRole('button', { name: 'Go to home page' }));
+  expect(await screen.findByText('Acme Corp — External Perimeter')).toBeInTheDocument();
 });

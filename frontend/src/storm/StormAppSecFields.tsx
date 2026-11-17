@@ -9,7 +9,7 @@
  * Все поля — typeahead; используется в формах создания и редактирования проекта. */
 
 import { useEffect, useId, useRef, useState } from "react";
-import { findWorksComponents, findWorksVersions, searchUsers, getTasks, getTask, getApiErrorMessage } from "../api";
+import { findWorksComponents, findWorksVersions, findWorksProductCodes, searchUsers, getTasks, getTask, getApiErrorMessage } from "../api";
 import { useToastStore } from '../store';
 import type { TaskTrackerTask, WorksRef } from "../types";
 
@@ -59,6 +59,8 @@ function Typeahead({
   fetchOptions,
   onPick,
   clearOnPick = false,
+  onInputChange,
+  codeAsValue = false,
   t,
 }: {
   label: string;
@@ -67,9 +69,12 @@ function Typeahead({
   fetchOptions: (q: string) => Promise<Opt[]>;
   onPick: (opt: Opt) => void;
   clearOnPick?: boolean;
+  onInputChange?: (value: string) => void;
+  codeAsValue?: boolean;
   t: (s: string) => string;
 }) {
   const [q, setQ] = useState(value);
+  const inputId = useId();
   const [opts, setOpts] = useState<Opt[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -107,13 +112,16 @@ function Typeahead({
 
   return (
     <div style={{ position: "relative" }}>
-      <label className="flabel">{label}</label>
+      <label className="flabel" htmlFor={inputId}>{label}</label>
       <input
+        id={inputId}
+        maxLength={codeAsValue ? 255 : undefined}
         className="finp"
         placeholder={placeholder}
         value={q}
         onChange={(e) => {
           setQ(e.target.value);
+          onInputChange?.(e.target.value);
           setOpen(true);
         }}
         onFocus={() => setOpen(true)}
@@ -147,7 +155,7 @@ function Typeahead({
               // onMouseDown (не onClick): срабатывает до blur инпута.
               onMouseDown={() => {
                 onPick(o);
-                setQ(clearOnPick ? "" : o.name);
+                setQ(clearOnPick ? "" : codeAsValue ? o.code : o.name);
                 setOpen(false);
               }}
               style={{ padding: "9px 14px", fontSize: 13.5, color: "var(--st-text)", cursor: "pointer" }}
@@ -308,7 +316,6 @@ export function StormAppSecFields({
   works: boolean;
   t: (s: string) => string;
 }) {
-  const productId = useId();
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <TicketField
@@ -317,12 +324,11 @@ export function StormAppSecFields({
         onChange={(patch) => onChange(patch)}
         t={t}
       />
-      <div>
-        <label className="flabel" htmlFor={productId}>{t('Product code')}</label>
-        <input id={productId} className="finp" maxLength={255}
-          placeholder={t('Product code')} value={value.appsec_product_code || ''}
-          onChange={(event) => onChange({ appsec_product_code: event.target.value || null })} />
-      </div>
+      <Typeahead t={t} label={t('Product code')} placeholder={t('Product code')}
+        value={value.appsec_product_code || ''} codeAsValue
+        fetchOptions={findWorksProductCodes}
+        onInputChange={(text) => onChange({ appsec_product_code: text || null })}
+        onPick={(option) => onChange({ appsec_product_code: option.code })} />
       {/* Исполнитель — всегда (идёт в поле исполнителя тикета Task Tracker).
           Поиск по username ИЛИ ФИО, в списке и поле показываем только ФИ. */}
       <Typeahead

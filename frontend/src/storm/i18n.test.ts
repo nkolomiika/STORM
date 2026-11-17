@@ -9,7 +9,7 @@ afterEach(() => {
 describe("interface localization", () => {
   it("supports a fixed Russian section without changing the user's language", () => {
     useLangStore.getState().setLang("en");
-    expect(t("Docs", undefined, "ru")).toBe("Docs");
+    expect(t("Docs", undefined, "ru")).toBe("Документация");
     expect(t("Docs")).toBe("Docs");
     expect(useLangStore.getState().lang).toBe("en");
   });

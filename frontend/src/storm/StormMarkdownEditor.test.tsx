@@ -27,6 +27,31 @@ const typeInto = async (el: HTMLElement, text: string) => {
 };
 
 describe("StormMarkdownEditor", () => {
+  it('renders existing Markdown tables', async () => {
+    render(<Harness initial={'| Host | Result |\n| --- | --- |\n| api.example | OK |'} />);
+    const table = await screen.findByRole('table');
+    expect(table).toHaveTextContent('Host');
+    expect(table).toHaveTextContent('api.example');
+  });
+
+  it('pastes a Markdown table and serializes it back without losing cells', async () => {
+    const view = render(<Harness />);
+    const editor = document.querySelector('.stormmd-input') as HTMLElement;
+    const markdown = '| Host | Result |\n| --- | --- |\n| api.example | OK |';
+    fireEvent.paste(editor, { clipboardData: { files: [], types: ['text/plain'], getData: (type: string) => type === 'text/plain' ? markdown : '' } });
+    expect(await screen.findByRole('table')).toHaveTextContent('api.example');
+    await waitFor(() => expect(screen.getByTestId('markdown')).toHaveTextContent('api.example'));
+    const saved = screen.getByTestId('markdown').textContent ?? '';
+    expect(saved).toContain('|');
+    view.unmount();
+    render(<Harness initial={saved} />);
+    const restored = await screen.findByRole('table');
+    expect(restored.querySelectorAll('th, td')).toHaveLength(4);
+    expect(restored).toHaveTextContent('Host');
+    expect(restored).toHaveTextContent('Result');
+    expect(restored).toHaveTextContent('api.example');
+    expect(restored).toHaveTextContent('OK');
+  });
   it("renders existing markdown as formatted content, not as source text", async () => {
     render(<Harness initial={"# Заголовок\n\nабзац\n\n- пункт"} />);
     await waitFor(() => expect(document.querySelector(".stormmd-input h1")).toBeInTheDocument());

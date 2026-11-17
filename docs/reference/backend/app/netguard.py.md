@@ -20,9 +20,16 @@ def _is_internal(ip: _IpAddr) -> bool
 
 Возвращает: `bool`.
 
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `str`
+
+</details>
+
 ## _embedded_v4
 
-[backend/app/netguard.py:28](../../../../backend/app/netguard.py#L28)
+[backend/app/netguard.py:30](../../../../backend/app/netguard.py#L30)
 
 ```python
 def _embedded_v4(ip: _IpAddr) -> Iterator[ipaddress.IPv4Address]
@@ -52,7 +59,7 @@ Teredo (``2001::``).
 
 ## is_disallowed_ip
 
-[backend/app/netguard.py:47](../../../../backend/app/netguard.py#L47)
+[backend/app/netguard.py:49](../../../../backend/app/netguard.py#L49)
 
 ```python
 def is_disallowed_ip(addr: str) -> bool
@@ -77,5 +84,6 @@ True, если IP-адрес внутренний/приватный/систе�
 - `_is_internal`
 - `any`
 - `ipaddress.ip_address`
+- `ipaddress.ip_network`
 
 </details>

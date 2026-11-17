@@ -193,3 +193,18 @@ describe("complete finding lists", () => {
     expect(adapter).toHaveBeenCalledTimes(2);
   });
 });
+
+it.each([
+  ['task_tracker_auth_failed', 'Task Tracker rejected authentication. Ask an administrator to check the integration token.'],
+  ['task_tracker_forbidden', 'The integration account does not have permission in Task Tracker. Contact an administrator.'],
+  ['secret_decryption_failed', 'Saved secrets could not be decrypted. Ask an administrator to restore the encryption key.'],
+])('maps %s to a safe user-facing error', (code, message) => {
+  const error = failure({} as InternalAxiosRequestConfig, 502, { code, detail: 'private-password diagnostic' });
+  expect(api.getApiErrorMessage(error, 'Fallback')).toBe(message);
+});
+
+it('requests product codes through the authenticated STORM proxy', async () => {
+  adapter.mockImplementation(async (config) => response(config, [{ code: '_am', name: '#AM' }]));
+  expect(await api.findWorksProductCodes('#AM')).toEqual([{ code: '_am', name: '#AM' }]);
+  expect(adapter.mock.calls.at(-1)?.[0]).toMatchObject({ url: '/works/product-codes', params: { q: '#AM' } });
+});

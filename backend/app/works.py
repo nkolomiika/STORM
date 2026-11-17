@@ -15,17 +15,25 @@
 from __future__ import annotations
 
 import logging
+import hashlib
 import re
+import time
 import uuid
 from typing import Any
 
 import httpx
 
 from .config import get_settings
+from .exceptions import UpstreamServiceError
 from .tracker_metadata import unit_attributes
 
 logger = logging.getLogger("storm.works")
+logger.setLevel(logging.INFO)
 settings = get_settings()
+
+# Один полный справочник на подключение; запрос пользователя фильтруется локально.
+# В ключе только отпечаток авторизации, чтобы смена токена не использовала старый кэш.
+_product_catalog_cache: dict[tuple[str, str, str, bytes], tuple[float, tuple[tuple[str, str], ...]]] = {}
 
 
 # CVSS-критичность STORM → приоритет Works (по ТЗ).
@@ -54,6 +62,15 @@ class WorksError(Exception):
         self.message = message
         self.detail = detail
         self.status_code = status_code
+
+
+def tracker_service_error(error: WorksError) -> UpstreamServiceError:
+    """Различает отказ авторизации и прав без выдачи тела внешнего ответа."""
+    if error.status_code == 401:
+        return UpstreamServiceError('Task Tracker отклонил авторизацию. Обратитесь к администратору для проверки токена.', 'task_tracker_auth_failed')
+    if error.status_code == 403:
+        return UpstreamServiceError('Учётной записи интеграции не хватает прав в Task Tracker. Обратитесь к администратору.', 'task_tracker_forbidden')
+    return UpstreamServiceError('Task Tracker временно недоступен. Попробуйте позже.', 'task_tracker_unavailable')
 
 
 def priority_for_severity(severity: str | None) -> str:
@@ -177,11 +194,24 @@ class WorksClient:
             headers={
                 "Authorization": f"Bearer {token}",
                 "Accept": "application/json, text/plain, */*",
-                "Content-Type": "application/json",
                 "Origin": origin,
             },
             cookies=settings.works_cookies_dict,
+            event_hooks={'request': [self._log_request], 'response': [self._log_response]},
         )
+
+    @staticmethod
+    async def _log_request(request: httpx.Request) -> None:
+        """Логирует начало обращения без тела, query, заголовков и секретов."""
+        request.extensions['storm_started'] = time.monotonic()
+        path = re.sub(r'/(?:APPSEC|STS)-\d+', '/{key}', request.url.path)
+        logger.info('task_tracker_request_started method=%s path=%s', request.method, path)
+
+    @staticmethod
+    async def _log_response(response: httpx.Response) -> None:
+        """Статус и длительность TT связываются с HTTP STORM через request_id."""
+        elapsed = (time.monotonic() - response.request.extensions.get('storm_started', time.monotonic())) * 1000
+        logger.info('task_tracker_response method=%s status=%s duration_ms=%.1f', response.request.method, response.status_code, elapsed)
 
     async def __aenter__(self) -> "WorksClient":
         return self
@@ -239,6 +269,42 @@ class WorksClient:
     async def find_versions(self, query: str = "", limit: int = 100) -> list[dict[str, str]]:
         """Читает справочник версий формы STS; версии тикета APPSEC загружаются отдельно."""
         return await self._find(settings.works_version_find_path, query, limit, space=settings.works_reference_space)
+
+    async def find_product_codes(self, query: str = '', limit: int = 100) -> list[dict[str, str]]:
+        """Читает taxonomy STS, сохраняя точный code (регистр, подчёркивания, числа).
+
+        Полный справочник кэшируется на минуту; ошибки не кэшируются. Кэш
+        ограничен восемью подключениями и сбрасывается сменой авторизации.
+        """
+        auth = hashlib.sha256((settings.works_api_token + '\0' + settings.works_cookies).encode()).digest()
+        key = (self._base, settings.works_product_codes_path, settings.works_product_codes_attribute, auth)
+        cached = _product_catalog_cache.get(key)
+        if cached is None or cached[0] <= time.monotonic():
+            try:
+                resp = await self._client.get(self._url(settings.works_product_codes_path), params={'validatorEnabled': 'true'})
+            except httpx.HTTPError as exc:
+                raise WorksError('Не удалось загрузить коды продуктов из Task Tracker.') from exc
+            self._raise_for_status(resp, 'product codes')
+            try:
+                payload = resp.json()
+            except ValueError as exc:
+                raise WorksError('Task Tracker вернул некорректный справочник продуктов.') from exc
+            attributes = payload.get('attributes') if isinstance(payload, dict) else None
+            attribute = next((item for item in attributes if isinstance(item, dict) and item.get('code') == settings.works_product_codes_attribute), None) if isinstance(attributes, list) else None
+            values = attribute.get('directoryValues') if attribute else None
+            if not isinstance(values, list) or any(
+                not isinstance(item, dict) or not isinstance(item.get('code'), str) or not item['code'].strip()
+                or not isinstance(item.get('name'), str) or not item['name'].strip() for item in values
+            ):
+                raise WorksError('Task Tracker вернул некорректный справочник продуктов.')
+            catalog = tuple(dict.fromkeys((item['code'], item['name']) for item in values))
+            if len(_product_catalog_cache) >= 8:
+                _product_catalog_cache.pop(next(iter(_product_catalog_cache)))
+            _product_catalog_cache[key] = (time.monotonic() + 60, catalog)
+        else:
+            catalog = cached[1]
+        needle = query.strip().casefold()
+        return [{'code': code, 'name': name} for code, name in catalog if needle in (code + ' ' + name).casefold()][:max(1, min(limit, 100))]
 
     async def get_ticket_status(self, key: str) -> str | None:
         """Текущий workflow_status тикета по ключу (напр. STS-594003).

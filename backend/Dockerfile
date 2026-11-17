@@ -69,4 +69,10 @@ COPY . /app
 # Кастомные детекторы trufflehog для фермы JS (путь совпадает с js_farm_trufflehog_config).
 COPY deploy/trufflehog-custom.yaml /usr/local/share/storm/trufflehog-custom.yaml
 
+# Firewall ставится до приложения; затем NET_ADMIN/NET_RAW снимаются из bounding set.
+RUN apt-get update && apt-get install -y --no-install-recommends iptables util-linux \
+    && rm -rf /var/lib/apt/lists/*
+COPY deploy/egress_guard.py /usr/local/lib/storm-egress-guard.py
+ENTRYPOINT ["python", "/usr/local/lib/storm-egress-guard.py"]
+
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

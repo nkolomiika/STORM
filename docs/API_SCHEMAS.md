@@ -83,7 +83,7 @@
 
 | Поле | Тип | Required | Ограничения/описание |
 | --- | --- | --- | --- |
-| `file` | `string` | да | {"format": "binary"} |
+| `file` | `string` | да | {"contentMediaType": "application/octet-stream"} |
 
 ## Body_import_project_data_api_v1_projects__project_id__import_post
 
@@ -91,7 +91,7 @@
 
 | Поле | Тип | Required | Ограничения/описание |
 | --- | --- | --- | --- |
-| `file` | `string` | да | {"format": "binary"} |
+| `file` | `string` | да | {"contentMediaType": "application/octet-stream"} |
 
 ## Body_upload_file_api_v1_projects__project_id__vulnerabilities__vuln_id__files_post
 
@@ -99,7 +99,7 @@
 
 | Поле | Тип | Required | Ограничения/описание |
 | --- | --- | --- | --- |
-| `file` | `string` | да | {"format": "binary"} |
+| `file` | `string` | да | {"contentMediaType": "application/octet-stream"} |
 
 ## Body_upload_my_avatar_api_v1_users_me_avatar_post
 
@@ -107,7 +107,7 @@
 
 | Поле | Тип | Required | Ограничения/описание |
 | --- | --- | --- | --- |
-| `avatar` | `string` | да | {"format": "binary"} |
+| `avatar` | `string` | да | {"contentMediaType": "application/octet-stream"} |
 
 ## Body_upload_project_image_api_v1_projects__project_id__images_post
 
@@ -115,7 +115,7 @@
 
 | Поле | Тип | Required | Ограничения/описание |
 | --- | --- | --- | --- |
-| `file` | `string` | да | {"format": "binary"} |
+| `file` | `string` | да | {"contentMediaType": "application/octet-stream"} |
 
 ## CommentCreate
 
@@ -1032,7 +1032,8 @@ Union не годится: pydantic должен знать точный тип 
 | `id` | `integer` | да | — |
 | `project_id` | `integer` | да | — |
 | `username` | `string \| null` | да | — |
-| `password` | `string` | да | — |
+| `password` | `string \| null` | да | — |
+| `password_available` | `boolean` | нет | {"default": true} |
 | `host` | `string \| null` | да | — |
 | `created_by` | `integer` | да | — |
 | `created_by_username` | `string \| null` | нет | — |
@@ -1597,6 +1598,8 @@ Union не годится: pydantic должен знать точный тип 
 | `loc` | `list[string \| integer]` | да | — |
 | `msg` | `string` | да | — |
 | `type` | `string` | да | — |
+| `input` | `object` | нет | — |
+| `ctx` | `object` | нет | — |
 
 ## VulnerabilityAssetCreate
 
@@ -1766,7 +1769,7 @@ SENT_BY_MISTAKE) — закрытыми.
 
 ## WorksRefOut
 
-Справочный элемент Works (компонент/версия): UUID + имя.
+Справочный элемент Task Tracker: точный код и отображаемое имя.
 
 | Поле | Тип | Required | Ограничения/описание |
 | --- | --- | --- | --- |

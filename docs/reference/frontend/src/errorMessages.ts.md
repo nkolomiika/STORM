@@ -29,7 +29,7 @@ safeErrorDetail(value: string | null) => string | null
 
 ## errorMessageForCode
 
-[frontend/src/errorMessages.ts:22](../../../../frontend/src/errorMessages.ts#L22)
+[frontend/src/errorMessages.ts:26](../../../../frontend/src/errorMessages.ts#L26)
 
 ```typescript
 errorMessageForCode(code: unknown) => string | null

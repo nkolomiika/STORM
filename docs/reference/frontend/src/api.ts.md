@@ -2,7 +2,7 @@
 
 Сгенерировано из объявлений кода. [Правила чтения](../../../METHODS.md).
 
-Методов и именованных функций: **102**.
+Методов и именованных функций: **103**.
 
 ## isBlank
 
@@ -2356,9 +2356,36 @@ Typeahead по версиям Works (имя→UUID).
 
 </details>
 
-## getVulnerabilityWorksLink
+## findWorksProductCodes
 
 [frontend/src/api.ts:872](../../../../frontend/src/api.ts#L872)
+
+```typescript
+async findWorksProductCodes(q: string) => Promise<WorksRef[]>
+```
+
+Подсказки продуктов STS; code сохраняется без преобразования регистра.
+
+| Параметр | Тип | По умолчанию | Назначение |
+| --- | --- | --- | --- |
+| `q` | `string` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
+
+Возвращает: `Promise<WorksRef[]>`.
+
+Прямые HTTP-вызовы:
+
+- `GET "/works/product-codes"`; аргументы: `{ params: { q } }`.
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `api.get`
+
+</details>
+
+## getVulnerabilityWorksLink
+
+[frontend/src/api.ts:878](../../../../frontend/src/api.ts#L878)
 
 ```typescript
 async getVulnerabilityWorksLink(projectId: number, vulnerabilityId: number) => Promise<WorksIssueLink | null>
@@ -2386,7 +2413,7 @@ async getVulnerabilityWorksLink(projectId: number, vulnerabilityId: number) => P
 
 ## exportVulnerabilityToWorks
 
-[frontend/src/api.ts:878](../../../../frontend/src/api.ts#L878)
+[frontend/src/api.ts:884](../../../../frontend/src/api.ts#L884)
 
 ```typescript
 async exportVulnerabilityToWorks(projectId: number, vulnerabilityId: number, assignee?: string | null) => Promise<WorksIssueLink>
@@ -2415,7 +2442,7 @@ async exportVulnerabilityToWorks(projectId: number, vulnerabilityId: number, ass
 
 ## getVulnerability
 
-[frontend/src/api.ts:890](../../../../frontend/src/api.ts#L890)
+[frontend/src/api.ts:896](../../../../frontend/src/api.ts#L896)
 
 ```typescript
 async getVulnerability(projectId: number, vulnerabilityId: number) => Promise<VulnerabilityDetails>
@@ -2443,7 +2470,7 @@ async getVulnerability(projectId: number, vulnerabilityId: number) => Promise<Vu
 
 ## addVulnerabilityAsset
 
-[frontend/src/api.ts:895](../../../../frontend/src/api.ts#L895)
+[frontend/src/api.ts:901](../../../../frontend/src/api.ts#L901)
 
 ```typescript
 async addVulnerabilityAsset(projectId: number, vulnerabilityId: number, payload: { asset_type: "host" | "port" | "service" | "endpoint"; asset_id: number; }) => Promise<VulnerabilityAsset>
@@ -2472,7 +2499,7 @@ async addVulnerabilityAsset(projectId: number, vulnerabilityId: number, payload:
 
 ## deleteVulnerabilityAsset
 
-[frontend/src/api.ts:907](../../../../frontend/src/api.ts#L907)
+[frontend/src/api.ts:913](../../../../frontend/src/api.ts#L913)
 
 ```typescript
 async deleteVulnerabilityAsset(projectId: number, vulnerabilityId: number, assetLinkId: number) => Promise<void>
@@ -2501,7 +2528,7 @@ async deleteVulnerabilityAsset(projectId: number, vulnerabilityId: number, asset
 
 ## listVulnerabilityFiles
 
-[frontend/src/api.ts:911](../../../../frontend/src/api.ts#L911)
+[frontend/src/api.ts:917](../../../../frontend/src/api.ts#L917)
 
 ```typescript
 async listVulnerabilityFiles(projectId: number, vulnerabilityId: number) => Promise<VulnerabilityFile[]>
@@ -2529,7 +2556,7 @@ async listVulnerabilityFiles(projectId: number, vulnerabilityId: number) => Prom
 
 ## uploadVulnerabilityFile
 
-[frontend/src/api.ts:916](../../../../frontend/src/api.ts#L916)
+[frontend/src/api.ts:922](../../../../frontend/src/api.ts#L922)
 
 ```typescript
 async uploadVulnerabilityFile(projectId: number, vulnerabilityId: number, file: File) => Promise<VulnerabilityFile>
@@ -2565,7 +2592,7 @@ new UserInputError("Select a file")
 
 ## deleteVulnerabilityFile
 
-[frontend/src/api.ts:928](../../../../frontend/src/api.ts#L928)
+[frontend/src/api.ts:934](../../../../frontend/src/api.ts#L934)
 
 ```typescript
 async deleteVulnerabilityFile(projectId: number, vulnerabilityId: number, fileId: number) => Promise<void>
@@ -2594,7 +2621,7 @@ async deleteVulnerabilityFile(projectId: number, vulnerabilityId: number, fileId
 
 ## uploadProjectImage
 
-[frontend/src/api.ts:934](../../../../frontend/src/api.ts#L934)
+[frontend/src/api.ts:940](../../../../frontend/src/api.ts#L940)
 
 ```typescript
 async uploadProjectImage(projectId: number, file: File) => Promise<{ url: string }>
@@ -2630,7 +2657,7 @@ new UserInputError("Select an image")
 
 ## downloadProjectCertificationReport
 
-[frontend/src/api.ts:946](../../../../frontend/src/api.ts#L946)
+[frontend/src/api.ts:952](../../../../frontend/src/api.ts#L952)
 
 ```typescript
 async downloadProjectCertificationReport(projectId: number) => Promise<Blob>
@@ -2657,7 +2684,7 @@ async downloadProjectCertificationReport(projectId: number) => Promise<Blob>
 
 ## downloadProjectAcceptanceReport
 
-[frontend/src/api.ts:953](../../../../frontend/src/api.ts#L953)
+[frontend/src/api.ts:959](../../../../frontend/src/api.ts#L959)
 
 ```typescript
 async downloadProjectAcceptanceReport(projectId: number) => Promise<Blob>
@@ -2684,7 +2711,7 @@ async downloadProjectAcceptanceReport(projectId: number) => Promise<Blob>
 
 ## listAgentTokens
 
-[frontend/src/api.ts:960](../../../../frontend/src/api.ts#L960)
+[frontend/src/api.ts:966](../../../../frontend/src/api.ts#L966)
 
 ```typescript
 async listAgentTokens() => Promise<AgentApiToken[]>
@@ -2707,7 +2734,7 @@ async listAgentTokens() => Promise<AgentApiToken[]>
 
 ## createAgentToken
 
-[frontend/src/api.ts:965](../../../../frontend/src/api.ts#L965)
+[frontend/src/api.ts:971](../../../../frontend/src/api.ts#L971)
 
 ```typescript
 async createAgentToken(payload: { name: string; scopes: string[]; project_ids: number[]; all_projects: boolean; expires_at?: string | null; }) => Promise<AgentApiToken & { token: string }>
@@ -2734,7 +2761,7 @@ async createAgentToken(payload: { name: string; scopes: string[]; project_ids: n
 
 ## revokeAgentToken
 
-[frontend/src/api.ts:976](../../../../frontend/src/api.ts#L976)
+[frontend/src/api.ts:982](../../../../frontend/src/api.ts#L982)
 
 ```typescript
 async revokeAgentToken(tokenId: number) => Promise<void>
@@ -2761,7 +2788,7 @@ async revokeAgentToken(tokenId: number) => Promise<void>
 
 ## listNotifications
 
-[frontend/src/api.ts:980](../../../../frontend/src/api.ts#L980)
+[frontend/src/api.ts:986](../../../../frontend/src/api.ts#L986)
 
 ```typescript
 async listNotifications(options?: { is_read?: boolean }) => Promise<PaginatedResponse<Notification>>
@@ -2788,7 +2815,7 @@ async listNotifications(options?: { is_read?: boolean }) => Promise<PaginatedRes
 
 ## markNotificationRead
 
-[frontend/src/api.ts:989](../../../../frontend/src/api.ts#L989)
+[frontend/src/api.ts:995](../../../../frontend/src/api.ts#L995)
 
 ```typescript
 async markNotificationRead(notificationId: number) => Promise<void>
@@ -2815,7 +2842,7 @@ async markNotificationRead(notificationId: number) => Promise<void>
 
 ## markAllNotificationsRead
 
-[frontend/src/api.ts:993](../../../../frontend/src/api.ts#L993)
+[frontend/src/api.ts:999](../../../../frontend/src/api.ts#L999)
 
 ```typescript
 async markAllNotificationsRead() => Promise<void>
@@ -2838,7 +2865,7 @@ async markAllNotificationsRead() => Promise<void>
 
 ## getTasks
 
-[frontend/src/api.ts:1004](../../../../frontend/src/api.ts#L1004)
+[frontend/src/api.ts:1010](../../../../frontend/src/api.ts#L1010)
 
 ```typescript
 async getTasks(params: { query?: string; category?: string; } = {}) => Promise<TaskTrackerTaskList>
@@ -2865,7 +2892,7 @@ async getTasks(params: { query?: string; category?: string; } = {}) => Promise<T
 
 ## getTask
 
-[frontend/src/api.ts:1013](../../../../frontend/src/api.ts#L1013)
+[frontend/src/api.ts:1019](../../../../frontend/src/api.ts#L1019)
 
 ```typescript
 async getTask(key: string) => Promise<TaskTrackerTaskDetail>

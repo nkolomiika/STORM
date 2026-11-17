@@ -6,7 +6,7 @@
 
 ## _register_protected_docs
 
-[backend/app/main.py:73](../../../../backend/app/main.py#L73)
+[backend/app/main.py:72](../../../../backend/app/main.py#L72)
 
 ```python
 def _register_protected_docs(fastapi_app: FastAPI, *, openapi_route: str, docs_route: str, redoc_route: str) -> None
@@ -31,7 +31,7 @@ def _register_protected_docs(fastapi_app: FastAPI, *, openapi_route: str, docs_r
 
 ## _register_protected_docs._openapi_json
 
-[backend/app/main.py:84](../../../../backend/app/main.py#L84)
+[backend/app/main.py:83](../../../../backend/app/main.py#L83)
 
 ```python
 async def _openapi_json(_: object=Depends(get_current_user)) -> JSONResponse
@@ -63,7 +63,7 @@ fastapi_app.get(openapi_route, include_in_schema=False)
 
 ## _register_protected_docs._swagger_ui
 
-[backend/app/main.py:88](../../../../backend/app/main.py#L88)
+[backend/app/main.py:87](../../../../backend/app/main.py#L87)
 
 ```python
 async def _swagger_ui(request: Request, _: object=Depends(get_current_user)) -> не аннотирован
@@ -97,7 +97,7 @@ fastapi_app.get(docs_route, include_in_schema=False)
 
 ## _register_protected_docs._redoc
 
-[backend/app/main.py:93](../../../../backend/app/main.py#L93)
+[backend/app/main.py:92](../../../../backend/app/main.py#L92)
 
 ```python
 async def _redoc(request: Request, _: object=Depends(get_current_user)) -> не аннотирован
@@ -208,14 +208,14 @@ def _format_request_validation(exc: RequestValidationError) -> str
 [backend/app/main.py:178](../../../../backend/app/main.py#L178)
 
 ```python
-async def request_validation_handler(_: Request, exc: RequestValidationError) -> JSONResponse
+async def request_validation_handler(request: Request, exc: RequestValidationError) -> JSONResponse
 ```
 
-В теле вызывает `JSONResponse`, `_format_request_validation`, `exc.errors`, `len`, `logger.warning`, `sorted`.
+В теле вызывает `JSONResponse`, `_format_request_validation`, `error_payload`, `exc.errors`, `getattr`, `len`, `logger.warning`, `sorted`.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
-| `_` | `Request` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
+| `request` | `Request` | `обязательный` | HTTP-запрос Starlette/FastAPI. |
 | `exc` | `RequestValidationError` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
 
 Возвращает: `JSONResponse`.
@@ -225,7 +225,9 @@ async def request_validation_handler(_: Request, exc: RequestValidationError) ->
 
 - `JSONResponse`
 - `_format_request_validation`
+- `error_payload`
 - `exc.errors`
+- `getattr`
 - `len`
 - `logger.warning`
 - `sorted`

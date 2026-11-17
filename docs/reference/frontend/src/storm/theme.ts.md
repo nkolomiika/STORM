@@ -6,7 +6,7 @@
 
 ## readStored
 
-[frontend/src/storm/theme.ts:17](../../../../../frontend/src/storm/theme.ts#L17)
+[frontend/src/storm/theme.ts:14](../../../../../frontend/src/storm/theme.ts#L14)
 
 ```typescript
 readStored() => Theme
@@ -25,7 +25,7 @@ Read the persisted preference; default to light.
 
 ## reflect
 
-[frontend/src/storm/theme.ts:27](../../../../../frontend/src/storm/theme.ts#L27)
+[frontend/src/storm/theme.ts:24](../../../../../frontend/src/storm/theme.ts#L24)
 
 ```typescript
 reflect(theme: Theme) => void
@@ -48,7 +48,7 @@ Mirror the theme onto <html data-theme> so storm.css can style/invert.
 
 ## setTheme
 
-[frontend/src/storm/theme.ts:41](../../../../../frontend/src/storm/theme.ts#L41)
+[frontend/src/storm/theme.ts:38](../../../../../frontend/src/storm/theme.ts#L38)
 
 ```typescript
 setTheme(theme) => void
@@ -73,7 +73,7 @@ setTheme(theme) => void
 
 ## toggleTheme
 
-[frontend/src/storm/theme.ts:50](../../../../../frontend/src/storm/theme.ts#L50)
+[frontend/src/storm/theme.ts:47](../../../../../frontend/src/storm/theme.ts#L47)
 
 ```typescript
 toggleTheme() => void
@@ -93,7 +93,7 @@ toggleTheme() => void
 
 ## initTheme
 
-[frontend/src/storm/theme.ts:54](../../../../../frontend/src/storm/theme.ts#L54)
+[frontend/src/storm/theme.ts:51](../../../../../frontend/src/storm/theme.ts#L51)
 
 ```typescript
 initTheme() => void

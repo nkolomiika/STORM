@@ -374,30 +374,43 @@ UnauthorizedError('Токен недействителен или истёк')
 
 ## _fernet
 
-[backend/app/security.py:133](../../../../backend/app/security.py#L133)
+[backend/app/security.py:132](../../../../backend/app/security.py#L132)
 
 ```python
-def _fernet() -> не аннотирован
+def _fernet(secret: str | None=None) -> не аннотирован
 ```
 
-В теле вызывает `Fernet`, `base64.urlsafe_b64encode`, `hashlib.sha256`, `hashlib.sha256(settings.jwt_secret_key.encode('utf-8')).digest`, `settings.jwt_secret_key.encode`.
+Строит Fernet из постоянного секрета, сохраняя прежний алгоритм SHA-256.
+
+| Параметр | Тип | По умолчанию | Назначение |
+| --- | --- | --- | --- |
+| `secret` | `str \| None` | `None` | Определяется именем/типом и контрактом вызывающего кода. |
 
 Возвращает: `не аннотирован`.
+
+Явные raise в теле (исключения вызываемых методов могут добавляться):
+
+```python
+ValueError('Не настроен независимый ключ шифрования данных')
+```
 
 <details>
 <summary>Прямые вызовы в теле</summary>
 
 - `Fernet`
+- `ValueError`
 - `base64.urlsafe_b64encode`
 - `hashlib.sha256`
-- `hashlib.sha256(settings.jwt_secret_key.encode('utf-8')).digest`
-- `settings.jwt_secret_key.encode`
+- `hashlib.sha256(secret.encode('utf-8')).digest`
+- `len`
+- `secret.encode`
+- `secret.strip`
 
 </details>
 
 ## encrypt_secret
 
-[backend/app/security.py:140](../../../../backend/app/security.py#L140)
+[backend/app/security.py:143](../../../../backend/app/security.py#L143)
 
 ```python
 def encrypt_secret(value: str) -> str
@@ -423,13 +436,13 @@ def encrypt_secret(value: str) -> str
 
 ## decrypt_secret
 
-[backend/app/security.py:145](../../../../backend/app/security.py#L145)
+[backend/app/security.py:148](../../../../backend/app/security.py#L148)
 
 ```python
 def decrypt_secret(value: str) -> str
 ```
 
-Расшифровывает секрет, зашифрованный encrypt_secret.
+Читает секрет активным или явно настроенным прежним ключом, не переписывая БД.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -437,19 +450,27 @@ def decrypt_secret(value: str) -> str
 
 Возвращает: `str`.
 
+Явные raise в теле (исключения вызываемых методов могут добавляться):
+
+```python
+InvalidToken
+```
+
 <details>
 <summary>Прямые вызовы в теле</summary>
 
 - `_fernet`
-- `_fernet().decrypt`
-- `_fernet().decrypt(value.encode('utf-8')).decode`
+- `_fernet(secret).decrypt`
+- `_fernet(secret).decrypt(value.encode('utf-8')).decode`
+- `dict.fromkeys`
+- `isinstance`
 - `value.encode`
 
 </details>
 
 ## generate_totp_secret
 
-[backend/app/security.py:155](../../../../backend/app/security.py#L155)
+[backend/app/security.py:167](../../../../backend/app/security.py#L167)
 
 ```python
 def generate_totp_secret() -> str
@@ -468,7 +489,7 @@ def generate_totp_secret() -> str
 
 ## verify_totp
 
-[backend/app/security.py:160](../../../../backend/app/security.py#L160)
+[backend/app/security.py:172](../../../../backend/app/security.py#L172)
 
 ```python
 def verify_totp(secret: str, code: str) -> bool
@@ -495,7 +516,7 @@ def verify_totp(secret: str, code: str) -> bool
 
 ## totp_provisioning_uri
 
-[backend/app/security.py:168](../../../../backend/app/security.py#L168)
+[backend/app/security.py:180](../../../../backend/app/security.py#L180)
 
 ```python
 def totp_provisioning_uri(secret: str, account_name: str) -> str
@@ -520,7 +541,7 @@ def totp_provisioning_uri(secret: str, account_name: str) -> str
 
 ## totp_qr_png_data_url
 
-[backend/app/security.py:173](../../../../backend/app/security.py#L173)
+[backend/app/security.py:185](../../../../backend/app/security.py#L185)
 
 ```python
 def totp_qr_png_data_url(otpauth_uri: str) -> str

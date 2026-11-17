@@ -6,7 +6,7 @@
 
 ## upload_project_image
 
-[backend/app/routers/images.py:30](../../../../../backend/app/routers/images.py#L30)
+[backend/app/routers/images.py:33](../../../../../backend/app/routers/images.py#L33)
 
 ```python
 async def upload_project_image(project_id: int, file: UploadFile=UploadApiFile(...), _: None=Depends(enforce_csrf), _user: User=Depends(get_current_user), _project=Depends(require_project_access)) -> dict
@@ -35,6 +35,7 @@ router.post('/projects/{project_id}/images', status_code=201)
 Явные raise в теле (исключения вызываемых методов могут добавляться):
 
 ```python
+ServiceUnavailableError('Не удалось загрузить изображение: хранилище временно недоступно.', 'storage_unavailable')
 ValidationError('Изображение больше 10 МБ')
 ValidationError('Поддерживаются только изображения PNG, JPEG, GIF или WEBP')
 ValidationError('Пустой файл')
@@ -50,20 +51,25 @@ ValueError('Unsupported image')
 - `Image.MIME.get`
 - `Image.open`
 - `MinioStorage`
+- `ServiceUnavailableError`
 - `ValidationError`
 - `ValueError`
 - `_ALLOWED_EXT.get`
 - `asyncio.to_thread`
+- `getattr`
 - `image.verify`
 - `len`
+- `logging.getLogger`
+- `logging.getLogger('storm.storage').warning`
 - `read_upload`
+- `type`
 - `uuid4`
 
 </details>
 
 ## download_project_image
 
-[backend/app/routers/images.py:64](../../../../../backend/app/routers/images.py#L64)
+[backend/app/routers/images.py:71](../../../../../backend/app/routers/images.py#L71)
 
 ```python
 async def download_project_image(project_id: int, image_name: str, _user: User=Depends(get_current_user), _project=Depends(require_project_access)) -> Response
@@ -92,6 +98,7 @@ router.get('/projects/{project_id}/images/{image_name}/download')
 
 ```python
 NotFoundError('Изображение не найдено')
+ServiceUnavailableError('Хранилище изображений временно недоступно.', 'storage_unavailable')
 ```
 
 <details>
@@ -100,6 +107,7 @@ NotFoundError('Изображение не найдено')
 - `MinioStorage`
 - `NotFoundError`
 - `Response`
+- `ServiceUnavailableError`
 - `_IMAGE_NAME_RE.match`
 - `asyncio.to_thread`
 

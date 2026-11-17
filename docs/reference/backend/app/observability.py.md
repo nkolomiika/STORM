@@ -6,7 +6,7 @@
 
 ## redact_log
 
-[backend/app/observability.py:16](../../../../backend/app/observability.py#L16)
+[backend/app/observability.py:18](../../../../backend/app/observability.py#L18)
 
 ```python
 def redact_log(value: str) -> str
@@ -30,7 +30,7 @@ def redact_log(value: str) -> str
 
 ## SafeLogFilter.filter
 
-[backend/app/observability.py:29](../../../../backend/app/observability.py#L29)
+[backend/app/observability.py:32](../../../../backend/app/observability.py#L32)
 
 ```python
 def filter(self, record: logging.LogRecord) -> bool
@@ -60,7 +60,7 @@ def filter(self, record: logging.LogRecord) -> bool
 
 ## configure_logging
 
-[backend/app/observability.py:47](../../../../backend/app/observability.py#L47)
+[backend/app/observability.py:55](../../../../backend/app/observability.py#L55)
 
 ```python
 def configure_logging() -> None
@@ -80,13 +80,16 @@ def configure_logging() -> None
 - `isinstance`
 - `logging.basicConfig`
 - `logging.getLogger`
+- `logging.getLogger('httpcore').setLevel`
+- `logging.getLogger('httpx').setLevel`
+- `logging.getLogger('storm.works').setLevel`
 - `set`
 
 </details>
 
 ## RequestLogMiddleware.__init__
 
-[backend/app/observability.py:64](../../../../backend/app/observability.py#L64)
+[backend/app/observability.py:75](../../../../backend/app/observability.py#L75)
 
 ```python
 def __init__(self, app) -> не аннотирован
@@ -102,13 +105,13 @@ def __init__(self, app) -> не аннотирован
 
 ## RequestLogMiddleware.__call__
 
-[backend/app/observability.py:67](../../../../backend/app/observability.py#L67)
+[backend/app/observability.py:78](../../../../backend/app/observability.py#L78)
 
 ```python
 async def __call__(self, scope, receive, send) -> не аннотирован
 ```
 
-В теле вызывает `getattr`, `logger.log`, `request_id.reset`, `request_id.set`, `scope.get`, `scope.setdefault`, `scope['state'].get`, `self.app`; полный список ниже.
+В теле вызывает `bytearray`, `getattr`, `logger.log`, `request_id.reset`, `request_id.set`, `scope.get`, `scope.setdefault`, `scope['state'].get`; полный список ниже.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -121,6 +124,7 @@ async def __call__(self, scope, receive, send) -> не аннотирован
 <details>
 <summary>Прямые вызовы в теле</summary>
 
+- `bytearray`
 - `getattr`
 - `logger.log`
 - `request_id.reset`
@@ -136,13 +140,13 @@ async def __call__(self, scope, receive, send) -> не аннотирован
 
 ## RequestLogMiddleware.__call__.send_response
 
-[backend/app/observability.py:75](../../../../backend/app/observability.py#L75)
+[backend/app/observability.py:88](../../../../backend/app/observability.py#L88)
 
 ```python
 async def send_response(message) -> не аннотирован
 ```
 
-В теле вызывает `identifier.encode`, `message.get`, `send`.
+В теле вызывает `body.get`, `error_body.extend`, `error_payload`, `identifier.encode`, `isinstance`, `json.dumps`, `json.dumps(payload, ensure_ascii=False).encode`, `json.loads`; полный список ниже.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -153,8 +157,20 @@ async def send_response(message) -> не аннотирован
 <details>
 <summary>Прямые вызовы в теле</summary>
 
+- `body.get`
+- `error_body.extend`
+- `error_payload`
 - `identifier.encode`
+- `isinstance`
+- `json.dumps`
+- `json.dumps(payload, ensure_ascii=False).encode`
+- `json.loads`
+- `k.lower`
+- `len`
+- `max`
 - `message.get`
 - `send`
+- `str`
+- `str(len(encoded)).encode`
 
 </details>

@@ -18,6 +18,8 @@ collector (сиид для тестов без сети/бинарей).
 from __future__ import annotations
 from app.farm.job_access import get_recon_job
 
+from app.scanner_sandbox import scanner_options
+
 import asyncio
 import json
 import shutil
@@ -111,13 +113,13 @@ def parse_subfinder(text: str, root: str) -> set[str]:
 
 
 async def _fetch_crtsh(root: str) -> tuple[set[str], str | None]:
-    """crt.sh по корню. Хост фиксированный (не пользовательский) — SSRF-transport
-    не нужен; таймаут ограничивает зависание."""
+    """crt.sh: закреплённый публичный IP и повторная проверка каждого redirect."""
+    from app.farm.core import ProbeTransport
     url = "https://crt.sh/"
     params = {"q": f"%.{root}", "output": "json"}
     timeout = httpx.Timeout(settings.subs_crtsh_timeout_seconds)
     try:
-        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True, max_redirects=3, transport=ProbeTransport()) as client:
             resp = await client.get(url, params=params)
         if resp.status_code != 200:
             return set(), f"crt.sh({root}): http_{resp.status_code}"
@@ -131,9 +133,10 @@ async def _run_subfinder(root: str) -> tuple[set[str], str | None]:
     if not shutil.which(settings.subs_subfinder_bin):
         return set(), None
     args = [settings.subs_subfinder_bin, "-d", root, "-silent", "-no-color"]
+    args, sandbox = scanner_options(args)
     try:
         proc = await asyncio.create_subprocess_exec(
-            *args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL
+            *args, **sandbox, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL
         )
         out, _ = await asyncio.wait_for(
             proc.communicate(), timeout=settings.subs_subfinder_timeout_seconds

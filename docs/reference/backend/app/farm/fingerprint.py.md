@@ -6,7 +6,7 @@
 
 ## url_for
 
-[backend/app/farm/fingerprint.py:41](../../../../../backend/app/farm/fingerprint.py#L41)
+[backend/app/farm/fingerprint.py:43](../../../../../backend/app/farm/fingerprint.py#L43)
 
 ```python
 def url_for(p: ProbeResult) -> str
@@ -22,7 +22,7 @@ def url_for(p: ProbeResult) -> str
 
 ## _url_key
 
-[backend/app/farm/fingerprint.py:46](../../../../../backend/app/farm/fingerprint.py#L46)
+[backend/app/farm/fingerprint.py:48](../../../../../backend/app/farm/fingerprint.py#L48)
 
 ```python
 def _url_key(u: str) -> tuple[str, str, int]
@@ -48,7 +48,7 @@ def _url_key(u: str) -> tuple[str, str, int]
 
 ## _split_tech
 
-[backend/app/farm/fingerprint.py:65](../../../../../backend/app/farm/fingerprint.py#L65)
+[backend/app/farm/fingerprint.py:67](../../../../../backend/app/farm/fingerprint.py#L67)
 
 ```python
 def _split_tech(raw: str) -> Tech
@@ -76,7 +76,7 @@ def _split_tech(raw: str) -> Tech
 
 ## parse_httpx_jsonl
 
-[backend/app/farm/fingerprint.py:75](../../../../../backend/app/farm/fingerprint.py#L75)
+[backend/app/farm/fingerprint.py:77](../../../../../backend/app/farm/fingerprint.py#L77)
 
 ```python
 def parse_httpx_jsonl(raw: str) -> dict[str, list[Tech]]
@@ -116,7 +116,7 @@ cdn_name/webserver добавляем как технологию, если их
 
 ## _run_httpx
 
-[backend/app/farm/fingerprint.py:108](../../../../../backend/app/farm/fingerprint.py#L108)
+[backend/app/farm/fingerprint.py:110](../../../../../backend/app/farm/fingerprint.py#L110)
 
 ```python
 async def _run_httpx(urls: list[str]) -> dict[str, list[Tech]]
@@ -142,13 +142,14 @@ async def _run_httpx(urls: list[str]) -> dict[str, list[Tech]]
 - `out.decode`
 - `parse_httpx_jsonl`
 - `proc.communicate`
+- `scanner_options`
 - `str`
 
 </details>
 
 ## parse_whatweb_json
 
-[backend/app/farm/fingerprint.py:137](../../../../../backend/app/farm/fingerprint.py#L137)
+[backend/app/farm/fingerprint.py:140](../../../../../backend/app/farm/fingerprint.py#L140)
 
 ```python
 def parse_whatweb_json(raw: str) -> list[Tech]
@@ -187,13 +188,13 @@ def parse_whatweb_json(raw: str) -> list[Tech]
 
 ## _run_whatweb_one
 
-[backend/app/farm/fingerprint.py:182](../../../../../backend/app/farm/fingerprint.py#L182)
+[backend/app/farm/fingerprint.py:185](../../../../../backend/app/farm/fingerprint.py#L185)
 
 ```python
 async def _run_whatweb_one(url: str) -> list[Tech]
 ```
 
-В теле вызывает `asyncio.create_subprocess_exec`, `asyncio.wait_for`, `int`, `out.decode`, `parse_whatweb_json`, `proc.communicate`, `str`.
+В теле вызывает `asyncio.create_subprocess_exec`, `asyncio.wait_for`, `int`, `out.decode`, `parse_whatweb_json`, `proc.communicate`, `scanner_options`, `str`.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -210,13 +211,14 @@ async def _run_whatweb_one(url: str) -> list[Tech]
 - `out.decode`
 - `parse_whatweb_json`
 - `proc.communicate`
+- `scanner_options`
 - `str`
 
 </details>
 
 ## _run_whatweb
 
-[backend/app/farm/fingerprint.py:200](../../../../../backend/app/farm/fingerprint.py#L200)
+[backend/app/farm/fingerprint.py:204](../../../../../backend/app/farm/fingerprint.py#L204)
 
 ```python
 async def _run_whatweb(urls: list[str]) -> dict[str, list[Tech]]
@@ -242,7 +244,7 @@ async def _run_whatweb(urls: list[str]) -> dict[str, list[Tech]]
 
 ## _run_whatweb.one
 
-[backend/app/farm/fingerprint.py:203](../../../../../backend/app/farm/fingerprint.py#L203)
+[backend/app/farm/fingerprint.py:207](../../../../../backend/app/farm/fingerprint.py#L207)
 
 ```python
 async def one(u: str) -> tuple[str, list[Tech]]
@@ -265,7 +267,7 @@ async def one(u: str) -> tuple[str, list[Tech]]
 
 ## _pick_engine
 
-[backend/app/farm/fingerprint.py:213](../../../../../backend/app/farm/fingerprint.py#L213)
+[backend/app/farm/fingerprint.py:217](../../../../../backend/app/farm/fingerprint.py#L217)
 
 ```python
 def _pick_engine() -> Callable[[list[str]], Awaitable[dict[str, list[Tech]]]] | None
@@ -284,7 +286,7 @@ def _pick_engine() -> Callable[[list[str]], Awaitable[dict[str, list[Tech]]]] | 
 
 ## _regate_external
 
-[backend/app/farm/fingerprint.py:226](../../../../../backend/app/farm/fingerprint.py#L226)
+[backend/app/farm/fingerprint.py:230](../../../../../backend/app/farm/fingerprint.py#L230)
 
 ```python
 async def _regate_external(responding: list[ProbeResult], resolver: Resolver) -> list[ProbeResult]
@@ -310,7 +312,7 @@ async def _regate_external(responding: list[ProbeResult], resolver: Resolver) ->
 
 ## detect_services
 
-[backend/app/farm/fingerprint.py:234](../../../../../backend/app/farm/fingerprint.py#L234)
+[backend/app/farm/fingerprint.py:238](../../../../../backend/app/farm/fingerprint.py#L238)
 
 ```python
 async def detect_services(probes: list[ProbeResult], *, detector: Callable[[list[str]], Awaitable[dict[str, list[Tech]]]] | None=None, resolver: Resolver | None=None) -> dict[tuple[str, int], list[Tech]]

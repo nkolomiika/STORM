@@ -9,7 +9,7 @@ describe("StormDocs — раздел /docs", () => {
   it("лендинг: заголовок Docs и карточки категорий по роли (обычный пользователь)", () => {
     render(<StormDocs isAdmin={false} />);
     // раздел называется Docs (в шапке сайдбара и в заголовке лендинга)
-    expect(screen.getAllByText("Docs").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Документация").length).toBeGreaterThan(0);
     // документы «Пользователь» и «Agent API» видны, «Администратор» — нет (скрытие)
     expect(screen.getAllByText("Пользователь").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Агентский API").length).toBeGreaterThan(0);

@@ -4,6 +4,8 @@ Cloudflare может сохраняться как название техно�
 
 from __future__ import annotations
 
+from app.scanner_sandbox import scanner_options
+
 import asyncio
 import json
 import shutil
@@ -115,9 +117,10 @@ async def _run_httpx(urls: list[str]) -> dict[str, list[Tech]]:
         "-timeout", str(int(timeout)),
         "-retries", "0",
     ]
+    args, sandbox = scanner_options(args)
     try:
         proc = await asyncio.create_subprocess_exec(
-            *args,
+            *args, **sandbox,
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.DEVNULL,
@@ -187,9 +190,10 @@ async def _run_whatweb_one(url: str) -> list[Tech]:
         "--open-timeout", str(int(timeout)), "--read-timeout", str(int(timeout)),
         "--log-json=-", url,
     ]
+    cmd, sandbox = scanner_options(cmd)
     try:
         proc = await asyncio.create_subprocess_exec(
-            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL
+            *cmd, **sandbox, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL
         )
         out, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout + 5)
     except (TimeoutError, OSError):

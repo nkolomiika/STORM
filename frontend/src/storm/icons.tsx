@@ -119,6 +119,8 @@ const PATHS: Record<string, ReactNode> = {
       <path d="M21 21l-4-4" />
     </>
   ),
+  "sort-asc": <path d="M4 18V4m-3 3 3-3 3 3M11 6h5M11 12h8M11 18h11" />,
+  "sort-desc": <path d="M4 4v14m-3-3 3 3 3-3M11 6h11M11 12h8M11 18h5" />,
   sort: <path d="M3 6h18M6 12h12M10 18h4" />,
   calendar: (
     <>

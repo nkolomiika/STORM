@@ -13,7 +13,9 @@ def test_prod_example_matches_confirmed_iam_and_as21_contracts():
     values = dotenv_values(root/'.env.prod.example')
     options = {key.lower(): value for key, value in values.items() if key.lower() in Settings.model_fields}
     options['works_tasks_search_body'] = json.loads(options['works_tasks_search_body'])
+    options['data_encryption_previous_keys'] = json.loads(options['data_encryption_previous_keys'])
     options.update(jwt_secret_key='test-secret-key-at-least-32-characters',
+                   data_encryption_key='independent-data-key-at-least-32-characters',
                    sso_issuer='https://iam.example/realms/storm', sso_client_id='test-client',
                    works_api_token='test-only-token')
     settings = Settings(_env_file=None, **options)
@@ -25,6 +27,9 @@ def test_prod_example_matches_confirmed_iam_and_as21_contracts():
     assert settings.works_base_url == 'https://portal.works.prod.sbt/swtr'
     assert settings.works_tasks_space == 'APPSEC' and settings.works_space == 'STS'
     assert settings.works_reference_space == 'STS'
+    assert settings.works_product_codes_path == '/rest/api/suit/v1/bug_appsec'
+    assert settings.works_product_codes_attribute == 'product_code_list_sts'
+    assert settings.data_encryption_key != settings.jwt_secret_key and settings.data_encryption_previous_keys == []
     assert settings.works_unit_detail_path == '/rest/api/unit/v2/{key}'
     assert settings.works_tasks_demo_file == ''
     assert settings.works_verify_ssl is True and settings.sso_verify_tls is True

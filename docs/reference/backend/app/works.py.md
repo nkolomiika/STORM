@@ -2,11 +2,11 @@
 
 Сгенерировано из объявлений кода. [Правила чтения](../../../METHODS.md).
 
-Методов и именованных функций: **21**.
+Методов и именованных функций: **25**.
 
 ## WorksError.__init__
 
-[backend/app/works.py:52](../../../../backend/app/works.py#L52)
+[backend/app/works.py:60](../../../../backend/app/works.py#L60)
 
 ```python
 def __init__(self, message: str, detail: str='', *, status_code: int | None=None) -> не аннотирован
@@ -30,9 +30,32 @@ def __init__(self, message: str, detail: str='', *, status_code: int | None=None
 
 </details>
 
+## tracker_service_error
+
+[backend/app/works.py:67](../../../../backend/app/works.py#L67)
+
+```python
+def tracker_service_error(error: WorksError) -> UpstreamServiceError
+```
+
+Различает отказ авторизации и прав без выдачи тела внешнего ответа.
+
+| Параметр | Тип | По умолчанию | Назначение |
+| --- | --- | --- | --- |
+| `error` | `WorksError` | `обязательный` | Перехваченное исключение/ответ ошибки. |
+
+Возвращает: `UpstreamServiceError`.
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `UpstreamServiceError`
+
+</details>
+
 ## priority_for_severity
 
-[backend/app/works.py:59](../../../../backend/app/works.py#L59)
+[backend/app/works.py:76](../../../../backend/app/works.py#L76)
 
 ```python
 def priority_for_severity(severity: str | None) -> str
@@ -57,7 +80,7 @@ CVSS-критичность → приоритет Works; неизвестное
 
 ## criticality_for_severity
 
-[backend/app/works.py:64](../../../../backend/app/works.py#L64)
+[backend/app/works.py:81](../../../../backend/app/works.py#L81)
 
 ```python
 def criticality_for_severity(severity: str | None) -> str | None
@@ -82,7 +105,7 @@ def criticality_for_severity(severity: str | None) -> str | None
 
 ## text_to_prosemirror
 
-[backend/app/works.py:69](../../../../backend/app/works.py#L69)
+[backend/app/works.py:86](../../../../backend/app/works.py#L86)
 
 ```python
 def text_to_prosemirror(text: str | None) -> dict[str, Any]
@@ -114,7 +137,7 @@ def text_to_prosemirror(text: str | None) -> dict[str, Any]
 
 ## _unit_ref
 
-[backend/app/works.py:95](../../../../backend/app/works.py#L95)
+[backend/app/works.py:112](../../../../backend/app/works.py#L112)
 
 ```python
 def _unit_ref(code: str | None, name: str | None) -> dict[str, Any] | None
@@ -131,7 +154,7 @@ def _unit_ref(code: str | None, name: str | None) -> dict[str, Any] | None
 
 ## _extract_items
 
-[backend/app/works.py:102](../../../../backend/app/works.py#L102)
+[backend/app/works.py:119](../../../../backend/app/works.py#L119)
 
 ```python
 def _extract_items(payload: Any) -> list[dict[str, Any]]
@@ -164,7 +187,7 @@ def _extract_items(payload: Any) -> list[dict[str, Any]]
 
 ## _item_code_name
 
-[backend/app/works.py:136](../../../../backend/app/works.py#L136)
+[backend/app/works.py:153](../../../../backend/app/works.py#L153)
 
 ```python
 def _item_code_name(item: dict[str, Any]) -> dict[str, str]
@@ -188,7 +211,7 @@ def _item_code_name(item: dict[str, Any]) -> dict[str, str]
 
 ## _workflow_status_name
 
-[backend/app/works.py:143](../../../../backend/app/works.py#L143)
+[backend/app/works.py:160](../../../../backend/app/works.py#L160)
 
 ```python
 def _workflow_status_name(item: dict[str, Any]) -> str | None
@@ -218,7 +241,7 @@ def _workflow_status_name(item: dict[str, Any]) -> str | None
 
 ## WorksClient.__init__
 
-[backend/app/works.py:164](../../../../backend/app/works.py#L164)
+[backend/app/works.py:181](../../../../backend/app/works.py#L181)
 
 ```python
 def __init__(self) -> None
@@ -249,9 +272,59 @@ WorksError('Интеграция с Works не настроена.')
 
 </details>
 
+## WorksClient._log_request
+
+[backend/app/works.py:204](../../../../backend/app/works.py#L204)
+
+```python
+async def _log_request(request: httpx.Request) -> None
+```
+
+Логирует начало обращения без тела, query, заголовков и секретов.
+
+| Параметр | Тип | По умолчанию | Назначение |
+| --- | --- | --- | --- |
+| `request` | `httpx.Request` | `обязательный` | HTTP-запрос Starlette/FastAPI. |
+
+Возвращает: `None`.
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `logger.info`
+- `re.sub`
+- `time.monotonic`
+
+</details>
+
+## WorksClient._log_response
+
+[backend/app/works.py:211](../../../../backend/app/works.py#L211)
+
+```python
+async def _log_response(response: httpx.Response) -> None
+```
+
+Статус и длительность TT связываются с HTTP STORM через request_id.
+
+| Параметр | Тип | По умолчанию | Назначение |
+| --- | --- | --- | --- |
+| `response` | `httpx.Response` | `обязательный` | HTTP-ответ, в котором могут устанавливаться cookie/заголовки. |
+
+Возвращает: `None`.
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `logger.info`
+- `response.request.extensions.get`
+- `time.monotonic`
+
+</details>
+
 ## WorksClient.__aenter__
 
-[backend/app/works.py:186](../../../../backend/app/works.py#L186)
+[backend/app/works.py:216](../../../../backend/app/works.py#L216)
 
 ```python
 async def __aenter__(self) -> 'WorksClient'
@@ -263,7 +336,7 @@ async def __aenter__(self) -> 'WorksClient'
 
 ## WorksClient.__aexit__
 
-[backend/app/works.py:189](../../../../backend/app/works.py#L189)
+[backend/app/works.py:219](../../../../backend/app/works.py#L219)
 
 ```python
 async def __aexit__(self, *exc: Any) -> None
@@ -286,7 +359,7 @@ async def __aexit__(self, *exc: Any) -> None
 
 ## WorksClient._url
 
-[backend/app/works.py:192](../../../../backend/app/works.py#L192)
+[backend/app/works.py:222](../../../../backend/app/works.py#L222)
 
 ```python
 def _url(self, path: str) -> str
@@ -302,7 +375,7 @@ def _url(self, path: str) -> str
 
 ## WorksClient._raise_for_status
 
-[backend/app/works.py:196](../../../../backend/app/works.py#L196)
+[backend/app/works.py:226](../../../../backend/app/works.py#L226)
 
 ```python
 def _raise_for_status(resp: httpx.Response, what: str) -> None
@@ -337,7 +410,7 @@ WorksError('Не удалось подключиться к Task Tracker. Обр
 
 ## WorksClient._find
 
-[backend/app/works.py:211](../../../../backend/app/works.py#L211)
+[backend/app/works.py:241](../../../../backend/app/works.py#L241)
 
 ```python
 async def _find(self, path: str, query: str, limit: int, *, space: str | None=None) -> list[dict[str, str]]
@@ -383,7 +456,7 @@ WorksError('Не удалось соединиться с Works.', str(exc))
 
 ## WorksClient.find_components
 
-[backend/app/works.py:235](../../../../backend/app/works.py#L235)
+[backend/app/works.py:265](../../../../backend/app/works.py#L265)
 
 ```python
 async def find_components(self, query: str='', limit: int=100) -> list[dict[str, str]]
@@ -407,7 +480,7 @@ async def find_components(self, query: str='', limit: int=100) -> list[dict[str,
 
 ## WorksClient.find_versions
 
-[backend/app/works.py:239](../../../../backend/app/works.py#L239)
+[backend/app/works.py:269](../../../../backend/app/works.py#L269)
 
 ```python
 async def find_versions(self, query: str='', limit: int=100) -> list[dict[str, str]]
@@ -429,9 +502,70 @@ async def find_versions(self, query: str='', limit: int=100) -> list[dict[str, s
 
 </details>
 
+## WorksClient.find_product_codes
+
+[backend/app/works.py:273](../../../../backend/app/works.py#L273)
+
+```python
+async def find_product_codes(self, query: str='', limit: int=100) -> list[dict[str, str]]
+```
+
+Читает taxonomy STS, сохраняя точный code (регистр, подчёркивания, числа).
+
+Полный справочник кэшируется на минуту; ошибки не кэшируются. Кэш
+ограничен восемью подключениями и сбрасывается сменой авторизации.
+
+| Параметр | Тип | По умолчанию | Назначение |
+| --- | --- | --- | --- |
+| `query` | `str` | `''` | Определяется именем/типом и контрактом вызывающего кода. |
+| `limit` | `int` | `100` | Максимальное число возвращаемых записей. |
+
+Возвращает: `list[dict[str, str]]`.
+
+Явные raise в теле (исключения вызываемых методов могут добавляться):
+
+```python
+WorksError('Task Tracker вернул некорректный справочник продуктов.')
+WorksError('Не удалось загрузить коды продуктов из Task Tracker.')
+```
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `(code + ' ' + name).casefold`
+- `(settings.works_api_token + '\x00' + settings.works_cookies).encode`
+- `WorksError`
+- `_product_catalog_cache.get`
+- `_product_catalog_cache.pop`
+- `any`
+- `attribute.get`
+- `dict.fromkeys`
+- `hashlib.sha256`
+- `hashlib.sha256((settings.works_api_token + '\x00' + settings.works_cookies).encode()).digest`
+- `isinstance`
+- `item.get`
+- `item['code'].strip`
+- `item['name'].strip`
+- `iter`
+- `len`
+- `max`
+- `min`
+- `next`
+- `payload.get`
+- `query.strip`
+- `query.strip().casefold`
+- `resp.json`
+- `self._client.get`
+- `self._raise_for_status`
+- `self._url`
+- `time.monotonic`
+- `tuple`
+
+</details>
+
 ## WorksClient.get_ticket_status
 
-[backend/app/works.py:243](../../../../backend/app/works.py#L243)
+[backend/app/works.py:309](../../../../backend/app/works.py#L309)
 
 ```python
 async def get_ticket_status(self, key: str) -> str | None
@@ -469,7 +603,7 @@ WorksError('Не удалось получить статус тикета из 
 
 ## WorksClient.upload_draft_file
 
-[backend/app/works.py:264](../../../../backend/app/works.py#L264)
+[backend/app/works.py:330](../../../../backend/app/works.py#L330)
 
 ```python
 async def upload_draft_file(self, *, draft_id: str, filename: str, content: bytes, content_type: str | None, relative_path: str) -> str
@@ -507,7 +641,7 @@ WorksError('Не удалось загрузить файл в Works.', str(exc)
 
 ## WorksClient.create_bug_appsec
 
-[backend/app/works.py:283](../../../../backend/app/works.py#L283)
+[backend/app/works.py:349](../../../../backend/app/works.py#L349)
 
 ```python
 async def create_bug_appsec(self, *, summary: str, description_text: str | None, assigned_to: str, reporter: str, priority: str, component: dict[str, str] | None, versions: list[dict[str, str]], product_code: str, severity: str, cvss_vector: str | None=None, components: list[dict[str, str]] | None=None, drafts_info: list[dict[str, str]] | None=None) -> dict[str, Any]
@@ -566,7 +700,7 @@ WorksError('Укажите корректный код продукта в на�
 
 ## WorksClient.link_units
 
-[backend/app/works.py:361](../../../../backend/app/works.py#L361)
+[backend/app/works.py:427](../../../../backend/app/works.py#L427)
 
 ```python
 async def link_units(self, *, source: str, destination: str, link_type: str | None=None) -> dict[str, Any]
@@ -607,7 +741,7 @@ WorksError('Не удалось создать связь тикетов в Work
 
 ## works_issue_url
 
-[backend/app/works.py:387](../../../../backend/app/works.py#L387)
+[backend/app/works.py:453](../../../../backend/app/works.py#L453)
 
 ```python
 def works_issue_url(key: str, *, space: str | None=None) -> str

@@ -6,7 +6,7 @@
 
 ## _ready
 
-[backend/app/farm/jsmine.py:38](../../../../../backend/app/farm/jsmine.py#L38)
+[backend/app/farm/jsmine.py:40](../../../../../backend/app/farm/jsmine.py#L40)
 
 ```python
 def _ready(enabled: bool, bin_name: str) -> bool
@@ -30,7 +30,7 @@ def _ready(enabled: bool, bin_name: str) -> bool
 
 ## _norm_severity
 
-[backend/app/farm/jsmine.py:45](../../../../../backend/app/farm/jsmine.py#L45)
+[backend/app/farm/jsmine.py:47](../../../../../backend/app/farm/jsmine.py#L47)
 
 ```python
 def _norm_severity(s: str) -> str
@@ -55,7 +55,7 @@ def _norm_severity(s: str) -> str
 
 ## _dedup_secrets
 
-[backend/app/farm/jsmine.py:58](../../../../../backend/app/farm/jsmine.py#L58)
+[backend/app/farm/jsmine.py:60](../../../../../backend/app/farm/jsmine.py#L60)
 
 ```python
 def _dedup_secrets(items: list[Secret]) -> list[Secret]
@@ -80,7 +80,7 @@ def _dedup_secrets(items: list[Secret]) -> list[Secret]
 
 ## _dedup_strings
 
-[backend/app/farm/jsmine.py:70](../../../../../backend/app/farm/jsmine.py#L70)
+[backend/app/farm/jsmine.py:72](../../../../../backend/app/farm/jsmine.py#L72)
 
 ```python
 def _dedup_strings(items: list[str]) -> list[str]
@@ -105,7 +105,7 @@ def _dedup_strings(items: list[str]) -> list[str]
 
 ## _run
 
-[backend/app/farm/jsmine.py:81](../../../../../backend/app/farm/jsmine.py#L81)
+[backend/app/farm/jsmine.py:83](../../../../../backend/app/farm/jsmine.py#L83)
 
 ```python
 async def _run(bin_name: str, args: list[str], timeout: float) -> bytes
@@ -131,12 +131,13 @@ async def _run(bin_name: str, args: list[str], timeout: float) -> bytes
 - `asyncio.wait_for`
 - `proc.communicate`
 - `proc.kill`
+- `scanner_options`
 
 </details>
 
 ## _parse_trufflehog
 
-[backend/app/farm/jsmine.py:106](../../../../../backend/app/farm/jsmine.py#L106)
+[backend/app/farm/jsmine.py:109](../../../../../backend/app/farm/jsmine.py#L109)
 
 ```python
 def _parse_trufflehog(out: bytes) -> list[Secret]
@@ -168,7 +169,7 @@ def _parse_trufflehog(out: bytes) -> list[Secret]
 
 ## _parse_jsluice_secrets
 
-[backend/app/farm/jsmine.py:141](../../../../../backend/app/farm/jsmine.py#L141)
+[backend/app/farm/jsmine.py:144](../../../../../backend/app/farm/jsmine.py#L144)
 
 ```python
 def _parse_jsluice_secrets(out: bytes) -> list[Secret]
@@ -206,7 +207,7 @@ def _parse_jsluice_secrets(out: bytes) -> list[Secret]
 
 ## _parse_jsluice_urls
 
-[backend/app/farm/jsmine.py:174](../../../../../backend/app/farm/jsmine.py#L174)
+[backend/app/farm/jsmine.py:177](../../../../../backend/app/farm/jsmine.py#L177)
 
 ```python
 def _parse_jsluice_urls(out: bytes) -> list[str]
@@ -235,7 +236,7 @@ def _parse_jsluice_urls(out: bytes) -> list[str]
 
 ## mine_js
 
-[backend/app/farm/jsmine.py:192](../../../../../backend/app/farm/jsmine.py#L192)
+[backend/app/farm/jsmine.py:195](../../../../../backend/app/farm/jsmine.py#L195)
 
 ```python
 async def mine_js(text: str, cfg: JsMineConfig) -> tuple[list[Secret], list[str]]
@@ -269,6 +270,7 @@ async def mine_js(text: str, cfg: JsMineConfig) -> tuple[list[Secret], list[str]
 - `os.fdopen`
 - `os.path.exists`
 - `os.remove`
+- `prepare_scanner_file`
 - `tempfile.mkstemp`
 
 </details>

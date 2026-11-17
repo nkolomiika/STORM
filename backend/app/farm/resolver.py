@@ -96,7 +96,6 @@ async def _getaddrinfo(host: str, timeout: float | None = None) -> list:
 async def resolve_forward(hostnames: list[str]) -> dict[str, ResolvedHost]:
     """Резолвит имена в адреса. IP-литералы не резолвятся, но проходят SSRF-гейт."""
     sem = asyncio.Semaphore(settings.farm_max_concurrency)
-    allow_private = settings.farm_allow_private_targets
 
     async def resolve_one(host: str) -> tuple[str, ResolvedHost]:
         literal = is_ip_literal(host)
@@ -107,14 +106,14 @@ async def resolve_forward(hostnames: list[str]) -> dict[str, ResolvedHost]:
                 try:
                     infos = await _getaddrinfo(host)
                 except (socket.gaierror, TimeoutError):
-                    return host, ResolvedHost(ip=None, error=f"{host}: DNS не разрешается")
+                    return host, ResolvedHost(ip=None, blocked=True, error='Цель недоступна или запрещена политикой сети')
                 addrs = order_addrs(infos)
         if not addrs:
-            return host, ResolvedHost(ip=None, error=f"{host}: DNS не разрешается")
+            return host, ResolvedHost(ip=None, blocked=True, error='Цель недоступна или запрещена политикой сети')
         addr = addrs[0]
-        if not allow_private and is_disallowed_ip(addr):
+        if any(is_disallowed_ip(address) for address in addrs):
             return host, ResolvedHost(
-                ip=addr, ips=addrs, blocked=True, error=f"{host} → внутренний IP {addr}: пробив пропущен"
+                ip=None, ips=[], blocked=True, error='Цель недоступна или запрещена политикой сети'
             )
         return host, ResolvedHost(ip=addr, ips=addrs)
 
@@ -146,6 +145,12 @@ async def reverse_resolve(ips: list[str], project_hostnames: list[str]) -> dict[
     """Определяет, в какие имена резолвится каждый IP (PTR + сверка с проектом)."""
     results = {ip: ReverseResult(ip=ip) for ip in ips}
     if not settings.farm_reverse_dns_enabled or not ips:
+        return results
+    for ip in ips:
+        if is_disallowed_ip(ip):
+            results[ip].error = 'Цель недоступна или запрещена политикой сети'
+    ips = [ip for ip in ips if not is_disallowed_ip(ip)]
+    if not ips:
         return results
 
     sem = asyncio.Semaphore(settings.farm_max_concurrency)

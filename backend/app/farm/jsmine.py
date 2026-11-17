@@ -13,6 +13,8 @@ verified-секреты сверху, когда их бинари есть в �
 
 from __future__ import annotations
 
+from app.scanner_sandbox import scanner_options, prepare_scanner_file
+
 import asyncio
 import json
 import os
@@ -84,9 +86,10 @@ async def _run(bin_name: str, args: list[str], timeout: float) -> bytes:
     Ненулевой код НЕ ошибка: trufflehog возвращает ненулевой код, когда что-то
     нашёл, — stdout при этом валиден. На таймауте/сбое отдаём то, что успели.
     """
+    command, sandbox = scanner_options([bin_name, *args])
     try:
         proc = await asyncio.create_subprocess_exec(
-            bin_name, *args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL
+            *command, **sandbox, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL
         )
     except Exception:  # noqa: BLE001 — не запустился процесс = инструмент недоступен
         return b""
@@ -208,6 +211,7 @@ async def mine_js(text: str, cfg: JsMineConfig) -> tuple[list[Secret], list[str]
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as fh:
             fh.write(text)
+        prepare_scanner_file(path)
 
         if js_ready:
             secrets += _parse_jsluice_secrets(await _run(cfg.jsluice_bin, ["secrets", path], timeout))

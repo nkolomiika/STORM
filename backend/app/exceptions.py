@@ -27,3 +27,7 @@ class ServiceUnavailableError(StormError):
     def __init__(self, message: str, code: str = 'service_unavailable') -> None:
         super().__init__(message)
         self.code = code
+
+
+class UpstreamServiceError(ServiceUnavailableError):
+    """Отказ внешнего сервиса: безопасный текст и код, HTTP 502."""

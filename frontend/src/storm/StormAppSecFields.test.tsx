@@ -1,9 +1,9 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import { vi } from "vitest";
 
 import { StormAppSecFields, type AppSecFieldsValue } from "./StormAppSecFields";
-import { getTask, findWorksVersions } from '../api';
+import { getTask, findWorksVersions, findWorksProductCodes } from '../api';
 import { useToastStore } from '../store';
 
 /* The AppSec fields drive the Works export: Component/Version are typeaheads that
@@ -11,6 +11,7 @@ import { useToastStore } from '../store';
    username is the IAM login. We mock the api layer and assert the picks flow back
    through onChange with the right code/name. */
 vi.mock("../api", () => ({
+  findWorksProductCodes: vi.fn(async () => [{ code: 'dbc', name: 'DBC' }, { code: '_am', name: '#AM' }, { code: 'AIS', name: 'AIS' }, { code: '285902', name: 'OST' }]),
   getTask: vi.fn(async (key: string) => ({ key, url: `https://works.example/${key}`,
     summary: 'Full assessment', status: 'Open', status_category: 'todo', issue_type: 'Assessment',
     priority: 'Major', assignee: null, assignee_username: null, reporter: null,
@@ -232,4 +233,31 @@ describe("StormAppSecFields", () => {
     await user.click(screen.getByRole("button", { name: "Remove version: Platform V Stack 1.0.2" }));
     expect(onChange).toHaveBeenLastCalledWith({ appsec_versions: [{ code: "v-uuid-2", name: "Platform V Stack 2.0" }] });
   });
+});
+
+it.each([['DBC', 'dbc'], ['#AM', '_am'], ['AIS', 'AIS'], ['OST', '285902']])('stores exact native product code for %s', async (name, code) => {
+  const onChange = vi.fn();
+  render(<Harness onChange={onChange} />);
+  const input = screen.getByRole('textbox', { name: 'Product code' });
+  await type(input, name);
+  const option = await screen.findByText(name);
+  await act(async () => { option.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); });
+  expect(onChange).toHaveBeenLastCalledWith({ appsec_product_code: code });
+  expect(input).toHaveValue(code);
+  // Manual edits replace the previously chosen code, including clearing it.
+  fireEvent.change(input, { target: { value: 'manual-code' } });
+  expect(onChange).toHaveBeenLastCalledWith({ appsec_product_code: 'manual-code' });
+  fireEvent.change(input, { target: { value: '' } });
+  expect(onChange).toHaveBeenLastCalledWith({ appsec_product_code: null });
+});
+
+it('keeps product input usable and shows a toast when the catalog is unavailable', async () => {
+  vi.mocked(findWorksProductCodes).mockRejectedValueOnce(new Error('private diagnostic'));
+  useToastStore.setState({ toasts: [] });
+  const onChange = vi.fn();
+  render(<Harness onChange={onChange} />);
+  await type(screen.getByRole('textbox', { name: 'Product code' }), 'dbc');
+  await waitFor(() => expect(useToastStore.getState().toasts.length).toBe(1));
+  expect(useToastStore.getState().toasts[0].message).toBe("Couldn't load options");
+  expect(onChange).toHaveBeenLastCalledWith({ appsec_product_code: 'dbc' });
 });

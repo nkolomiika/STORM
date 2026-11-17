@@ -16,6 +16,8 @@ IP-литерал (не имя) — поэтому rebind-окна нет, nmap 
 from __future__ import annotations
 from app.farm.job_access import get_recon_job
 
+from app.scanner_sandbox import scanner_options
+
 import asyncio
 import shutil
 from collections.abc import Awaitable, Callable
@@ -80,15 +82,16 @@ async def _run_nmap(ips: list[str]) -> tuple[dict[str, list[int]], str | None]:
     """nmap по списку IP одной командой. Нет бинаря — тихо пусто (ошибки нет)."""
     if not ips or not shutil.which(settings.portscan_nmap_bin):
         return {}, None
-    args = [settings.portscan_nmap_bin, "-Pn", "-n", "-T4", "--open", "-oX", "-"]
+    args = [settings.portscan_nmap_bin, "-sT", "-Pn", "-n", "-T4", "--open", "-oX", "-"]
     if settings.portscan_top_ports > 0:
         args += ["--top-ports", str(settings.portscan_top_ports)]
     else:
         args += ["-p-"]
     args += ips
+    args, sandbox = scanner_options(args)
     try:
         proc = await asyncio.create_subprocess_exec(
-            *args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL
+            *args, **sandbox, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL
         )
         out, _ = await asyncio.wait_for(proc.communicate(), timeout=settings.portscan_timeout_seconds)
     except (TimeoutError, OSError) as exc:

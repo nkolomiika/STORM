@@ -14,6 +14,7 @@
  */
 import { useEffect, useMemo, useRef } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
+import { TableKit } from "@tiptap/extension-table";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
 import { ResizableImage } from "./ResizableImage";
@@ -55,6 +56,7 @@ export function StormMarkdownEditor({ value, onChange, placeholder = "", minHeig
         // pasted screenshot shows up in the note immediately. tiptap-markdown
         // serialises the node back to `![](url)`, keeping the note Markdown-only.
         ResizableImage.configure({ inline: true, allowBase64: true, HTMLAttributes: { class: "stormmd-img" } }),
+        TableKit,
         Placeholder.configure({ placeholder }),
         Markdown.configure({
           html: false,
