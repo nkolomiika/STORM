@@ -7,7 +7,7 @@ ID-токен проверяется python-jose (та же библиотека
 Поток:
   1. build_authorization_request() — генерирует state/nonce/PKCE и URL авторизации;
      параметры транзакции кладём в короткоживущую подписанную cookie (см. роутер).
-  2. браузер уходит на IdP, возвращается на /auth/sso/callback?code&state.
+  2. браузер уходит на IdP, возвращается на /auth/callback?code&state.
   3. exchange_code() — меняем code на токены, проверяем ID-токен и достаём claims.
 """
 from __future__ import annotations

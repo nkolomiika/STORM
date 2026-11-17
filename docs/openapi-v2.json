@@ -854,6 +854,28 @@
   },
   "components": {
     "schemas": {
+      "AppSecComponentRef": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "name"
+        ],
+        "title": "AppSecComponentRef"
+      },
       "AppSecVersionRef": {
         "properties": {
           "code": {
@@ -1134,6 +1156,24 @@
               }
             ],
             "title": "Appsec Component Name"
+          },
+          "appsec_product_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appsec Product Code"
+          },
+          "appsec_components": {
+            "items": {
+              "$ref": "#/components/schemas/AppSecComponentRef"
+            },
+            "type": "array",
+            "title": "Appsec Components"
           },
           "appsec_version_code": {
             "anyOf": [

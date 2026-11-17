@@ -135,6 +135,8 @@ export interface Project {
   // исполнитель по умолчанию (IAM-логин). Пусто — не настроено для проекта.
   appsec_component_code: string | null;
   appsec_component_name: string | null;
+  appsec_product_code?: string | null;
+  appsec_components?: WorksRef[];
   appsec_version_code: string | null;
   appsec_version_name: string | null;
   appsec_versions?: WorksRef[];
@@ -699,6 +701,9 @@ export interface TaskTrackerTask {
   assignee: string | null;
   assignee_username?: string | null;
   affected_versions?: WorksRef[];
+  product_code?: string | null;
+  component?: WorksRef | null;
+  components?: WorksRef[];
   is_demo?: boolean;
   updated: string;
   created: string;

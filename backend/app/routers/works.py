@@ -73,4 +73,4 @@ async def export_vulnerability_to_works(
     _project=Depends(require_project_access),
     db: AsyncSession = Depends(get_db),
 ) -> WorksIssueLinkOut:
-    return await WorksService(db).export_vulnerability(project_id, vuln_id, current_user, payload.assignee)
+    return await WorksService(db).export_vulnerability(project_id, vuln_id, current_user, None)

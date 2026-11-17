@@ -137,7 +137,7 @@ fastapi_app.get(redoc_route, include_in_schema=False)
 def _register_routes() -> None
 ```
 
-В теле вызывает `_register_protected_docs`, `agent_api_v2.include_router`, `app.include_router`, `app.mount`.
+В теле вызывает `_register_protected_docs`, `agent_api_v2.include_router`, `app.add_api_route`, `app.include_router`, `app.mount`.
 
 Возвращает: `None`.
 
@@ -146,6 +146,7 @@ def _register_routes() -> None
 
 - `_register_protected_docs`
 - `agent_api_v2.include_router`
+- `app.add_api_route`
 - `app.include_router`
 - `app.mount`
 
@@ -153,7 +154,7 @@ def _register_routes() -> None
 
 ## _register_error_handlers
 
-[backend/app/main.py:141](../../../../backend/app/main.py#L141)
+[backend/app/main.py:143](../../../../backend/app/main.py#L143)
 
 ```python
 def _register_error_handlers() -> None
@@ -172,7 +173,7 @@ def _register_error_handlers() -> None
 
 ## _register_error_handlers._format_request_validation
 
-[backend/app/main.py:142](../../../../backend/app/main.py#L142)
+[backend/app/main.py:144](../../../../backend/app/main.py#L144)
 
 ```python
 def _format_request_validation(exc: RequestValidationError) -> str
@@ -204,7 +205,7 @@ def _format_request_validation(exc: RequestValidationError) -> str
 
 ## _register_error_handlers.request_validation_handler
 
-[backend/app/main.py:176](../../../../backend/app/main.py#L176)
+[backend/app/main.py:178](../../../../backend/app/main.py#L178)
 
 ```python
 async def request_validation_handler(_: Request, exc: RequestValidationError) -> JSONResponse
@@ -233,7 +234,7 @@ async def request_validation_handler(_: Request, exc: RequestValidationError) ->
 
 ## _register_error_handlers.app_error_handler
 
-[backend/app/main.py:180](../../../../backend/app/main.py#L180)
+[backend/app/main.py:182](../../../../backend/app/main.py#L182)
 
 ```python
 async def app_error_handler(_: Request, exc: StormError) -> JSONResponse
@@ -264,7 +265,7 @@ async def app_error_handler(_: Request, exc: StormError) -> JSONResponse
 
 ## _register_error_handlers.http_error_handler
 
-[backend/app/main.py:193](../../../../backend/app/main.py#L193)
+[backend/app/main.py:195](../../../../backend/app/main.py#L195)
 
 ```python
 async def http_error_handler(_: Request, exc: StarletteHTTPException) -> JSONResponse
@@ -292,7 +293,7 @@ async def http_error_handler(_: Request, exc: StarletteHTTPException) -> JSONRes
 
 ## _register_error_handlers.unexpected_error_handler
 
-[backend/app/main.py:203](../../../../backend/app/main.py#L203)
+[backend/app/main.py:205](../../../../backend/app/main.py#L205)
 
 ```python
 async def unexpected_error_handler(request: Request, exc: Exception) -> JSONResponse
@@ -319,7 +320,7 @@ async def unexpected_error_handler(request: Request, exc: Exception) -> JSONResp
 
 ## startup
 
-[backend/app/main.py:226](../../../../backend/app/main.py#L226)
+[backend/app/main.py:228](../../../../backend/app/main.py#L228)
 
 ```python
 async def startup() -> None
@@ -351,7 +352,7 @@ async def startup() -> None
 
 ## startup.add_missing
 
-[backend/app/main.py:318](../../../../backend/app/main.py#L318)
+[backend/app/main.py:323](../../../../backend/app/main.py#L323)
 
 ```python
 async def add_missing(table: str, columns: dict[str, str]) -> None
@@ -380,7 +381,7 @@ SQLite не умеет ADD COLUMN IF NOT EXISTS — проверяем чере�
 
 ## shutdown_notifications
 
-[backend/app/main.py:378](../../../../backend/app/main.py#L378)
+[backend/app/main.py:383](../../../../backend/app/main.py#L383)
 
 ```python
 async def shutdown_notifications() -> None
@@ -401,7 +402,7 @@ async def shutdown_notifications() -> None
 
 ## health
 
-[backend/app/main.py:387](../../../../backend/app/main.py#L387)
+[backend/app/main.py:392](../../../../backend/app/main.py#L392)
 
 ```python
 async def health() -> dict

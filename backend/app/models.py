@@ -264,6 +264,8 @@ class Project(Base, TimestampMixin):
     # создании проекта, правятся при редактировании.
     appsec_component_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
     appsec_component_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    appsec_product_code: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    appsec_components: Mapped[list[dict]] = mapped_column(JSON, nullable=False, default=list, server_default="[]")
     appsec_version_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
     appsec_version_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     appsec_versions: Mapped[list[dict]] = mapped_column(JSON, nullable=False, default=list, server_default="[]")

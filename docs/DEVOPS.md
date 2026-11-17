@@ -167,9 +167,11 @@ app-only, либо `refresh_token`). Если `SMTP_OAUTH_*` пусты — fall
 4. `bootstrap_admin()` — создаёт стартового администратора из
    `INITIAL_ADMIN_*`, если пользователей ещё нет.
 
-Формальные Alembic-ревизии лежат в `backend/migrations/versions` (19 шт.) — это
-источник истории схемы; при желании можно гонять и их вручную
-(`alembic upgrade head`), но для работы стека это не обязательно.
+Формальные Alembic-ревизии лежат в `backend/migrations/versions`. В старой части
+истории есть повторяющиеся revision ID; `alembic upgrade head` сейчас не является
+поддерживаемым способом обновления prod без отдельного восстановления графа.
+Штатный стек обновляет схему через startup. Исторические ID не перенумеровывались,
+чтобы не менять смысл уже сохранённого состояния существующих баз.
 
 ### Важные следствия для эксплуатации
 - **Имя БД = `storm`** (`POSTGRES_DB`, все `DATABASE_URL`, `alembic.ini`).
@@ -319,13 +321,29 @@ HTTPS с корпоративным сертификатом. Чтобы `httpx`
 
 ## 11. Внешние интеграции (опциональны, настраиваются через env)
 
+Готовый prod-шаблон для `storm.appsec.prod.sbt`, список обязательных секретов и
+актуальные пути IAM/AS21: [PROD_ENV.md](PROD_ENV.md).
+
 - **SMTP** — профили в `.env.example`: Gmail (app password),
   корпоративный, XOAUTH2 (OAuth2 без app-password; настройка через
   `scripts/google_oauth_setup.py`). Пусто/`MAIL_ENABLED=false` — письма не шлются.
 - **SSO / OIDC** — `SSO_ENABLED=true` + `SSO_ISSUER` (Keycloak-совместимый),
-  поток Authorization Code + PKCE, callback `{APP_BASE_URL}/api/v1/auth/sso/
-  callback` (разрешить в IdP). Авто-создание пользователей — `SSO_AUTO_CREATE_USERS`.
-- **Task Tracker / Works** — `WORKS_ENABLED`, `WORKS_BASE_URL`, `WORKS_API_TOKEN`; экспорт уязвимостей в STS, задачи и тикет проекта в APPSEC. Поиску требуется тело рабочего нативного запроса `WORKS_TASKS_SEARCH_BODY`; его отсутствие даёт 503. Подробности и диагностика: [TASK_TRACKER.md](TASK_TRACKER.md).
+  поток Authorization Code + PKCE, callback `{APP_BASE_URL}/auth/callback`
+  (разрешить в IdP). Авто-создание пользователей — `SSO_AUTO_CREATE_USERS`.
+
+  Если IAM возвращает 400 «неверный redirect_uri», сравните параметр `redirect_uri`
+  в URL авторизации с **полным** адресом в Valid Redirect URIs клиента IAM.
+  Код STORM добавляет `/auth/callback` к `SSO_REDIRECT_BASE` либо,
+  если она пуста, к `APP_BASE_URL`. Для базы `https://storm.example.com` нужен
+  `https://storm.example.com/auth/callback`, без завершающего слеша. Этот маршрут
+  проксируется Vite на backend и выполняет тот же обработчик, что прежний
+  `/api/v1/auth/sso/callback`. Для установки, где в IAM уже зарегистрирован
+  прежний адрес, задайте `SSO_CALLBACK_PATH=/api/v1/auth/sso/callback`. Root URL
+  клиента не заменяет список разрешённых callback. Не добавляйте путь callback в
+  `SSO_REDIRECT_BASE`: это только схема, домен и при необходимости базовый путь
+  публикации приложения. После изменения `.env.prod` пересоздайте backend с теми
+  же compose-файлами и `ENV_FILE=.env.prod`; простой restart не обновляет env.
+- **Task Tracker / Works** — `WORKS_ENABLED`, `WORKS_BASE_URL`, `WORKS_API_TOKEN`; экспорт уязвимостей в STS, задачи и тикет проекта в APPSEC. Нативный TQL-поиск AS21 уже настроен по рабочему запросу APPSEC; `WORKS_TASKS_SEARCH_BODY` переопределяет его для другой установки. Подробности и диагностика: [TASK_TRACKER.md](TASK_TRACKER.md).
 
 ---
 

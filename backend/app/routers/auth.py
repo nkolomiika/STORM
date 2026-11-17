@@ -275,9 +275,9 @@ async def refresh(
 
 # Транзакционная cookie одного входа. SameSite=Lax (а не strict): callback
 # приходит как top-level переход С домена IdP, и strict-cookie браузер бы не
-# прислал. Живёт коротко и ограничена путём /api/v1/auth/sso.
+# прислал. Живёт коротко; Path=/ покрывает публичный и прежний API callback.
 SSO_TX_COOKIE = "sso_tx"
-SSO_TX_COOKIE_PATH = "/api/v1/auth/sso"
+SSO_TX_COOKIE_PATH = "/"
 SSO_TX_TTL_SECONDS = 600
 
 
@@ -323,6 +323,9 @@ def _set_sso_tx_cookie(response: Response, token: str) -> None:
         max_age=SSO_TX_TTL_SECONDS,
         path=SSO_TX_COOKIE_PATH,
     )
+    # Старый Path не покрывает /auth/callback; не оставляем две sso_tx-cookie.
+    response.delete_cookie(SSO_TX_COOKIE, path='/api/v1/auth/sso',
+                           secure=settings.cookie_secure, httponly=True, samesite='lax')
 
 
 def _clear_sso_tx_cookie(response: Response) -> None:
@@ -335,6 +338,8 @@ def _clear_sso_tx_cookie(response: Response) -> None:
         max_age=0,
         path=SSO_TX_COOKIE_PATH,
     )
+    response.delete_cookie(SSO_TX_COOKIE, path='/api/v1/auth/sso',
+                           secure=settings.cookie_secure, httponly=True, samesite='lax')
 
 
 @router.get("/sso/config", response_model=SsoConfigOut)

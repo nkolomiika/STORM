@@ -42,6 +42,7 @@ async def test_search_body_is_required_instead_of_guessing_an_incompatible_api(m
 @pytest.mark.asyncio
 async def test_native_search_uses_deployment_body_and_keeps_query_as_json_data(monkeypatch):
     settings=get_settings()
+    monkeypatch.setattr(settings, 'works_tasks_search_path', '/rest/api/unit/v3/find')
     for key,value in {'works_enabled':True,'works_api_token':'test-only','works_base_url':'https://tracker.example','works_tasks_search_body':{'space':'{space}','query':'{query}','page':{'page':0,'size':10}},'works_tasks_space':'APPSEC'}.items():monkeypatch.setattr(settings,key,value)
     response=httpx.Response(200,json={'content':[{'code':'APPSEC-1','summary':'demo'}]},request=httpx.Request('POST','https://tracker.example/rest/api/unit/v3/find'))
     post=AsyncMock(return_value=response)
@@ -58,6 +59,49 @@ async def test_native_search_uses_deployment_body_and_keeps_query_as_json_data(m
     assert kwargs['json']['space']=='APPSEC'
     assert post.await_args.args[0].endswith('/rest/api/unit/v3/find')
     assert settings.works_tasks_search_body['query']=='{query}'
+
+
+@pytest.mark.asyncio
+async def test_native_tql_body_is_fixed_and_user_search_cannot_change_its_expression(monkeypatch):
+    from app.config import Settings
+    settings = get_settings()
+    body = Settings.model_fields['works_tasks_search_body'].get_default(call_default_factory=True)
+    for key, value in {'works_enabled': True, 'works_api_token': 'test-only',
+                       'works_base_url': 'https://tracker.example/swtr',
+                       'works_tasks_search_path': '/rest/api/unit/v3/find/tql',
+                       'works_tasks_space': 'APPSEC', 'works_tasks_search_body': body}.items():
+        monkeypatch.setattr(settings, key, value)
+    captured = []
+    def handler(request):
+        import json
+        captured.append(json.loads(request.content))
+        assert request.url.path == '/swtr/rest/api/unit/v3/find/tql'
+        return httpx.Response(200, json={'content': []})
+    def init(self):
+        self._base = settings.works_base_url
+        self._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    monkeypatch.setattr(WorksClient, '__init__', init)
+    await TaskTrackerService().list_tasks(query='" or space = "STS" or summary = "{space}')
+    assert len(captured) == 1
+    assert captured[0] == body
+    assert body['query'] == 'space = "APPSEC" and suit = "security_assessment_appsec"'
+    assert body['timeZone'] == 'Europe/Moscow'
+    assert 'affects_version_s' in body['attributes']
+
+
+@pytest.mark.parametrize('value', [None, [], 'progress', {'statusType': []}])
+def test_malformed_workflow_metadata_never_raises(value):
+    assert task_out({'code': 'APPSEC-1', 'attributes': {'workflow_status': value}})['status_category'] == 'unknown'
+
+
+def test_prosemirror_string_and_plain_description_are_rendered_as_text():
+    import json
+    document = {'type': 'doc', 'content': [{'type': 'paragraph', 'content': [
+        {'type': 'text', 'text': 'Тестовое описание'}]}]}
+    assert description_text(json.dumps(document)) == 'Тестовое описание'
+    assert description_text('{broken json') == ''
+    assert task_out({'code': 'APPSEC-1', 'description': '{broken json',
+                     'descriptionPlain': 'Готовый текст'})['description'] == 'Готовый текст'
 
 
 def test_native_card_keeps_every_affected_version_and_assignee_login():

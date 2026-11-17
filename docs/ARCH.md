@@ -102,7 +102,7 @@ backend/
 │   │   ├── notifications.py       # список, unread-count, mark-read, read-all
 │   │   ├── import_.py             # импорт STORM JSON, импорт/экспорт OpenAPI для хоста
 │   │   ├── task_tracker.py        # Tasks: чтение задач APPSEC
-│   │   ├── works.py               # экспорт находок STS и связь STS → APPSEC
+│   │   ├── works.py               # экспорт находок STS и связь APPSEC → STS
 │   │   ├── reports.py             # генерация Word-отчётов: ПП и СЗИ
 │   │   ├── audit_logs.py          # чтение audit-логов из PostgreSQL (full-text + фильтры)
 │   │   ├── agent_tokens.py        # /agent-tokens — управление Bearer-токенами для AI агентов

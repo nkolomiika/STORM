@@ -1,8 +1,10 @@
 """Shared boundaries for untrusted request values and upload streams."""
 import math
 from ipaddress import ip_address
+from typing import NoReturn
 
-from fastapi import HTTPException, Request, UploadFile
+from fastapi import HTTPException, UploadFile, WebSocketException
+from starlette.requests import HTTPConnection
 
 MAX_RESOURCE_ID = 2**31 - 1
 
@@ -34,8 +36,16 @@ def validate_json_value(value: object, depth: int = 0) -> None:
             validate_json_value(item, depth + 1)
 
 
-async def validate_request_parameters(request: Request) -> None:
-    """Validate SQL-bound path IDs before authorization dependencies query the DB."""
+def _reject_request_parameter(request: HTTPConnection, detail: str) -> NoReturn:
+    """Отклоняет HTTP с 422, а WebSocket — кодом 1008 без необработанного ASGI-сбоя."""
+    if request.scope['type'] == 'websocket':
+        # Причина закрытия ограничена 123 байтами; имя query-параметра не ограничено.
+        raise WebSocketException(code=1008, reason='Некорректные параметры запроса')
+    raise HTTPException(422, detail)
+
+
+async def validate_request_parameters(request: HTTPConnection) -> None:
+    """Проверяет ID и query до запросов к БД для HTTP и WebSocket-соединений."""
     for name, value in request.path_params.items():
         if name.endswith("_id"):
             try:
@@ -44,17 +54,17 @@ async def validate_request_parameters(request: Request) -> None:
             except (ValueError, TypeError):
                 valid = False
             if not valid:
-                raise HTTPException(422, f"{name}: недопустимый идентификатор")
+                _reject_request_parameter(request, f"{name}: недопустимый идентификатор")
     for name, value in request.query_params.multi_items():
         if "\x00" in value:
-            raise HTTPException(422, f"{name}: NUL-символы недопустимы")
+            _reject_request_parameter(request, f"{name}: NUL-символы недопустимы")
         if name == "page":
             try:
                 valid = 1 <= int(value) <= MAX_RESOURCE_ID
             except (ValueError, TypeError):
                 valid = False
             if not valid:
-                raise HTTPException(422, "page: недопустимая страница")
+                _reject_request_parameter(request, "page: недопустимая страница")
 
 
 async def read_upload(upload: UploadFile, limit: int) -> bytes:

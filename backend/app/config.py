@@ -1,7 +1,7 @@
 from functools import lru_cache
-from typing import Union
+from typing import Literal, Union
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -47,8 +47,9 @@ class Settings(BaseSettings):
     sso_scopes: str = "openid profile email"
     # Абсолютный публичный адрес приложения для redirect_uri. Пусто — APP_BASE_URL.
     # В настройках клиента IdP должен быть разрешён redirect_uri:
-    #   {base}/api/v1/auth/sso/callback
+    #   {base}/auth/callback (либо прежний путь через SSO_CALLBACK_PATH).
     sso_redirect_base: str = ""
+    sso_callback_path: Literal['/auth/callback', '/api/v1/auth/sso/callback'] = '/auth/callback'
     # Claim'ы ID-токена, из которых берём username и email пользователя.
     sso_username_claim: str = "preferred_username"
     sso_email_claim: str = "email"
@@ -137,7 +138,7 @@ class Settings(BaseSettings):
     # Пути (без base — он из works_base_url).
     works_create_path: str = "/rest/api/unit/v2/bug_appsec/create"
     # Создание связи между юнитами (привязка STS bug_appsec к APPSEC-тикету проекта).
-    # Тело: {"source": "<ключ-источник>", "destination": "<ключ-назначение>", "type": "<тип>"}.
+    # Тело: {"source": "<APPSEC-xxx>", "destination": "<STS-xxx>", "type": "<тип>"}.
     works_link_path: str = "/rest/api/unit/v1/link"
     works_link_type: str = "plain_connection"
     works_upload_path: str = "/rest/api/draft/files/v1/upload"
@@ -145,10 +146,22 @@ class Settings(BaseSettings):
     works_version_find_path: str = "/extension/plugin/v2/rest/api/swtr_task_tracker_plugin/v1/version/find"
     # Поиск юнитов по ключам — для получения текущего workflow_status тикета (как в qg-sa).
     works_unit_find_path: str = "/rest/api/unit/v3/find"
+    works_unit_detail_path: str = '/rest/api/unit/v2/{key}'
     works_tasks_space: str = "APPSEC"
-    works_tasks_search_path: str = "/rest/api/unit/v3/find"
-    # Exact body from this Task Tracker deployment; no incompatible API fallback.
-    works_tasks_search_body: dict | None = None
+    # Ручные справочники формы STS используют своё пространство, не APPSEC-поиск.
+    works_reference_space: str = 'STS'
+    # Коды атрибутов APPSEC можно заменить по реальному ответу вашего AS21.
+    works_appsec_product_code_attribute: str = 'product_code_list_sts'
+    works_appsec_component_attribute: str = 'sber_component'
+    works_tasks_search_path: str = "/rest/api/unit/v3/find/tql"
+    # Нативный запрос списка APPSEC из браузера AS21; env позволяет его заменить.
+    works_tasks_search_body: dict | None = Field(default_factory=lambda: {
+        'attributes': ['workflow_status', 'priority', 'assigned_to', 'affects_version_s'],
+        'calculatedAttributes': [],
+        'query': 'space = "APPSEC" and suit = "security_assessment_appsec"',
+        'page': {'size': 20, 'page': 0},
+        'timeZone': 'Europe/Moscow',
+    })
     # Explicit local UI fixture source; never a fallback for a failed real API.
     works_tasks_demo_file: str = ""
     # Ссылка на тикет в UI Works ({key}/{space} подставляются).
@@ -286,7 +299,7 @@ class Settings(BaseSettings):
     def sso_redirect_uri(self) -> str:
         """Абсолютный redirect_uri для callback (должен совпадать с настройкой IdP)."""
         base = (self.sso_redirect_base.strip() or self.app_base_url).rstrip("/")
-        return f"{base}/api/v1/auth/sso/callback"
+        return f"{base}{self.sso_callback_path}"
 
     @field_validator("jwt_secret_key")
     @classmethod

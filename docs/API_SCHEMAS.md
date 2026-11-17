@@ -53,6 +53,15 @@
 | `updated_at` | `string` | да | {"format": "date-time"} |
 | `project_ids` | `list[integer]` | нет | — |
 
+## AppSecComponentRef
+
+
+
+| Поле | Тип | Required | Ограничения/описание |
+| --- | --- | --- | --- |
+| `code` | `string` | да | {"maxLength": 64, "minLength": 1} |
+| `name` | `string` | да | {"maxLength": 255, "minLength": 1} |
+
 ## AppSecVersionRef
 
 
@@ -994,6 +1003,8 @@ Union не годится: pydantic должен знать точный тип 
 | `end_date` | `string \| null` | нет | — |
 | `appsec_component_code` | `string \| null` | нет | — |
 | `appsec_component_name` | `string \| null` | нет | — |
+| `appsec_product_code` | `string \| null` | нет | — |
+| `appsec_components` | `list[AppSecComponentRef]` | нет | {"maxItems": 100} |
 | `appsec_version_code` | `string \| null` | нет | — |
 | `appsec_version_name` | `string \| null` | нет | — |
 | `appsec_versions` | `list[AppSecVersionRef]` | нет | {"maxItems": 100} |
@@ -1201,6 +1212,8 @@ Union не годится: pydantic должен знать точный тип 
 | `created_by` | `integer` | да | — |
 | `appsec_component_code` | `string \| null` | нет | — |
 | `appsec_component_name` | `string \| null` | нет | — |
+| `appsec_product_code` | `string \| null` | нет | — |
+| `appsec_components` | `list[AppSecComponentRef]` | нет | — |
 | `appsec_version_code` | `string \| null` | нет | — |
 | `appsec_version_name` | `string \| null` | нет | — |
 | `appsec_versions` | `list[AppSecVersionRef]` | нет | — |
@@ -1240,6 +1253,8 @@ Union не годится: pydantic должен знать точный тип 
 | `status` | `ProjectStatus \| null` | нет | — |
 | `appsec_component_code` | `string \| null` | нет | — |
 | `appsec_component_name` | `string \| null` | нет | — |
+| `appsec_product_code` | `string \| null` | нет | — |
+| `appsec_components` | `list[AppSecComponentRef]` | нет | {"maxItems": 100} |
 | `appsec_version_code` | `string \| null` | нет | — |
 | `appsec_version_name` | `string \| null` | нет | — |
 | `appsec_versions` | `list[AppSecVersionRef]` | нет | {"maxItems": 100} |
@@ -1420,6 +1435,9 @@ Union не годится: pydantic должен знать точный тип 
 | `assignee` | `string \| null` | нет | — |
 | `assignee_username` | `string \| null` | нет | — |
 | `affected_versions` | `list[AppSecVersionRef]` | нет | — |
+| `product_code` | `string \| null` | нет | — |
+| `component` | `WorksRefOut \| null` | нет | — |
+| `components` | `list[WorksRefOut]` | нет | — |
 | `is_demo` | `boolean` | нет | {"default": false} |
 | `updated` | `string` | да | — |
 | `created` | `string` | да | — |
@@ -1453,6 +1471,9 @@ Union не годится: pydantic должен знать точный тип 
 | `assignee` | `string \| null` | нет | — |
 | `assignee_username` | `string \| null` | нет | — |
 | `affected_versions` | `list[AppSecVersionRef]` | нет | — |
+| `product_code` | `string \| null` | нет | — |
+| `component` | `WorksRefOut \| null` | нет | — |
+| `components` | `list[WorksRefOut]` | нет | — |
 | `is_demo` | `boolean` | нет | {"default": false} |
 | `updated` | `string` | да | — |
 | `created` | `string` | да | — |
@@ -1727,12 +1748,11 @@ SENT_BY_MISTAKE) — закрытыми.
 
 ## WorksExportRequest
 
-Тело запроса экспорта находки в Works (исполнитель опционален —
-по умолчанию берётся appsec_assignee проекта).
+Исполнитель берётся только из проекта; старый assignee игнорируется.
 
 | Поле | Тип | Required | Ограничения/описание |
 | --- | --- | --- | --- |
-| `assignee` | `string \| null` | нет | — |
+| `assignee` | `string \| null` | нет | {"deprecated": true} |
 
 ## WorksIssueLinkOut
 

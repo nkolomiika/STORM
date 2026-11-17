@@ -106,6 +106,8 @@ app.add_middleware(
 def _register_routes() -> None:
     prefix = "/api/v1"
     app.include_router(auth.router, prefix=prefix)
+    # Публичный callback уже зарегистрирован в IAM; старый API-маршрут сохранён.
+    app.add_api_route('/auth/callback', auth.sso_callback, methods=['GET'], include_in_schema=False)
     app.include_router(agent_tokens.router, prefix=prefix)
     app.include_router(users.router, prefix=prefix)
     app.include_router(projects.router, prefix=prefix)
@@ -259,6 +261,9 @@ async def startup() -> None:
             await conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS timeline_frozen_at TIMESTAMP WITH TIME ZONE"))
             await conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS appsec_component_code VARCHAR(64)"))
             await conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS appsec_component_name VARCHAR(255)"))
+            await conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS appsec_product_code VARCHAR(255)"))
+            await conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS appsec_components JSON NOT NULL DEFAULT '[]'"))
+            await conn.execute(text("UPDATE projects SET appsec_components = json_build_array(json_build_object('code', appsec_component_code, 'name', COALESCE(appsec_component_name, appsec_component_code))) WHERE json_array_length(appsec_components) = 0 AND appsec_component_code IS NOT NULL"))
             await conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS appsec_version_code VARCHAR(64)"))
             await conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS appsec_version_name VARCHAR(255)"))
             await conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS appsec_versions JSON NOT NULL DEFAULT '[]'"))

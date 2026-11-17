@@ -16,7 +16,7 @@ Healthcheck эндпоинт для проверки доступности се
 
 Operation ID: `health_health_get`.
 
-Обработчик: `health` — [backend/app/main.py:387](../backend/app/main.py#L387).
+Обработчик: `health` — [backend/app/main.py:392](../backend/app/main.py#L392).
 
 | HTTP | Ответ | Тип/схема |
 | --- | --- | --- |
@@ -256,7 +256,7 @@ Operation ID: `refresh_api_v1_auth_refresh_post`.
 
 Operation ID: `sso_config_api_v1_auth_sso_config_get`.
 
-Обработчик: `sso_config` — [backend/app/routers/auth.py:341](../backend/app/routers/auth.py#L341).
+Обработчик: `sso_config` — [backend/app/routers/auth.py:346](../backend/app/routers/auth.py#L346).
 
 | HTTP | Ответ | Тип/схема |
 | --- | --- | --- |
@@ -268,7 +268,7 @@ Operation ID: `sso_config_api_v1_auth_sso_config_get`.
 
 Operation ID: `sso_login_api_v1_auth_sso_login_get`.
 
-Обработчик: `sso_login` — [backend/app/routers/auth.py:349](../backend/app/routers/auth.py#L349).
+Обработчик: `sso_login` — [backend/app/routers/auth.py:354](../backend/app/routers/auth.py#L354).
 
 | HTTP | Ответ | Тип/схема |
 | --- | --- | --- |
@@ -280,7 +280,7 @@ Operation ID: `sso_login_api_v1_auth_sso_login_get`.
 
 Operation ID: `sso_callback_api_v1_auth_sso_callback_get`.
 
-Обработчик: `sso_callback` — [backend/app/routers/auth.py:365](../backend/app/routers/auth.py#L365).
+Обработчик: `sso_callback` — [backend/app/routers/auth.py:370](../backend/app/routers/auth.py#L370).
 
 Явные dependencies: `get_db`.
 
@@ -302,7 +302,7 @@ Operation ID: `sso_callback_api_v1_auth_sso_callback_get`.
 
 Operation ID: `logout_api_v1_auth_logout_post`.
 
-Обработчик: `logout` — [backend/app/routers/auth.py:407](../backend/app/routers/auth.py#L407).
+Обработчик: `logout` — [backend/app/routers/auth.py:412](../backend/app/routers/auth.py#L412).
 
 Явные dependencies: `enforce_csrf`, `get_current_user`, `get_db`.
 

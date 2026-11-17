@@ -27,6 +27,10 @@ export default defineConfig({
     port: 3000,
     https: true,
     proxy: {
+      "/auth/callback": {
+        target: proxyTarget,
+        changeOrigin: true,
+      },
       "/api": {
         target: proxyTarget,
         changeOrigin: true,

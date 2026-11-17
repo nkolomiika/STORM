@@ -30,7 +30,7 @@
 | `backend/app/farm/reverse.py` | 6 | [Методы](reference/backend/app/farm/reverse.py.md) |
 | `backend/app/farm/subs.py` | 16 | [Методы](reference/backend/app/farm/subs.py.md) |
 | `backend/app/http_headers.py` | 1 | [Методы](reference/backend/app/http_headers.py.md) |
-| `backend/app/input_safety.py` | 7 | [Методы](reference/backend/app/input_safety.py.md) |
+| `backend/app/input_safety.py` | 8 | [Методы](reference/backend/app/input_safety.py.md) |
 | `backend/app/mail.py` | 10 | [Методы](reference/backend/app/mail.py.md) |
 | `backend/app/mail_delivery.py` | 2 | [Методы](reference/backend/app/mail_delivery.py.md) |
 | `backend/app/main.py` | 15 | [Методы](reference/backend/app/main.py.md) |
@@ -67,14 +67,14 @@
 | `backend/app/routers/works.py` | 5 | [Методы](reference/backend/app/routers/works.py.md) |
 | `backend/app/schemas.py` | 15 | [Методы](reference/backend/app/schemas.py.md) |
 | `backend/app/security.py` | 22 | [Методы](reference/backend/app/security.py.md) |
-| `backend/app/services.py` | 244 | [Методы](reference/backend/app/services.py.md) |
+| `backend/app/services.py` | 245 | [Методы](reference/backend/app/services.py.md) |
 | `backend/app/storage/minio_client.py` | 7 | [Методы](reference/backend/app/storage/minio_client.py.md) |
 | `backend/app/task_tracker.py` | 9 | [Методы](reference/backend/app/task_tracker.py.md) |
-| `backend/app/tracker_metadata.py` | 3 | [Методы](reference/backend/app/tracker_metadata.py.md) |
+| `backend/app/tracker_metadata.py` | 7 | [Методы](reference/backend/app/tracker_metadata.py.md) |
 | `backend/app/tracker_spaces.py` | 2 | [Методы](reference/backend/app/tracker_spaces.py.md) |
 | `backend/app/worker/mail_worker.py` | 5 | [Методы](reference/backend/app/worker/mail_worker.py.md) |
 | `backend/app/worker/recon_worker.py` | 5 | [Методы](reference/backend/app/worker/recon_worker.py.md) |
-| `backend/app/works.py` | 20 | [Методы](reference/backend/app/works.py.md) |
+| `backend/app/works.py` | 21 | [Методы](reference/backend/app/works.py.md) |
 | `backend/app/ws_manager.py` | 10 | [Методы](reference/backend/app/ws_manager.py.md) |
 | `frontend/src/StormRoot.tsx` | 1 | [Методы](reference/frontend/src/StormRoot.tsx.md) |
 | `frontend/src/api.ts` | 102 | [Методы](reference/frontend/src/api.ts.md) |
@@ -88,7 +88,7 @@
 | `frontend/src/storm/ResizableImage.ts` | 21 | [Методы](reference/frontend/src/storm/ResizableImage.ts.md) |
 | `frontend/src/storm/StormActivate.tsx` | 2 | [Методы](reference/frontend/src/storm/StormActivate.tsx.md) |
 | `frontend/src/storm/StormApp.tsx` | 326 | [Методы](reference/frontend/src/storm/StormApp.tsx.md) |
-| `frontend/src/storm/StormAppSecFields.tsx` | 6 | [Методы](reference/frontend/src/storm/StormAppSecFields.tsx.md) |
+| `frontend/src/storm/StormAppSecFields.tsx` | 7 | [Методы](reference/frontend/src/storm/StormAppSecFields.tsx.md) |
 | `frontend/src/storm/StormDatePicker.tsx` | 9 | [Методы](reference/frontend/src/storm/StormDatePicker.tsx.md) |
 | `frontend/src/storm/StormDocs.tsx` | 9 | [Методы](reference/frontend/src/storm/StormDocs.tsx.md) |
 | `frontend/src/storm/StormLogin.tsx` | 7 | [Методы](reference/frontend/src/storm/StormLogin.tsx.md) |
@@ -109,4 +109,4 @@
 | `frontend/src/storm/theme.ts` | 5 | [Методы](reference/frontend/src/storm/theme.ts.md) |
 | `frontend/src/storm/useReconJobPolling.ts` | 1 | [Методы](reference/frontend/src/storm/useReconJobPolling.ts.md) |
 
-Всего: backend **870**, frontend **551**, модулей **100**.
+Всего: backend **877**, frontend **552**, модулей **100**.

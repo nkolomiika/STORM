@@ -6,7 +6,7 @@
 
 ## display
 
-[backend/app/task_tracker.py:17](../../../../backend/app/task_tracker.py#L17)
+[backend/app/task_tracker.py:18](../../../../backend/app/task_tracker.py#L18)
 
 ```python
 def display(value) -> str
@@ -32,13 +32,13 @@ def display(value) -> str
 
 ## task_out
 
-[backend/app/task_tracker.py:26](../../../../backend/app/task_tracker.py#L26)
+[backend/app/task_tracker.py:27](../../../../backend/app/task_tracker.py#L27)
 
 ```python
 def task_out(unit: dict) -> dict
 ```
 
-В теле вызывает `HTTPException`, `_workflow_status_name`, `affected_versions`, `any`, `assignee_identity`, `attributes.get`, `bool`, `description_text`; полный список ниже.
+Проецирует AS21 unit в карточку: статус, отдельный логин/ФИО, все версии и текст.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -50,35 +50,44 @@ def task_out(unit: dict) -> dict
 
 ```python
 HTTPException(502, 'Task Tracker вернул некорректные данные затронутых версий')
+HTTPException(502, 'Task Tracker вернул некорректные данные продукта или компонента')
+ValueError('Слишком длинный код продукта')
 ```
 
 <details>
 <summary>Прямые вызовы в теле</summary>
 
 - `HTTPException`
+- `ValueError`
 - `_workflow_status_name`
 - `affected_versions`
 - `any`
 - `assignee_identity`
 - `attributes.get`
 - `bool`
+- `component_references`
 - `description_text`
 - `display`
 - `get_settings`
 - `isinstance`
 - `len`
+- `product.get`
+- `product.strip`
 - `quote`
 - `settings.app_base_url.rstrip`
 - `status.lower`
 - `status.lower().replace`
 - `unit.get`
+- `unit_attributes`
+- `workflow.get`
 - `works_issue_url`
+- `{'progress': 'inprogress', 'done': 'done', 'todo': 'todo'}.get`
 
 </details>
 
 ## read_demo_units
 
-[backend/app/task_tracker.py:46](../../../../backend/app/task_tracker.py#L46)
+[backend/app/task_tracker.py:62](../../../../backend/app/task_tracker.py#L62)
 
 ```python
 def read_demo_units(path: str) -> не аннотирован
@@ -116,13 +125,13 @@ ValueError('Expected units')
 
 ## description_text
 
-[backend/app/task_tracker.py:62](../../../../backend/app/task_tracker.py#L62)
+[backend/app/task_tracker.py:78](../../../../backend/app/task_tracker.py#L78)
 
 ```python
 def description_text(value) -> str
 ```
 
-В теле вызывает `'\n'.join`, `description_text`, `filter`, `isinstance`, `value.get`.
+Извлекает текст из ProseMirror-объекта или его JSON-строки; обычный текст сохраняет.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -133,23 +142,31 @@ def description_text(value) -> str
 <details>
 <summary>Прямые вызовы в теле</summary>
 
-- `'\n'.join`
 - `description_text`
-- `filter`
 - `isinstance`
+- `json.loads`
+- `parsed.get`
+- `separator.join`
+- `validate_json_value`
 - `value.get`
+- `value.lstrip`
+- `value.lstrip().startswith`
 
 </details>
 
 ## TaskTrackerService._request
 
-[backend/app/task_tracker.py:73](../../../../backend/app/task_tracker.py#L73)
+[backend/app/task_tracker.py:102](../../../../backend/app/task_tracker.py#L102)
 
 ```python
 async def _request(self, *, key: str | None=None, query: str='') -> dict
 ```
 
-В теле вызывает `HTTPException`, `WorksClient`, `asyncio.to_thread`, `client._client.post`, `client._raise_for_status`, `client._url`, `deepcopy`, `expand`; полный список ниже.
+Читает полную карточку GET unit/v2 или список через TQL-поиск AS21.
+
+Нативный TQL ограничен APPSEC и типом анализа. Пользовательский текст
+не вставляется внутрь TQL; подстановка параметров заменяет целые JSON-строки.
+Ошибки настройки возвращают 503, внешнего HTTP/формата — 502.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -165,6 +182,7 @@ HTTPException(502, 'Task Tracker вернул недопустимые данн�
 HTTPException(502, 'Task Tracker вернул неожиданный формат ответа')
 HTTPException(502, message)
 HTTPException(503, 'Task Tracker не настроен: проверьте WORKS_ENABLED, WORKS_BASE_URL и WORKS_API_TOKEN')
+HTTPException(503, 'Task Tracker: неверно настроен путь карточки задачи')
 HTTPException(503, 'Task Tracker: путь поиска должен быть относительным к WORKS_BASE_URL')
 HTTPException(503, 'WORKS_TASKS_SEARCH_BODY должен ограничивать поиск пространством APPSEC: используйте {space} в фильтре пространства')
 HTTPException(503, 'Демо-тикеты и реальная интеграция Task Tracker не могут быть включены одновременно')
@@ -177,6 +195,7 @@ HTTPException(503, 'Для поиска задач Task Tracker требуетс
 - `HTTPException`
 - `WorksClient`
 - `asyncio.to_thread`
+- `client._client.get`
 - `client._client.post`
 - `client._raise_for_status`
 - `client._url`
@@ -186,20 +205,22 @@ HTTPException(503, 'Для поиска задач Task Tracker требуетс
 - `has_space`
 - `isinstance`
 - `path.startswith`
+- `quote`
 - `response.json`
+- `settings.works_unit_detail_path.format`
 - `validate_json_value`
 
 </details>
 
 ## TaskTrackerService._request.has_space
 
-[backend/app/task_tracker.py:87](../../../../backend/app/task_tracker.py#L87)
+[backend/app/task_tracker.py:125](../../../../backend/app/task_tracker.py#L125)
 
 ```python
 def has_space(value) -> не аннотирован
 ```
 
-В теле вызывает `any`, `has_space`, `isinstance`, `value.values`.
+В теле вызывает `any`, `bool`, `has_space`, `isinstance`, `json.dumps`, `re.escape`, `re.fullmatch`, `value.values`.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -211,15 +232,19 @@ def has_space(value) -> не аннотирован
 <summary>Прямые вызовы в теле</summary>
 
 - `any`
+- `bool`
 - `has_space`
 - `isinstance`
+- `json.dumps`
+- `re.escape`
+- `re.fullmatch`
 - `value.values`
 
 </details>
 
 ## TaskTrackerService._request.expand
 
-[backend/app/task_tracker.py:96](../../../../backend/app/task_tracker.py#L96)
+[backend/app/task_tracker.py:137](../../../../backend/app/task_tracker.py#L137)
 
 ```python
 def expand(value) -> не аннотирован
@@ -245,7 +270,7 @@ def expand(value) -> не аннотирован
 
 ## TaskTrackerService.list_tasks
 
-[backend/app/task_tracker.py:120](../../../../backend/app/task_tracker.py#L120)
+[backend/app/task_tracker.py:164](../../../../backend/app/task_tracker.py#L164)
 
 ```python
 async def list_tasks(self, query: str | None=None, category: str | None=None) -> dict
@@ -272,7 +297,9 @@ async def list_tasks(self, query: str | None=None, category: str | None=None) ->
 - `isinstance`
 - `page.get`
 - `query.casefold`
+- `query.strip`
 - `self._request`
+- `self.get_task`
 - `task_out`
 - `unit.get`
 
@@ -280,13 +307,13 @@ async def list_tasks(self, query: str | None=None, category: str | None=None) ->
 
 ## TaskTrackerService.get_task
 
-[backend/app/task_tracker.py:132](../../../../backend/app/task_tracker.py#L132)
+[backend/app/task_tracker.py:185](../../../../backend/app/task_tracker.py#L185)
 
 ```python
 async def get_task(self, key: str) -> dict
 ```
 
-В теле вызывает `HTTPException`, `_extract_items`, `display`, `is_project_ticket`, `isinstance`, `item.get`, `next`, `self._request`; полный список ниже.
+В теле вызывает `HTTPException`, `_extract_items`, `data.get`, `display`, `is_project_ticket`, `isinstance`, `item.get`, `next`; полный список ниже.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -306,6 +333,7 @@ HTTPException(404, 'No task found in the AppSec space')
 
 - `HTTPException`
 - `_extract_items`
+- `data.get`
 - `display`
 - `is_project_ticket`
 - `isinstance`

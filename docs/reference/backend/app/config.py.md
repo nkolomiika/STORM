@@ -6,7 +6,7 @@
 
 ## Settings._parse_sso_verify_tls
 
-[backend/app/config.py:255](../../../../backend/app/config.py#L255)
+[backend/app/config.py:268](../../../../backend/app/config.py#L268)
 
 ```python
 def _parse_sso_verify_tls(cls, v) -> не аннотирован
@@ -31,7 +31,7 @@ def _parse_sso_verify_tls(cls, v) -> не аннотирован
 
 ## Settings.sso_discovery_url
 
-[backend/app/config.py:268](../../../../backend/app/config.py#L268)
+[backend/app/config.py:281](../../../../backend/app/config.py#L281)
 
 ```python
 def sso_discovery_url(self) -> str
@@ -52,7 +52,7 @@ def sso_discovery_url(self) -> str
 
 ## Settings.sso_configured
 
-[backend/app/config.py:276](../../../../backend/app/config.py#L276)
+[backend/app/config.py:289](../../../../backend/app/config.py#L289)
 
 ```python
 def sso_configured(self) -> bool
@@ -71,7 +71,7 @@ def sso_configured(self) -> bool
 
 ## Settings.sso_scope_list
 
-[backend/app/config.py:281](../../../../backend/app/config.py#L281)
+[backend/app/config.py:294](../../../../backend/app/config.py#L294)
 
 ```python
 def sso_scope_list(self) -> list[str]
@@ -92,7 +92,7 @@ def sso_scope_list(self) -> list[str]
 
 ## Settings.sso_redirect_uri
 
-[backend/app/config.py:286](../../../../backend/app/config.py#L286)
+[backend/app/config.py:299](../../../../backend/app/config.py#L299)
 
 ```python
 def sso_redirect_uri(self) -> str
@@ -112,7 +112,7 @@ def sso_redirect_uri(self) -> str
 
 ## Settings.validate_secret_key
 
-[backend/app/config.py:293](../../../../backend/app/config.py#L293)
+[backend/app/config.py:306](../../../../backend/app/config.py#L306)
 
 ```python
 def validate_secret_key(cls, value: str) -> str
@@ -142,7 +142,7 @@ ValueError('JWT_SECRET_KEY должен содержать минимум 32 с�
 
 ## Settings.cors_origins
 
-[backend/app/config.py:300](../../../../backend/app/config.py#L300)
+[backend/app/config.py:313](../../../../backend/app/config.py#L313)
 
 ```python
 def cors_origins(self) -> list[str]
@@ -162,7 +162,7 @@ def cors_origins(self) -> list[str]
 
 ## Settings.csrf_origins
 
-[backend/app/config.py:305](../../../../backend/app/config.py#L305)
+[backend/app/config.py:318](../../../../backend/app/config.py#L318)
 
 ```python
 def csrf_origins(self) -> list[str]
@@ -182,7 +182,7 @@ def csrf_origins(self) -> list[str]
 
 ## Settings.works_configured
 
-[backend/app/config.py:310](../../../../backend/app/config.py#L310)
+[backend/app/config.py:323](../../../../backend/app/config.py#L323)
 
 ```python
 def works_configured(self) -> bool
@@ -203,7 +203,7 @@ def works_configured(self) -> bool
 
 ## Settings.works_cookies_dict
 
-[backend/app/config.py:315](../../../../backend/app/config.py#L315)
+[backend/app/config.py:328](../../../../backend/app/config.py#L328)
 
 ```python
 def works_cookies_dict(self) -> dict[str, str]
@@ -225,7 +225,7 @@ def works_cookies_dict(self) -> dict[str, str]
 
 ## get_settings
 
-[backend/app/config.py:327](../../../../backend/app/config.py#L327)
+[backend/app/config.py:340](../../../../backend/app/config.py#L340)
 
 ```python
 def get_settings() -> Settings

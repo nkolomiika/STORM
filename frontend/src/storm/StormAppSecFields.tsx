@@ -9,7 +9,8 @@
  * Все поля — typeahead; используется в формах создания и редактирования проекта. */
 
 import { useEffect, useId, useRef, useState } from "react";
-import { findWorksComponents, findWorksVersions, searchUsers, getTasks } from "../api";
+import { findWorksComponents, findWorksVersions, searchUsers, getTasks, getTask, getApiErrorMessage } from "../api";
+import { useToastStore } from '../store';
 import type { TaskTrackerTask, WorksRef } from "../types";
 
 /** Отображаем только ФИ (Фамилия Имя) — первые два слова ФИО. Для IAM-логина
@@ -21,6 +22,8 @@ function fio2fi(s: string | null | undefined): string {
 export interface AppSecFieldsValue {
   appsec_component_code: string | null;
   appsec_component_name: string | null;
+  appsec_product_code: string | null;
+  appsec_components: WorksRef[];
   appsec_versions: WorksRef[];
   appsec_assignee: string | null;
   appsec_assignee_name: string | null;
@@ -29,7 +32,19 @@ export interface AppSecFieldsValue {
 }
 
 export function emptyAppsecFields(): AppSecFieldsValue {
-  return { appsec_component_code: null, appsec_component_name: null, appsec_versions: [], appsec_assignee: null, appsec_assignee_name: null, appsec_ticket_url: null, appsec_ticket_key: null };
+  return { appsec_components: [], appsec_product_code: null, appsec_component_code: null, appsec_component_name: null, appsec_versions: [], appsec_assignee: null, appsec_assignee_name: null, appsec_ticket_url: null, appsec_ticket_key: null };
+}
+
+/** Переносит метаданные продукта из APPSEC, не подменяя исполнителя проекта. */
+export function appsecMetadataFromTask(task?: TaskTrackerTask): Partial<AppSecFieldsValue> {
+  const components = task?.components?.length ? task.components : task?.component ? [task.component] : [];
+  return {
+    appsec_product_code: task?.product_code ?? null,
+    appsec_component_code: components[0]?.code ?? null,
+    appsec_component_name: components[0]?.name ?? null,
+    appsec_components: components,
+    appsec_versions: task?.affected_versions ?? [],
+  };
 }
 
 interface Opt {
@@ -44,6 +59,7 @@ function Typeahead({
   fetchOptions,
   onPick,
   clearOnPick = false,
+  t,
 }: {
   label: string;
   placeholder: string;
@@ -51,11 +67,13 @@ function Typeahead({
   fetchOptions: (q: string) => Promise<Opt[]>;
   onPick: (opt: Opt) => void;
   clearOnPick?: boolean;
+  t: (s: string) => string;
 }) {
   const [q, setQ] = useState(value);
   const [opts, setOpts] = useState<Opt[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const shownError = useRef(false);
   // Внешнее значение изменилось (например, открыли другой проект) — синхронизируем.
   useEffect(() => setQ(value), [value]);
   const fetchRef = useRef(fetchOptions);
@@ -68,9 +86,15 @@ function Typeahead({
       setLoading(true);
       try {
         const res = await fetchRef.current(q.trim());
-        if (active) setOpts(res);
-      } catch {
-        if (active) setOpts([]);
+        if (active) { setOpts(res); shownError.current = false; }
+      } catch (error) {
+        if (active) {
+          setOpts([]);
+          if (!shownError.current) {
+            shownError.current = true;
+            useToastStore.getState().pushToast(t(getApiErrorMessage(error, "Couldn't load options")), 'error');
+          }
+        }
       } finally {
         if (active) setLoading(false);
       }
@@ -149,11 +173,13 @@ function TicketField({
 }: {
   url: string;
   taskKey: string | null;
-  onChange: (patch: { appsec_ticket_url: string | null; appsec_ticket_key: string | null }) => void;
+  onChange: (patch: Partial<AppSecFieldsValue>) => void;
   t: (s: string) => string;
 }) {
   const inputId = useId();
   const editing = useRef(false);
+  const selectionRequest = useRef(0);
+  useEffect(() => () => { selectionRequest.current++; }, [url, taskKey]);
   const [q, setQ] = useState(taskKey || url || "");
   const [opts, setOpts] = useState<TaskTrackerTask[]>([]);
   const [open, setOpen] = useState(false);
@@ -196,13 +222,15 @@ function TicketField({
         placeholder={t("Paste a URL or start typing a ticket…")}
         value={q}
         onChange={(e) => {
+          selectionRequest.current++;
+          setLoading(false);
           const text = e.target.value;
           editing.current = true;
           setQ(text);
           setOpen(true);
           // URL сохраняем сразу; поиск по тексту сохраняется только выбором из списка.
-          if (looksLikeUrl(text)) onChange({ appsec_ticket_url: text.trim(), appsec_ticket_key: null });
-          else onChange({ appsec_ticket_url: null, appsec_ticket_key: null });
+          onChange({ ...appsecMetadataFromTask(), appsec_ticket_url: looksLikeUrl(text) ? text.trim() : null,
+                     appsec_ticket_key: null });
         }}
         onFocus={() => setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), 160)}
@@ -231,11 +259,24 @@ function TicketField({
             <div
               key={task.key}
               className="prow clk"
-              onMouseDown={() => {
-                editing.current = false;
-                onChange({ appsec_ticket_url: task.url ?? null, appsec_ticket_key: task.key });
-                setQ(task.key);
+              onMouseDown={async () => {
+                const request = ++selectionRequest.current;
                 setOpen(false);
+                setLoading(true);
+                try {
+                  const detail = await getTask(task.key);
+                  if (request !== selectionRequest.current) return;
+                  if (detail.key !== task.key) throw new Error('Unexpected ticket');
+                  editing.current = false;
+                  onChange({ ...appsecMetadataFromTask(detail), appsec_ticket_url: detail.url || task.url || null,
+                             appsec_ticket_key: detail.key });
+                  setQ(detail.key);
+                } catch (error) {
+                  if (request === selectionRequest.current)
+                    useToastStore.getState().pushToast(t(getApiErrorMessage(error, "Couldn't load this task")), 'error');
+                } finally {
+                  if (request === selectionRequest.current) setLoading(false);
+                }
               }}
               style={{ padding: "9px 14px", fontSize: 13, cursor: "pointer", display: "flex", gap: 8, minWidth: 0 }}
             >
@@ -267,6 +308,7 @@ export function StormAppSecFields({
   works: boolean;
   t: (s: string) => string;
 }) {
+  const productId = useId();
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <TicketField
@@ -275,9 +317,16 @@ export function StormAppSecFields({
         onChange={(patch) => onChange(patch)}
         t={t}
       />
+      <div>
+        <label className="flabel" htmlFor={productId}>{t('Product code')}</label>
+        <input id={productId} className="finp" maxLength={255}
+          placeholder={t('Product code')} value={value.appsec_product_code || ''}
+          onChange={(event) => onChange({ appsec_product_code: event.target.value || null })} />
+      </div>
       {/* Исполнитель — всегда (идёт в поле исполнителя тикета Task Tracker).
           Поиск по username ИЛИ ФИО, в списке и поле показываем только ФИ. */}
       <Typeahead
+        t={t}
         label={t("Assignee")}
         placeholder={t("Start typing a name…")}
         value={fio2fi(value.appsec_assignee_name || value.appsec_assignee)}
@@ -290,6 +339,7 @@ export function StormAppSecFields({
       />
       {/* Затронутая версия — всегда (ищется в Works/AppSec-пространстве проекта). */}
       <Typeahead
+        t={t}
         label={t("Affected versions")}
         placeholder={t("Start typing a version…")}
         value=""
@@ -307,14 +357,29 @@ export function StormAppSecFields({
         </span>)}
       </div>}
       {works && (<>
-      <div style={{ font: "700 12.5px Inter,sans-serif", color: "var(--st-text-2)", marginTop: 2 }}>{t("AppSec export (Works)")}</div>
       <Typeahead
+        t={t}
         label={t("Component")}
         placeholder={t("Start typing a component…")}
-        value={value.appsec_component_name || ""}
+        value=""
         fetchOptions={(q) => findWorksComponents(q)}
-        onPick={(o) => onChange({ appsec_component_code: o.code, appsec_component_name: o.name })}
+        clearOnPick
+        onPick={(o) => {
+          if (!value.appsec_components.some((component) => component.code === o.code)) {
+            const components = [...value.appsec_components, o];
+            onChange({ appsec_components: components, appsec_component_code: components[0].code, appsec_component_name: components[0].name });
+          }
+        }}
       />
+      {value.appsec_components.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        {value.appsec_components.map((component) => <span key={component.code} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 6px 4px 10px', borderRadius: 9, background: 'var(--st-accent-soft)', color: 'var(--st-text-2)', fontSize: 12 }}>
+          {component.name}
+          <button type="button" className="actbtn del" aria-label={`${t('Remove component')}: ${component.name}`} onClick={() => {
+            const components = value.appsec_components.filter((item) => item.code !== component.code);
+            onChange({ appsec_components: components, appsec_component_code: components[0]?.code ?? null, appsec_component_name: components[0]?.name ?? null });
+          }}>×</button>
+        </span>)}
+      </div>}
       </>)}
     </div>
   );

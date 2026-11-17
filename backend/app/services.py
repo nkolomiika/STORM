@@ -21,7 +21,8 @@ import magic
 import httpx
 import yaml
 from cvss import CVSS4
-from fastapi import UploadFile
+from fastapi import HTTPException, UploadFile
+from pydantic import EmailStr, TypeAdapter, ValidationError as PydanticValidationError
 from PIL import Image as PillowImage, ImageOps, UnidentifiedImageError
 from sqlalchemy import Select, and_, delete, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
@@ -32,7 +33,7 @@ from sqlalchemy.orm.attributes import set_committed_value
 from app import notification_events
 from app.config import get_settings
 from app.tracker_spaces import normalize_project_ticket
-from app.tracker_metadata import normalize_project_versions
+from app.tracker_metadata import normalize_project_versions, normalize_project_components
 from app.enums import (
     AssetType,
     HostStatus,
@@ -48,6 +49,7 @@ from app.enums import (
 )
 from app.reports import ReportKind, build_pp, build_szi
 from app.exceptions import ConflictError, ForbiddenError, NotFoundError, UnauthorizedError, ValidationError
+from app.exceptions import ServiceUnavailableError
 from app.works import WorksClient, WorksError, priority_for_severity, works_issue_url
 from app.models import (
     AccountReactivationToken,
@@ -332,8 +334,7 @@ class AgentTokenService:
 class WorksService:
     """Экспорт находок STORM в Works (STS / bug_appsec) + резолв справочников
     (компонент/версия). Авторизация и эндпоинты — в app.works/WorksClient (конфиг
-    works_*). Всё за флагом settings.works_configured: не настроено → find'ы
-    отдают [], экспорт бросает понятную ошибку.
+    works_*). Ошибки подключения справочников возвращают 503/502, а не 422 формы.
     """
 
     def __init__(self, db: AsyncSession) -> None:
@@ -341,13 +342,19 @@ class WorksService:
         self.audit = AuditService(db)
 
     async def find_components(self, q: str = "") -> list[dict[str, str]]:
+        """Получает компоненты формы проекта из справочника STS."""
+        return await self._find_reference('components', q)
+
+    async def _find_reference(self, kind: Literal['components', 'versions'], q: str) -> list[dict[str, str]]:
+        """Отделяет отказ внешнего справочника от ошибки пользовательских полей."""
         if not settings.works_configured:
-            return []
+            raise ServiceUnavailableError('Подключение к Task Tracker пока не настроено.', 'task_tracker_not_configured')
         try:
             async with WorksClient() as wc:
-                return await wc.find_components(q)
+                return await (wc.find_components(q) if kind == 'components' else wc.find_versions(q))
         except WorksError as exc:
-            raise ValidationError(exc.message) from exc
+            logging.getLogger('storm.works').warning('task_tracker_lookup_failed kind=%s upstream_status=%s', kind, exc.status_code)
+            raise HTTPException(502, 'Task Tracker: не удалось загрузить справочник. Попробуйте позже.') from exc
 
     async def find_versions(self, q: str = "") -> list[dict[str, str]]:
         if settings.works_tasks_demo_file:
@@ -356,13 +363,7 @@ class WorksService:
             versions = {version['code']: version for task in tasks['items'] for version in task['affected_versions']}
             needle = q.casefold()
             return [version for version in versions.values() if needle in (version['name'] + ' ' + version['code']).casefold()][:50]
-        if not settings.works_configured:
-            return []
-        try:
-            async with WorksClient() as wc:
-                return await wc.find_versions(q)
-        except WorksError as exc:
-            raise ValidationError(exc.message) from exc
+        return await self._find_reference('versions', q)
 
     async def get_link(self, vulnerability_id: int) -> WorksIssueLink | None:
         link = await self.db.scalar(
@@ -389,17 +390,17 @@ class WorksService:
     def _extract_key(response: Any) -> str:
         """Достаёт код/ключ созданного тикета из ответа Works (форма заранее неизвестна)."""
         if isinstance(response, dict):
-            for key in ("code", "key", "issue_key"):
+            for key in ("code", "key", "issue_key", "id"):
                 val = response.get(key)
-                if isinstance(val, str) and val:
+                if isinstance(val, str) and re.fullmatch(re.escape(settings.works_space)+r'-\d+', val):
                     return val
             unit = response.get("unit")
             if isinstance(unit, dict):
-                for key in ("code", "key"):
+                for key in ("code", "key", "id"):
                     val = unit.get(key)
-                    if isinstance(val, str) and val:
+                    if isinstance(val, str) and re.fullmatch(re.escape(settings.works_space)+r'-\d+', val):
                         return val
-        return str(response)[:64]
+        return ''
 
     async def export_vulnerability(
         self, project_id: int, vuln_id: int, user: User, assignee: str | None
@@ -420,6 +421,10 @@ class WorksService:
             missing.append('исполнитель')
         if not project.appsec_versions and not (project.appsec_version_code or '').strip():
             missing.append('затронутые версии')
+        if not (project.appsec_product_code or '').strip():
+            missing.append('код продукта')
+        if not project.appsec_components and not (project.appsec_component_code or '').strip():
+            missing.append('компоненты')
         if missing:
             raise ValidationError('Заполните данные по проекту. Не заполнено: ' + ', '.join(missing))
         if not settings.works_configured:
@@ -437,7 +442,7 @@ class WorksService:
         vuln_data = await VulnerabilityService(self.db).get(project_id, vuln_id)
         vulnerability = vuln_data["vulnerability"]
 
-        assignee_final = (assignee or project.appsec_assignee or "").strip()
+        assignee_final = (project.appsec_assignee or "").strip()
         if not assignee_final:
             raise ValidationError("Не указан исполнитель (assignee) для экспорта в AppSec")
 
@@ -446,6 +451,7 @@ class WorksService:
             if project.appsec_component_code
             else None
         )
+        components = project.appsec_components or ([component] if component else [])
         versions = project.appsec_versions or (
             [{"code": project.appsec_version_code, "name": project.appsec_version_name or project.appsec_version_code}]
             if project.appsec_version_code
@@ -492,15 +498,21 @@ class WorksService:
                     priority=priority,
                     component=component,
                     versions=versions,
+                    product_code=project.appsec_product_code,
+                    severity=vulnerability.severity.value,
+                    cvss_vector=vulnerability.cvss_vector,
+                    components=components,
                     drafts_info=drafts_info,
                 )
-                # Привязываем созданный STS-тикет к APPSEC-тикету проекта (запросу
-                # на АЗ), если он задан. Best-effort: сбой связи не срывает экспорт.
+                # APPSEC проекта — source, каждый новый STS — destination.
+                # Best-effort: сбой связи не срывает экспорт.
                 created_key = self._extract_key(response)
+                if not created_key:
+                    raise WorksError('Task Tracker не вернул корректный ключ созданного STS-тикета.')
                 linked_key = ticket["appsec_ticket_key"] or ""
                 if created_key and linked_key:
                     try:
-                        await wc.link_units(source=created_key, destination=linked_key)
+                        await wc.link_units(source=linked_key, destination=created_key)
                     except WorksError as exc:
                         logging.getLogger("storm.works").warning(
                             "Works: не удалось привязать %s к %s: %s",
@@ -583,6 +595,12 @@ class AuthService:
         claim_username = (identity.username or "").strip() or None
         if not email or not identity.email_verified:
             raise UnauthorizedError("IdP должен передать подтверждённый email")
+        try:
+            email = str(TypeAdapter(EmailStr).validate_python(email)).lower()
+        except PydanticValidationError as exc:
+            raise UnauthorizedError('IdP передал некорректный email') from exc
+        if len(email) > 255:
+            raise UnauthorizedError('IdP передал некорректный email')
 
         user: User | None = None
         if email:
@@ -623,7 +641,7 @@ class AuthService:
         self.db.add(user)
         await self.db.flush()
         await self.db.refresh(user)
-        await self.audit.log("USER_CREATED", user_id=user.id, details={"via": "sso"})
+        await self.audit.log("USER_CREATED", user_id=user.id, details={"via": "sso"}, commit=False)
         return user
 
     async def _unique_username(self, base: str) -> str:
@@ -851,7 +869,7 @@ class UserService:
         """Возвращает список пользователей с пагинацией."""
         total = await self.db.scalar(select(func.count()).select_from(User)) or 0
         items = (
-            await self.db.scalars(select(User).order_by(User.created_at.desc()).offset((page - 1) * size).limit(size))
+            await self.db.scalars(select(User).order_by(User.created_at.desc(), User.id.desc()).offset((page - 1) * size).limit(size))
         ).all()
         return list(items), total
 
@@ -1515,6 +1533,7 @@ class ProjectService:
         self._validate_project_dates(payload.get("start_date"), payload.get("end_date"))
         normalize_project_ticket(payload)
         normalize_project_versions(payload)
+        normalize_project_components(payload)
         payload["folder"] = self._normalize_project_folder(payload.get("folder"))
         project = Project(**payload, created_by=actor_id)
         self.db.add(project)
@@ -1537,6 +1556,9 @@ class ProjectService:
         if 'appsec_versions' not in payload and 'appsec_version_name' in payload and 'appsec_version_code' not in payload:
             payload['appsec_version_code'] = project.appsec_version_code
         normalize_project_versions(payload)
+        if 'appsec_components' not in payload and 'appsec_component_name' in payload and 'appsec_component_code' not in payload:
+            payload['appsec_component_code'] = project.appsec_component_code
+        normalize_project_components(payload)
         if "folder" in payload:
             payload["folder"] = self._normalize_project_folder(payload.get("folder"))
         next_start_date = payload.get("start_date", project.start_date)

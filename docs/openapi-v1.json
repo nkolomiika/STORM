@@ -11585,6 +11585,28 @@
         ],
         "title": "AgentTokenOut"
       },
+      "AppSecComponentRef": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "name"
+        ],
+        "title": "AppSecComponentRef"
+      },
       "AppSecVersionRef": {
         "properties": {
           "code": {
@@ -14880,6 +14902,26 @@
             ],
             "title": "Appsec Component Name"
           },
+          "appsec_product_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appsec Product Code"
+          },
+          "appsec_components": {
+            "items": {
+              "$ref": "#/components/schemas/AppSecComponentRef"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Appsec Components"
+          },
           "appsec_version_code": {
             "anyOf": [
               {
@@ -15658,6 +15700,24 @@
             ],
             "title": "Appsec Component Name"
           },
+          "appsec_product_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appsec Product Code"
+          },
+          "appsec_components": {
+            "items": {
+              "$ref": "#/components/schemas/AppSecComponentRef"
+            },
+            "type": "array",
+            "title": "Appsec Components"
+          },
           "appsec_version_code": {
             "anyOf": [
               {
@@ -15862,6 +15922,26 @@
               }
             ],
             "title": "Appsec Component Name"
+          },
+          "appsec_product_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appsec Product Code"
+          },
+          "appsec_components": {
+            "items": {
+              "$ref": "#/components/schemas/AppSecComponentRef"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Appsec Components"
           },
           "appsec_version_code": {
             "anyOf": [
@@ -16510,6 +16590,34 @@
             "type": "array",
             "title": "Affected Versions"
           },
+          "product_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Code"
+          },
+          "component": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorksRefOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "components": {
+            "items": {
+              "$ref": "#/components/schemas/WorksRefOut"
+            },
+            "type": "array",
+            "title": "Components"
+          },
           "is_demo": {
             "type": "boolean",
             "title": "Is Demo",
@@ -16657,6 +16765,34 @@
             },
             "type": "array",
             "title": "Affected Versions"
+          },
+          "product_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Code"
+          },
+          "component": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorksRefOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "components": {
+            "items": {
+              "$ref": "#/components/schemas/WorksRefOut"
+            },
+            "type": "array",
+            "title": "Components"
           },
           "is_demo": {
             "type": "boolean",
@@ -17824,12 +17960,13 @@
                 "type": "null"
               }
             ],
-            "title": "Assignee"
+            "title": "Assignee",
+            "deprecated": true
           }
         },
         "type": "object",
         "title": "WorksExportRequest",
-        "description": "Тело запроса экспорта находки в Works (исполнитель опционален —\nпо умолчанию берётся appsec_assignee проекта)."
+        "description": "Исполнитель берётся только из проекта; старый assignee игнорируется."
       },
       "WorksIssueLinkOut": {
         "properties": {

@@ -2,14 +2,14 @@
 
 Сгенерировано из объявлений кода. [Правила чтения](../../../METHODS.md).
 
-Методов и именованных функций: **20**.
+Методов и именованных функций: **21**.
 
 ## WorksError.__init__
 
-[backend/app/works.py:45](../../../../backend/app/works.py#L45)
+[backend/app/works.py:52](../../../../backend/app/works.py#L52)
 
 ```python
-def __init__(self, message: str, detail: str='') -> не аннотирован
+def __init__(self, message: str, detail: str='', *, status_code: int | None=None) -> не аннотирован
 ```
 
 Создаёт экземпляр и сохраняет его зависимости; параметры перечислены ниже.
@@ -18,6 +18,7 @@ def __init__(self, message: str, detail: str='') -> не аннотирован
 | --- | --- | --- | --- |
 | `message` | `str` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
 | `detail` | `str` | `''` | Определяется именем/типом и контрактом вызывающего кода. |
+| `status_code` | `int \| None` | `None` | Определяется именем/типом и контрактом вызывающего кода. |
 
 Возвращает: `не аннотирован`.
 
@@ -31,7 +32,7 @@ def __init__(self, message: str, detail: str='') -> не аннотирован
 
 ## priority_for_severity
 
-[backend/app/works.py:51](../../../../backend/app/works.py#L51)
+[backend/app/works.py:59](../../../../backend/app/works.py#L59)
 
 ```python
 def priority_for_severity(severity: str | None) -> str
@@ -54,9 +55,34 @@ CVSS-критичность → приоритет Works; неизвестное
 
 </details>
 
+## criticality_for_severity
+
+[backend/app/works.py:64](../../../../backend/app/works.py#L64)
+
+```python
+def criticality_for_severity(severity: str | None) -> str | None
+```
+
+Возвращает один код критичности STS для четырёх уровней CVSS из контракта.
+
+| Параметр | Тип | По умолчанию | Назначение |
+| --- | --- | --- | --- |
+| `severity` | `str \| None` | `обязательный` | Критичность находки (Enum Severity). |
+
+Возвращает: `str \| None`.
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `(severity or '').strip`
+- `(severity or '').strip().lower`
+- `SEVERITY_TO_CRITICALITY.get`
+
+</details>
+
 ## text_to_prosemirror
 
-[backend/app/works.py:56](../../../../backend/app/works.py#L56)
+[backend/app/works.py:69](../../../../backend/app/works.py#L69)
 
 ```python
 def text_to_prosemirror(text: str | None) -> dict[str, Any]
@@ -88,7 +114,7 @@ def text_to_prosemirror(text: str | None) -> dict[str, Any]
 
 ## _unit_ref
 
-[backend/app/works.py:82](../../../../backend/app/works.py#L82)
+[backend/app/works.py:95](../../../../backend/app/works.py#L95)
 
 ```python
 def _unit_ref(code: str | None, name: str | None) -> dict[str, Any] | None
@@ -105,7 +131,7 @@ def _unit_ref(code: str | None, name: str | None) -> dict[str, Any] | None
 
 ## _extract_items
 
-[backend/app/works.py:89](../../../../backend/app/works.py#L89)
+[backend/app/works.py:102](../../../../backend/app/works.py#L102)
 
 ```python
 def _extract_items(payload: Any) -> list[dict[str, Any]]
@@ -115,7 +141,7 @@ def _extract_items(payload: Any) -> list[dict[str, Any]]
 
 Ответ может быть списком, либо объектом со списком под одним из типовых
 ключей (content/items/data/results/units/rows). Элементы иногда завёрнуты в
-{"unit": {...}} — разворачиваем.
+{"unit": {...}} — разворачиваем, сохраняя соседний массив AS21 attributes.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -126,16 +152,19 @@ def _extract_items(payload: Any) -> list[dict[str, Any]]
 <details>
 <summary>Прямые вызовы в теле</summary>
 
+- `dict`
 - `isinstance`
 - `it.get`
 - `out.append`
 - `payload.get`
+- `unit.get`
+- `unit_attributes`
 
 </details>
 
 ## _item_code_name
 
-[backend/app/works.py:113](../../../../backend/app/works.py#L113)
+[backend/app/works.py:136](../../../../backend/app/works.py#L136)
 
 ```python
 def _item_code_name(item: dict[str, Any]) -> dict[str, str]
@@ -159,7 +188,7 @@ def _item_code_name(item: dict[str, Any]) -> dict[str, str]
 
 ## _workflow_status_name
 
-[backend/app/works.py:120](../../../../backend/app/works.py#L120)
+[backend/app/works.py:143](../../../../backend/app/works.py#L143)
 
 ```python
 def _workflow_status_name(item: dict[str, Any]) -> str | None
@@ -189,7 +218,7 @@ def _workflow_status_name(item: dict[str, Any]) -> str | None
 
 ## WorksClient.__init__
 
-[backend/app/works.py:141](../../../../backend/app/works.py#L141)
+[backend/app/works.py:164](../../../../backend/app/works.py#L164)
 
 ```python
 def __init__(self) -> None
@@ -222,7 +251,7 @@ WorksError('Интеграция с Works не настроена.')
 
 ## WorksClient.__aenter__
 
-[backend/app/works.py:163](../../../../backend/app/works.py#L163)
+[backend/app/works.py:186](../../../../backend/app/works.py#L186)
 
 ```python
 async def __aenter__(self) -> 'WorksClient'
@@ -234,7 +263,7 @@ async def __aenter__(self) -> 'WorksClient'
 
 ## WorksClient.__aexit__
 
-[backend/app/works.py:166](../../../../backend/app/works.py#L166)
+[backend/app/works.py:189](../../../../backend/app/works.py#L189)
 
 ```python
 async def __aexit__(self, *exc: Any) -> None
@@ -257,7 +286,7 @@ async def __aexit__(self, *exc: Any) -> None
 
 ## WorksClient._url
 
-[backend/app/works.py:169](../../../../backend/app/works.py#L169)
+[backend/app/works.py:192](../../../../backend/app/works.py#L192)
 
 ```python
 def _url(self, path: str) -> str
@@ -273,7 +302,7 @@ def _url(self, path: str) -> str
 
 ## WorksClient._raise_for_status
 
-[backend/app/works.py:173](../../../../backend/app/works.py#L173)
+[backend/app/works.py:196](../../../../backend/app/works.py#L196)
 
 ```python
 def _raise_for_status(resp: httpx.Response, what: str) -> None
@@ -291,8 +320,8 @@ def _raise_for_status(resp: httpx.Response, what: str) -> None
 Явные raise в теле (исключения вызываемых методов могут добавляться):
 
 ```python
-WorksError('Task Tracker отклонил запрос. Проверьте данные и попробуйте позже.', detail)
-WorksError('Не удалось подключиться к Task Tracker. Обратитесь к администратору.', detail)
+WorksError('Task Tracker отклонил запрос. Проверьте данные и попробуйте позже.', detail, status_code=resp.status_code)
+WorksError('Не удалось подключиться к Task Tracker. Обратитесь к администратору.', detail, status_code=resp.status_code)
 ```
 
 <details>
@@ -308,25 +337,27 @@ WorksError('Не удалось подключиться к Task Tracker. Обр
 
 ## WorksClient._find
 
-[backend/app/works.py:188](../../../../backend/app/works.py#L188)
+[backend/app/works.py:211](../../../../backend/app/works.py#L211)
 
 ```python
-async def _find(self, path: str, query: str, limit: int) -> list[dict[str, str]]
+async def _find(self, path: str, query: str, limit: int, *, space: str | None=None) -> list[dict[str, str]]
 ```
 
-В теле вызывает `WorksError`, `_extract_items`, `_item_code_name`, `max`, `min`, `resp.json`, `self._client.post`, `self._raise_for_status`; полный список ниже.
+Ищет справочные значения в выбранном пространстве AS21.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
 | `path` | `str` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
 | `query` | `str` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
 | `limit` | `int` | `обязательный` | Максимальное число возвращаемых записей. |
+| `space` | `str \| None` | `None` | Определяется именем/типом и контрактом вызывающего кода. |
 
 Возвращает: `list[dict[str, str]]`.
 
 Явные raise в теле (исключения вызываемых методов могут добавляться):
 
 ```python
+WorksError('Task Tracker вернул некорректный справочник.')
 WorksError('Works вернул не-JSON ответ.', resp.text[:500])
 WorksError('Не удалось соединиться с Works.', str(exc))
 ```
@@ -337,6 +368,9 @@ WorksError('Не удалось соединиться с Works.', str(exc))
 - `WorksError`
 - `_extract_items`
 - `_item_code_name`
+- `any`
+- `data.get`
+- `isinstance`
 - `max`
 - `min`
 - `resp.json`
@@ -349,18 +383,18 @@ WorksError('Не удалось соединиться с Works.', str(exc))
 
 ## WorksClient.find_components
 
-[backend/app/works.py:207](../../../../backend/app/works.py#L207)
+[backend/app/works.py:235](../../../../backend/app/works.py#L235)
 
 ```python
-async def find_components(self, query: str='', limit: int=50) -> list[dict[str, str]]
+async def find_components(self, query: str='', limit: int=100) -> list[dict[str, str]]
 ```
 
-В теле вызывает `self._find`.
+Читает справочник компонентов формы STS по нативному plugin API.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
 | `query` | `str` | `''` | Определяется именем/типом и контрактом вызывающего кода. |
-| `limit` | `int` | `50` | Максимальное число возвращаемых записей. |
+| `limit` | `int` | `100` | Максимальное число возвращаемых записей. |
 
 Возвращает: `list[dict[str, str]]`.
 
@@ -373,18 +407,18 @@ async def find_components(self, query: str='', limit: int=50) -> list[dict[str, 
 
 ## WorksClient.find_versions
 
-[backend/app/works.py:210](../../../../backend/app/works.py#L210)
+[backend/app/works.py:239](../../../../backend/app/works.py#L239)
 
 ```python
-async def find_versions(self, query: str='', limit: int=50) -> list[dict[str, str]]
+async def find_versions(self, query: str='', limit: int=100) -> list[dict[str, str]]
 ```
 
-В теле вызывает `self._find`.
+Читает справочник версий формы STS; версии тикета APPSEC загружаются отдельно.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
 | `query` | `str` | `''` | Определяется именем/типом и контрактом вызывающего кода. |
-| `limit` | `int` | `50` | Максимальное число возвращаемых записей. |
+| `limit` | `int` | `100` | Максимальное число возвращаемых записей. |
 
 Возвращает: `list[dict[str, str]]`.
 
@@ -397,7 +431,7 @@ async def find_versions(self, query: str='', limit: int=50) -> list[dict[str, st
 
 ## WorksClient.get_ticket_status
 
-[backend/app/works.py:213](../../../../backend/app/works.py#L213)
+[backend/app/works.py:243](../../../../backend/app/works.py#L243)
 
 ```python
 async def get_ticket_status(self, key: str) -> str | None
@@ -435,7 +469,7 @@ WorksError('Не удалось получить статус тикета из 
 
 ## WorksClient.upload_draft_file
 
-[backend/app/works.py:234](../../../../backend/app/works.py#L234)
+[backend/app/works.py:264](../../../../backend/app/works.py#L264)
 
 ```python
 async def upload_draft_file(self, *, draft_id: str, filename: str, content: bytes, content_type: str | None, relative_path: str) -> str
@@ -473,13 +507,16 @@ WorksError('Не удалось загрузить файл в Works.', str(exc)
 
 ## WorksClient.create_bug_appsec
 
-[backend/app/works.py:253](../../../../backend/app/works.py#L253)
+[backend/app/works.py:283](../../../../backend/app/works.py#L283)
 
 ```python
-async def create_bug_appsec(self, *, summary: str, description_text: str | None, assigned_to: str, reporter: str, priority: str, component: dict[str, str] | None, versions: list[dict[str, str]], drafts_info: list[dict[str, str]] | None=None) -> dict[str, Any]
+async def create_bug_appsec(self, *, summary: str, description_text: str | None, assigned_to: str, reporter: str, priority: str, component: dict[str, str] | None, versions: list[dict[str, str]], product_code: str, severity: str, cvss_vector: str | None=None, components: list[dict[str, str]] | None=None, drafts_info: list[dict[str, str]] | None=None) -> dict[str, Any]
 ```
 
-Создаёт тикет bug_appsec в space STS. Возвращает JSON ответа Works.
+Создаёт STS по нативному контракту: продукт обязателен, критичность одна.
+
+attributes.space сохраняет контекст APPSEC, верхний space задаёт STS.
+Без вложений draftsInfo пуст; без описания description=null.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -490,6 +527,10 @@ async def create_bug_appsec(self, *, summary: str, description_text: str | None,
 | `priority` | `str` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
 | `component` | `dict[str, str] \| None` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
 | `versions` | `list[dict[str, str]]` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
+| `product_code` | `str` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
+| `severity` | `str` | `обязательный` | Критичность находки (Enum Severity). |
+| `cvss_vector` | `str \| None` | `None` | Определяется именем/типом и контрактом вызывающего кода. |
+| `components` | `list[dict[str, str]] \| None` | `None` | Определяется именем/типом и контрактом вызывающего кода. |
 | `drafts_info` | `list[dict[str, str]] \| None` | `None` | Определяется именем/типом и контрактом вызывающего кода. |
 
 Возвращает: `dict[str, Any]`.
@@ -498,6 +539,7 @@ async def create_bug_appsec(self, *, summary: str, description_text: str | None,
 
 ```python
 WorksError('Не удалось создать тикет в Works.', str(exc))
+WorksError('Укажите корректный код продукта в настройках проекта.')
 ```
 
 <details>
@@ -505,21 +547,26 @@ WorksError('Не удалось создать тикет в Works.', str(exc))
 
 - `WorksError`
 - `_unit_ref`
-- `component.get`
+- `criticality_for_severity`
+- `cvss_vector.strip`
+- `isinstance`
+- `item.get`
+- `len`
+- `product_code.strip`
+- `re.sub`
 - `resp.json`
 - `self._client.post`
 - `self._raise_for_status`
 - `self._url`
 - `str`
 - `text_to_prosemirror`
-- `uuid.uuid4`
 - `version.get`
 
 </details>
 
 ## WorksClient.link_units
 
-[backend/app/works.py:315](../../../../backend/app/works.py#L315)
+[backend/app/works.py:361](../../../../backend/app/works.py#L361)
 
 ```python
 async def link_units(self, *, source: str, destination: str, link_type: str | None=None) -> dict[str, Any]
@@ -528,8 +575,9 @@ async def link_units(self, *, source: str, destination: str, link_type: str | No
 Создаёт связь между юнитами Works.
 
 POST {works_link_path} с телом {"source", "destination", "type"}. Применяется
-для привязки созданного STS-тикета (bug_appsec) к APPSEC-тикету проекта
-(запросу на АЗ). Возвращает JSON ответа Works.
+для связи от APPSEC-тикета проекта (source) к созданному STS-тикету
+(destination). Один APPSEC может быть источником нескольких связей.
+Возвращает JSON ответа Works.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -559,7 +607,7 @@ WorksError('Не удалось создать связь тикетов в Work
 
 ## works_issue_url
 
-[backend/app/works.py:340](../../../../backend/app/works.py#L340)
+[backend/app/works.py:387](../../../../backend/app/works.py#L387)
 
 ```python
 def works_issue_url(key: str, *, space: str | None=None) -> str

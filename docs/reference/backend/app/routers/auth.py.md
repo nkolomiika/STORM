@@ -633,7 +633,7 @@ JWTError('Некорректный тип транзакционного ток�
 def _set_sso_tx_cookie(response: Response, token: str) -> None
 ```
 
-В теле вызывает `response.set_cookie`.
+В теле вызывает `response.delete_cookie`, `response.set_cookie`.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -645,19 +645,20 @@ def _set_sso_tx_cookie(response: Response, token: str) -> None
 <details>
 <summary>Прямые вызовы в теле</summary>
 
+- `response.delete_cookie`
 - `response.set_cookie`
 
 </details>
 
 ## _clear_sso_tx_cookie
 
-[backend/app/routers/auth.py:328](../../../../../backend/app/routers/auth.py#L328)
+[backend/app/routers/auth.py:331](../../../../../backend/app/routers/auth.py#L331)
 
 ```python
 def _clear_sso_tx_cookie(response: Response) -> None
 ```
 
-В теле вызывает `response.set_cookie`.
+В теле вызывает `response.delete_cookie`, `response.set_cookie`.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -668,13 +669,14 @@ def _clear_sso_tx_cookie(response: Response) -> None
 <details>
 <summary>Прямые вызовы в теле</summary>
 
+- `response.delete_cookie`
 - `response.set_cookie`
 
 </details>
 
 ## sso_config
 
-[backend/app/routers/auth.py:341](../../../../../backend/app/routers/auth.py#L341)
+[backend/app/routers/auth.py:346](../../../../../backend/app/routers/auth.py#L346)
 
 ```python
 async def sso_config() -> SsoConfigOut
@@ -699,7 +701,7 @@ router.get('/sso/config', response_model=SsoConfigOut)
 
 ## sso_login
 
-[backend/app/routers/auth.py:349](../../../../../backend/app/routers/auth.py#L349)
+[backend/app/routers/auth.py:354](../../../../../backend/app/routers/auth.py#L354)
 
 ```python
 async def sso_login() -> RedirectResponse
@@ -730,7 +732,7 @@ router.get('/sso/login')
 
 ## sso_callback
 
-[backend/app/routers/auth.py:365](../../../../../backend/app/routers/auth.py#L365)
+[backend/app/routers/auth.py:370](../../../../../backend/app/routers/auth.py#L370)
 
 ```python
 async def sso_callback(request: Request, state: str | None=Query(default=None), code: str | None=Query(default=None), error: str | None=Query(default=None), sso_tx: str | None=Cookie(default=None), db: AsyncSession=Depends(get_db)) -> RedirectResponse
@@ -781,7 +783,7 @@ router.get('/sso/callback')
 
 ## logout
 
-[backend/app/routers/auth.py:407](../../../../../backend/app/routers/auth.py#L407)
+[backend/app/routers/auth.py:412](../../../../../backend/app/routers/auth.py#L412)
 
 ```python
 async def logout(response: Response, request: Request, _: None=Depends(enforce_csrf), current_user: User=Depends(get_current_user), db: AsyncSession=Depends(get_db)) -> Response

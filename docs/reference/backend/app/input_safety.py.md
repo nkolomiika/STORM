@@ -2,11 +2,11 @@
 
 Сгенерировано из объявлений кода. [Правила чтения](../../../METHODS.md).
 
-Методов и именованных функций: **7**.
+Методов и именованных функций: **8**.
 
 ## normalize_ip_literal
 
-[backend/app/input_safety.py:10](../../../../backend/app/input_safety.py#L10)
+[backend/app/input_safety.py:12](../../../../backend/app/input_safety.py#L12)
 
 ```python
 def normalize_ip_literal(value: object) -> str
@@ -40,7 +40,7 @@ ValueError('Укажите корректный IPv4 или IPv6 адрес')
 
 ## validate_json_value
 
-[backend/app/input_safety.py:20](../../../../backend/app/input_safety.py#L20)
+[backend/app/input_safety.py:22](../../../../backend/app/input_safety.py#L22)
 
 ```python
 def validate_json_value(value: object, depth: int=0) -> None
@@ -74,34 +74,58 @@ ValueError('Входные данные имеют слишком большую
 
 </details>
 
-## validate_request_parameters
+## _reject_request_parameter
 
-[backend/app/input_safety.py:37](../../../../backend/app/input_safety.py#L37)
+[backend/app/input_safety.py:39](../../../../backend/app/input_safety.py#L39)
 
 ```python
-async def validate_request_parameters(request: Request) -> None
+def _reject_request_parameter(request: HTTPConnection, detail: str) -> NoReturn
 ```
 
-Validate SQL-bound path IDs before authorization dependencies query the DB.
+Отклоняет HTTP с 422, а WebSocket — кодом 1008 без необработанного ASGI-сбоя.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
-| `request` | `Request` | `обязательный` | HTTP-запрос Starlette/FastAPI. |
+| `request` | `HTTPConnection` | `обязательный` | HTTP-запрос Starlette/FastAPI. |
+| `detail` | `str` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
 
-Возвращает: `None`.
+Возвращает: `NoReturn`.
 
 Явные raise в теле (исключения вызываемых методов могут добавляться):
 
 ```python
-HTTPException(422, 'page: недопустимая страница')
-HTTPException(422, f'{name}: NUL-символы недопустимы')
-HTTPException(422, f'{name}: недопустимый идентификатор')
+HTTPException(422, detail)
+WebSocketException(code=1008, reason='Некорректные параметры запроса')
 ```
 
 <details>
 <summary>Прямые вызовы в теле</summary>
 
 - `HTTPException`
+- `WebSocketException`
+
+</details>
+
+## validate_request_parameters
+
+[backend/app/input_safety.py:47](../../../../backend/app/input_safety.py#L47)
+
+```python
+async def validate_request_parameters(request: HTTPConnection) -> None
+```
+
+Проверяет ID и query до запросов к БД для HTTP и WebSocket-соединений.
+
+| Параметр | Тип | По умолчанию | Назначение |
+| --- | --- | --- | --- |
+| `request` | `HTTPConnection` | `обязательный` | HTTP-запрос Starlette/FastAPI. |
+
+Возвращает: `None`.
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `_reject_request_parameter`
 - `int`
 - `name.endswith`
 - `request.path_params.items`
@@ -111,7 +135,7 @@ HTTPException(422, f'{name}: недопустимый идентификатор
 
 ## read_upload
 
-[backend/app/input_safety.py:60](../../../../backend/app/input_safety.py#L60)
+[backend/app/input_safety.py:70](../../../../backend/app/input_safety.py#L70)
 
 ```python
 async def read_upload(upload: UploadFile, limit: int) -> bytes
@@ -143,7 +167,7 @@ HTTPException(413, 'Размер файла превышает допустим�
 
 ## SecurityHeadersMiddleware.__init__
 
-[backend/app/input_safety.py:70](../../../../backend/app/input_safety.py#L70)
+[backend/app/input_safety.py:80](../../../../backend/app/input_safety.py#L80)
 
 ```python
 def __init__(self, app) -> не аннотирован
@@ -159,7 +183,7 @@ def __init__(self, app) -> не аннотирован
 
 ## SecurityHeadersMiddleware.__call__
 
-[backend/app/input_safety.py:73](../../../../backend/app/input_safety.py#L73)
+[backend/app/input_safety.py:83](../../../../backend/app/input_safety.py#L83)
 
 ```python
 async def __call__(self, scope, receive, send) -> не аннотирован
@@ -184,7 +208,7 @@ async def __call__(self, scope, receive, send) -> не аннотирован
 
 ## SecurityHeadersMiddleware.__call__.secure_send
 
-[backend/app/input_safety.py:74](../../../../backend/app/input_safety.py#L74)
+[backend/app/input_safety.py:84](../../../../backend/app/input_safety.py#L84)
 
 ```python
 async def secure_send(message) -> не аннотирован

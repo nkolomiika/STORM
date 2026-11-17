@@ -15,12 +15,14 @@
 from __future__ import annotations
 
 import logging
+import re
 import uuid
 from typing import Any
 
 import httpx
 
 from .config import get_settings
+from .tracker_metadata import unit_attributes
 
 logger = logging.getLogger("storm.works")
 settings = get_settings()
@@ -38,19 +40,30 @@ SEVERITY_TO_PRIORITY: dict[str, str] = {
 # Практика обнаружения — всегда «анализ защищённости».
 DETECTION_PRACTICE = ["security_analysis"]
 
+SEVERITY_TO_CRITICALITY = {
+    'critical': 'critical_cvss', 'high': 'high_cvss',
+    'medium': 'medium_cvss', 'low': 'low_cvss',
+}
+
 
 class WorksError(Exception):
     """Ошибка обращения к Works. message — для пользователя, detail — в лог."""
 
-    def __init__(self, message: str, detail: str = ""):
+    def __init__(self, message: str, detail: str = "", *, status_code: int | None = None):
         super().__init__(message)
         self.message = message
         self.detail = detail
+        self.status_code = status_code
 
 
 def priority_for_severity(severity: str | None) -> str:
     """CVSS-критичность → приоритет Works; неизвестное → trivial (info)."""
     return SEVERITY_TO_PRIORITY.get((severity or "").strip().lower(), "trivial")
+
+
+def criticality_for_severity(severity: str | None) -> str | None:
+    """Возвращает один код критичности STS для четырёх уровней CVSS из контракта."""
+    return SEVERITY_TO_CRITICALITY.get((severity or '').strip().lower())
 
 
 def text_to_prosemirror(text: str | None) -> dict[str, Any]:
@@ -91,7 +104,7 @@ def _extract_items(payload: Any) -> list[dict[str, Any]]:
 
     Ответ может быть списком, либо объектом со списком под одним из типовых
     ключей (content/items/data/results/units/rows). Элементы иногда завёрнуты в
-    {"unit": {...}} — разворачиваем.
+    {"unit": {...}} — разворачиваем, сохраняя соседний массив AS21 attributes.
     """
     container: Any = payload
     if isinstance(payload, dict):
@@ -106,7 +119,17 @@ def _extract_items(payload: Any) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     for it in container:
         if isinstance(it, dict):
-            out.append(it.get("unit") if isinstance(it.get("unit"), dict) else it)
+            if isinstance(it.get('unit'), dict):
+                unit = dict(it['unit'])
+                if 'attributes' in it or 'attributes' in unit or 'attrs' in unit:
+                    unit['attributes'] = {
+                        **unit_attributes(unit.get('attrs')),
+                        **unit_attributes(unit.get('attributes')),
+                        **unit_attributes(it.get('attributes')),
+                    }
+                out.append(unit)
+            else:
+                out.append(it)
     return out
 
 
@@ -182,12 +205,13 @@ class WorksClient:
         detail = f"{resp.request.method} {resp.request.url} -> {resp.status_code}\n{body}"
         logger.warning('task_tracker_request_failed operation=%s status=%s', what, resp.status_code)
         if resp.status_code in (401, 403):
-            raise WorksError("Не удалось подключиться к Task Tracker. Обратитесь к администратору.", detail)
-        raise WorksError("Task Tracker отклонил запрос. Проверьте данные и попробуйте позже.", detail)
+            raise WorksError("Не удалось подключиться к Task Tracker. Обратитесь к администратору.", detail, status_code=resp.status_code)
+        raise WorksError("Task Tracker отклонил запрос. Проверьте данные и попробуйте позже.", detail, status_code=resp.status_code)
 
-    async def _find(self, path: str, query: str, limit: int) -> list[dict[str, str]]:
+    async def _find(self, path: str, query: str, limit: int, *, space: str | None = None) -> list[dict[str, str]]:
+        """Ищет справочные значения в выбранном пространстве AS21."""
         body = {
-            "space": settings.works_space,
+            "space": space or settings.works_space,
             "withArchived": False,
             "withDeleted": False,
             "query": query or "",
@@ -202,13 +226,19 @@ class WorksClient:
             data = resp.json()
         except ValueError as exc:
             raise WorksError("Works вернул не-JSON ответ.", resp.text[:500]) from exc
+        if not isinstance(data, (dict, list)) or (isinstance(data, dict) and not any(
+            isinstance(data.get(key), list) for key in ('content', 'items', 'data', 'results', 'result', 'units', 'rows')
+        )):
+            raise WorksError('Task Tracker вернул некорректный справочник.')
         return [_item_code_name(it) for it in _extract_items(data)]
 
-    async def find_components(self, query: str = "", limit: int = 50) -> list[dict[str, str]]:
-        return await self._find(settings.works_component_find_path, query, limit)
+    async def find_components(self, query: str = "", limit: int = 100) -> list[dict[str, str]]:
+        """Читает справочник компонентов формы STS по нативному plugin API."""
+        return await self._find(settings.works_component_find_path, query, limit, space=settings.works_reference_space)
 
-    async def find_versions(self, query: str = "", limit: int = 50) -> list[dict[str, str]]:
-        return await self._find(settings.works_version_find_path, query, limit)
+    async def find_versions(self, query: str = "", limit: int = 100) -> list[dict[str, str]]:
+        """Читает справочник версий формы STS; версии тикета APPSEC загружаются отдельно."""
+        return await self._find(settings.works_version_find_path, query, limit, space=settings.works_reference_space)
 
     async def get_ticket_status(self, key: str) -> str | None:
         """Текущий workflow_status тикета по ключу (напр. STS-594003).
@@ -260,45 +290,61 @@ class WorksClient:
         priority: str,
         component: dict[str, str] | None,
         versions: list[dict[str, str]],
+        product_code: str,
+        severity: str,
+        cvss_vector: str | None = None,
+        components: list[dict[str, str]] | None = None,
         drafts_info: list[dict[str, str]] | None = None,
     ) -> dict[str, Any]:
-        """Создаёт тикет bug_appsec в space STS. Возвращает JSON ответа Works."""
+        """Создаёт STS по нативному контракту: продукт обязателен, критичность одна.
+
+        attributes.space сохраняет контекст APPSEC, верхний space задаёт STS.
+        Без вложений draftsInfo пуст; без описания description=null.
+        """
+        if not isinstance(product_code, str) or not product_code.strip() or len(product_code.strip()) > 255:
+            raise WorksError('Укажите корректный код продукта в настройках проекта.')
+        criticality = criticality_for_severity(severity)
+        vector = re.sub(r'^CVSS:\d\.\d/', '', cvss_vector.strip()) if cvss_vector else None
         attributes: dict[str, Any] = {
-            "space": settings.works_space,
+            "space": settings.works_tasks_space,
             "tenant": settings.works_tenant,
             "priority": priority,
             "assigned_to": assigned_to,
             "reporter": reporter,
             "workflow_status": {"command": "NEW"},
-            "resolution_wmb": "not_done",
             "vulnerability_detection_practice": DETECTION_PRACTICE,
             "exclusion_from_sla_calculation": "noo",
             # Компонент и затронутая версия — обязательные справочные поля.
-            "sber_component": [_unit_ref(component.get("code"), component.get("name"))] if component else None,
-            "affects_version_s_crpv": [_unit_ref(version.get("code"), version.get("name")) for version in versions] or None,
+            "sber_component": [_unit_ref(item.get('code'), item.get('name')) for item in (components if components is not None else [component] if component else [])] or None,
+            "affects_version_s_crpv": [{'code': version['code'], 'name': version.get('name') or version['code']} for version in versions] or None,
             # Остальные поля из образца создаём пустыми (Works подставит дефолты).
-            "label": None,
-            "affects_version": None,
-            "fix_version": None,
+            "label": ['Vuln_Pentest', 'vuln'],
+            "affects_version_s": None,
             "fix_version_s": None,
             "triage_result": None,
             "Resolution_appsec": None,
-            "product_code_list_sts": None,
+            "result_text_field_multi_line_crpv": None,
+            "external_link": None,
+            "product_code_list_sts": product_code.strip(),
             "vulnerable_package_sts": None,
             "version_vulnerable_package": None,
             "vulnerability_identifier_sts": None,
-            "initial_criticality_cvss": None,
+            "initial_criticality_cvss": [criticality] if criticality else None,
             "revised_criticality_cvss": None,
-            "original_cvss": None,
+            "original_cvss": vector,
             "revised_cvss_vector": None,
+            "watchers": None,
+            "customfield_24900": None,
+            "resolution_appsec": None,
+            "customfield_24413": None,
         }
         payload: dict[str, Any] = {
             "space": settings.works_space,
             "suit": settings.works_suit,
             "summary": summary,
-            "description": text_to_prosemirror(description_text),
+            "description": text_to_prosemirror(description_text) if description_text else None,
             "code": None,
-            "draftsInfo": drafts_info or [{"draftId": str(uuid.uuid4()), "relativePathPart": assigned_to}],
+            "draftsInfo": drafts_info or [],
             "links": [],
             "attributes": attributes,
         }
@@ -318,8 +364,9 @@ class WorksClient:
         """Создаёт связь между юнитами Works.
 
         POST {works_link_path} с телом {"source", "destination", "type"}. Применяется
-        для привязки созданного STS-тикета (bug_appsec) к APPSEC-тикету проекта
-        (запросу на АЗ). Возвращает JSON ответа Works.
+        для связи от APPSEC-тикета проекта (source) к созданному STS-тикету
+        (destination). Один APPSEC может быть источником нескольких связей.
+        Возвращает JSON ответа Works.
         """
         payload = {
             "source": source,

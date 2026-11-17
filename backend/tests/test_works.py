@@ -122,6 +122,17 @@ def test_extract_items_unwraps_unit_wrapper() -> None:
     assert _extract_items(payload) == [{"code": "inner"}, {"code": "flat"}]
 
 
+def test_extract_items_keeps_outer_as21_attributes_without_mutating_input():
+    from copy import deepcopy
+    payload = {'content': [{'unit': {'code': 'APPSEC-1', 'attributes': {'priority': 'old'}},
+                           'attributes': [None, {}, {'attribute': {'code': 'priority'}, 'value': {'name': 'Major'}},
+                                          {'attribute': {'code': 'assigned_to'}, 'value': None}]}]}
+    original = deepcopy(payload)
+    assert _extract_items(payload) == [{'code': 'APPSEC-1', 'attributes': {
+        'priority': {'name': 'Major'}, 'assigned_to': None}}]
+    assert payload == original
+
+
 @pytest.mark.parametrize("junk", [{}, {"nope": 123}, None, 42, "str", {"content": "notalist"}])
 def test_extract_items_junk_gives_empty(junk) -> None:
     assert _extract_items(junk) == []
@@ -238,15 +249,15 @@ async def test_link_units_posts_source_destination_type(monkeypatch) -> None:
     wc._base = "https://portal.works.prod.sbt/swtr"
     wc._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
     try:
-        result = await wc.link_units(source="STS-594003", destination="APPSEC-10744")
+        result = await wc.link_units(source="APPSEC-10744", destination="STS-594003")
     finally:
         await wc._client.aclose()
 
     assert result == {"ok": True}
     assert captured["url"].endswith("/rest/api/unit/v1/link")
     assert captured["json"] == {
-        "source": "STS-594003",
-        "destination": "APPSEC-10744",
+        "source": "APPSEC-10744",
+        "destination": "STS-594003",
         "type": "plain_connection",
     }
 
@@ -272,3 +283,21 @@ async def test_link_units_custom_type_overrides_default() -> None:
     finally:
         await wc._client.aclose()
     assert captured["json"]["type"] == "blocks"
+
+
+@pytest.mark.asyncio
+async def test_version_picker_reads_sts_reference_space(monkeypatch):
+    import json
+    import httpx
+    from app.works import WorksClient
+    settings = get_settings()
+    monkeypatch.setattr(settings, 'works_space', 'APPSEC')
+    monkeypatch.setattr(settings, 'works_tasks_space', 'APPSEC')
+    def handler(request):
+        assert json.loads(request.content)['space'] == 'STS'
+        return httpx.Response(200, json={'content': [{'code': 'v1', 'name': 'Product 4.3.0'}]})
+    client = WorksClient.__new__(WorksClient)
+    client._base = 'https://tracker.example/swtr'
+    client._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    async with client:
+        assert await client.find_versions('4.3') == [{'code': 'v1', 'name': 'Product 4.3.0'}]

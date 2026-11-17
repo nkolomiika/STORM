@@ -316,6 +316,11 @@ class AppSecVersionRef(InputBaseModel):
     name: str = Field(min_length=1, max_length=255)
 
 
+class AppSecComponentRef(InputBaseModel):
+    code: str = Field(min_length=1, max_length=64)
+    name: str = Field(min_length=1, max_length=255)
+
+
 class ProjectCreate(InputBaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -325,6 +330,8 @@ class ProjectCreate(InputBaseModel):
     end_date: date | None = None
     appsec_component_code: str | None = Field(default=None, max_length=64)
     appsec_component_name: str | None = Field(default=None, max_length=255)
+    appsec_product_code: str | None = Field(default=None, max_length=255)
+    appsec_components: list[AppSecComponentRef] = Field(default_factory=list, max_length=100)
     appsec_version_code: str | None = Field(default=None, max_length=64)
     appsec_version_name: str | None = Field(default=None, max_length=255)
     appsec_versions: list[AppSecVersionRef] = Field(default_factory=list, max_length=100)
@@ -349,6 +356,8 @@ class ProjectUpdate(InputBaseModel):
     status: ProjectStatus | None = None
     appsec_component_code: str | None = Field(default=None, max_length=64)
     appsec_component_name: str | None = Field(default=None, max_length=255)
+    appsec_product_code: str | None = Field(default=None, max_length=255)
+    appsec_components: list[AppSecComponentRef] = Field(default_factory=list, max_length=100)
     appsec_version_code: str | None = Field(default=None, max_length=64)
     appsec_version_name: str | None = Field(default=None, max_length=255)
     appsec_versions: list[AppSecVersionRef] = Field(default_factory=list, max_length=100)
@@ -375,6 +384,8 @@ class ProjectOut(ORMBase):
     created_by: int
     appsec_component_code: str | None = None
     appsec_component_name: str | None = None
+    appsec_product_code: str | None = None
+    appsec_components: list[AppSecComponentRef] = Field(default_factory=list)
     appsec_version_code: str | None = None
     appsec_version_name: str | None = None
     appsec_versions: list[AppSecVersionRef] = Field(default_factory=list)
@@ -441,10 +452,9 @@ class WorksIssueLinkOut(ORMBase):
 
 
 class WorksExportRequest(InputBaseModel):
-    """Тело запроса экспорта находки в Works (исполнитель опционален —
-    по умолчанию берётся appsec_assignee проекта)."""
+    """Исполнитель берётся только из проекта; старый assignee игнорируется."""
 
-    assignee: str | None = Field(default=None, max_length=255)
+    assignee: str | None = Field(default=None, max_length=255, json_schema_extra={'deprecated': True})
 
 
 # ── Раздел «Tasks»: read-only проекция задач Task Tracker (APPSEC) ──
@@ -460,6 +470,9 @@ class TaskTrackerTaskOut(BaseModel):
     assignee: str | None = None
     assignee_username: str | None = None
     affected_versions: list[AppSecVersionRef] = Field(default_factory=list)
+    product_code: str | None = None
+    component: WorksRefOut | None = None
+    components: list[WorksRefOut] = Field(default_factory=list)
     is_demo: bool = False
     updated: str
     created: str

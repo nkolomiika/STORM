@@ -646,6 +646,8 @@ describe("StormApp (design prototype port)", () => {
     key: "APPSEC-701", url: "https://tracker.example/swtr/units/current/unit/APPSEC-701?space=APPSEC",
     summary: "Native APPSEC assessment", status: "Open", status_category: "todo", issue_type: "Assessment",
     priority: "High", assignee: "Мария Петрова", assignee_username: "m.petrova",
+    product_code: 'product', component: { code: 'component-id', name: 'Component' },
+    components: [{ code: 'component-id', name: 'Component' }, { code: 'component-2', name: 'Second component' }],
     affected_versions: [{ code: "v1", name: "Platform 1.0" }, { code: "v2", name: "Platform 2.0" }],
     created: "2026-11-01T00:00:00Z", updated: "2026-11-15T00:00:00Z",
     reporter: "admin", description: "Native card body", labels: [], is_demo: true,
@@ -657,17 +659,21 @@ describe("StormApp (design prototype port)", () => {
     vi.mocked(api.getTask).mockResolvedValue(detail);
     render(<MemoryRouter initialEntries={["/tasks"]}><StormApp /></MemoryRouter>);
     await screen.findByText(detail.summary);
+    const route = screen.getByRole('heading', { name: 'Tasks' }).closest('.route') as HTMLElement;
+    expect(within(route).queryByText('Product code')).not.toBeInTheDocument();
+    expect(within(route).queryByText('Component')).not.toBeInTheDocument();
     expect(screen.getByText("Demo data")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Create project from this ticket" }));
     await screen.findByDisplayValue("Мария Петрова");
     expect(api.getTask).toHaveBeenCalledWith("APPSEC-701");
     const modal = screen.getByRole("heading", { name: "New project" }).closest(".modalcard") as HTMLElement;
     expect(within(modal).getByText("Platform 1.0")).toBeInTheDocument();
+    expect(within(modal).getByPlaceholderText('e.g. Acme Corp — External Perimeter')).toHaveValue(detail.summary);
     expect(within(modal).getByText("Platform 2.0")).toBeInTheDocument();
     expect(within(modal).getByRole("textbox", { name: "AppSec ticket" })).toHaveValue("APPSEC-701");
     fireEvent.change(within(modal).getByPlaceholderText("e.g. Acme Corp — External Perimeter"), { target: { value: "Created from APPSEC" } });
     fireEvent.click(within(modal).getByRole("button", { name: "Create project" }));
-    expect(api.createProject).toHaveBeenCalledWith(expect.objectContaining({ appsec_ticket_key: "APPSEC-701", appsec_assignee: "m.petrova", appsec_assignee_name: "Мария Петрова", appsec_versions: detail.affected_versions }));
+    expect(api.createProject).toHaveBeenCalledWith(expect.objectContaining({ appsec_ticket_key: "APPSEC-701", appsec_assignee: "m.petrova", appsec_assignee_name: "Мария Петрова", appsec_versions: detail.affected_versions, appsec_product_code: 'product', appsec_components: detail.components, appsec_component_code: 'component-id', appsec_component_name: 'Component' }));
   });
 
   it("opens a task without assignee or versions with empty optional project fields", async () => {
@@ -711,7 +717,7 @@ describe("StormApp (design prototype port)", () => {
     const button = await screen.findByRole("button", { name: "Export all to Task Tracker" });
     fireEvent.click(button);
     await waitFor(() => expect(useToastStore.getState().toasts).toEqual(expect.arrayContaining([
-      expect.objectContaining({ severity: "error", message: "Fill in project details. Missing: AppSec ticket, Assignee, Affected versions" }),
+      expect.objectContaining({ severity: "error", message: "Fill in project details. Missing: AppSec ticket, Assignee, Affected versions, Product code, Component" }),
     ])));
     expect(screen.queryByRole("button", { name: "Start export" })).not.toBeInTheDocument();
   });

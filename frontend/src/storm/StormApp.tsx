@@ -38,7 +38,7 @@ import { useAuthStore, useToastStore } from "../store";
 import { useThemeStore } from "./theme";
 import { StormSelect } from "./StormSelect";
 import { PasswordInput } from "./PasswordInput";
-import { StormAppSecFields, emptyAppsecFields, type AppSecFieldsValue } from "./StormAppSecFields";
+import { StormAppSecFields, emptyAppsecFields, appsecMetadataFromTask, type AppSecFieldsValue } from "./StormAppSecFields";
 import { missingStsProjectFields } from "./projectExport";
 import { t, useLangStore, formatRelativeTime as relTime, activityNoun, activityVerb } from "./i18n";
 import { markdownUrlTransform } from "../markdownUrlTransform";
@@ -631,7 +631,7 @@ const initialState: StormState = {
   newNameError: false,
   newStart: "",
   newEnd: "",
-  newAppsec: { appsec_component_code: null, appsec_component_name: null, appsec_versions: [], appsec_assignee: null, appsec_assignee_name: null, appsec_ticket_url: null, appsec_ticket_key: null },
+  newAppsec: { appsec_components: [], appsec_product_code: null, appsec_component_code: null, appsec_component_name: null, appsec_versions: [], appsec_assignee: null, appsec_assignee_name: null, appsec_ticket_url: null, appsec_ticket_key: null },
   view: "list",
   openProjectId: null,
   projEditOpen: false,
@@ -639,7 +639,7 @@ const initialState: StormState = {
   projEditStart: "",
   projEditEnd: "",
   projEditStatus: "active",
-  projEditAppsec: { appsec_component_code: null, appsec_component_name: null, appsec_versions: [], appsec_assignee: null, appsec_assignee_name: null, appsec_ticket_url: null, appsec_ticket_key: null },
+  projEditAppsec: { appsec_components: [], appsec_product_code: null, appsec_component_code: null, appsec_component_name: null, appsec_versions: [], appsec_assignee: null, appsec_assignee_name: null, appsec_ticket_url: null, appsec_ticket_key: null },
   section: "overview",
   expanded: [],
   profileTab: "account",
@@ -2362,6 +2362,8 @@ export function StormApp() {
       .then((p) =>
         setState({
           projEditAppsec: {
+            appsec_components: p.appsec_components?.length ? p.appsec_components : p.appsec_component_code ? [{ code: p.appsec_component_code, name: p.appsec_component_name || p.appsec_component_code }] : [],
+            appsec_product_code: p.appsec_product_code ?? null,
             appsec_component_code: p.appsec_component_code,
             appsec_component_name: p.appsec_component_name,
             appsec_versions: p.appsec_versions?.length ? p.appsec_versions : p.appsec_version_code ? [{ code: p.appsec_version_code, name: p.appsec_version_name || p.appsec_version_code }] : [],
@@ -2374,7 +2376,7 @@ export function StormApp() {
       )
       .catch(() => {});
   };
-  const EMPTY_APPSEC: AppSecFieldsValue = { appsec_component_code: null, appsec_component_name: null, appsec_versions: [], appsec_assignee: null, appsec_assignee_name: null, appsec_ticket_url: null, appsec_ticket_key: null };
+  const EMPTY_APPSEC: AppSecFieldsValue = { appsec_components: [], appsec_product_code: null, appsec_component_code: null, appsec_component_name: null, appsec_versions: [], appsec_assignee: null, appsec_assignee_name: null, appsec_ticket_url: null, appsec_ticket_key: null };
   const openProjEditRow = (row: ApiProjectRow) => {
     setState({
       projEditOpen: true,
@@ -4796,13 +4798,13 @@ export function StormApp() {
       const detail = await apiGetTask(task.key);
       if (request !== taskProjectRequest.current) return;
       if (detail.key !== task.key) throw new Error(t("Couldn't load this task"));
-      setState({ ...emptyProjectDraft(), modalOpen: true, newAppsec: {
+      setState({ ...emptyProjectDraft(), newName: detail.summary.slice(0, 255), modalOpen: true, newAppsec: {
         ...EMPTY_APPSEC,
         appsec_ticket_url: detail.url || task.url,
         appsec_ticket_key: detail.key,
         appsec_assignee: detail.assignee_username ?? null,
         appsec_assignee_name: detail.assignee_username ? detail.assignee : null,
-        appsec_versions: detail.affected_versions ?? [],
+        ...appsecMetadataFromTask(detail),
       } });
     } catch (error) {
       if (request === taskProjectRequest.current) pushToast(getApiErrorMessage(error, "Couldn't load this task"), "error");

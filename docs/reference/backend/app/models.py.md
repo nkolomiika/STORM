@@ -83,7 +83,7 @@ def is_usable(self) -> bool
 
 ## ProjectNote.created_by_username
 
-[backend/app/models.py:340](../../../../backend/app/models.py#L340)
+[backend/app/models.py:342](../../../../backend/app/models.py#L342)
 
 ```python
 def created_by_username(self) -> str | None
@@ -95,7 +95,7 @@ def created_by_username(self) -> str | None
 
 ## ProjectCredential.created_by_username
 
-[backend/app/models.py:396](../../../../backend/app/models.py#L396)
+[backend/app/models.py:398](../../../../backend/app/models.py#L398)
 
 ```python
 def created_by_username(self) -> str | None
@@ -107,7 +107,7 @@ def created_by_username(self) -> str | None
 
 ## Vulnerability.created_by_username
 
-[backend/app/models.py:718](../../../../backend/app/models.py#L718)
+[backend/app/models.py:720](../../../../backend/app/models.py#L720)
 
 ```python
 def created_by_username(self) -> str | None

@@ -1,14 +1,24 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import { vi } from "vitest";
 
 import { StormAppSecFields, type AppSecFieldsValue } from "./StormAppSecFields";
+import { getTask, findWorksVersions } from '../api';
+import { useToastStore } from '../store';
 
 /* The AppSec fields drive the Works export: Component/Version are typeaheads that
    resolve a name to a Works UUID, Assignee is a typeahead over STORM users whose
    username is the IAM login. We mock the api layer and assert the picks flow back
    through onChange with the right code/name. */
 vi.mock("../api", () => ({
+  getTask: vi.fn(async (key: string) => ({ key, url: `https://works.example/${key}`,
+    summary: 'Full assessment', status: 'Open', status_category: 'todo', issue_type: 'Assessment',
+    priority: 'Major', assignee: null, assignee_username: null, reporter: null,
+    created: '', updated: '', description: '', labels: [], product_code: 'product',
+    component: { code: 'component-id', name: 'Component' },
+    components: [{ code: 'component-id', name: 'Component' }], affected_versions: [],
+  })),
+  getApiErrorMessage: vi.fn((_error: unknown, fallback: string) => fallback),
   searchUsers: vi.fn(async (q: string) => {
     const all = [
       { username: "alice", full_name: "Alice Anderson", is_sso: false },
@@ -31,6 +41,7 @@ vi.mock("../api", () => ({
         status_category: "todo",
         issue_type: "Bug",
         priority: "High",
+        product_code: 'product', component: { code: 'component-id', name: 'Component' },
         assignee: null,
         updated: "",
         created: "",
@@ -42,7 +53,9 @@ vi.mock("../api", () => ({
 }));
 
 const EMPTY: AppSecFieldsValue = {
+  appsec_components: [],
   appsec_component_code: null,
+  appsec_product_code: null,
   appsec_component_name: null,
   appsec_versions: [],
   appsec_assignee_name: null,
@@ -103,7 +116,7 @@ describe("StormAppSecFields", () => {
     const { default: userEvent } = await import("@testing-library/user-event");
     await userEvent.setup().click(option);
 
-    expect(onChange).toHaveBeenCalledWith({ appsec_component_code: "c-uuid", appsec_component_name: "SEGR" });
+    expect(onChange).toHaveBeenCalledWith({ appsec_component_code: "c-uuid", appsec_component_name: "SEGR", appsec_components: [{ code: 'c-uuid', name: 'SEGR' }] });
   });
 
   it("falls back to the bare username when a user has no full name", async () => {
@@ -121,7 +134,7 @@ describe("StormAppSecFields", () => {
     const { default: userEvent } = await import("@testing-library/user-event");
     await userEvent.setup().click(ticket);
     await userEvent.setup().paste("https://tracker.example/ABC-7");
-    expect(onChange).toHaveBeenCalledWith({ appsec_ticket_url: "https://tracker.example/ABC-7", appsec_ticket_key: null });
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ appsec_ticket_url: "https://tracker.example/ABC-7", appsec_ticket_key: null }));
   });
 
   it("ticket field: typing a name shows Tasks and picking stores url + key", async () => {
@@ -132,7 +145,7 @@ describe("StormAppSecFields", () => {
     const option = await screen.findByText("Security assessment");
     const { default: userEvent } = await import("@testing-library/user-event");
     await userEvent.setup().click(option);
-    expect(onChange).toHaveBeenCalledWith({ appsec_ticket_url: "https://works.example/APPSEC-100", appsec_ticket_key: "APPSEC-100" });
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ appsec_ticket_url: "https://works.example/APPSEC-100", appsec_ticket_key: "APPSEC-100", appsec_product_code: 'product', appsec_component_code: 'component-id', appsec_component_name: 'Component' })));
   });
 
   it("allows saving a project with no ticket", () => {
@@ -153,7 +166,51 @@ describe("StormAppSecFields", () => {
     await user.click(input);
     await user.keyboard("x");
     expect(input).toHaveValue("APPSEC-100x");
-    expect(onChange).toHaveBeenLastCalledWith({ appsec_ticket_url: null, appsec_ticket_key: null });
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ appsec_ticket_url: null, appsec_ticket_key: null, appsec_product_code: null, appsec_component_code: null }));
+  });
+
+  it('ignores old ticket metadata after the user changes the input', async () => {
+    const response = await getTask('APPSEC-100');
+    let resolve!: (value: typeof response) => void;
+    vi.mocked(getTask).mockImplementationOnce(() => new Promise((done) => { resolve = done; }));
+    const onChange = vi.fn();
+    render(<Harness onChange={onChange} />);
+    const input = screen.getByPlaceholderText('Paste a URL or start typing a ticket…');
+    await type(input, 'APPSEC');
+    const { default: userEvent } = await import('@testing-library/user-event');
+    const user = userEvent.setup();
+    await user.click(await screen.findByText('Security assessment'));
+    await user.clear(input);
+    await user.type(input, 'different');
+    await act(async () => { resolve(response); });
+    expect(input).toHaveValue('different');
+    expect(onChange).not.toHaveBeenCalledWith(expect.objectContaining({ appsec_product_code: 'product' }));
+  });
+
+  it('keeps a failed ticket lookup out of the project and displays a safe notification', async () => {
+    vi.mocked(getTask).mockRejectedValueOnce(new Error('private upstream diagnostic'));
+    useToastStore.setState({ toasts: [] });
+    const onChange = vi.fn();
+    render(<Harness onChange={onChange} />);
+    await type(screen.getByPlaceholderText('Paste a URL or start typing a ticket…'), 'APPSEC');
+    const { default: userEvent } = await import('@testing-library/user-event');
+    await userEvent.setup().click(await screen.findByText('Security assessment'));
+    await waitFor(() => expect(useToastStore.getState().toasts.some((toast) => toast.message === "Couldn't load this task")).toBe(true));
+    expect(onChange).not.toHaveBeenCalledWith(expect.objectContaining({ appsec_ticket_key: 'APPSEC-100' }));
+  });
+
+  it('shows a safe lookup failure once and allows retrying after the input changes', async () => {
+    vi.mocked(findWorksVersions).mockRejectedValueOnce(new Error('private diagnostic'));
+    useToastStore.setState({ toasts: [] });
+    render(<Harness onChange={vi.fn()} />);
+    expect(screen.queryByText('AppSec export (Works)')).not.toBeInTheDocument();
+    const input = screen.getByPlaceholderText('Start typing a version…');
+    await type(input, 'bad');
+    await waitFor(() => expect(useToastStore.getState().toasts.some((toast) => toast.message === "Couldn't load options")).toBe(true));
+    expect(useToastStore.getState().toasts.every((toast) => !toast.message.includes('private'))).toBe(true);
+    const { default: userEvent } = await import('@testing-library/user-event');
+    await userEvent.setup().type(input, 'x');
+    expect(await screen.findByText('Platform V Stack 1.0.2')).toBeInTheDocument();
   });
 
   it("keeps multiple selected versions, prevents duplicates and removes only one item", async () => {

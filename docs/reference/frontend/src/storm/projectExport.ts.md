@@ -25,6 +25,8 @@ missingStsProjectFields(project: Project) => string[]
 
 - `missing.push`
 - `project.appsec_assignee?.trim`
+- `project.appsec_component_code?.trim`
+- `project.appsec_product_code?.trim`
 - `project.appsec_ticket_key?.trim`
 - `project.appsec_ticket_url?.trim`
 - `project.appsec_version_code?.trim`
