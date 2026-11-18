@@ -498,7 +498,7 @@ describe("StormApp (design prototype port)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Create" }));
     expect(vi.mocked(api.createVulnerability)).toHaveBeenCalledWith(
       2,
-      expect.objectContaining({ title: "SQLi in login", host_id: 11, severity: "info", status: "open" })
+      expect.objectContaining({ title: "SQLi in login", host_id: 11, severity: "unrealized", status: "open" })
     );
     // Redirected onto a finding's detail card (the mock returns finding #71).
     expect(await screen.findByDisplayValue("IDOR on GET /orders/{id}")).toBeInTheDocument();
@@ -512,6 +512,32 @@ describe("StormApp (design prototype port)", () => {
     const vector = screen.getByPlaceholderText(/CVSS:4\.0/);
     fireEvent.change(vector, { target: { value: "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:H/SI:H/SA:H" } });
     expect(screen.getByText("critical")).toBeInTheDocument();
+  });
+
+  it.each(["", "   "])("resets vulnerability severity when its CVSS vector is cleared to %j", async (empty) => {
+    render(<MemoryRouter initialEntries={["/projects/2/vulns/71"]}><StormApp /></MemoryRouter>);
+    await screen.findByDisplayValue("IDOR on GET /orders/{id}");
+    const vector = screen.getByPlaceholderText(/CVSS:4\.0/);
+    fireEvent.change(vector, { target: { value: "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:H/SI:H/SA:H" } });
+    expect(screen.getByText("critical")).toBeInTheDocument();
+    fireEvent.change(vector, { target: { value: empty } });
+    expect(screen.getByText("unrealized")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(api.updateVulnerability).toHaveBeenCalledWith(2, 71, expect.objectContaining({
+      severity: "unrealized", cvss_vector: null, cvss_version: null, cvss_score: null,
+    })));
+  });
+
+  it("keeps info severity for a valid zero-score CVSS vector", async () => {
+    render(<MemoryRouter initialEntries={["/projects/2/vulns/71"]}><StormApp /></MemoryRouter>);
+    await screen.findByDisplayValue("IDOR on GET /orders/{id}");
+    const vector = "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:N/SC:N/SI:N/SA:N";
+    fireEvent.change(screen.getByPlaceholderText(/CVSS:4\.0/), { target: { value: vector } });
+    expect(screen.getByText("info")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(api.updateVulnerability).toHaveBeenCalledWith(2, 71, expect.objectContaining({
+      severity: "info", cvss_vector: vector, cvss_version: "4.0", cvss_score: 0,
+    })));
   });
 
   it("opens a read-only viewer for a note authored by someone else", async () => {

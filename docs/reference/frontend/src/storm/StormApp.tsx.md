@@ -3708,7 +3708,7 @@ async saveHostEditor() => Promise<void>
 
 ## StormApp.resolveProjectHost
 
-[frontend/src/storm/StormApp.tsx:3078](../../../../../frontend/src/storm/StormApp.tsx#L3078)
+[frontend/src/storm/StormApp.tsx:3076](../../../../../frontend/src/storm/StormApp.tsx#L3076)
 
 ```typescript
 resolveProjectHost(typed: string) => Host | undefined
@@ -3733,7 +3733,7 @@ resolveProjectHost(typed: string) => Host | undefined
 
 ## StormApp.saveVulnEditor
 
-[frontend/src/storm/StormApp.tsx:3083](../../../../../frontend/src/storm/StormApp.tsx#L3083)
+[frontend/src/storm/StormApp.tsx:3081](../../../../../frontend/src/storm/StormApp.tsx#L3081)
 
 ```typescript
 async saveVulnEditor() => Promise<void>
@@ -3763,7 +3763,7 @@ async saveVulnEditor() => Promise<void>
 
 ## StormApp.relinkVulnHost
 
-[frontend/src/storm/StormApp.tsx:3121](../../../../../frontend/src/storm/StormApp.tsx#L3121)
+[frontend/src/storm/StormApp.tsx:3119](../../../../../frontend/src/storm/StormApp.tsx#L3119)
 
 ```typescript
 async relinkVulnHost(pid: number, vulnId: number, hostName: string) => Promise<void>
@@ -3792,7 +3792,7 @@ async relinkVulnHost(pid: number, vulnId: number, hostName: string) => Promise<v
 
 ## StormApp.saveNoteEditorEntity
 
-[frontend/src/storm/StormApp.tsx:3131](../../../../../frontend/src/storm/StormApp.tsx#L3131)
+[frontend/src/storm/StormApp.tsx:3129](../../../../../frontend/src/storm/StormApp.tsx#L3129)
 
 ```typescript
 async saveNoteEditorEntity() => Promise<void>
@@ -3819,7 +3819,7 @@ async saveNoteEditorEntity() => Promise<void>
 
 ## StormApp.saveMemberEditor
 
-[frontend/src/storm/StormApp.tsx:3152](../../../../../frontend/src/storm/StormApp.tsx#L3152)
+[frontend/src/storm/StormApp.tsx:3150](../../../../../frontend/src/storm/StormApp.tsx#L3150)
 
 ```typescript
 async saveMemberEditor() => Promise<void>
@@ -3845,7 +3845,7 @@ async saveMemberEditor() => Promise<void>
 
 ## StormApp.saveIpEditor
 
-[frontend/src/storm/StormApp.tsx:3179](../../../../../frontend/src/storm/StormApp.tsx#L3179)
+[frontend/src/storm/StormApp.tsx:3177](../../../../../frontend/src/storm/StormApp.tsx#L3177)
 
 ```typescript
 async saveIpEditor() => Promise<void>
@@ -3878,7 +3878,7 @@ async saveIpEditor() => Promise<void>
 
 ## StormApp.saveEndpointEditor
 
-[frontend/src/storm/StormApp.tsx:3237](../../../../../frontend/src/storm/StormApp.tsx#L3237)
+[frontend/src/storm/StormApp.tsx:3235](../../../../../frontend/src/storm/StormApp.tsx#L3235)
 
 ```typescript
 async saveEndpointEditor() => Promise<void>
@@ -3904,7 +3904,7 @@ async saveEndpointEditor() => Promise<void>
 
 ## StormApp.saveCredEditor
 
-[frontend/src/storm/StormApp.tsx:3259](../../../../../frontend/src/storm/StormApp.tsx#L3259)
+[frontend/src/storm/StormApp.tsx:3257](../../../../../frontend/src/storm/StormApp.tsx#L3257)
 
 ```typescript
 async saveCredEditor() => Promise<void>
@@ -3934,7 +3934,7 @@ async saveCredEditor() => Promise<void>
 
 ## StormApp.saveEditor
 
-[frontend/src/storm/StormApp.tsx:3302](../../../../../frontend/src/storm/StormApp.tsx#L3302)
+[frontend/src/storm/StormApp.tsx:3300](../../../../../frontend/src/storm/StormApp.tsx#L3300)
 
 ```typescript
 async saveEditor() => Promise<void>
@@ -3959,7 +3959,7 @@ async saveEditor() => Promise<void>
 
 ## StormApp.askDelete
 
-[frontend/src/storm/StormApp.tsx:3313](../../../../../frontend/src/storm/StormApp.tsx#L3313)
+[frontend/src/storm/StormApp.tsx:3311](../../../../../frontend/src/storm/StormApp.tsx#L3311)
 
 ```typescript
 askDelete(type: EditorType, index: number, label: string) => void
@@ -3984,7 +3984,7 @@ askDelete(type: EditorType, index: number, label: string) => void
 
 ## StormApp.closeConfirm
 
-[frontend/src/storm/StormApp.tsx:3315](../../../../../frontend/src/storm/StormApp.tsx#L3315)
+[frontend/src/storm/StormApp.tsx:3313](../../../../../frontend/src/storm/StormApp.tsx#L3313)
 
 ```typescript
 closeConfirm() => void
@@ -4005,7 +4005,7 @@ closeConfirm() => void
 
 ## StormApp.confirmDelete
 
-[frontend/src/storm/StormApp.tsx:3320](../../../../../frontend/src/storm/StormApp.tsx#L3320)
+[frontend/src/storm/StormApp.tsx:3318](../../../../../frontend/src/storm/StormApp.tsx#L3318)
 
 ```typescript
 async confirmDelete() => Promise<void>
@@ -4034,7 +4034,7 @@ async confirmDelete() => Promise<void>
 
 ## StormApp.confirmDelete.call
 
-[frontend/src/storm/StormApp.tsx:3357](../../../../../frontend/src/storm/StormApp.tsx#L3357)
+[frontend/src/storm/StormApp.tsx:3355](../../../../../frontend/src/storm/StormApp.tsx#L3355)
 
 ```typescript
 call(id) => Promise<void>
@@ -4057,7 +4057,7 @@ call(id) => Promise<void>
 
 ## StormApp.confirmDelete.call
 
-[frontend/src/storm/StormApp.tsx:3361](../../../../../frontend/src/storm/StormApp.tsx#L3361)
+[frontend/src/storm/StormApp.tsx:3359](../../../../../frontend/src/storm/StormApp.tsx#L3359)
 
 ```typescript
 call() => Promise<void>
@@ -4076,7 +4076,7 @@ call() => Promise<void>
 
 ## StormApp.confirmDelete.call
 
-[frontend/src/storm/StormApp.tsx:3362](../../../../../frontend/src/storm/StormApp.tsx#L3362)
+[frontend/src/storm/StormApp.tsx:3360](../../../../../frontend/src/storm/StormApp.tsx#L3360)
 
 ```typescript
 call(id) => Promise<void>
@@ -4099,7 +4099,7 @@ call(id) => Promise<void>
 
 ## StormApp.confirmDelete.call
 
-[frontend/src/storm/StormApp.tsx:3363](../../../../../frontend/src/storm/StormApp.tsx#L3363)
+[frontend/src/storm/StormApp.tsx:3361](../../../../../frontend/src/storm/StormApp.tsx#L3361)
 
 ```typescript
 call(id) => Promise<void>
@@ -4122,7 +4122,7 @@ call(id) => Promise<void>
 
 ## StormApp.confirmDelete.call
 
-[frontend/src/storm/StormApp.tsx:3364](../../../../../frontend/src/storm/StormApp.tsx#L3364)
+[frontend/src/storm/StormApp.tsx:3362](../../../../../frontend/src/storm/StormApp.tsx#L3362)
 
 ```typescript
 call(id) => Promise<void>
@@ -4145,7 +4145,7 @@ call(id) => Promise<void>
 
 ## StormApp.confirmDelete.call
 
-[frontend/src/storm/StormApp.tsx:3365](../../../../../frontend/src/storm/StormApp.tsx#L3365)
+[frontend/src/storm/StormApp.tsx:3363](../../../../../frontend/src/storm/StormApp.tsx#L3363)
 
 ```typescript
 call(id) => Promise<void>
@@ -4168,7 +4168,7 @@ call(id) => Promise<void>
 
 ## StormApp.confirmDelete.call
 
-[frontend/src/storm/StormApp.tsx:3368](../../../../../frontend/src/storm/StormApp.tsx#L3368)
+[frontend/src/storm/StormApp.tsx:3366](../../../../../frontend/src/storm/StormApp.tsx#L3366)
 
 ```typescript
 call(id) => Promise<void>
@@ -4191,7 +4191,7 @@ call(id) => Promise<void>
 
 ## StormApp.confirmDelete.reload
 
-[frontend/src/storm/StormApp.tsx:3373](../../../../../frontend/src/storm/StormApp.tsx#L3373)
+[frontend/src/storm/StormApp.tsx:3371](../../../../../frontend/src/storm/StormApp.tsx#L3371)
 
 ```typescript
 reload() => void
@@ -4214,7 +4214,7 @@ reload() => void
 
 ## StormApp.openNoteEditor
 
-[frontend/src/storm/StormApp.tsx:3397](../../../../../frontend/src/storm/StormApp.tsx#L3397)
+[frontend/src/storm/StormApp.tsx:3395](../../../../../frontend/src/storm/StormApp.tsx#L3395)
 
 ```typescript
 openNoteEditor(mode: "add" | "edit", index: number) => void
@@ -4238,7 +4238,7 @@ openNoteEditor(mode: "add" | "edit", index: number) => void
 
 ## StormApp.backToNotesList
 
-[frontend/src/storm/StormApp.tsx:3412](../../../../../frontend/src/storm/StormApp.tsx#L3412)
+[frontend/src/storm/StormApp.tsx:3410](../../../../../frontend/src/storm/StormApp.tsx#L3410)
 
 ```typescript
 backToNotesList() => void
@@ -4257,7 +4257,7 @@ backToNotesList() => void
 
 ## StormApp.openNoteViewer
 
-[frontend/src/storm/StormApp.tsx:3416](../../../../../frontend/src/storm/StormApp.tsx#L3416)
+[frontend/src/storm/StormApp.tsx:3414](../../../../../frontend/src/storm/StormApp.tsx#L3414)
 
 ```typescript
 openNoteViewer(id: number) => void
@@ -4280,7 +4280,7 @@ openNoteViewer(id: number) => void
 
 ## StormApp.updateNoteForm
 
-[frontend/src/storm/StormApp.tsx:3417](../../../../../frontend/src/storm/StormApp.tsx#L3417)
+[frontend/src/storm/StormApp.tsx:3415](../../../../../frontend/src/storm/StormApp.tsx#L3415)
 
 ```typescript
 updateNoteForm(k: keyof NoteForm, v: string) => void
@@ -4304,7 +4304,7 @@ updateNoteForm(k: keyof NoteForm, v: string) => void
 
 ## StormApp.attachNoteImages
 
-[frontend/src/storm/StormApp.tsx:3421](../../../../../frontend/src/storm/StormApp.tsx#L3421)
+[frontend/src/storm/StormApp.tsx:3419](../../../../../frontend/src/storm/StormApp.tsx#L3419)
 
 ```typescript
 async attachNoteImages(files: File[]) => Promise<void>
@@ -4334,7 +4334,7 @@ note stays plain Markdown (`![name](/api/v1/projects/…/images/…/download)`).
 
 ## StormApp.saveNote
 
-[frontend/src/storm/StormApp.tsx:3440](../../../../../frontend/src/storm/StormApp.tsx#L3440)
+[frontend/src/storm/StormApp.tsx:3438](../../../../../frontend/src/storm/StormApp.tsx#L3438)
 
 ```typescript
 async saveNote() => Promise<void>
@@ -4362,7 +4362,7 @@ async saveNote() => Promise<void>
 
 ## StormApp.goToOpenVulns
 
-[frontend/src/storm/StormApp.tsx:3471](../../../../../frontend/src/storm/StormApp.tsx#L3471)
+[frontend/src/storm/StormApp.tsx:3469](../../../../../frontend/src/storm/StormApp.tsx#L3469)
 
 ```typescript
 goToOpenVulns() => void
@@ -4381,7 +4381,7 @@ The overview's "open findings" tile — everything still needing work.
 
 ## StormApp.goToMyFindings
 
-[frontend/src/storm/StormApp.tsx:3472](../../../../../frontend/src/storm/StormApp.tsx#L3472)
+[frontend/src/storm/StormApp.tsx:3470](../../../../../frontend/src/storm/StormApp.tsx#L3470)
 
 ```typescript
 goToMyFindings() => void
@@ -4400,7 +4400,7 @@ goToMyFindings() => void
 
 ## StormApp.vulnFormFrom
 
-[frontend/src/storm/StormApp.tsx:3473](../../../../../frontend/src/storm/StormApp.tsx#L3473)
+[frontend/src/storm/StormApp.tsx:3471](../../../../../frontend/src/storm/StormApp.tsx#L3471)
 
 ```typescript
 vulnFormFrom(v: Vuln) => VulnDetailForm
@@ -4424,7 +4424,7 @@ vulnFormFrom(v: Vuln) => VulnDetailForm
 
 ## StormApp.openVulnDetail
 
-[frontend/src/storm/StormApp.tsx:3490](../../../../../frontend/src/storm/StormApp.tsx#L3490)
+[frontend/src/storm/StormApp.tsx:3488](../../../../../frontend/src/storm/StormApp.tsx#L3488)
 
 ```typescript
 openVulnDetail(id: number) => void
@@ -4449,7 +4449,7 @@ openVulnDetail(id: number) => void
 
 ## StormApp.closeVulnDetail
 
-[frontend/src/storm/StormApp.tsx:3494](../../../../../frontend/src/storm/StormApp.tsx#L3494)
+[frontend/src/storm/StormApp.tsx:3492](../../../../../frontend/src/storm/StormApp.tsx#L3492)
 
 ```typescript
 closeVulnDetail() => void
@@ -4468,7 +4468,7 @@ closeVulnDetail() => void
 
 ## StormApp.uploadVulnFilesFor
 
-[frontend/src/storm/StormApp.tsx:3497](../../../../../frontend/src/storm/StormApp.tsx#L3497)
+[frontend/src/storm/StormApp.tsx:3495](../../../../../frontend/src/storm/StormApp.tsx#L3495)
 
 ```typescript
 async uploadVulnFilesFor(files: File[]) => Promise<void>
@@ -4496,7 +4496,7 @@ async uploadVulnFilesFor(files: File[]) => Promise<void>
 
 ## StormApp.removeVulnFile
 
-[frontend/src/storm/StormApp.tsx:3514](../../../../../frontend/src/storm/StormApp.tsx#L3514)
+[frontend/src/storm/StormApp.tsx:3512](../../../../../frontend/src/storm/StormApp.tsx#L3512)
 
 ```typescript
 async removeVulnFile(fileId: number) => Promise<void>
@@ -4523,7 +4523,7 @@ async removeVulnFile(fileId: number) => Promise<void>
 
 ## StormApp.updateVulnDetailForm
 
-[frontend/src/storm/StormApp.tsx:3525](../../../../../frontend/src/storm/StormApp.tsx#L3525)
+[frontend/src/storm/StormApp.tsx:3523](../../../../../frontend/src/storm/StormApp.tsx#L3523)
 
 ```typescript
 updateVulnDetailForm<K extends keyof VulnDetailForm>(k: K, v: VulnDetailForm[K]) => void
@@ -4547,7 +4547,7 @@ updateVulnDetailForm<K extends keyof VulnDetailForm>(k: K, v: VulnDetailForm[K])
 
 ## StormApp.addVdStep
 
-[frontend/src/storm/StormApp.tsx:3527](../../../../../frontend/src/storm/StormApp.tsx#L3527)
+[frontend/src/storm/StormApp.tsx:3525](../../../../../frontend/src/storm/StormApp.tsx#L3525)
 
 ```typescript
 addVdStep() => void
@@ -4566,7 +4566,7 @@ addVdStep() => void
 
 ## StormApp.removeVdStep
 
-[frontend/src/storm/StormApp.tsx:3528](../../../../../frontend/src/storm/StormApp.tsx#L3528)
+[frontend/src/storm/StormApp.tsx:3526](../../../../../frontend/src/storm/StormApp.tsx#L3526)
 
 ```typescript
 removeVdStep(i: number) => void
@@ -4589,7 +4589,7 @@ removeVdStep(i: number) => void
 
 ## StormApp.updateVdStep
 
-[frontend/src/storm/StormApp.tsx:3539](../../../../../frontend/src/storm/StormApp.tsx#L3539)
+[frontend/src/storm/StormApp.tsx:3537](../../../../../frontend/src/storm/StormApp.tsx#L3537)
 
 ```typescript
 updateVdStep(i: number, val: string) => void
@@ -4613,7 +4613,7 @@ updateVdStep(i: number, val: string) => void
 
 ## StormApp.attachVdStepImages
 
-[frontend/src/storm/StormApp.tsx:3549](../../../../../frontend/src/storm/StormApp.tsx#L3549)
+[frontend/src/storm/StormApp.tsx:3547](../../../../../frontend/src/storm/StormApp.tsx#L3547)
 
 ```typescript
 async attachVdStepImages(i: number, files: File[]) => Promise<void>
@@ -4646,7 +4646,7 @@ were client-only and never reached the report).
 
 ## StormApp.removeVdStepImage
 
-[frontend/src/storm/StormApp.tsx:3573](../../../../../frontend/src/storm/StormApp.tsx#L3573)
+[frontend/src/storm/StormApp.tsx:3571](../../../../../frontend/src/storm/StormApp.tsx#L3571)
 
 ```typescript
 removeVdStepImage(i: number, imgIdx: number) => void
@@ -4670,7 +4670,7 @@ removeVdStepImage(i: number, imgIdx: number) => void
 
 ## StormApp.saveVulnDetail
 
-[frontend/src/storm/StormApp.tsx:3579](../../../../../frontend/src/storm/StormApp.tsx#L3579)
+[frontend/src/storm/StormApp.tsx:3577](../../../../../frontend/src/storm/StormApp.tsx#L3577)
 
 ```typescript
 async saveVulnDetail() => Promise<void>
@@ -4701,7 +4701,7 @@ async saveVulnDetail() => Promise<void>
 
 ## StormApp.reloadApiKeys
 
-[frontend/src/storm/StormApp.tsx:3620](../../../../../frontend/src/storm/StormApp.tsx#L3620)
+[frontend/src/storm/StormApp.tsx:3618](../../../../../frontend/src/storm/StormApp.tsx#L3618)
 
 ```typescript
 reloadApiKeys() => void
@@ -4720,7 +4720,7 @@ reloadApiKeys() => void
 
 ## StormApp.openApiKeyModal
 
-[frontend/src/storm/StormApp.tsx:3650](../../../../../frontend/src/storm/StormApp.tsx#L3650)
+[frontend/src/storm/StormApp.tsx:3648](../../../../../frontend/src/storm/StormApp.tsx#L3648)
 
 ```typescript
 openApiKeyModal() => void
@@ -4740,7 +4740,7 @@ openApiKeyModal() => void
 
 ## StormApp.closeApiKeyModal
 
-[frontend/src/storm/StormApp.tsx:3654](../../../../../frontend/src/storm/StormApp.tsx#L3654)
+[frontend/src/storm/StormApp.tsx:3652](../../../../../frontend/src/storm/StormApp.tsx#L3652)
 
 ```typescript
 closeApiKeyModal() => void
@@ -4759,7 +4759,7 @@ closeApiKeyModal() => void
 
 ## StormApp.toggleApiScope
 
-[frontend/src/storm/StormApp.tsx:3655](../../../../../frontend/src/storm/StormApp.tsx#L3655)
+[frontend/src/storm/StormApp.tsx:3653](../../../../../frontend/src/storm/StormApp.tsx#L3653)
 
 ```typescript
 toggleApiScope(s: string) => void
@@ -4782,7 +4782,7 @@ toggleApiScope(s: string) => void
 
 ## StormApp.toggleApiProject
 
-[frontend/src/storm/StormApp.tsx:3656](../../../../../frontend/src/storm/StormApp.tsx#L3656)
+[frontend/src/storm/StormApp.tsx:3654](../../../../../frontend/src/storm/StormApp.tsx#L3654)
 
 ```typescript
 toggleApiProject(id: number) => void
@@ -4805,7 +4805,7 @@ toggleApiProject(id: number) => void
 
 ## StormApp.createApiKey
 
-[frontend/src/storm/StormApp.tsx:3662](../../../../../frontend/src/storm/StormApp.tsx#L3662)
+[frontend/src/storm/StormApp.tsx:3660](../../../../../frontend/src/storm/StormApp.tsx#L3660)
 
 ```typescript
 async createApiKey() => Promise<void>
@@ -4832,7 +4832,7 @@ async createApiKey() => Promise<void>
 
 ## StormApp.revokeApiKey
 
-[frontend/src/storm/StormApp.tsx:3693](../../../../../frontend/src/storm/StormApp.tsx#L3693)
+[frontend/src/storm/StormApp.tsx:3691](../../../../../frontend/src/storm/StormApp.tsx#L3691)
 
 ```typescript
 async revokeApiKey(id: number) => Promise<void>
@@ -4858,7 +4858,7 @@ async revokeApiKey(id: number) => Promise<void>
 
 ## StormApp.openWSUserEditor
 
-[frontend/src/storm/StormApp.tsx:3702](../../../../../frontend/src/storm/StormApp.tsx#L3702)
+[frontend/src/storm/StormApp.tsx:3700](../../../../../frontend/src/storm/StormApp.tsx#L3700)
 
 ```typescript
 openWSUserEditor(mode: "add" | "edit", index: number) => void
@@ -4882,7 +4882,7 @@ openWSUserEditor(mode: "add" | "edit", index: number) => void
 
 ## StormApp.closeWSUserEditor
 
-[frontend/src/storm/StormApp.tsx:3714](../../../../../frontend/src/storm/StormApp.tsx#L3714)
+[frontend/src/storm/StormApp.tsx:3712](../../../../../frontend/src/storm/StormApp.tsx#L3712)
 
 ```typescript
 closeWSUserEditor() => void
@@ -4901,7 +4901,7 @@ closeWSUserEditor() => void
 
 ## StormApp.saveWSUser
 
-[frontend/src/storm/StormApp.tsx:3717](../../../../../frontend/src/storm/StormApp.tsx#L3717)
+[frontend/src/storm/StormApp.tsx:3715](../../../../../frontend/src/storm/StormApp.tsx#L3715)
 
 ```typescript
 async saveWSUser() => Promise<void>
@@ -4929,7 +4929,7 @@ async saveWSUser() => Promise<void>
 
 ## StormApp.askDeleteWSUser
 
-[frontend/src/storm/StormApp.tsx:3750](../../../../../frontend/src/storm/StormApp.tsx#L3750)
+[frontend/src/storm/StormApp.tsx:3748](../../../../../frontend/src/storm/StormApp.tsx#L3748)
 
 ```typescript
 askDeleteWSUser(index: number) => void
@@ -4952,7 +4952,7 @@ askDeleteWSUser(index: number) => void
 
 ## StormApp.reactivateUser
 
-[frontend/src/storm/StormApp.tsx:3756](../../../../../frontend/src/storm/StormApp.tsx#L3756)
+[frontend/src/storm/StormApp.tsx:3754](../../../../../frontend/src/storm/StormApp.tsx#L3754)
 
 ```typescript
 async reactivateUser(index: number) => Promise<void>
@@ -4979,7 +4979,7 @@ async reactivateUser(index: number) => Promise<void>
 
 ## StormApp.resendInvite
 
-[frontend/src/storm/StormApp.tsx:3767](../../../../../frontend/src/storm/StormApp.tsx#L3767)
+[frontend/src/storm/StormApp.tsx:3765](../../../../../frontend/src/storm/StormApp.tsx#L3765)
 
 ```typescript
 async resendInvite(id: number) => Promise<void>
@@ -5007,7 +5007,7 @@ async resendInvite(id: number) => Promise<void>
 
 ## StormApp.askRevokeInvite
 
-[frontend/src/storm/StormApp.tsx:3782](../../../../../frontend/src/storm/StormApp.tsx#L3782)
+[frontend/src/storm/StormApp.tsx:3780](../../../../../frontend/src/storm/StormApp.tsx#L3780)
 
 ```typescript
 askRevokeInvite(id: number, email: string) => void
@@ -5034,7 +5034,7 @@ askRevokeInvite(id: number, email: string) => void
 
 ## StormApp.revokeInvite
 
-[frontend/src/storm/StormApp.tsx:3787](../../../../../frontend/src/storm/StormApp.tsx#L3787)
+[frontend/src/storm/StormApp.tsx:3785](../../../../../frontend/src/storm/StormApp.tsx#L3785)
 
 ```typescript
 async revokeInvite(id: number) => Promise<void>
@@ -5061,7 +5061,7 @@ async revokeInvite(id: number) => Promise<void>
 
 ## StormApp.startTwoFA
 
-[frontend/src/storm/StormApp.tsx:3797](../../../../../frontend/src/storm/StormApp.tsx#L3797)
+[frontend/src/storm/StormApp.tsx:3795](../../../../../frontend/src/storm/StormApp.tsx#L3795)
 
 ```typescript
 async startTwoFA() => Promise<void>
@@ -5083,7 +5083,7 @@ async startTwoFA() => Promise<void>
 
 ## StormApp.cancelTwoFA
 
-[frontend/src/storm/StormApp.tsx:3807](../../../../../frontend/src/storm/StormApp.tsx#L3807)
+[frontend/src/storm/StormApp.tsx:3805](../../../../../frontend/src/storm/StormApp.tsx#L3805)
 
 ```typescript
 cancelTwoFA() => void
@@ -5102,7 +5102,7 @@ cancelTwoFA() => void
 
 ## StormApp.confirmTwoFA
 
-[frontend/src/storm/StormApp.tsx:3808](../../../../../frontend/src/storm/StormApp.tsx#L3808)
+[frontend/src/storm/StormApp.tsx:3806](../../../../../frontend/src/storm/StormApp.tsx#L3806)
 
 ```typescript
 async confirmTwoFA() => Promise<void>
@@ -5127,7 +5127,7 @@ async confirmTwoFA() => Promise<void>
 
 ## StormApp.openDisableTwoFA
 
-[frontend/src/storm/StormApp.tsx:3821](../../../../../frontend/src/storm/StormApp.tsx#L3821)
+[frontend/src/storm/StormApp.tsx:3819](../../../../../frontend/src/storm/StormApp.tsx#L3819)
 
 ```typescript
 openDisableTwoFA() => void
@@ -5146,7 +5146,7 @@ openDisableTwoFA() => void
 
 ## StormApp.cancelDisableTwoFA
 
-[frontend/src/storm/StormApp.tsx:3822](../../../../../frontend/src/storm/StormApp.tsx#L3822)
+[frontend/src/storm/StormApp.tsx:3820](../../../../../frontend/src/storm/StormApp.tsx#L3820)
 
 ```typescript
 cancelDisableTwoFA() => void
@@ -5165,7 +5165,7 @@ cancelDisableTwoFA() => void
 
 ## StormApp.disableTwoFA
 
-[frontend/src/storm/StormApp.tsx:3823](../../../../../frontend/src/storm/StormApp.tsx#L3823)
+[frontend/src/storm/StormApp.tsx:3821](../../../../../frontend/src/storm/StormApp.tsx#L3821)
 
 ```typescript
 async disableTwoFA() => Promise<void>
@@ -5189,7 +5189,7 @@ async disableTwoFA() => Promise<void>
 
 ## StormApp.submitPasswordChange
 
-[frontend/src/storm/StormApp.tsx:3839](../../../../../frontend/src/storm/StormApp.tsx#L3839)
+[frontend/src/storm/StormApp.tsx:3837](../../../../../frontend/src/storm/StormApp.tsx#L3837)
 
 ```typescript
 async submitPasswordChange() => Promise<void>
@@ -5213,7 +5213,7 @@ async submitPasswordChange() => Promise<void>
 
 ## StormApp.goToNotif
 
-[frontend/src/storm/StormApp.tsx:3865](../../../../../frontend/src/storm/StormApp.tsx#L3865)
+[frontend/src/storm/StormApp.tsx:3863](../../../../../frontend/src/storm/StormApp.tsx#L3863)
 
 ```typescript
 goToNotif(n: ApiNotification) => void
@@ -5241,7 +5241,7 @@ goToNotif(n: ApiNotification) => void
 
 ## StormApp.markAllNotifsRead
 
-[frontend/src/storm/StormApp.tsx:3901](../../../../../frontend/src/storm/StormApp.tsx#L3901)
+[frontend/src/storm/StormApp.tsx:3899](../../../../../frontend/src/storm/StormApp.tsx#L3899)
 
 ```typescript
 markAllNotifsRead() => void
@@ -5262,7 +5262,7 @@ markAllNotifsRead() => void
 
 ## StormApp.isArchivedStatus
 
-[frontend/src/storm/StormApp.tsx:3911](../../../../../frontend/src/storm/StormApp.tsx#L3911)
+[frontend/src/storm/StormApp.tsx:3909](../../../../../frontend/src/storm/StormApp.tsx#L3909)
 
 ```typescript
 isArchivedStatus(s: ProjectStatus) => boolean
@@ -5278,7 +5278,7 @@ isArchivedStatus(s: ProjectStatus) => boolean
 
 ## StormApp.parseAll
 
-[frontend/src/storm/StormApp.tsx:3931](../../../../../frontend/src/storm/StormApp.tsx#L3931)
+[frontend/src/storm/StormApp.tsx:3929](../../../../../frontend/src/storm/StormApp.tsx#L3929)
 
 ```typescript
 parseAll(arr: (string | undefined)[]) => number[]
@@ -5302,7 +5302,7 @@ parseAll(arr: (string | undefined)[]) => number[]
 
 ## StormApp.projWindow
 
-[frontend/src/storm/StormApp.tsx:3933](../../../../../frontend/src/storm/StormApp.tsx#L3933)
+[frontend/src/storm/StormApp.tsx:3931](../../../../../frontend/src/storm/StormApp.tsx#L3931)
 
 ```typescript
 projWindow(rows: ApiProjectRow[]) => [number, number]
@@ -5328,7 +5328,7 @@ Combined [start, end] window across a set of projects — the sparkline's X axis
 
 ## StormApp.projCreatedTimes
 
-[frontend/src/storm/StormApp.tsx:3938](../../../../../frontend/src/storm/StormApp.tsx#L3938)
+[frontend/src/storm/StormApp.tsx:3936](../../../../../frontend/src/storm/StormApp.tsx#L3936)
 
 ```typescript
 projCreatedTimes(rows: ApiProjectRow[]) => string[]
@@ -5351,7 +5351,7 @@ projCreatedTimes(rows: ApiProjectRow[]) => string[]
 
 ## StormApp.aggHostTimes
 
-[frontend/src/storm/StormApp.tsx:3939](../../../../../frontend/src/storm/StormApp.tsx#L3939)
+[frontend/src/storm/StormApp.tsx:3937](../../../../../frontend/src/storm/StormApp.tsx#L3937)
 
 ```typescript
 aggHostTimes(rows: ApiProjectRow[]) => string[]
@@ -5374,7 +5374,7 @@ aggHostTimes(rows: ApiProjectRow[]) => string[]
 
 ## StormApp.aggOpenVulnTimes
 
-[frontend/src/storm/StormApp.tsx:3940](../../../../../frontend/src/storm/StormApp.tsx#L3940)
+[frontend/src/storm/StormApp.tsx:3938](../../../../../frontend/src/storm/StormApp.tsx#L3938)
 
 ```typescript
 aggOpenVulnTimes(rows: ApiProjectRow[]) => string[]
@@ -5397,7 +5397,7 @@ aggOpenVulnTimes(rows: ApiProjectRow[]) => string[]
 
 ## StormApp.navBg
 
-[frontend/src/storm/StormApp.tsx:3944](../../../../../frontend/src/storm/StormApp.tsx#L3944)
+[frontend/src/storm/StormApp.tsx:3942](../../../../../frontend/src/storm/StormApp.tsx#L3942)
 
 ```typescript
 navBg(id: NavId) => "var(--st-accent-soft)" | undefined
@@ -5413,7 +5413,7 @@ navBg(id: NavId) => "var(--st-accent-soft)" | undefined
 
 ## StormApp.navColor
 
-[frontend/src/storm/StormApp.tsx:3945](../../../../../frontend/src/storm/StormApp.tsx#L3945)
+[frontend/src/storm/StormApp.tsx:3943](../../../../../frontend/src/storm/StormApp.tsx#L3943)
 
 ```typescript
 navColor(id: NavId) => "var(--st-accent)" | "var(--st-text-2)"
@@ -5429,7 +5429,7 @@ navColor(id: NavId) => "var(--st-accent)" | "var(--st-text-2)"
 
 ## StormApp.onClick
 
-[frontend/src/storm/StormApp.tsx:3998](../../../../../frontend/src/storm/StormApp.tsx#L3998)
+[frontend/src/storm/StormApp.tsx:3996](../../../../../frontend/src/storm/StormApp.tsx#L3996)
 
 ```typescript
 onClick() => void
@@ -5448,7 +5448,7 @@ onClick() => void
 
 ## StormApp.secStyle
 
-[frontend/src/storm/StormApp.tsx:4008](../../../../../frontend/src/storm/StormApp.tsx#L4008)
+[frontend/src/storm/StormApp.tsx:4006](../../../../../frontend/src/storm/StormApp.tsx#L4006)
 
 ```typescript
 secStyle(k: SectionId) => { active: boolean; color: string; badgeColor: string; badgeBg: string; }
@@ -5464,7 +5464,7 @@ secStyle(k: SectionId) => { active: boolean; color: string; badgeColor: string; 
 
 ## StormApp.portPillsOf
 
-[frontend/src/storm/StormApp.tsx:4019](../../../../../frontend/src/storm/StormApp.tsx#L4019)
+[frontend/src/storm/StormApp.tsx:4017](../../../../../frontend/src/storm/StormApp.tsx#L4017)
 
 ```typescript
 portPillsOf(ports: Host["ports"]) => { bg: string; color: string; label: string; http: number | null; }[]
@@ -5487,7 +5487,7 @@ portPillsOf(ports: Host["ports"]) => { bg: string; color: string; label: string;
 
 ## StormApp.httpStatusColor
 
-[frontend/src/storm/StormApp.tsx:4021](../../../../../frontend/src/storm/StormApp.tsx#L4021)
+[frontend/src/storm/StormApp.tsx:4019](../../../../../frontend/src/storm/StormApp.tsx#L4019)
 
 ```typescript
 httpStatusColor(code: number) => string
@@ -5503,7 +5503,7 @@ Colour for an HTTP status code next to a port: 2xx green, 3xx amber, else red.
 
 ## StormApp.isNestedSubdomain
 
-[frontend/src/storm/StormApp.tsx:4026](../../../../../frontend/src/storm/StormApp.tsx#L4026)
+[frontend/src/storm/StormApp.tsx:4024](../../../../../frontend/src/storm/StormApp.tsx#L4024)
 
 ```typescript
 isNestedSubdomain(h: Host) => boolean
@@ -5526,7 +5526,7 @@ A host that is a subdomain of another host in the project (shown nested, not top
 
 ## StormApp.isIpFarmRow
 
-[frontend/src/storm/StormApp.tsx:4032](../../../../../frontend/src/storm/StormApp.tsx#L4032)
+[frontend/src/storm/StormApp.tsx:4030](../../../../../frontend/src/storm/StormApp.tsx#L4030)
 
 ```typescript
 isIpFarmRow(h: Host) => boolean
@@ -5542,7 +5542,7 @@ isIpFarmRow(h: Host) => boolean
 
 ## StormApp.matchesStatusFilters
 
-[frontend/src/storm/StormApp.tsx:4036](../../../../../frontend/src/storm/StormApp.tsx#L4036)
+[frontend/src/storm/StormApp.tsx:4034](../../../../../frontend/src/storm/StormApp.tsx#L4034)
 
 ```typescript
 matchesStatusFilters(ports: Host["ports"], status: Host["status"], filters: string[]) => boolean
@@ -5569,7 +5569,7 @@ matchesStatusFilters(ports: Host["ports"], status: Host["status"], filters: stri
 
 ## StormApp.hostMatchesFilters
 
-[frontend/src/storm/StormApp.tsx:4048](../../../../../frontend/src/storm/StormApp.tsx#L4048)
+[frontend/src/storm/StormApp.tsx:4046](../../../../../frontend/src/storm/StormApp.tsx#L4046)
 
 ```typescript
 hostMatchesFilters(h: Host) => boolean
@@ -5592,7 +5592,7 @@ hostMatchesFilters(h: Host) => boolean
 
 ## StormApp.visibleSubdomainsOf
 
-[frontend/src/storm/StormApp.tsx:4053](../../../../../frontend/src/storm/StormApp.tsx#L4053)
+[frontend/src/storm/StormApp.tsx:4051](../../../../../frontend/src/storm/StormApp.tsx#L4051)
 
 ```typescript
 visibleSubdomainsOf(h: Host) => Host[]
@@ -5616,7 +5616,7 @@ Subdomains of a host, filtered by the active pills (empty = all).
 
 ## StormApp.onClick
 
-[frontend/src/storm/StormApp.tsx:4076](../../../../../frontend/src/storm/StormApp.tsx#L4076)
+[frontend/src/storm/StormApp.tsx:4074](../../../../../frontend/src/storm/StormApp.tsx#L4074)
 
 ```typescript
 onClick() => void
@@ -5635,7 +5635,7 @@ onClick() => void
 
 ## StormApp.onOpen
 
-[frontend/src/storm/StormApp.tsx:4114](../../../../../frontend/src/storm/StormApp.tsx#L4114)
+[frontend/src/storm/StormApp.tsx:4112](../../../../../frontend/src/storm/StormApp.tsx#L4112)
 
 ```typescript
 onOpen() => void
@@ -5654,7 +5654,7 @@ onOpen() => void
 
 ## StormApp.onEdit
 
-[frontend/src/storm/StormApp.tsx:4115](../../../../../frontend/src/storm/StormApp.tsx#L4115)
+[frontend/src/storm/StormApp.tsx:4113](../../../../../frontend/src/storm/StormApp.tsx#L4113)
 
 ```typescript
 onEdit(e: ReactMouseEvent) => void
@@ -5678,7 +5678,7 @@ onEdit(e: ReactMouseEvent) => void
 
 ## StormApp.onDelete
 
-[frontend/src/storm/StormApp.tsx:4119](../../../../../frontend/src/storm/StormApp.tsx#L4119)
+[frontend/src/storm/StormApp.tsx:4117](../../../../../frontend/src/storm/StormApp.tsx#L4117)
 
 ```typescript
 onDelete(e: ReactMouseEvent) => void
@@ -5702,7 +5702,7 @@ onDelete(e: ReactMouseEvent) => void
 
 ## StormApp.vfPill
 
-[frontend/src/storm/StormApp.tsx:4126](../../../../../frontend/src/storm/StormApp.tsx#L4126)
+[frontend/src/storm/StormApp.tsx:4124](../../../../../frontend/src/storm/StormApp.tsx#L4124)
 
 ```typescript
 vfPill(on: boolean) => CSSProperties
@@ -5718,7 +5718,7 @@ Pill styling for a multi-select filter; `on` also covers the "All" pill (empty s
 
 ## StormApp.mergeBucket
 
-[frontend/src/storm/StormApp.tsx:4146](../../../../../frontend/src/storm/StormApp.tsx#L4146)
+[frontend/src/storm/StormApp.tsx:4144](../../../../../frontend/src/storm/StormApp.tsx#L4144)
 
 ```typescript
 mergeBucket(into: IpBucket | null, h: IpBucket) => IpBucket
@@ -5743,7 +5743,7 @@ mergeBucket(into: IpBucket | null, h: IpBucket) => IpBucket
 
 ## StormApp.onEdit
 
-[frontend/src/storm/StormApp.tsx:4214](../../../../../frontend/src/storm/StormApp.tsx#L4214)
+[frontend/src/storm/StormApp.tsx:4212](../../../../../frontend/src/storm/StormApp.tsx#L4212)
 
 ```typescript
 onEdit(e: ReactMouseEvent) => void
@@ -5767,7 +5767,7 @@ onEdit(e: ReactMouseEvent) => void
 
 ## StormApp.onDelete
 
-[frontend/src/storm/StormApp.tsx:4218](../../../../../frontend/src/storm/StormApp.tsx#L4218)
+[frontend/src/storm/StormApp.tsx:4216](../../../../../frontend/src/storm/StormApp.tsx#L4216)
 
 ```typescript
 onDelete(e: ReactMouseEvent) => void
@@ -5791,7 +5791,7 @@ onDelete(e: ReactMouseEvent) => void
 
 ## StormApp.askDeleteEndpoints
 
-[frontend/src/storm/StormApp.tsx:4246](../../../../../frontend/src/storm/StormApp.tsx#L4246)
+[frontend/src/storm/StormApp.tsx:4244](../../../../../frontend/src/storm/StormApp.tsx#L4244)
 
 ```typescript
 askDeleteEndpoints(group: typeof endpointGroups[number]) => void
@@ -5818,7 +5818,7 @@ askDeleteEndpoints(group: typeof endpointGroups[number]) => void
 
 ## StormApp.fileBase
 
-[frontend/src/storm/StormApp.tsx:4295](../../../../../frontend/src/storm/StormApp.tsx#L4295)
+[frontend/src/storm/StormApp.tsx:4293](../../../../../frontend/src/storm/StormApp.tsx#L4293)
 
 ```typescript
 fileBase(url: string) => string
@@ -5842,7 +5842,7 @@ File-name tail of a JS URL, and a compact byte size — shared by the JS views.
 
 ## StormApp.kb
 
-[frontend/src/storm/StormApp.tsx:4296](../../../../../frontend/src/storm/StormApp.tsx#L4296)
+[frontend/src/storm/StormApp.tsx:4294](../../../../../frontend/src/storm/StormApp.tsx#L4294)
 
 ```typescript
 kb(n: number | null) => string
@@ -5865,7 +5865,7 @@ kb(n: number | null) => string
 
 ## StormApp.openJsFile
 
-[frontend/src/storm/StormApp.tsx:4299](../../../../../frontend/src/storm/StormApp.tsx#L4299)
+[frontend/src/storm/StormApp.tsx:4297](../../../../../frontend/src/storm/StormApp.tsx#L4297)
 
 ```typescript
 openJsFile(id: number) => void
@@ -5888,7 +5888,7 @@ openJsFile(id: number) => void
 
 ## StormApp.closeJsFile
 
-[frontend/src/storm/StormApp.tsx:4300](../../../../../frontend/src/storm/StormApp.tsx#L4300)
+[frontend/src/storm/StormApp.tsx:4298](../../../../../frontend/src/storm/StormApp.tsx#L4298)
 
 ```typescript
 closeJsFile() => void
@@ -5907,7 +5907,7 @@ closeJsFile() => void
 
 ## StormApp.openJsHostDetail
 
-[frontend/src/storm/StormApp.tsx:4303](../../../../../frontend/src/storm/StormApp.tsx#L4303)
+[frontend/src/storm/StormApp.tsx:4301](../../../../../frontend/src/storm/StormApp.tsx#L4301)
 
 ```typescript
 openJsHostDetail(host: string) => void
@@ -5930,7 +5930,7 @@ openJsHostDetail(host: string) => void
 
 ## StormApp.closeJsHostDetail
 
-[frontend/src/storm/StormApp.tsx:4304](../../../../../frontend/src/storm/StormApp.tsx#L4304)
+[frontend/src/storm/StormApp.tsx:4302](../../../../../frontend/src/storm/StormApp.tsx#L4302)
 
 ```typescript
 closeJsHostDetail() => void
@@ -5949,7 +5949,7 @@ closeJsHostDetail() => void
 
 ## StormApp.jsScanDomains
 
-[frontend/src/storm/StormApp.tsx:4310](../../../../../frontend/src/storm/StormApp.tsx#L4310)
+[frontend/src/storm/StormApp.tsx:4308](../../../../../frontend/src/storm/StormApp.tsx#L4308)
 
 ```typescript
 jsScanDomains() => string[]
@@ -5974,7 +5974,7 @@ jsScanDomains() => string[]
 
 ## StormApp.jsScanDomains.add
 
-[frontend/src/storm/StormApp.tsx:4313](../../../../../frontend/src/storm/StormApp.tsx#L4313)
+[frontend/src/storm/StormApp.tsx:4311](../../../../../frontend/src/storm/StormApp.tsx#L4311)
 
 ```typescript
 add(x: Host) => void
@@ -5999,7 +5999,7 @@ add(x: Host) => void
 
 ## StormApp.openJsScanSetup
 
-[frontend/src/storm/StormApp.tsx:4332](../../../../../frontend/src/storm/StormApp.tsx#L4332)
+[frontend/src/storm/StormApp.tsx:4330](../../../../../frontend/src/storm/StormApp.tsx#L4330)
 
 ```typescript
 openJsScanSetup() => void
@@ -6020,7 +6020,7 @@ openJsScanSetup() => void
 
 ## StormApp.closeJsScanSetup
 
-[frontend/src/storm/StormApp.tsx:4333](../../../../../frontend/src/storm/StormApp.tsx#L4333)
+[frontend/src/storm/StormApp.tsx:4331](../../../../../frontend/src/storm/StormApp.tsx#L4331)
 
 ```typescript
 closeJsScanSetup() => void
@@ -6039,7 +6039,7 @@ closeJsScanSetup() => void
 
 ## StormApp.pick
 
-[frontend/src/storm/StormApp.tsx:4465](../../../../../frontend/src/storm/StormApp.tsx#L4465)
+[frontend/src/storm/StormApp.tsx:4463](../../../../../frontend/src/storm/StormApp.tsx#L4463)
 
 ```typescript
 pick(v: string) => void
@@ -6062,7 +6062,7 @@ pick(v: string) => void
 
 ## StormApp.onInput
 
-[frontend/src/storm/StormApp.tsx:4476](../../../../../frontend/src/storm/StormApp.tsx#L4476)
+[frontend/src/storm/StormApp.tsx:4474](../../../../../frontend/src/storm/StormApp.tsx#L4474)
 
 ```typescript
 onInput(e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void
@@ -6085,7 +6085,7 @@ onInput(e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElemen
 
 ## StormApp.onTagDraft
 
-[frontend/src/storm/StormApp.tsx:4478](../../../../../frontend/src/storm/StormApp.tsx#L4478)
+[frontend/src/storm/StormApp.tsx:4476](../../../../../frontend/src/storm/StormApp.tsx#L4476)
 
 ```typescript
 onTagDraft(e: ChangeEvent<HTMLInputElement>) => void
@@ -6108,7 +6108,7 @@ onTagDraft(e: ChangeEvent<HTMLInputElement>) => void
 
 ## StormApp.onTagKeyDown
 
-[frontend/src/storm/StormApp.tsx:4479](../../../../../frontend/src/storm/StormApp.tsx#L4479)
+[frontend/src/storm/StormApp.tsx:4477](../../../../../frontend/src/storm/StormApp.tsx#L4477)
 
 ```typescript
 onTagKeyDown(e: ReactKeyboardEvent<HTMLInputElement>) => void
@@ -6132,7 +6132,7 @@ onTagKeyDown(e: ReactKeyboardEvent<HTMLInputElement>) => void
 
 ## StormApp.onRemove
 
-[frontend/src/storm/StormApp.tsx:4485](../../../../../frontend/src/storm/StormApp.tsx#L4485)
+[frontend/src/storm/StormApp.tsx:4483](../../../../../frontend/src/storm/StormApp.tsx#L4483)
 
 ```typescript
 onRemove() => void
@@ -6151,7 +6151,7 @@ onRemove() => void
 
 ## StormApp.onPick
 
-[frontend/src/storm/StormApp.tsx:4488](../../../../../frontend/src/storm/StormApp.tsx#L4488)
+[frontend/src/storm/StormApp.tsx:4486](../../../../../frontend/src/storm/StormApp.tsx#L4486)
 
 ```typescript
 onPick() => void
@@ -6170,7 +6170,7 @@ onPick() => void
 
 ## StormApp.onComboInput
 
-[frontend/src/storm/StormApp.tsx:4490](../../../../../frontend/src/storm/StormApp.tsx#L4490)
+[frontend/src/storm/StormApp.tsx:4488](../../../../../frontend/src/storm/StormApp.tsx#L4488)
 
 ```typescript
 onComboInput(e: ChangeEvent<HTMLInputElement>) => void
@@ -6194,7 +6194,7 @@ onComboInput(e: ChangeEvent<HTMLInputElement>) => void
 
 ## StormApp.onComboFocus
 
-[frontend/src/storm/StormApp.tsx:4494](../../../../../frontend/src/storm/StormApp.tsx#L4494)
+[frontend/src/storm/StormApp.tsx:4492](../../../../../frontend/src/storm/StormApp.tsx#L4492)
 
 ```typescript
 onComboFocus() => void
@@ -6213,7 +6213,7 @@ onComboFocus() => void
 
 ## StormApp.onComboBlur
 
-[frontend/src/storm/StormApp.tsx:4495](../../../../../frontend/src/storm/StormApp.tsx#L4495)
+[frontend/src/storm/StormApp.tsx:4493](../../../../../frontend/src/storm/StormApp.tsx#L4493)
 
 ```typescript
 onComboBlur() => void
@@ -6232,7 +6232,7 @@ onComboBlur() => void
 
 ## StormApp.onComboKeyDown
 
-[frontend/src/storm/StormApp.tsx:4496](../../../../../frontend/src/storm/StormApp.tsx#L4496)
+[frontend/src/storm/StormApp.tsx:4494](../../../../../frontend/src/storm/StormApp.tsx#L4494)
 
 ```typescript
 onComboKeyDown(e: ReactKeyboardEvent<HTMLInputElement>) => void
@@ -6257,7 +6257,7 @@ onComboKeyDown(e: ReactKeyboardEvent<HTMLInputElement>) => void
 
 ## StormApp.pfNav
 
-[frontend/src/storm/StormApp.tsx:4530](../../../../../frontend/src/storm/StormApp.tsx#L4530)
+[frontend/src/storm/StormApp.tsx:4528](../../../../../frontend/src/storm/StormApp.tsx#L4528)
 
 ```typescript
 pfNav(tab: ProfileTab) => CSSProperties
@@ -6273,7 +6273,7 @@ pfNav(tab: ProfileTab) => CSSProperties
 
 ## StormApp.capNote
 
-[frontend/src/storm/StormApp.tsx:4536](../../../../../frontend/src/storm/StormApp.tsx#L4536)
+[frontend/src/storm/StormApp.tsx:4534](../../../../../frontend/src/storm/StormApp.tsx#L4534)
 
 ```typescript
 capNote(total: number, shown: number) => ReactNode
@@ -6297,7 +6297,7 @@ capNote(total: number, shown: number) => ReactNode
 
 ## StormApp.eyebrow
 
-[frontend/src/storm/StormApp.tsx:4543](../../../../../frontend/src/storm/StormApp.tsx#L4543)
+[frontend/src/storm/StormApp.tsx:4541](../../../../../frontend/src/storm/StormApp.tsx#L4541)
 
 ```typescript
 eyebrow(crumbs: { label: string; onClick?: () => void; muted?: boolean }[]) => ReactNode
@@ -6320,7 +6320,7 @@ eyebrow(crumbs: { label: string; onClick?: () => void; muted?: boolean }[]) => R
 
 ## StormApp.renderProjects
 
-[frontend/src/storm/StormApp.tsx:4562](../../../../../frontend/src/storm/StormApp.tsx#L4562)
+[frontend/src/storm/StormApp.tsx:4560](../../../../../frontend/src/storm/StormApp.tsx#L4560)
 
 ```typescript
 renderProjects() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -6348,7 +6348,7 @@ renderProjects() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/n
 
 ## StormApp.taskStatusVs
 
-[frontend/src/storm/StormApp.tsx:4688](../../../../../frontend/src/storm/StormApp.tsx#L4688)
+[frontend/src/storm/StormApp.tsx:4686](../../../../../frontend/src/storm/StormApp.tsx#L4686)
 
 ```typescript
 taskStatusVs(raw: string) => VStatus | null
@@ -6374,7 +6374,7 @@ taskStatusVs(raw: string) => VStatus | null
 
 ## StormApp.createProjectFromTask
 
-[frontend/src/storm/StormApp.tsx:4698](../../../../../frontend/src/storm/StormApp.tsx#L4698)
+[frontend/src/storm/StormApp.tsx:4696](../../../../../frontend/src/storm/StormApp.tsx#L4696)
 
 ```typescript
 async createProjectFromTask(task: TaskTrackerTask) => Promise<void>
@@ -6413,7 +6413,7 @@ new Error(t("Couldn't load this task"))
 
 ## StormApp.renderTasks
 
-[frontend/src/storm/StormApp.tsx:4727](../../../../../frontend/src/storm/StormApp.tsx#L4727)
+[frontend/src/storm/StormApp.tsx:4725](../../../../../frontend/src/storm/StormApp.tsx#L4725)
 
 ```typescript
 renderTasks() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -6440,7 +6440,7 @@ renderTasks() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node
 
 ## StormApp.renderTasks.isDone
 
-[frontend/src/storm/StormApp.tsx:4730](../../../../../frontend/src/storm/StormApp.tsx#L4730)
+[frontend/src/storm/StormApp.tsx:4728](../../../../../frontend/src/storm/StormApp.tsx#L4728)
 
 ```typescript
 isDone(task: TaskTrackerTask) => boolean
@@ -6465,7 +6465,7 @@ isDone(task: TaskTrackerTask) => boolean
 
 ## StormApp.renderTaskDetail
 
-[frontend/src/storm/StormApp.tsx:4823](../../../../../frontend/src/storm/StormApp.tsx#L4823)
+[frontend/src/storm/StormApp.tsx:4821](../../../../../frontend/src/storm/StormApp.tsx#L4821)
 
 ```typescript
 renderTaskDetail() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -6490,7 +6490,7 @@ renderTaskDetail() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend
 
 ## StormApp.renderTaskDetail.sideRow
 
-[frontend/src/storm/StormApp.tsx:4830](../../../../../frontend/src/storm/StormApp.tsx#L4830)
+[frontend/src/storm/StormApp.tsx:4828](../../../../../frontend/src/storm/StormApp.tsx#L4828)
 
 ```typescript
 sideRow(label: string, value: ReactNode) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -6507,7 +6507,7 @@ sideRow(label: string, value: ReactNode) => import("/Users/nkolomiika/Cursor Pro
 
 ## StormApp.renderTaskDetail.backToTasks
 
-[frontend/src/storm/StormApp.tsx:4836](../../../../../frontend/src/storm/StormApp.tsx#L4836)
+[frontend/src/storm/StormApp.tsx:4834](../../../../../frontend/src/storm/StormApp.tsx#L4834)
 
 ```typescript
 backToTasks() => void
@@ -6526,7 +6526,7 @@ backToTasks() => void
 
 ## StormApp.renderWorkspaceMembers
 
-[frontend/src/storm/StormApp.tsx:4888](../../../../../frontend/src/storm/StormApp.tsx#L4888)
+[frontend/src/storm/StormApp.tsx:4886](../../../../../frontend/src/storm/StormApp.tsx#L4886)
 
 ```typescript
 renderWorkspaceMembers() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -6552,7 +6552,7 @@ renderWorkspaceMembers() => import("/Users/nkolomiika/Cursor Projects/SberPCF/fr
 
 ## StormApp.tabItem
 
-[frontend/src/storm/StormApp.tsx:5019](../../../../../frontend/src/storm/StormApp.tsx#L5019)
+[frontend/src/storm/StormApp.tsx:5017](../../../../../frontend/src/storm/StormApp.tsx#L5017)
 
 ```typescript
 tabItem(label: string, icon: Parameters<typeof Icon>[0]["name"], st: { active: boolean }, onClick: () => void, badge?: { text: string; color: string; bg: string }, extra?: ReactNode) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -6573,7 +6573,7 @@ tabItem(label: string, icon: Parameters<typeof Icon>[0]["name"], st: { active: b
 
 ## StormApp.renderDetail
 
-[frontend/src/storm/StormApp.tsx:5028](../../../../../frontend/src/storm/StormApp.tsx#L5028)
+[frontend/src/storm/StormApp.tsx:5026](../../../../../frontend/src/storm/StormApp.tsx#L5026)
 
 ```typescript
 renderDetail() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -6611,7 +6611,7 @@ renderDetail() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/nod
 
 ## StormApp.renderNoAccess
 
-[frontend/src/storm/StormApp.tsx:5241](../../../../../frontend/src/storm/StormApp.tsx#L5241)
+[frontend/src/storm/StormApp.tsx:5239](../../../../../frontend/src/storm/StormApp.tsx#L5239)
 
 ```typescript
 renderNoAccess(message: string) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -6634,7 +6634,7 @@ renderNoAccess(message: string) => import("/Users/nkolomiika/Cursor Projects/Sbe
 
 ## StormApp.renderNoAccessPage
 
-[frontend/src/storm/StormApp.tsx:5256](../../../../../frontend/src/storm/StormApp.tsx#L5256)
+[frontend/src/storm/StormApp.tsx:5254](../../../../../frontend/src/storm/StormApp.tsx#L5254)
 
 ```typescript
 renderNoAccessPage(message: string = NO_ACCESS_PROJECT) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -6657,7 +6657,7 @@ renderNoAccessPage(message: string = NO_ACCESS_PROJECT) => import("/Users/nkolom
 
 ## StormApp.renderOverview
 
-[frontend/src/storm/StormApp.tsx:5275](../../../../../frontend/src/storm/StormApp.tsx#L5275)
+[frontend/src/storm/StormApp.tsx:5273](../../../../../frontend/src/storm/StormApp.tsx#L5273)
 
 ```typescript
 renderOverview() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -6680,7 +6680,7 @@ renderOverview() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/n
 
 ## StormApp.renderOverview.onClick
 
-[frontend/src/storm/StormApp.tsx:5302](../../../../../frontend/src/storm/StormApp.tsx#L5302)
+[frontend/src/storm/StormApp.tsx:5300](../../../../../frontend/src/storm/StormApp.tsx#L5300)
 
 ```typescript
 onClick() => void
@@ -6699,7 +6699,7 @@ onClick() => void
 
 ## StormApp.portPills
 
-[frontend/src/storm/StormApp.tsx:5362](../../../../../frontend/src/storm/StormApp.tsx#L5362)
+[frontend/src/storm/StormApp.tsx:5360](../../../../../frontend/src/storm/StormApp.tsx#L5360)
 
 ```typescript
 portPills(ports: Host["ports"], hostDown = false) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -6725,7 +6725,7 @@ portPills(ports: Host["ports"], hostDown = false) => import("/Users/nkolomiika/C
 
 ## StormApp.hostnamePills
 
-[frontend/src/storm/StormApp.tsx:5390](../../../../../frontend/src/storm/StormApp.tsx#L5390)
+[frontend/src/storm/StormApp.tsx:5388](../../../../../frontend/src/storm/StormApp.tsx#L5388)
 
 ```typescript
 hostnamePills(names: { hostname: string; source: string; confirmed: boolean }[]) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -6748,7 +6748,7 @@ hostnamePills(names: { hostname: string; source: string; confirmed: boolean }[])
 
 ## StormApp.renderImportPage
 
-[frontend/src/storm/StormApp.tsx:5423](../../../../../frontend/src/storm/StormApp.tsx#L5423)
+[frontend/src/storm/StormApp.tsx:5421](../../../../../frontend/src/storm/StormApp.tsx#L5421)
 
 ```typescript
 renderImportPage(cfg: { title: string; backLabel: string; pasteLabel: string; placeholder: string; previewPlaceholder: string; raw: string; preview: string; busy: boolean; submitLabel?: string; busyLabel?: string; onRaw: (v: string) => void; onPreview: (v: string) => void; onCancel: () => void; onSubmit: () => void; }) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -6773,7 +6773,7 @@ renderImportPage(cfg: { title: string; backLabel: string; pasteLabel: string; pl
 
 ## StormApp.renderHostImport
 
-[frontend/src/storm/StormApp.tsx:5469](../../../../../frontend/src/storm/StormApp.tsx#L5469)
+[frontend/src/storm/StormApp.tsx:5467](../../../../../frontend/src/storm/StormApp.tsx#L5467)
 
 ```typescript
 renderHostImport() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -6793,7 +6793,7 @@ renderHostImport() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend
 
 ## StormApp.renderHostImport.onRaw
 
-[frontend/src/storm/StormApp.tsx:5479](../../../../../frontend/src/storm/StormApp.tsx#L5479)
+[frontend/src/storm/StormApp.tsx:5477](../../../../../frontend/src/storm/StormApp.tsx#L5477)
 
 ```typescript
 onRaw(v) => void
@@ -6817,7 +6817,7 @@ onRaw(v) => void
 
 ## StormApp.renderHostImport.onPreview
 
-[frontend/src/storm/StormApp.tsx:5480](../../../../../frontend/src/storm/StormApp.tsx#L5480)
+[frontend/src/storm/StormApp.tsx:5478](../../../../../frontend/src/storm/StormApp.tsx#L5478)
 
 ```typescript
 onPreview(v) => void
@@ -6840,7 +6840,7 @@ onPreview(v) => void
 
 ## StormApp.renderIpImport
 
-[frontend/src/storm/StormApp.tsx:5485](../../../../../frontend/src/storm/StormApp.tsx#L5485)
+[frontend/src/storm/StormApp.tsx:5483](../../../../../frontend/src/storm/StormApp.tsx#L5483)
 
 ```typescript
 renderIpImport() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -6860,7 +6860,7 @@ renderIpImport() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/n
 
 ## StormApp.renderIpImport.onRaw
 
-[frontend/src/storm/StormApp.tsx:5495](../../../../../frontend/src/storm/StormApp.tsx#L5495)
+[frontend/src/storm/StormApp.tsx:5493](../../../../../frontend/src/storm/StormApp.tsx#L5493)
 
 ```typescript
 onRaw(v) => void
@@ -6884,7 +6884,7 @@ onRaw(v) => void
 
 ## StormApp.renderIpImport.onPreview
 
-[frontend/src/storm/StormApp.tsx:5496](../../../../../frontend/src/storm/StormApp.tsx#L5496)
+[frontend/src/storm/StormApp.tsx:5494](../../../../../frontend/src/storm/StormApp.tsx#L5494)
 
 ```typescript
 onPreview(v) => void
@@ -6907,7 +6907,7 @@ onPreview(v) => void
 
 ## StormApp.renderEpImport
 
-[frontend/src/storm/StormApp.tsx:5501](../../../../../frontend/src/storm/StormApp.tsx#L5501)
+[frontend/src/storm/StormApp.tsx:5499](../../../../../frontend/src/storm/StormApp.tsx#L5499)
 
 ```typescript
 renderEpImport() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -6927,7 +6927,7 @@ renderEpImport() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/n
 
 ## StormApp.renderEpImport.onRaw
 
-[frontend/src/storm/StormApp.tsx:5513](../../../../../frontend/src/storm/StormApp.tsx#L5513)
+[frontend/src/storm/StormApp.tsx:5511](../../../../../frontend/src/storm/StormApp.tsx#L5511)
 
 ```typescript
 onRaw(v) => void
@@ -6951,7 +6951,7 @@ onRaw(v) => void
 
 ## StormApp.renderEpImport.onPreview
 
-[frontend/src/storm/StormApp.tsx:5514](../../../../../frontend/src/storm/StormApp.tsx#L5514)
+[frontend/src/storm/StormApp.tsx:5512](../../../../../frontend/src/storm/StormApp.tsx#L5512)
 
 ```typescript
 onPreview(v) => void
@@ -6974,7 +6974,7 @@ onPreview(v) => void
 
 ## StormApp.searchBox
 
-[frontend/src/storm/StormApp.tsx:5519](../../../../../frontend/src/storm/StormApp.tsx#L5519)
+[frontend/src/storm/StormApp.tsx:5517](../../../../../frontend/src/storm/StormApp.tsx#L5517)
 
 ```typescript
 searchBox(placeholder: string, value: string, onChange: (v: string) => void, width: number | string = 280) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -6993,7 +6993,7 @@ searchBox(placeholder: string, value: string, onChange: (v: string) => void, wid
 
 ## StormApp.filterPill
 
-[frontend/src/storm/StormApp.tsx:5526](../../../../../frontend/src/storm/StormApp.tsx#L5526)
+[frontend/src/storm/StormApp.tsx:5524](../../../../../frontend/src/storm/StormApp.tsx#L5524)
 
 ```typescript
 filterPill(label: string, on: boolean, onClick: () => void) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7018,7 +7018,7 @@ filterPill(label: string, on: boolean, onClick: () => void) => import("/Users/nk
 
 ## StormApp.reconFilterRow
 
-[frontend/src/storm/StormApp.tsx:5533](../../../../../frontend/src/storm/StormApp.tsx#L5533)
+[frontend/src/storm/StormApp.tsx:5531](../../../../../frontend/src/storm/StormApp.tsx#L5531)
 
 ```typescript
 reconFilterRow(view: ReconView) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7045,7 +7045,7 @@ reconFilterRow(view: ReconView) => import("/Users/nkolomiika/Cursor Projects/Sbe
 
 ## StormApp.renderExport
 
-[frontend/src/storm/StormApp.tsx:5599](../../../../../frontend/src/storm/StormApp.tsx#L5599)
+[frontend/src/storm/StormApp.tsx:5597](../../../../../frontend/src/storm/StormApp.tsx#L5597)
 
 ```typescript
 renderExport() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7071,7 +7071,7 @@ renderExport() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/nod
 
 ## StormApp.renderJsScanSetup
 
-[frontend/src/storm/StormApp.tsx:5661](../../../../../frontend/src/storm/StormApp.tsx#L5661)
+[frontend/src/storm/StormApp.tsx:5659](../../../../../frontend/src/storm/StormApp.tsx#L5659)
 
 ```typescript
 renderJsScanSetup() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7095,7 +7095,7 @@ renderJsScanSetup() => import("/Users/nkolomiika/Cursor Projects/SberPCF/fronten
 
 ## StormApp.renderJsHostDetail
 
-[frontend/src/storm/StormApp.tsx:5706](../../../../../frontend/src/storm/StormApp.tsx#L5706)
+[frontend/src/storm/StormApp.tsx:5704](../../../../../frontend/src/storm/StormApp.tsx#L5704)
 
 ```typescript
 renderJsHostDetail(host: string) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7126,7 +7126,7 @@ renderJsHostDetail(host: string) => import("/Users/nkolomiika/Cursor Projects/Sb
 
 ## StormApp.renderJsFileDetail
 
-[frontend/src/storm/StormApp.tsx:5795](../../../../../frontend/src/storm/StormApp.tsx#L5795)
+[frontend/src/storm/StormApp.tsx:5793](../../../../../frontend/src/storm/StormApp.tsx#L5793)
 
 ```typescript
 renderJsFileDetail(f: JsFileEntry) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7153,7 +7153,7 @@ One JS file's card — its secrets table and paths list, with Export.
 
 ## StormApp.renderRecon
 
-[frontend/src/storm/StormApp.tsx:5859](../../../../../frontend/src/storm/StormApp.tsx#L5859)
+[frontend/src/storm/StormApp.tsx:5857](../../../../../frontend/src/storm/StormApp.tsx#L5857)
 
 ```typescript
 renderRecon() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7192,7 +7192,7 @@ renderRecon() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node
 
 ## StormApp.renderHostDetail
 
-[frontend/src/storm/StormApp.tsx:6091](../../../../../frontend/src/storm/StormApp.tsx#L6091)
+[frontend/src/storm/StormApp.tsx:6089](../../../../../frontend/src/storm/StormApp.tsx#L6089)
 
 ```typescript
 renderHostDetail(h: Host) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7219,7 +7219,7 @@ renderHostDetail(h: Host) => import("/Users/nkolomiika/Cursor Projects/SberPCF/f
 
 ## StormApp.renderIpDetail
 
-[frontend/src/storm/StormApp.tsx:6171](../../../../../frontend/src/storm/StormApp.tsx#L6171)
+[frontend/src/storm/StormApp.tsx:6169](../../../../../frontend/src/storm/StormApp.tsx#L6169)
 
 ```typescript
 renderIpDetail(row: (typeof ipsRows)[number]) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7246,7 +7246,7 @@ renderIpDetail(row: (typeof ipsRows)[number]) => import("/Users/nkolomiika/Curso
 
 ## StormApp.renderVulns
 
-[frontend/src/storm/StormApp.tsx:6226](../../../../../frontend/src/storm/StormApp.tsx#L6226)
+[frontend/src/storm/StormApp.tsx:6224](../../../../../frontend/src/storm/StormApp.tsx#L6224)
 
 ```typescript
 renderVulns() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7274,7 +7274,7 @@ renderVulns() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node
 
 ## StormApp.renderVulnDetail
 
-[frontend/src/storm/StormApp.tsx:6287](../../../../../frontend/src/storm/StormApp.tsx#L6287)
+[frontend/src/storm/StormApp.tsx:6285](../../../../../frontend/src/storm/StormApp.tsx#L6285)
 
 ```typescript
 renderVulnDetail() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7308,7 +7308,7 @@ renderVulnDetail() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend
 
 ## StormApp.renderVulnDetail.vdHostPick
 
-[frontend/src/storm/StormApp.tsx:6305](../../../../../frontend/src/storm/StormApp.tsx#L6305)
+[frontend/src/storm/StormApp.tsx:6303](../../../../../frontend/src/storm/StormApp.tsx#L6303)
 
 ```typescript
 vdHostPick(v: string) => void
@@ -7331,7 +7331,7 @@ vdHostPick(v: string) => void
 
 ## StormApp.notePreview
 
-[frontend/src/storm/StormApp.tsx:6487](../../../../../frontend/src/storm/StormApp.tsx#L6487)
+[frontend/src/storm/StormApp.tsx:6485](../../../../../frontend/src/storm/StormApp.tsx#L6485)
 
 ```typescript
 notePreview(md: string) => string
@@ -7363,7 +7363,7 @@ First non-empty line of the body, with Markdown syntax stripped — the card pre
 
 ## StormApp.renderCreds
 
-[frontend/src/storm/StormApp.tsx:6509](../../../../../frontend/src/storm/StormApp.tsx#L6509)
+[frontend/src/storm/StormApp.tsx:6507](../../../../../frontend/src/storm/StormApp.tsx#L6507)
 
 ```typescript
 renderCreds() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7383,7 +7383,7 @@ renderCreds() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node
 
 ## StormApp.renderNotes
 
-[frontend/src/storm/StormApp.tsx:6569](../../../../../frontend/src/storm/StormApp.tsx#L6569)
+[frontend/src/storm/StormApp.tsx:6567](../../../../../frontend/src/storm/StormApp.tsx#L6567)
 
 ```typescript
 renderNotes() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7403,7 +7403,7 @@ renderNotes() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node
 
 ## StormApp.renderNoteViewer
 
-[frontend/src/storm/StormApp.tsx:6597](../../../../../frontend/src/storm/StormApp.tsx#L6597)
+[frontend/src/storm/StormApp.tsx:6595](../../../../../frontend/src/storm/StormApp.tsx#L6595)
 
 ```typescript
 renderNoteViewer() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7425,7 +7425,7 @@ renderNoteViewer() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend
 
 ## StormApp.renderNoteEditor
 
-[frontend/src/storm/StormApp.tsx:6643](../../../../../frontend/src/storm/StormApp.tsx#L6643)
+[frontend/src/storm/StormApp.tsx:6641](../../../../../frontend/src/storm/StormApp.tsx#L6641)
 
 ```typescript
 renderNoteEditor() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7445,7 +7445,7 @@ renderNoteEditor() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend
 
 ## StormApp.renderMembers
 
-[frontend/src/storm/StormApp.tsx:6685](../../../../../frontend/src/storm/StormApp.tsx#L6685)
+[frontend/src/storm/StormApp.tsx:6683](../../../../../frontend/src/storm/StormApp.tsx#L6683)
 
 ```typescript
 renderMembers() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7471,7 +7471,7 @@ renderMembers() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/no
 
 ## StormApp.resolveActivityName
 
-[frontend/src/storm/StormApp.tsx:6732](../../../../../frontend/src/storm/StormApp.tsx#L6732)
+[frontend/src/storm/StormApp.tsx:6730](../../../../../frontend/src/storm/StormApp.tsx#L6730)
 
 ```typescript
 resolveActivityName(type, id) => string | null
@@ -7498,7 +7498,7 @@ resolveActivityName(type, id) => string | null
 
 ## StormApp.activityLineRow
 
-[frontend/src/storm/StormApp.tsx:6753](../../../../../frontend/src/storm/StormApp.tsx#L6753)
+[frontend/src/storm/StormApp.tsx:6751](../../../../../frontend/src/storm/StormApp.tsx#L6751)
 
 ```typescript
 activityLineRow(l: ActivityLine, tone: ActTone) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7515,7 +7515,7 @@ One line of the dark event panel: + text [SEVERITY].
 
 ## StormApp.renderActivity
 
-[frontend/src/storm/StormApp.tsx:6775](../../../../../frontend/src/storm/StormApp.tsx#L6775)
+[frontend/src/storm/StormApp.tsx:6773](../../../../../frontend/src/storm/StormApp.tsx#L6773)
 
 ```typescript
 renderActivity() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7536,7 +7536,7 @@ renderActivity() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/n
 
 ## StormApp.renderProfile
 
-[frontend/src/storm/StormApp.tsx:6836](../../../../../frontend/src/storm/StormApp.tsx#L6836)
+[frontend/src/storm/StormApp.tsx:6834](../../../../../frontend/src/storm/StormApp.tsx#L6834)
 
 ```typescript
 renderProfile() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7562,7 +7562,7 @@ renderProfile() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/no
 
 ## StormApp.cardHeader
 
-[frontend/src/storm/StormApp.tsx:6872](../../../../../frontend/src/storm/StormApp.tsx#L6872)
+[frontend/src/storm/StormApp.tsx:6870](../../../../../frontend/src/storm/StormApp.tsx#L6870)
 
 ```typescript
 cardHeader(icon: Parameters<typeof Icon>[0]["name"], title: string, sub: string, right?: ReactNode) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7588,7 +7588,7 @@ cardHeader(icon: Parameters<typeof Icon>[0]["name"], title: string, sub: string,
 
 ## StormApp.renderProfileAccount
 
-[frontend/src/storm/StormApp.tsx:6882](../../../../../frontend/src/storm/StormApp.tsx#L6882)
+[frontend/src/storm/StormApp.tsx:6880](../../../../../frontend/src/storm/StormApp.tsx#L6880)
 
 ```typescript
 renderProfileAccount() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7611,7 +7611,7 @@ renderProfileAccount() => import("/Users/nkolomiika/Cursor Projects/SberPCF/fron
 
 ## StormApp.renderProfileCustomizing
 
-[frontend/src/storm/StormApp.tsx:6927](../../../../../frontend/src/storm/StormApp.tsx#L6927)
+[frontend/src/storm/StormApp.tsx:6925](../../../../../frontend/src/storm/StormApp.tsx#L6925)
 
 ```typescript
 renderProfileCustomizing() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7632,7 +7632,7 @@ renderProfileCustomizing() => import("/Users/nkolomiika/Cursor Projects/SberPCF/
 
 ## StormApp.renderProfileCustomizing.tile
 
-[frontend/src/storm/StormApp.tsx:6929](../../../../../frontend/src/storm/StormApp.tsx#L6929)
+[frontend/src/storm/StormApp.tsx:6927](../../../../../frontend/src/storm/StormApp.tsx#L6927)
 
 ```typescript
 tile(key: string, active: boolean, onClick: () => void, icon: Parameters<typeof Icon>[0]["name"], title: string, desc: string) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7653,7 +7653,7 @@ tile(key: string, active: boolean, onClick: () => void, icon: Parameters<typeof 
 
 ## StormApp.renderProfileSecurity
 
-[frontend/src/storm/StormApp.tsx:6981](../../../../../frontend/src/storm/StormApp.tsx#L6981)
+[frontend/src/storm/StormApp.tsx:6979](../../../../../frontend/src/storm/StormApp.tsx#L6979)
 
 ```typescript
 renderProfileSecurity() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7674,7 +7674,7 @@ renderProfileSecurity() => import("/Users/nkolomiika/Cursor Projects/SberPCF/fro
 
 ## StormApp.renderProfileApi
 
-[frontend/src/storm/StormApp.tsx:7054](../../../../../frontend/src/storm/StormApp.tsx#L7054)
+[frontend/src/storm/StormApp.tsx:7052](../../../../../frontend/src/storm/StormApp.tsx#L7052)
 
 ```typescript
 renderProfileApi() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7694,7 +7694,7 @@ renderProfileApi() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend
 
 ## StormApp.modalShell
 
-[frontend/src/storm/StormApp.tsx:7085](../../../../../frontend/src/storm/StormApp.tsx#L7085)
+[frontend/src/storm/StormApp.tsx:7083](../../../../../frontend/src/storm/StormApp.tsx#L7083)
 
 ```typescript
 modalShell(open: boolean, onClose: () => void, zIndex: number, width: number, children: ReactNode, align: "center" | "flex-start" = "center", pad = "24px") => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7716,7 +7716,7 @@ modalShell(open: boolean, onClose: () => void, zIndex: number, width: number, ch
 
 ## StormApp.modalFooter
 
-[frontend/src/storm/StormApp.tsx:7093](../../../../../frontend/src/storm/StormApp.tsx#L7093)
+[frontend/src/storm/StormApp.tsx:7091](../../../../../frontend/src/storm/StormApp.tsx#L7091)
 
 ```typescript
 modalFooter(onCancel: () => void, onSave: () => void, saveLabel: string, saveBg = "var(--st-accent-2)", disabled = false) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7743,7 +7743,7 @@ modalFooter(onCancel: () => void, onSave: () => void, saveLabel: string, saveBg 
 
 ## StormApp.onClick
 
-[frontend/src/storm/StormApp.tsx:7153](../../../../../frontend/src/storm/StormApp.tsx#L7153)
+[frontend/src/storm/StormApp.tsx:7151](../../../../../frontend/src/storm/StormApp.tsx#L7151)
 
 ```typescript
 onClick() => void
@@ -7762,7 +7762,7 @@ onClick() => void
 
 ## StormApp.onClick
 
-[frontend/src/storm/StormApp.tsx:7154](../../../../../frontend/src/storm/StormApp.tsx#L7154)
+[frontend/src/storm/StormApp.tsx:7152](../../../../../frontend/src/storm/StormApp.tsx#L7152)
 
 ```typescript
 onClick() => void
@@ -7781,7 +7781,7 @@ onClick() => void
 
 ## StormApp.close
 
-[frontend/src/storm/StormApp.tsx:7363](../../../../../frontend/src/storm/StormApp.tsx#L7363)
+[frontend/src/storm/StormApp.tsx:7361](../../../../../frontend/src/storm/StormApp.tsx#L7361)
 
 ```typescript
 close() => void

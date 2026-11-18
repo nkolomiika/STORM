@@ -5493,7 +5493,10 @@ ValidationError(f'Некорректный CVSS вектор: {exc}')
 def _apply_calculated_cvss_fields(payload: dict, *, current_version: str | None=None, current_vector: str | None=None) -> None
 ```
 
-В теле вызывает `ValidationError`, `VulnerabilityService._calculate_cvss_score`, `getattr`, `payload.get`.
+Вычисляет CVSS; при пустом векторе (включая пробелы) очищает версию и балл.
+
+При частичном обновлении использует текущий вектор. Явный балл без
+корректного вектора отклоняет, критичность выводится из результата.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -5514,6 +5517,7 @@ ValidationError('Для расчёта CVSS укажите корректный 
 <details>
 <summary>Прямые вызовы в теле</summary>
 
+- `(payload.get('cvss_vector') or '').strip`
 - `ValidationError`
 - `VulnerabilityService._calculate_cvss_score`
 - `getattr`
@@ -5523,7 +5527,7 @@ ValidationError('Для расчёта CVSS укажите корректный 
 
 ## VulnerabilityService._severity_from_cvss_score
 
-[backend/app/services.py:3219](../../../../backend/app/services.py#L3219)
+[backend/app/services.py:3224](../../../../backend/app/services.py#L3224)
 
 ```python
 def _severity_from_cvss_score(score: float | None) -> Severity
@@ -5539,7 +5543,7 @@ def _severity_from_cvss_score(score: float | None) -> Severity
 
 ## VulnerabilityService._resolve_workflow_step_endpoints
 
-[backend/app/services.py:3233](../../../../backend/app/services.py#L3233)
+[backend/app/services.py:3238](../../../../backend/app/services.py#L3238)
 
 ```python
 async def _resolve_workflow_step_endpoints(self, project_id: int, host_id: int, steps: list[dict]) -> list[dict]
@@ -5581,7 +5585,7 @@ async def _resolve_workflow_step_endpoints(self, project_id: int, host_id: int, 
 
 ## VulnerabilityService._get_primary_host_id
 
-[backend/app/services.py:3282](../../../../backend/app/services.py#L3282)
+[backend/app/services.py:3287](../../../../backend/app/services.py#L3287)
 
 ```python
 async def _get_primary_host_id(self, vuln_id: int) -> int
@@ -5617,7 +5621,7 @@ ValidationError('Уязвимость должна быть привязана �
 
 ## VulnerabilityService._validate_workflow_step_images
 
-[backend/app/services.py:3292](../../../../backend/app/services.py#L3292)
+[backend/app/services.py:3297](../../../../backend/app/services.py#L3297)
 
 ```python
 async def _validate_workflow_step_images(self, vulnerability_id: int | None, steps: list[dict] | None) -> None
@@ -5663,7 +5667,7 @@ ValidationError(f"workflow_steps.image_file_ids содержат файлы, н�
 
 ## VulnerabilityService.list
 
-[backend/app/services.py:3316](../../../../backend/app/services.py#L3316)
+[backend/app/services.py:3321](../../../../backend/app/services.py#L3321)
 
 ```python
 async def list(self, project_id: int, page: int, size: int, severity: str | None, status: str | None) -> tuple[list[Vulnerability], int]
@@ -5707,7 +5711,7 @@ async def list(self, project_id: int, page: int, size: int, severity: str | None
 
 ## VulnerabilityService.host_links_for_page
 
-[backend/app/services.py:3328](../../../../backend/app/services.py#L3328)
+[backend/app/services.py:3333](../../../../backend/app/services.py#L3333)
 
 ```python
 async def host_links_for_page(self, items: list[Vulnerability]) -> dict[int, int]
@@ -5738,7 +5742,7 @@ async def host_links_for_page(self, items: list[Vulnerability]) -> dict[int, int
 
 ## VulnerabilityService.list_for_host
 
-[backend/app/services.py:3343](../../../../backend/app/services.py#L3343)
+[backend/app/services.py:3348](../../../../backend/app/services.py#L3348)
 
 ```python
 async def list_for_host(self, project_id: int, host_id: int, page: int, size: int, severity: str | None, status: str | None) -> tuple[list[Vulnerability], int]
@@ -5793,13 +5797,13 @@ NotFoundError('Хост не найден')
 
 ## VulnerabilityService.create
 
-[backend/app/services.py:3371](../../../../backend/app/services.py#L3371)
+[backend/app/services.py:3376](../../../../backend/app/services.py#L3376)
 
 ```python
 async def create(self, project_id: int, payload: dict, actor_id: int) -> Vulnerability
 ```
 
-В теле вызывает `'\n'.join`, `ValidationError`, `Vulnerability`, `VulnerabilityAsset`, `getattr`, `notification_events.publish`, `notification_events.queue_mentions`, `notification_events.queue_vulnerability_created`; полный список ниже.
+Создаёт находку хоста; без CVSS задаёт unrealized, иначе выводит критичность из балла.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -5848,7 +5852,7 @@ ValidationError('Уязвимость должна быть привязана �
 
 ## VulnerabilityService.get
 
-[backend/app/services.py:3403](../../../../backend/app/services.py#L3403)
+[backend/app/services.py:3408](../../../../backend/app/services.py#L3408)
 
 ```python
 async def get(self, project_id: int, vuln_id: int) -> dict
@@ -5885,13 +5889,13 @@ async def get(self, project_id: int, vuln_id: int) -> dict
 
 ## VulnerabilityService.update
 
-[backend/app/services.py:3410](../../../../backend/app/services.py#L3410)
+[backend/app/services.py:3415](../../../../backend/app/services.py#L3415)
 
 ```python
 async def update(self, project_id: int, vuln_id: int, payload: dict, actor_id: int) -> Vulnerability
 ```
 
-В теле вызывает `'\n'.join`, `getattr`, `notification_events.publish`, `notification_events.queue_mentions`, `payload.get`, `payload.items`, `self._apply_calculated_cvss_fields`, `self._get_primary_host_id`; полный список ниже.
+Обновляет находку и пересчитывает критичность; очистка CVSS возвращает unrealized.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -5933,7 +5937,7 @@ async def update(self, project_id: int, vuln_id: int, payload: dict, actor_id: i
 
 ## VulnerabilityService.patch_status
 
-[backend/app/services.py:3446](../../../../backend/app/services.py#L3446)
+[backend/app/services.py:3451](../../../../backend/app/services.py#L3451)
 
 ```python
 async def patch_status(self, project_id: int, vuln_id: int, status: str, actor_id: int) -> Vulnerability
@@ -5967,7 +5971,7 @@ async def patch_status(self, project_id: int, vuln_id: int, status: str, actor_i
 
 ## VulnerabilityService._notify_vuln_status_changed
 
-[backend/app/services.py:3464](../../../../backend/app/services.py#L3464)
+[backend/app/services.py:3469](../../../../backend/app/services.py#L3469)
 
 ```python
 async def _notify_vuln_status_changed(self, vuln: Vulnerability, actor_id: int) -> None
@@ -6000,7 +6004,7 @@ async def _notify_vuln_status_changed(self, vuln: Vulnerability, actor_id: int) 
 
 ## VulnerabilityService.delete
 
-[backend/app/services.py:3499](../../../../backend/app/services.py#L3499)
+[backend/app/services.py:3504](../../../../backend/app/services.py#L3504)
 
 ```python
 async def delete(self, project_id: int, vuln_id: int, actor_id: int) -> None
@@ -6032,7 +6036,7 @@ async def delete(self, project_id: int, vuln_id: int, actor_id: int) -> None
 
 ## VulnerabilityService.list_assets
 
-[backend/app/services.py:3507](../../../../backend/app/services.py#L3507)
+[backend/app/services.py:3512](../../../../backend/app/services.py#L3512)
 
 ```python
 async def list_assets(self, project_id: int, vuln_id: int) -> list[VulnerabilityAsset]
@@ -6063,7 +6067,7 @@ async def list_assets(self, project_id: int, vuln_id: int) -> list[Vulnerability
 
 ## VulnerabilityService._assert_asset_in_project
 
-[backend/app/services.py:3511](../../../../backend/app/services.py#L3511)
+[backend/app/services.py:3516](../../../../backend/app/services.py#L3516)
 
 ```python
 async def _assert_asset_in_project(self, project_id: int, asset_type: AssetType, asset_id: int) -> None
@@ -6107,7 +6111,7 @@ ValidationError('Актив не найден или принадлежит др
 
 ## VulnerabilityService.add_asset
 
-[backend/app/services.py:3532](../../../../backend/app/services.py#L3532)
+[backend/app/services.py:3537](../../../../backend/app/services.py#L3537)
 
 ```python
 async def add_asset(self, project_id: int, vuln_id: int, asset_type: AssetType, asset_id: int, actor_id: int) -> VulnerabilityAsset
@@ -6155,7 +6159,7 @@ ConflictError('Связь уже существует')
 
 ## VulnerabilityService.delete_asset
 
-[backend/app/services.py:3562](../../../../backend/app/services.py#L3562)
+[backend/app/services.py:3567](../../../../backend/app/services.py#L3567)
 
 ```python
 async def delete_asset(self, project_id: int, vuln_id: int, link_id: int, actor_id: int) -> None
@@ -6204,7 +6208,7 @@ ValidationError('Уязвимость должна оставаться прив
 
 ## FileService.__init__
 
-[backend/app/services.py:3594](../../../../backend/app/services.py#L3594)
+[backend/app/services.py:3599](../../../../backend/app/services.py#L3599)
 
 ```python
 def __init__(self, db: AsyncSession, storage: MinioStorage | None=None) -> None
@@ -6229,7 +6233,7 @@ def __init__(self, db: AsyncSession, storage: MinioStorage | None=None) -> None
 
 ## FileService._ensure_vuln
 
-[backend/app/services.py:3599](../../../../backend/app/services.py#L3599)
+[backend/app/services.py:3604](../../../../backend/app/services.py#L3604)
 
 ```python
 async def _ensure_vuln(self, project_id: int, vuln_id: int) -> Vulnerability
@@ -6253,7 +6257,7 @@ async def _ensure_vuln(self, project_id: int, vuln_id: int) -> Vulnerability
 
 ## FileService.list
 
-[backend/app/services.py:3603](../../../../backend/app/services.py#L3603)
+[backend/app/services.py:3608](../../../../backend/app/services.py#L3608)
 
 ```python
 async def list(self, project_id: int, vuln_id: int) -> list[File]
@@ -6286,7 +6290,7 @@ async def list(self, project_id: int, vuln_id: int) -> list[File]
 
 ## FileService.upload
 
-[backend/app/services.py:3607](../../../../backend/app/services.py#L3607)
+[backend/app/services.py:3612](../../../../backend/app/services.py#L3612)
 
 ```python
 async def upload(self, project_id: int, vuln_id: int, upload: UploadFile, actor_id: int) -> File
@@ -6334,7 +6338,7 @@ ValidationError('Размер файла превышает 50 МБ')
 
 ## FileService.download
 
-[backend/app/services.py:3634](../../../../backend/app/services.py#L3634)
+[backend/app/services.py:3639](../../../../backend/app/services.py#L3639)
 
 ```python
 async def download(self, file_id: int, current_user: User) -> tuple[File, bytes]
@@ -6376,7 +6380,7 @@ NotFoundError('Файл не найден')
 
 ## FileService.delete
 
-[backend/app/services.py:3652](../../../../backend/app/services.py#L3652)
+[backend/app/services.py:3657](../../../../backend/app/services.py#L3657)
 
 ```python
 async def delete(self, project_id: int, vuln_id: int, file_id: int, actor_id: int) -> None
@@ -6421,7 +6425,7 @@ NotFoundError('Файл не найден')
 
 ## CommentService.__init__
 
-[backend/app/services.py:3669](../../../../backend/app/services.py#L3669)
+[backend/app/services.py:3674](../../../../backend/app/services.py#L3674)
 
 ```python
 def __init__(self, db: AsyncSession) -> None
@@ -6444,7 +6448,7 @@ def __init__(self, db: AsyncSession) -> None
 
 ## CommentService._ensure_vuln
 
-[backend/app/services.py:3673](../../../../backend/app/services.py#L3673)
+[backend/app/services.py:3678](../../../../backend/app/services.py#L3678)
 
 ```python
 async def _ensure_vuln(self, project_id: int, vuln_id: int) -> Vulnerability
@@ -6468,7 +6472,7 @@ async def _ensure_vuln(self, project_id: int, vuln_id: int) -> Vulnerability
 
 ## CommentService._extract_mentions
 
-[backend/app/services.py:3677](../../../../backend/app/services.py#L3677)
+[backend/app/services.py:3682](../../../../backend/app/services.py#L3682)
 
 ```python
 async def _extract_mentions(self, project_id: int, content: str) -> list[User]
@@ -6492,7 +6496,7 @@ async def _extract_mentions(self, project_id: int, content: str) -> list[User]
 
 ## CommentService.list
 
-[backend/app/services.py:3680](../../../../backend/app/services.py#L3680)
+[backend/app/services.py:3685](../../../../backend/app/services.py#L3685)
 
 ```python
 async def list(self, project_id: int, vuln_id: int, page: int, size: int) -> tuple[list[CommentOut], int]
@@ -6543,7 +6547,7 @@ async def list(self, project_id: int, vuln_id: int, page: int, size: int) -> tup
 
 ## CommentService.create
 
-[backend/app/services.py:3721](../../../../backend/app/services.py#L3721)
+[backend/app/services.py:3726](../../../../backend/app/services.py#L3726)
 
 ```python
 async def create(self, project_id: int, vuln_id: int, content: str, actor: User) -> CommentOut
@@ -6585,7 +6589,7 @@ async def create(self, project_id: int, vuln_id: int, content: str, actor: User)
 
 ## CommentService.update
 
-[backend/app/services.py:3778](../../../../backend/app/services.py#L3778)
+[backend/app/services.py:3783](../../../../backend/app/services.py#L3783)
 
 ```python
 async def update(self, project_id: int, vuln_id: int, comment_id: int, content: str, actor: User) -> CommentOut
@@ -6643,7 +6647,7 @@ NotFoundError('Комментарий не найден')
 
 ## CommentService.delete
 
-[backend/app/services.py:3813](../../../../backend/app/services.py#L3813)
+[backend/app/services.py:3818](../../../../backend/app/services.py#L3818)
 
 ```python
 async def delete(self, project_id: int, vuln_id: int, comment_id: int, actor: User) -> None
@@ -6689,7 +6693,7 @@ NotFoundError('Комментарий не найден')
 
 ## ProjectNoteService.__init__
 
-[backend/app/services.py:3831](../../../../backend/app/services.py#L3831)
+[backend/app/services.py:3836](../../../../backend/app/services.py#L3836)
 
 ```python
 def __init__(self, db: AsyncSession) -> None
@@ -6712,7 +6716,7 @@ def __init__(self, db: AsyncSession) -> None
 
 ## ProjectNoteService._lock_tree
 
-[backend/app/services.py:3835](../../../../backend/app/services.py#L3835)
+[backend/app/services.py:3840](../../../../backend/app/services.py#L3840)
 
 ```python
 async def _lock_tree(self, project_id: int) -> None
@@ -6740,7 +6744,7 @@ async def _lock_tree(self, project_id: int) -> None
 
 ## ProjectNoteService._ensure_project
 
-[backend/app/services.py:3839](../../../../backend/app/services.py#L3839)
+[backend/app/services.py:3844](../../../../backend/app/services.py#L3844)
 
 ```python
 async def _ensure_project(self, project_id: int) -> Project
@@ -6763,7 +6767,7 @@ async def _ensure_project(self, project_id: int) -> Project
 
 ## ProjectNoteService._get_note
 
-[backend/app/services.py:3843](../../../../backend/app/services.py#L3843)
+[backend/app/services.py:3848](../../../../backend/app/services.py#L3848)
 
 ```python
 async def _get_note(self, project_id: int, note_id: int) -> ProjectNote
@@ -6799,7 +6803,7 @@ NotFoundError('Страница заметки не найдена')
 
 ## ProjectNoteService._ensure_parent
 
-[backend/app/services.py:3849](../../../../backend/app/services.py#L3849)
+[backend/app/services.py:3854](../../../../backend/app/services.py#L3854)
 
 ```python
 async def _ensure_parent(self, project_id: int, parent_id: int | None) -> ProjectNote | None
@@ -6835,7 +6839,7 @@ NotFoundError('Родительская страница не найдена')
 
 ## ProjectNoteService._ensure_unique_title
 
-[backend/app/services.py:3859](../../../../backend/app/services.py#L3859)
+[backend/app/services.py:3864](../../../../backend/app/services.py#L3864)
 
 ```python
 async def _ensure_unique_title(self, project_id: int, parent_id: int | None, title: str, *, exclude_note_id: int | None=None) -> None
@@ -6875,7 +6879,7 @@ ConflictError('В этом разделе уже есть страница с т
 
 ## ProjectNoteService._next_sort_order
 
-[backend/app/services.py:3880](../../../../backend/app/services.py#L3880)
+[backend/app/services.py:3885](../../../../backend/app/services.py#L3885)
 
 ```python
 async def _next_sort_order(self, project_id: int, parent_id: int | None) -> int
@@ -6907,7 +6911,7 @@ async def _next_sort_order(self, project_id: int, parent_id: int | None) -> int
 
 ## ProjectNoteService._ensure_not_descendant_move
 
-[backend/app/services.py:3891](../../../../backend/app/services.py#L3891)
+[backend/app/services.py:3896](../../../../backend/app/services.py#L3896)
 
 ```python
 async def _ensure_not_descendant_move(self, project_id: int, note_id: int, new_parent_id: int | None) -> None
@@ -6947,7 +6951,7 @@ ValidationError('Обнаружен цикл в дереве заметок')
 
 ## ProjectNoteService.list_notes
 
-[backend/app/services.py:3905](../../../../backend/app/services.py#L3905)
+[backend/app/services.py:3910](../../../../backend/app/services.py#L3910)
 
 ```python
 async def list_notes(self, project_id: int) -> list[ProjectNote]
@@ -6982,7 +6986,7 @@ async def list_notes(self, project_id: int) -> list[ProjectNote]
 
 ## ProjectNoteService.list_activity
 
-[backend/app/services.py:3914](../../../../backend/app/services.py#L3914)
+[backend/app/services.py:3919](../../../../backend/app/services.py#L3919)
 
 ```python
 async def list_activity(self, project_id: int, limit: int=30) -> list[dict]
@@ -7038,7 +7042,7 @@ Username — через outer join к users (может быть NULL для у�
 
 ## ProjectNoteService.get_note
 
-[backend/app/services.py:3964](../../../../backend/app/services.py#L3964)
+[backend/app/services.py:3969](../../../../backend/app/services.py#L3969)
 
 ```python
 async def get_note(self, project_id: int, note_id: int) -> ProjectNote
@@ -7062,7 +7066,7 @@ async def get_note(self, project_id: int, note_id: int) -> ProjectNote
 
 ## ProjectNoteService.create_note
 
-[backend/app/services.py:3967](../../../../backend/app/services.py#L3967)
+[backend/app/services.py:3972](../../../../backend/app/services.py#L3972)
 
 ```python
 async def create_note(self, project_id: int, payload: dict, actor_id: int) -> ProjectNote
@@ -7105,7 +7109,7 @@ async def create_note(self, project_id: int, payload: dict, actor_id: int) -> Pr
 
 ## ProjectNoteService.update_note
 
-[backend/app/services.py:4004](../../../../backend/app/services.py#L4004)
+[backend/app/services.py:4009](../../../../backend/app/services.py#L4009)
 
 ```python
 async def update_note(self, project_id: int, note_id: int, payload: dict, actor_id: int) -> ProjectNote
@@ -7145,7 +7149,7 @@ async def update_note(self, project_id: int, note_id: int, payload: dict, actor_
 
 ## ProjectNoteService.move_note
 
-[backend/app/services.py:4034](../../../../backend/app/services.py#L4034)
+[backend/app/services.py:4039](../../../../backend/app/services.py#L4039)
 
 ```python
 async def move_note(self, project_id: int, note_id: int, parent_id: int | None, actor_id: int) -> ProjectNote
@@ -7190,7 +7194,7 @@ ValidationError('Нельзя переместить страницу в сам�
 
 ## ProjectNoteService.reorder_notes
 
-[backend/app/services.py:4054](../../../../backend/app/services.py#L4054)
+[backend/app/services.py:4059](../../../../backend/app/services.py#L4059)
 
 ```python
 async def reorder_notes(self, project_id: int, parent_id: int | None, items: list[dict], actor_id: int) -> list[ProjectNote]
@@ -7244,7 +7248,7 @@ ValidationError('Для ручной сортировки нужно перед�
 
 ## ProjectNoteService.delete_note
 
-[backend/app/services.py:4095](../../../../backend/app/services.py#L4095)
+[backend/app/services.py:4100](../../../../backend/app/services.py#L4100)
 
 ```python
 async def delete_note(self, project_id: int, note_id: int, actor_id: int) -> None
@@ -7295,7 +7299,7 @@ ConflictError('Нельзя удалить страницу: после пере
 
 ## ProjectNoteService._get_comment
 
-[backend/app/services.py:4132](../../../../backend/app/services.py#L4132)
+[backend/app/services.py:4137](../../../../backend/app/services.py#L4137)
 
 ```python
 async def _get_comment(self, project_id: int, note_id: int, comment_id: int) -> ProjectNoteComment
@@ -7332,7 +7336,7 @@ NotFoundError('Комментарий не найден')
 
 ## ProjectNoteService.list_comments
 
-[backend/app/services.py:4146](../../../../backend/app/services.py#L4146)
+[backend/app/services.py:4151](../../../../backend/app/services.py#L4151)
 
 ```python
 async def list_comments(self, project_id: int, note_id: int, page: int, size: int) -> tuple[list[ProjectNoteCommentOut], int]
@@ -7376,7 +7380,7 @@ async def list_comments(self, project_id: int, note_id: int, page: int, size: in
 
 ## ProjectNoteService.create_comment
 
-[backend/app/services.py:4181](../../../../backend/app/services.py#L4181)
+[backend/app/services.py:4186](../../../../backend/app/services.py#L4186)
 
 ```python
 async def create_comment(self, project_id: int, note_id: int, content: str, actor: User) -> ProjectNoteCommentOut
@@ -7416,7 +7420,7 @@ async def create_comment(self, project_id: int, note_id: int, content: str, acto
 
 ## ProjectNoteService.update_comment
 
-[backend/app/services.py:4242](../../../../backend/app/services.py#L4242)
+[backend/app/services.py:4247](../../../../backend/app/services.py#L4247)
 
 ```python
 async def update_comment(self, project_id: int, note_id: int, comment_id: int, content: str, actor: User) -> ProjectNoteCommentOut
@@ -7460,7 +7464,7 @@ ForbiddenError('Можно редактировать только свой ко
 
 ## ProjectNoteService.delete_comment
 
-[backend/app/services.py:4281](../../../../backend/app/services.py#L4281)
+[backend/app/services.py:4286](../../../../backend/app/services.py#L4286)
 
 ```python
 async def delete_comment(self, project_id: int, note_id: int, comment_id: int, actor: User) -> None
@@ -7500,7 +7504,7 @@ ForbiddenError('Можно удалить только свой коммента
 
 ## ProjectCredentialService.__init__
 
-[backend/app/services.py:4307](../../../../backend/app/services.py#L4307)
+[backend/app/services.py:4312](../../../../backend/app/services.py#L4312)
 
 ```python
 def __init__(self, db: AsyncSession) -> None
@@ -7523,7 +7527,7 @@ def __init__(self, db: AsyncSession) -> None
 
 ## ProjectCredentialService._ensure_project
 
-[backend/app/services.py:4311](../../../../backend/app/services.py#L4311)
+[backend/app/services.py:4316](../../../../backend/app/services.py#L4316)
 
 ```python
 async def _ensure_project(self, project_id: int) -> Project
@@ -7546,7 +7550,7 @@ async def _ensure_project(self, project_id: int) -> Project
 
 ## ProjectCredentialService._get_credential
 
-[backend/app/services.py:4315](../../../../backend/app/services.py#L4315)
+[backend/app/services.py:4320](../../../../backend/app/services.py#L4320)
 
 ```python
 async def _get_credential(self, project_id: int, credential_id: int) -> ProjectCredential
@@ -7582,7 +7586,7 @@ NotFoundError('Учётные данные не найдены')
 
 ## ProjectCredentialService._read_password
 
-[backend/app/services.py:4326](../../../../backend/app/services.py#L4326)
+[backend/app/services.py:4331](../../../../backend/app/services.py#L4331)
 
 ```python
 def _read_password(credential: ProjectCredential) -> str | None
@@ -7607,7 +7611,7 @@ def _read_password(credential: ProjectCredential) -> str | None
 
 ## ProjectCredentialService._serialize
 
-[backend/app/services.py:4336](../../../../backend/app/services.py#L4336)
+[backend/app/services.py:4341](../../../../backend/app/services.py#L4341)
 
 ```python
 def _serialize(credential: ProjectCredential) -> dict
@@ -7630,7 +7634,7 @@ def _serialize(credential: ProjectCredential) -> dict
 
 ## ProjectCredentialService.list_credentials
 
-[backend/app/services.py:4352](../../../../backend/app/services.py#L4352)
+[backend/app/services.py:4357](../../../../backend/app/services.py#L4357)
 
 ```python
 async def list_credentials(self, project_id: int) -> list[dict]
@@ -7663,7 +7667,7 @@ async def list_credentials(self, project_id: int) -> list[dict]
 
 ## ProjectCredentialService.get_credential
 
-[backend/app/services.py:4361](../../../../backend/app/services.py#L4361)
+[backend/app/services.py:4366](../../../../backend/app/services.py#L4366)
 
 ```python
 async def get_credential(self, project_id: int, credential_id: int) -> dict
@@ -7688,7 +7692,7 @@ async def get_credential(self, project_id: int, credential_id: int) -> dict
 
 ## ProjectCredentialService.create_credential
 
-[backend/app/services.py:4365](../../../../backend/app/services.py#L4365)
+[backend/app/services.py:4370](../../../../backend/app/services.py#L4370)
 
 ```python
 async def create_credential(self, project_id: int, payload: dict, actor_id: int) -> dict
@@ -7724,7 +7728,7 @@ async def create_credential(self, project_id: int, payload: dict, actor_id: int)
 
 ## ProjectCredentialService.update_credential
 
-[backend/app/services.py:4388](../../../../backend/app/services.py#L4388)
+[backend/app/services.py:4393](../../../../backend/app/services.py#L4393)
 
 ```python
 async def update_credential(self, project_id: int, credential_id: int, payload: dict, actor_id: int) -> dict
@@ -7759,7 +7763,7 @@ async def update_credential(self, project_id: int, credential_id: int, payload: 
 
 ## ProjectCredentialService.delete_credential
 
-[backend/app/services.py:4409](../../../../backend/app/services.py#L4409)
+[backend/app/services.py:4414](../../../../backend/app/services.py#L4414)
 
 ```python
 async def delete_credential(self, project_id: int, credential_id: int, actor_id: int) -> None
@@ -7790,7 +7794,7 @@ async def delete_credential(self, project_id: int, credential_id: int, actor_id:
 
 ## NotificationService.__init__
 
-[backend/app/services.py:4427](../../../../backend/app/services.py#L4427)
+[backend/app/services.py:4432](../../../../backend/app/services.py#L4432)
 
 ```python
 def __init__(self, db: AsyncSession) -> None
@@ -7806,7 +7810,7 @@ def __init__(self, db: AsyncSession) -> None
 
 ## NotificationService._contexts
 
-[backend/app/services.py:4430](../../../../backend/app/services.py#L4430)
+[backend/app/services.py:4435](../../../../backend/app/services.py#L4435)
 
 ```python
 async def _contexts(self, notifications: list[Notification]) -> dict[int, NotificationContext]
@@ -7857,7 +7861,7 @@ async def _contexts(self, notifications: list[Notification]) -> dict[int, Notifi
 
 ## NotificationService.list
 
-[backend/app/services.py:4503](../../../../backend/app/services.py#L4503)
+[backend/app/services.py:4508](../../../../backend/app/services.py#L4508)
 
 ```python
 async def list(self, user_id: int, page: int, size: int, is_read: bool | None) -> tuple[list[NotificationOut], int]
@@ -7903,7 +7907,7 @@ async def list(self, user_id: int, page: int, size: int, is_read: bool | None) -
 
 ## NotificationService.unread_count
 
-[backend/app/services.py:4529](../../../../backend/app/services.py#L4529)
+[backend/app/services.py:4534](../../../../backend/app/services.py#L4534)
 
 ```python
 async def unread_count(self, user_id: int) -> int
@@ -7935,7 +7939,7 @@ async def unread_count(self, user_id: int) -> int
 
 ## NotificationService.mark_read
 
-[backend/app/services.py:4534](../../../../backend/app/services.py#L4534)
+[backend/app/services.py:4539](../../../../backend/app/services.py#L4539)
 
 ```python
 async def mark_read(self, notification_id: int, user_id: int) -> Notification
@@ -7974,7 +7978,7 @@ NotFoundError('Уведомление не найдено')
 
 ## NotificationService.mark_all_read
 
-[backend/app/services.py:4545](../../../../backend/app/services.py#L4545)
+[backend/app/services.py:4550](../../../../backend/app/services.py#L4550)
 
 ```python
 async def mark_all_read(self, user_id: int) -> None
@@ -8004,7 +8008,7 @@ async def mark_all_read(self, user_id: int) -> None
 
 ## ImportService.__init__
 
-[backend/app/services.py:4553](../../../../backend/app/services.py#L4553)
+[backend/app/services.py:4558](../../../../backend/app/services.py#L4558)
 
 ```python
 def __init__(self, db: AsyncSession) -> None
@@ -8020,7 +8024,7 @@ def __init__(self, db: AsyncSession) -> None
 
 ## ImportService._find_matching_host
 
-[backend/app/services.py:4556](../../../../backend/app/services.py#L4556)
+[backend/app/services.py:4561](../../../../backend/app/services.py#L4561)
 
 ```python
 async def _find_matching_host(self, project_id: int, host_data) -> Host | None
@@ -8061,7 +8065,7 @@ ValidationError(f"Найдено несколько host для ip/hostname ({ho
 
 ## ImportService._merge_host_fields
 
-[backend/app/services.py:4585](../../../../backend/app/services.py#L4585)
+[backend/app/services.py:4590](../../../../backend/app/services.py#L4590)
 
 ```python
 def _merge_host_fields(host: Host, host_data) -> None
@@ -8078,7 +8082,7 @@ def _merge_host_fields(host: Host, host_data) -> None
 
 ## ImportService._merge_service_fields
 
-[backend/app/services.py:4596](../../../../backend/app/services.py#L4596)
+[backend/app/services.py:4601](../../../../backend/app/services.py#L4601)
 
 ```python
 def _merge_service_fields(service: Service, service_data) -> None
@@ -8095,7 +8099,7 @@ def _merge_service_fields(service: Service, service_data) -> None
 
 ## ImportService._decode_text_payload
 
-[backend/app/services.py:4604](../../../../backend/app/services.py#L4604)
+[backend/app/services.py:4609](../../../../backend/app/services.py#L4609)
 
 ```python
 def _decode_text_payload(payload: bytes) -> str
@@ -8125,7 +8129,7 @@ ValidationError('Файл должен быть в кодировке UTF-8')
 
 ## ImportService._validate_openapi_payload
 
-[backend/app/services.py:4611](../../../../backend/app/services.py#L4611)
+[backend/app/services.py:4616](../../../../backend/app/services.py#L4616)
 
 ```python
 def _validate_openapi_payload(payload: bytes) -> None
@@ -8156,7 +8160,7 @@ ValidationError('Swagger/OpenAPI файл пуст')
 
 ## ImportService._parse_relaxed_openapi_scalar
 
-[backend/app/services.py:4618](../../../../backend/app/services.py#L4618)
+[backend/app/services.py:4623](../../../../backend/app/services.py#L4623)
 
 ```python
 def _parse_relaxed_openapi_scalar(raw_value: str) -> object
@@ -8184,7 +8188,7 @@ def _parse_relaxed_openapi_scalar(raw_value: str) -> object
 
 ## ImportService._parse_relaxed_openapi_object
 
-[backend/app/services.py:4635](../../../../backend/app/services.py#L4635)
+[backend/app/services.py:4640](../../../../backend/app/services.py#L4640)
 
 ```python
 def _parse_relaxed_openapi_object(cls, lines: list[str], index: int) -> tuple[dict, int]
@@ -8218,7 +8222,7 @@ def _parse_relaxed_openapi_object(cls, lines: list[str], index: int) -> tuple[di
 
 ## ImportService._parse_relaxed_openapi_array
 
-[backend/app/services.py:4668](../../../../backend/app/services.py#L4668)
+[backend/app/services.py:4673](../../../../backend/app/services.py#L4673)
 
 ```python
 def _parse_relaxed_openapi_array(cls, lines: list[str], index: int) -> tuple[list[object], int]
@@ -8249,7 +8253,7 @@ def _parse_relaxed_openapi_array(cls, lines: list[str], index: int) -> tuple[lis
 
 ## ImportService._normalize_relaxed_openapi_mime
 
-[backend/app/services.py:4691](../../../../backend/app/services.py#L4691)
+[backend/app/services.py:4696](../../../../backend/app/services.py#L4696)
 
 ```python
 def _normalize_relaxed_openapi_mime(value: str) -> str
@@ -8274,7 +8278,7 @@ def _normalize_relaxed_openapi_mime(value: str) -> str
 
 ## ImportService._normalize_relaxed_openapi_ref
 
-[backend/app/services.py:4701](../../../../backend/app/services.py#L4701)
+[backend/app/services.py:4706](../../../../backend/app/services.py#L4706)
 
 ```python
 def _normalize_relaxed_openapi_ref(value: str) -> str
@@ -8300,7 +8304,7 @@ def _normalize_relaxed_openapi_ref(value: str) -> str
 
 ## ImportService._normalize_relaxed_openapi_path_key
 
-[backend/app/services.py:4712](../../../../backend/app/services.py#L4712)
+[backend/app/services.py:4717](../../../../backend/app/services.py#L4717)
 
 ```python
 def _normalize_relaxed_openapi_path_key(cls, raw_path: str, path_item: object) -> str
@@ -8338,7 +8342,7 @@ def _normalize_relaxed_openapi_path_key(cls, raw_path: str, path_item: object) -
 
 ## ImportService._normalize_relaxed_openapi_document
 
-[backend/app/services.py:4740](../../../../backend/app/services.py#L4740)
+[backend/app/services.py:4745](../../../../backend/app/services.py#L4745)
 
 ```python
 def _normalize_relaxed_openapi_document(cls, value: object, key: str | None=None) -> object
@@ -8371,7 +8375,7 @@ def _normalize_relaxed_openapi_document(cls, value: object, key: str | None=None
 
 ## ImportService._load_relaxed_openapi_document
 
-[backend/app/services.py:4764](../../../../backend/app/services.py#L4764)
+[backend/app/services.py:4769](../../../../backend/app/services.py#L4769)
 
 ```python
 def _load_relaxed_openapi_document(cls, raw_text: str) -> dict
@@ -8408,7 +8412,7 @@ ValidationError('Swagger/OpenAPI файл должен быть валидным
 
 ## ImportService._load_json_or_yaml_document
 
-[backend/app/services.py:4781](../../../../backend/app/services.py#L4781)
+[backend/app/services.py:4786](../../../../backend/app/services.py#L4786)
 
 ```python
 def _load_json_or_yaml_document(cls, raw_text: str) -> dict
@@ -8450,7 +8454,7 @@ ValidationError(str(exc))
 
 ## ImportService._resolve_json_pointer
 
-[backend/app/services.py:4807](../../../../backend/app/services.py#L4807)
+[backend/app/services.py:4812](../../../../backend/app/services.py#L4812)
 
 ```python
 def _resolve_json_pointer(document: dict, ref: str) -> object
@@ -8486,7 +8490,7 @@ ValidationError(f'Swagger/OpenAPI содержит битую ссылку $ref:
 
 ## ImportService._resolve_openapi_ref
 
-[backend/app/services.py:4819](../../../../backend/app/services.py#L4819)
+[backend/app/services.py:4824](../../../../backend/app/services.py#L4824)
 
 ```python
 def _resolve_openapi_ref(cls, document: dict, value: object, depth: int=0) -> object
@@ -8525,7 +8529,7 @@ ValidationError('Некорректный $ref в Swagger/OpenAPI докумен
 
 ## ImportService._normalize_openapi_path
 
-[backend/app/services.py:4835](../../../../backend/app/services.py#L4835)
+[backend/app/services.py:4840](../../../../backend/app/services.py#L4840)
 
 ```python
 def _normalize_openapi_path(path_value: str, prefix: str) -> str
@@ -8551,7 +8555,7 @@ def _normalize_openapi_path(path_value: str, prefix: str) -> str
 
 ## ImportService._extract_openapi_host
 
-[backend/app/services.py:4840](../../../../backend/app/services.py#L4840)
+[backend/app/services.py:4845](../../../../backend/app/services.py#L4845)
 
 ```python
 def _extract_openapi_host(document: dict) -> str | None
@@ -8582,7 +8586,7 @@ def _extract_openapi_host(document: dict) -> str | None
 
 ## ImportService._extract_openapi_path_prefix
 
-[backend/app/services.py:4859](../../../../backend/app/services.py#L4859)
+[backend/app/services.py:4864](../../../../backend/app/services.py#L4864)
 
 ```python
 def _extract_openapi_path_prefix(document: dict) -> str
@@ -8611,7 +8615,7 @@ def _extract_openapi_path_prefix(document: dict) -> str
 
 ## ImportService._serialize_openapi_example
 
-[backend/app/services.py:4878](../../../../backend/app/services.py#L4878)
+[backend/app/services.py:4883](../../../../backend/app/services.py#L4883)
 
 ```python
 def _serialize_openapi_example(value: object) -> str | None
@@ -8637,7 +8641,7 @@ def _serialize_openapi_example(value: object) -> str | None
 
 ## ImportService._build_openapi_example_from_schema
 
-[backend/app/services.py:4891](../../../../backend/app/services.py#L4891)
+[backend/app/services.py:4896](../../../../backend/app/services.py#L4896)
 
 ```python
 def _build_openapi_example_from_schema(cls, document: dict, schema: object, depth: int=0) -> object
@@ -8669,7 +8673,7 @@ def _build_openapi_example_from_schema(cls, document: dict, schema: object, dept
 
 ## ImportService._extract_openapi_query_params
 
-[backend/app/services.py:4934](../../../../backend/app/services.py#L4934)
+[backend/app/services.py:4939](../../../../backend/app/services.py#L4939)
 
 ```python
 def _extract_openapi_query_params(cls, document: dict, path_item: dict, operation: dict) -> list[dict]
@@ -8708,7 +8712,7 @@ def _extract_openapi_query_params(cls, document: dict, path_item: dict, operatio
 
 ## ImportService._collect_openapi_form_params
 
-[backend/app/services.py:4971](../../../../backend/app/services.py#L4971)
+[backend/app/services.py:4976](../../../../backend/app/services.py#L4976)
 
 ```python
 def _collect_openapi_form_params(cls, document: dict, path_item: dict, operation: dict) -> list[dict]
@@ -8740,7 +8744,7 @@ def _collect_openapi_form_params(cls, document: dict, path_item: dict, operation
 
 ## ImportService._extract_openapi_request_details
 
-[backend/app/services.py:4989](../../../../backend/app/services.py#L4989)
+[backend/app/services.py:4994](../../../../backend/app/services.py#L4994)
 
 ```python
 def _extract_openapi_request_details(cls, document: dict, path_item: dict, operation: dict) -> tuple[str | None, str | None]
@@ -8787,7 +8791,7 @@ def _extract_openapi_request_details(cls, document: dict, path_item: dict, opera
 
 ## ImportService.import_openapi
 
-[backend/app/services.py:5052](../../../../backend/app/services.py#L5052)
+[backend/app/services.py:5057](../../../../backend/app/services.py#L5057)
 
 ```python
 async def import_openapi(self, project_id: int, host_id: int, payload: bytes, actor_id: int) -> OpenApiImportResult
@@ -8868,7 +8872,7 @@ ValidationError('В Swagger/OpenAPI документе отсутствует о
 
 ## ImportService.export_openapi
 
-[backend/app/services.py:5171](../../../../backend/app/services.py#L5171)
+[backend/app/services.py:5176](../../../../backend/app/services.py#L5176)
 
 ```python
 async def export_openapi(self, project_id: int, host_id: int) -> dict
@@ -8928,7 +8932,7 @@ NotFoundError('Хост не найден')
 
 ## ImportService.import_json
 
-[backend/app/services.py:5259](../../../../backend/app/services.py#L5259)
+[backend/app/services.py:5264](../../../../backend/app/services.py#L5264)
 
 ```python
 async def import_json(self, project_id: int, payload: bytes, actor_id: int) -> ImportResult
@@ -9002,7 +9006,7 @@ ValidationError(f'JSON импорта не соответствует схеме
 
 ## ReportService.__init__
 
-[backend/app/services.py:5411](../../../../backend/app/services.py#L5411)
+[backend/app/services.py:5416](../../../../backend/app/services.py#L5416)
 
 ```python
 def __init__(self, db: AsyncSession) -> None
@@ -9025,7 +9029,7 @@ def __init__(self, db: AsyncSession) -> None
 
 ## ReportService._collect_project_data
 
-[backend/app/services.py:5415](../../../../backend/app/services.py#L5415)
+[backend/app/services.py:5420](../../../../backend/app/services.py#L5420)
 
 ```python
 async def _collect_project_data(self, project_id: int) -> dict
@@ -9087,7 +9091,7 @@ ServiceUnavailableError('Не удалось расшифровать сохра
 
 ## ReportService._build_report_indexes
 
-[backend/app/services.py:5476](../../../../backend/app/services.py#L5476)
+[backend/app/services.py:5481](../../../../backend/app/services.py#L5481)
 
 ```python
 def _build_report_indexes(data: dict) -> dict
@@ -9117,7 +9121,7 @@ def _build_report_indexes(data: dict) -> dict
 
 ## ReportService._resolve_step_files
 
-[backend/app/services.py:5508](../../../../backend/app/services.py#L5508)
+[backend/app/services.py:5513](../../../../backend/app/services.py#L5513)
 
 ```python
 def _resolve_step_files(step: dict, files_by_id: dict[int, File]) -> list[File]
@@ -9144,7 +9148,7 @@ def _resolve_step_files(step: dict, files_by_id: dict[int, File]) -> list[File]
 
 ## ReportService._is_image_file
 
-[backend/app/services.py:5521](../../../../backend/app/services.py#L5521)
+[backend/app/services.py:5526](../../../../backend/app/services.py#L5526)
 
 ```python
 def _is_image_file(file_meta: File) -> bool
@@ -9167,7 +9171,7 @@ def _is_image_file(file_meta: File) -> bool
 
 ## ReportService._normalize_report_image_bytes
 
-[backend/app/services.py:5525](../../../../backend/app/services.py#L5525)
+[backend/app/services.py:5530](../../../../backend/app/services.py#L5530)
 
 ```python
 def _normalize_report_image_bytes(image_bytes: bytes) -> bytes | None
@@ -9197,7 +9201,7 @@ def _normalize_report_image_bytes(image_bytes: bytes) -> bytes | None
 
 ## ReportService._download_report_images
 
-[backend/app/services.py:5541](../../../../backend/app/services.py#L5541)
+[backend/app/services.py:5546](../../../../backend/app/services.py#L5546)
 
 ```python
 async def _download_report_images(self, files: list[File]) -> dict[int, bytes]
@@ -9221,7 +9225,7 @@ async def _download_report_images(self, files: list[File]) -> dict[int, bytes]
 
 ## ReportService.generate
 
-[backend/app/services.py:5555](../../../../backend/app/services.py#L5555)
+[backend/app/services.py:5560](../../../../backend/app/services.py#L5560)
 
 ```python
 async def generate(self, project_id: int, kind: Literal['szi', 'pp']) -> bytes

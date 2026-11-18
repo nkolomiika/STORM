@@ -354,7 +354,7 @@ async def startup() -> None
 
 ## startup.add_missing
 
-[backend/app/main.py:325](../../../../backend/app/main.py#L325)
+[backend/app/main.py:324](../../../../backend/app/main.py#L324)
 
 ```python
 async def add_missing(table: str, columns: dict[str, str]) -> None

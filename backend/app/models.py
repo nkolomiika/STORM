@@ -696,8 +696,8 @@ class Vulnerability(Base, TimestampMixin):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     severity: Mapped[Severity] = mapped_column(
         # server_default = ИМЯ члена (SQLAlchemy Enum хранит имена, в верхнем
-        # регистре — CRITICAL/HIGH/…/INFO). По умолчанию находка создаётся как INFO.
-        Enum(Severity, name="vuln_severity"), nullable=False, default=Severity.INFO, server_default="INFO"
+        # регистре — CRITICAL/HIGH/…/UNREALIZED). Без CVSS находка нереализуема.
+        Enum(Severity, name="vuln_severity"), nullable=False, default=Severity.UNREALIZED, server_default="UNREALIZED"
     )
     cvss_version: Mapped[CvssVersion | None] = mapped_column(Enum(CvssVersion, name="cvss_version"), nullable=True)
     cvss_score: Mapped[float | None] = mapped_column(Numeric(4, 1), nullable=True)

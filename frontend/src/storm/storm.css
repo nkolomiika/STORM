@@ -237,6 +237,11 @@ html, body, #root {
 :root[data-theme="dark"] .storm :is(.finp, .esel, .pillinp, .fq input) { border-color: var(--st-control-border); }
 :root[data-theme="dark"] .storm ::placeholder { opacity: 1; }
 
+/* В карточке находки фокус не добавляет обводку или свечение текстовым полям. */
+.storm .vuln-detail :is(input, textarea, [contenteditable="true"]):is(:focus, :focus-visible) { outline: none; box-shadow: none; }
+.storm .vuln-detail .finp:focus { border-color: var(--st-control-border); box-shadow: none; }
+.storm .vuln-detail .stormmd:focus-within { border-color: var(--st-border); box-shadow: none; background: var(--st-sunken); }
+
 .storm :is(.storm-markdown, .stormmd-input) table { border-collapse: collapse; width: 100%; margin: 12px 0; }
 .storm :is(.storm-markdown, .stormmd-input) :is(th, td) { border: 1px solid var(--st-control-border); padding: 9px 12px; vertical-align: top; min-width: 80px; }
 .storm :is(.storm-markdown, .stormmd-input) th { background: var(--st-elevated); color: var(--st-text); font-weight: 700; }

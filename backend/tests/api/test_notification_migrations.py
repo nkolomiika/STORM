@@ -20,6 +20,43 @@ def load(name):
 
 
 @pytest.mark.asyncio
+async def test_unrealized_default_migration_preserves_findings_and_adds_missing_enum(api):
+    migration = load("20261118_0028_unrealized_default.py")
+    _, ids = api
+    async with aclosing(app.dependency_overrides[get_db]()) as stream:
+        db = await anext(stream)
+        async with db.bind.connect() as conn:
+            assert (await conn.scalar(text("SELECT current_schema()"))).startswith("test_")
+            # Старая схема: DEFAULT INFO и enum без UNREALIZED.
+            await conn.execute(text("UPDATE vulnerabilities SET severity='INFO'"))
+            await conn.execute(text("ALTER TABLE vulnerabilities ALTER COLUMN severity DROP DEFAULT"))
+            await conn.execute(text("ALTER TYPE vuln_severity RENAME TO vuln_severity_before_test"))
+            await conn.execute(text("CREATE TYPE vuln_severity AS ENUM ('CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO')"))
+            await conn.execute(text("ALTER TABLE vulnerabilities ALTER COLUMN severity TYPE vuln_severity USING severity::text::vuln_severity"))
+            await conn.execute(text("DROP TYPE vuln_severity_before_test"))
+            await conn.execute(text("ALTER TABLE vulnerabilities ALTER COLUMN severity SET DEFAULT 'INFO'"))
+            await conn.commit()
+
+            def exercise(connection):
+                context = MigrationContext.configure(connection)
+                with context.begin_transaction(), Operations.context(context):
+                    legacy = connection.scalar(text("SELECT severity::text FROM vulnerabilities WHERE id=:id"), {"id": ids["foreign_vuln"]})
+                    migration.upgrade()
+                    migration.upgrade()
+                    created = connection.scalar(text("INSERT INTO vulnerabilities (project_id, title, created_by, status) VALUES (:project, 'Без CVSS', :actor, 'OPEN') RETURNING severity::text"),
+                                                {"project": ids["project"], "actor": ids["admin"]})
+                    assert created == "UNREALIZED"
+                    assert connection.scalar(text("SELECT severity::text FROM vulnerabilities WHERE id=:id"), {"id": ids["foreign_vuln"]}) == legacy
+                    migration.downgrade()
+                    created = connection.scalar(text("INSERT INTO vulnerabilities (project_id, title, created_by, status) VALUES (:project, 'Старый DEFAULT', :actor, 'OPEN') RETURNING severity::text"),
+                                                {"project": ids["project"], "actor": ids["admin"]})
+                    assert created == "INFO"
+                    migration.upgrade()
+
+            await conn.run_sync(exercise)
+
+
+@pytest.mark.asyncio
 async def test_notification_retention_migration_upgrades_legacy_enum_and_preserves_old_events(api):
     from app.enums import NotificationType
     migration = load("20261118_0027_notification_retention.py")

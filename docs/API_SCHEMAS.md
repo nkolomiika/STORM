@@ -1651,7 +1651,7 @@ Union не годится: pydantic должен знать точный тип 
 | `host_id` | `integer` | да | — |
 | `title` | `string` | да | {"maxLength": 500, "minLength": 1} |
 | `description` | `string \| null` | нет | — |
-| `severity` | `Severity` | нет | {"default": "info"} |
+| `severity` | `Severity` | нет | {"default": "unrealized"} |
 | `cvss_version` | `CvssVersion \| null` | нет | — |
 | `cvss_score` | `number \| null` | нет | — |
 | `cvss_vector` | `string \| null` | нет | — |

@@ -3188,11 +3188,16 @@ class VulnerabilityService:
 
     @staticmethod
     def _apply_calculated_cvss_fields(payload: dict, *, current_version: str | None = None, current_vector: str | None = None) -> None:
+        """Вычисляет CVSS; при пустом векторе (включая пробелы) очищает версию и балл.
+
+        При частичном обновлении использует текущий вектор. Явный балл без
+        корректного вектора отклоняет, критичность выводится из результата.
+        """
         has_explicit_score = payload.get("cvss_score") is not None
         next_version = getattr(payload.get("cvss_version", current_version), "value", payload.get("cvss_version", current_version))
         next_vector = payload.get("cvss_vector", current_vector)
 
-        if "cvss_vector" in payload and not payload.get("cvss_vector"):
+        if "cvss_vector" in payload and not (payload.get("cvss_vector") or "").strip():
             if has_explicit_score:
                 raise ValidationError("CVSS score рассчитывается автоматически и требует корректный CVSS 4.0 вектор")
             payload["cvss_version"] = None
@@ -3369,13 +3374,13 @@ class VulnerabilityService:
         return list(items), total
 
     async def create(self, project_id: int, payload: dict, actor_id: int) -> Vulnerability:
+        """Создаёт находку хоста; без CVSS задаёт unrealized, иначе выводит критичность из балла."""
         host_id = payload.pop("host_id", None)
         if not host_id:
             raise ValidationError("Уязвимость должна быть привязана к конкретному хосту")
         await self._assert_asset_in_project(project_id, AssetType.HOST, host_id)
         self._apply_calculated_cvss_fields(payload)
-        if payload.get("cvss_score") is not None:
-            payload["severity"] = self._severity_from_cvss_score(payload.get("cvss_score"))
+        payload["severity"] = self._severity_from_cvss_score(payload.get("cvss_score"))
         if "workflow_steps" in payload:
             payload["workflow_steps"] = self._normalize_workflow_steps(payload.get("workflow_steps"))
             payload["workflow_steps"] = await self._resolve_workflow_step_endpoints(project_id, host_id, payload["workflow_steps"])
@@ -3408,6 +3413,7 @@ class VulnerabilityService:
         return {"vulnerability": vuln, "assets": list(links), "files": list(files), "comments_count": comments_count}
 
     async def update(self, project_id: int, vuln_id: int, payload: dict, actor_id: int) -> Vulnerability:
+        """Обновляет находку и пересчитывает критичность; очистка CVSS возвращает unrealized."""
         vuln = await self._get_vuln(project_id, vuln_id)
         # Статус меняют и здесь (карточка находки шлёт его в общем PUT), а не
         # только через patch_status — уведомление автору нужно в обоих путях.
@@ -3419,8 +3425,7 @@ class VulnerabilityService:
             current_vector=vuln.cvss_vector,
         )
         next_score = payload.get("cvss_score", vuln.cvss_score)
-        if next_score is not None:
-            payload["severity"] = self._severity_from_cvss_score(next_score)
+        payload["severity"] = self._severity_from_cvss_score(next_score)
         if "workflow_steps" in payload:
             payload["workflow_steps"] = self._normalize_workflow_steps(payload.get("workflow_steps"))
             host_id = await self._get_primary_host_id(vuln.id)

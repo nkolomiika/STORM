@@ -819,8 +819,8 @@ class VulnerabilityCreate(InputBaseModel):
     host_id: int
     title: str = Field(min_length=1, max_length=500)
     description: str | None = None
-    # По умолчанию критичность — INFO; уточняется CVSS-вектором позже.
-    severity: Severity = Severity.INFO
+    # Без CVSS-вектора находка нереализуема; критичность рассчитывает сервис.
+    severity: Severity = Severity.UNREALIZED
     cvss_version: CvssVersion | None = None
     cvss_score: float | None = Field(default=None, ge=0.0, le=10.0)
     cvss_vector: str | None = Field(default=None, max_length=255)

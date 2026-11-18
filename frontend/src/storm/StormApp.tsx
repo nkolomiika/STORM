@@ -3069,10 +3069,8 @@ export function StormApp() {
 
   /* A finding must hang off a host (`host_id` is required on create), so the
      "Affected host" field is a searchable picker over the project's real hosts.
-     Severity is only settable on create: once a finding has a CVSS score the
-     backend derives severity from it on every update (ProjectService keeps the
-     score authoritative), so an edit-time severity field would be a no-op. It is
-     changed by editing the CVSS vector on the finding's card. */
+     Критичность вычисляется из CVSS-вектора; без вектора — unrealized.
+     Меняется через CVSS-вектор в карточке находки. */
   /* Resolve a typed host to a real project host, case-insensitively — the same
      binding the member picker uses (match an existing entity, not free text). */
   const resolveProjectHost = (typed: string) => {
@@ -3096,8 +3094,8 @@ export function StormApp() {
         }
         // Add asks only for Title + Host; severity/status default here and the
         // user completes the finding on its detail card — redirect straight there.
-        // Severity starts "info": it is refined once the author fills the CVSS vector.
-        const created = await apiCreateVulnerability(pid, { title, status: "open", severity: "info", host_id: host.id });
+        // Без вектора новая находка нереализуема; CVSS уточняет критичность позже.
+        const created = await apiCreateVulnerability(pid, { title, status: "open", severity: "unrealized", host_id: host.id });
         reloadVulns();
         setState({ editorOpen: false, section: "vulns", openVulnId: created.id, vulnDetailForm: {} });
         return;
@@ -3582,13 +3580,13 @@ export function StormApp() {
     if (id == null || pid == null) return;
     const current = d.vulns.find((v) => v.id === id);
     if (!current) return;
-    // A valid vector wins over the severity picker — that is what the score means.
+    // Без вектора критичность сбрасывается в unrealized, включая очистку поля.
     const c = computeCvss4(f.vector);
     const vector = (f.vector ?? "").trim();
     try {
       await apiUpdateVulnerability(pid, id, {
         title: (f.title ?? current.title).trim(),
-        severity: (c ? c.sev : f.sev) || current.sev,
+        severity: c ? c.sev : "unrealized",
         status: f.status || current.status,
         description: f.description ?? "",
         impact: f.impact ?? "",
@@ -4524,7 +4522,7 @@ export function StormApp() {
 
   const vd = state.vulnDetailForm;
   const vdCvss = computeCvss4(vd.vector);
-  const vdSev: Severity = (vdCvss ? vdCvss.sev : vd.sev) || "medium";
+  const vdSev: Severity = vdCvss ? vdCvss.sev : "unrealized";
   const vdScore = vdCvss ? vdCvss.score.toFixed(1) : "—";
 
   const pfNav = (tab: ProfileTab): CSSProperties =>
@@ -6305,7 +6303,7 @@ export function StormApp() {
     const vdHostPick = (v: string) =>
       setState((s) => ({ vulnDetailForm: { ...s.vulnDetailForm, host: v }, vdHostComboOpen: false, vdHostComboHi: 0 }));
     return (
-      <div style={{ width: "100%" }}>
+      <div className="vuln-detail" style={{ width: "100%" }}>
         <div style={{ marginBottom: 18 }}>
           <span className="clk" onClick={closeVulnDetail} style={{ display: "inline-flex", alignItems: "center", gap: 6, font: "600 12.5px Inter,sans-serif", color: "var(--st-text-2)", background: "var(--st-surface)", border: "1px solid var(--st-border-light)", borderRadius: 20, padding: "7px 13px", cursor: "pointer" }}>
             <Icon name="chevron-left" size={15} />{t("All findings")}

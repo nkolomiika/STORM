@@ -21,10 +21,10 @@ def test_invitation_accepts_admin_role() -> None:
     assert payload.role.value == "admin"
 
 
-def test_vulnerability_defaults_severity_to_info_tc_vuln_003() -> None:
-    # Критичность не обязательна: без неё находка создаётся со значением "info".
+def test_vulnerability_defaults_severity_to_unrealized_tc_vuln_003() -> None:
+    # Без CVSS-вектора новая находка нереализуема.
     payload = VulnerabilityCreate(title="No severity", host_id=1)
-    assert payload.severity == Severity.INFO
+    assert payload.severity == Severity.UNREALIZED
 
 
 def test_vulnerability_rejects_invalid_severity_tc_vuln_004() -> None:

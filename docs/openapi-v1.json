@@ -17440,7 +17440,7 @@
           },
           "severity": {
             "$ref": "#/components/schemas/Severity",
-            "default": "info"
+            "default": "unrealized"
           },
           "cvss_version": {
             "anyOf": [

@@ -9,6 +9,9 @@ from app.works import WorksClient
 
 pytestmark = pytest.mark.asyncio
 
+# Экспортируемые находки должны иметь оценку CVSS: без вектора это unrealized.
+EXPORT_CVSS = {"cvss_version": "4.0", "cvss_vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N/SA:N"}
+
 
 def native_tracker(monkeypatch, handler):
     settings = get_settings()
@@ -51,7 +54,7 @@ async def test_finding_export_goes_to_sts_and_links_to_project_appsec_ticket(api
     })
     assert response.status_code == 200, response.text
     assert response.json()["appsec_ticket_key"] == "APPSEC-7"
-    finding = await client.post(f"projects/{project}/vulnerabilities", json={"title": "Export scenario", "host_id": ids["host"]})
+    finding = await client.post(f"projects/{project}/vulnerabilities", json={"title": "Export scenario", "host_id": ids["host"], **EXPORT_CVSS})
     assert finding.status_code == 201, finding.text
     response = await client.post(f"projects/{project}/vulnerabilities/{finding.json()['id']}/works/export", json={})
     assert response.status_code == 200, response.text
@@ -121,7 +124,7 @@ async def test_parallel_sts_exports_create_one_external_ticket(api, monkeypatch)
                                         'appsec_component_code': 'component-id',
                                         'appsec_versions':[{'code':'v1','name':'Platform 1.0'}]})
     assert saved.status_code == 200, saved.text
-    finding = await client.post(root+'/vulnerabilities', json={'title':'Parallel export', 'host_id':ids['host']})
+    finding = await client.post(root+'/vulnerabilities', json={'title':'Parallel export', 'host_id':ids['host'], **EXPORT_CVSS})
     assert finding.status_code == 201, finding.text
     url = root+f"/vulnerabilities/{finding.json()['id']}/works/export"
     responses = await asyncio.gather(client.post(url, json={}), client.post(url, json={}))
@@ -150,7 +153,7 @@ async def test_multiple_sts_findings_share_appsec_source_and_keep_distinct_desti
     assert saved.status_code == 200, saved.text
     for index in range(2):
         finding = await client.post(root+'/vulnerabilities', json={
-            'title': f'Finding {index}', 'host_id': ids['host']})
+            'title': f'Finding {index}', 'host_id': ids['host'], **EXPORT_CVSS})
         assert finding.status_code == 201, finding.text
         url = root+f"/vulnerabilities/{finding.json()['id']}/works/export"
         response = await client.post(url, json={})
@@ -365,7 +368,7 @@ async def test_native_card_to_project_to_sts_keeps_login_and_every_version(api, 
     assert saved.status_code == 200 and saved.json()['appsec_versions'] == versions
     host = await client.post(root + '/hosts', json={'hostname': 'export.example'})
     assert host.status_code == 201, host.text
-    finding = await client.post(root + '/vulnerabilities', json={'title': 'Export all versions', 'host_id': host.json()['id']})
+    finding = await client.post(root + '/vulnerabilities', json={'title': 'Export all versions', 'host_id': host.json()['id'], **EXPORT_CVSS})
     assert finding.status_code == 201, finding.text
     exported = await client.post(root + f"/vulnerabilities/{finding.json()['id']}/works/export", json={})
     assert exported.status_code == 200, exported.text
