@@ -113,10 +113,9 @@ export function StormDatePicker({ value, onChange, min, max, placeholder = "Sele
       {/* popover calendar */}
       {open && (
         <div
+          className="date-popover"
           style={{
             position: "absolute",
-            top: "calc(100% + 6px)",
-            left: 0,
             zIndex: 80,
             width: 268,
             background: "var(--st-surface)",

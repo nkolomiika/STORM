@@ -123,6 +123,24 @@ html, body, #root {
 .storm .modalcard { transform: translateY(10px) scale(.98); opacity: 0; transition: transform .22s cubic-bezier(.4,0,.2,1), opacity .22s ease; }
 .storm .modalback.open .modalcard { transform: none; opacity: 1; }
 
+.storm .project-form-modal { max-height: 100dvh; }
+.storm .project-form-modal .modalcard { max-height: 100%; display: flex; flex-direction: column; }
+.storm .project-form-modal .modalcard > :not(.project-form-fields) { flex: none; }
+.storm .project-form-fields {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin-inline: -28px;
+  padding-inline: 28px;
+}
+.storm .project-date-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 16px; }
+.storm .date-popover { top: calc(100% + 6px); left: 0; }
+.storm .project-date-fields .date-popover { top: auto; bottom: calc(100% + 6px); max-width: calc(100vw - 76px); }
+.storm .project-date-fields > :last-child .date-popover { left: auto; right: 0; }
+@media (max-width: 480px) {
+  .storm .project-date-fields { grid-template-columns: minmax(0, 1fr); }
+}
+
 .storm .notifpanel { transform: translateX(100%); transition: transform .3s cubic-bezier(.4,0,.2,1); }
 .storm .notifback.open .notifpanel { transform: none; }
 .storm .notifback { opacity: 0; transition: opacity .28s ease; pointer-events: none; }

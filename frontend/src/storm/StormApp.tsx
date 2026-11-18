@@ -7072,8 +7072,8 @@ export function StormApp() {
   );
 
   // ---------- Modals ----------
-  const modalShell = (open: boolean, onClose: () => void, zIndex: number, width: number, children: ReactNode, align: "center" | "flex-start" = "center", pad = "24px") => (
-    <div className={`modalback ${open ? "open" : ""}`} onClick={onClose} style={{ position: "absolute", inset: 0, zIndex, background: "rgba(20,28,40,.42)", display: "flex", alignItems: align, justifyContent: "center", padding: pad, overflow: align === "flex-start" ? "auto" : undefined }}>
+  const modalShell = (open: boolean, onClose: () => void, zIndex: number, width: number, children: ReactNode, layoutClass = "") => (
+    <div className={`modalback ${layoutClass} ${open ? "open" : ""}`} onClick={onClose} style={{ position: "absolute", inset: 0, zIndex, background: "rgba(20,28,40,.42)", display: "flex", alignItems: "center", justifyContent: "center", padding: "24px" }}>
       <div className="modalcard" onClick={stop} style={{ width, maxWidth: "100%", background: "var(--st-surface)", borderRadius: 20, boxShadow: "0 30px 80px rgba(15,27,45,.3)", padding: "28px 28px 24px" }}>
         {children}
       </div>
@@ -7296,24 +7296,27 @@ export function StormApp() {
         <>
           <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "var(--st-text)", letterSpacing: "-.4px" }}>{t("New project")}</h2>
           <div style={{ fontSize: 13.5, color: "var(--st-text-3)", marginTop: 6 }}>{t("Create a project workspace for a new engagement.")}</div>
-          <div style={{ marginTop: 22 }}>
-            <label className="flabel">{t("Project name")}</label>
-            <input className="finp" style={state.newNameError && !state.newName.trim() ? { borderColor: "var(--st-danger)", boxShadow: "0 0 0 3px var(--st-danger-soft)" } : undefined} placeholder={t("e.g. Acme Corp — External Perimeter")} value={state.newName} onChange={(e) => setState({ newName: e.target.value, newNameError: false })} />
-            {state.newNameError && !state.newName.trim() && <div style={{ marginTop: 6, font: "600 12px Inter,sans-serif", color: "var(--st-danger)" }}>{t("Project name is required")}</div>}
+          <div className="project-form-fields" key={state.modalOpen ? "open" : "closed"}>
+            <div style={{ marginTop: 22 }}>
+              <label className="flabel">{t("Project name")}</label>
+              <input className="finp" style={state.newNameError && !state.newName.trim() ? { borderColor: "var(--st-danger)", boxShadow: "0 0 0 3px var(--st-danger-soft)" } : undefined} placeholder={t("e.g. Acme Corp — External Perimeter")} value={state.newName} onChange={(e) => setState({ newName: e.target.value, newNameError: false })} />
+              {state.newNameError && !state.newName.trim() && <div style={{ marginTop: 6, font: "600 12px Inter,sans-serif", color: "var(--st-danger)" }}>{t("Project name is required")}</div>}
+            </div>
+            <div style={{ marginTop: 16 }}>
+              <StormAppSecFields key={state.modalOpen ? "create-open" : "create-closed"} value={state.newAppsec} onChange={(p) => setState({ newAppsec: { ...state.newAppsec, ...p } })} works={state.worksEnabled} t={t} />
+            </div>
+            <div className="project-date-fields">
+              {/* min/max keep the pickers themselves from offering an inverted range. */}
+              <div><label className="flabel">{t("Start date")}</label><StormDatePicker value={state.newStart} onChange={(v) => setState({ newStart: v })} max={state.newEnd || undefined} /></div>
+              <div><label className="flabel">{t("End date")}</label><StormDatePicker value={state.newEnd} onChange={(v) => setState({ newEnd: v })} min={state.newStart || undefined} /></div>
+            </div>
+            {datesInvalid(state.newStart, state.newEnd) && (
+              <div style={{ marginTop: 8, font: "600 12px Inter,sans-serif", color: "var(--st-danger)" }}>{DATES_ERROR}</div>
+            )}
           </div>
-          <div style={{ marginTop: 16 }}>
-            <StormAppSecFields key={state.modalOpen ? "create-open" : "create-closed"} value={state.newAppsec} onChange={(p) => setState({ newAppsec: { ...state.newAppsec, ...p } })} works={state.worksEnabled} t={t} />
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 16 }}>
-            {/* min/max keep the pickers themselves from offering an inverted range. */}
-            <div><label className="flabel">{t("Start date")}</label><StormDatePicker value={state.newStart} onChange={(v) => setState({ newStart: v })} max={state.newEnd || undefined} /></div>
-            <div><label className="flabel">{t("End date")}</label><StormDatePicker value={state.newEnd} onChange={(v) => setState({ newEnd: v })} min={state.newStart || undefined} /></div>
-          </div>
-          {datesInvalid(state.newStart, state.newEnd) && (
-            <div style={{ marginTop: 8, font: "600 12px Inter,sans-serif", color: "var(--st-danger)" }}>{DATES_ERROR}</div>
-          )}
           {modalFooter(closeNewProject, createProject, "Create project")}
-        </>
+        </>,
+        "project-form-modal"
       )}
 
       {/* edit project */}
@@ -7324,27 +7327,30 @@ export function StormApp() {
         480,
         <>
           <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "var(--st-text)", letterSpacing: "-.4px" }}>{t("Edit project")}</h2>
-          <div style={{ marginTop: 20 }}><label className="flabel">{t("Project name")}</label><input className="finp" value={state.projEditName} onChange={(e) => setState({ projEditName: e.target.value })} /></div>
-          <div style={{ marginTop: 16 }}>
-            <label className="flabel">{t("Status")}</label>
-            <StormSelect
-              value={state.projEditStatus}
-              onChange={(v) => setState({ projEditStatus: v as ProjectStatus })}
-              options={PROJECT_STATUS_ORDER.map((s) => ({ value: s, label: t(PROJ_STATUS[s]?.label ?? s), dot: PROJ_STATUS[s]?.dot }))}
-            />
+          <div className="project-form-fields" key={state.projEditOpen ? "open" : "closed"}>
+            <div style={{ marginTop: 20 }}><label className="flabel">{t("Project name")}</label><input className="finp" value={state.projEditName} onChange={(e) => setState({ projEditName: e.target.value })} /></div>
+            <div style={{ marginTop: 16 }}>
+              <label className="flabel">{t("Status")}</label>
+              <StormSelect
+                value={state.projEditStatus}
+                onChange={(v) => setState({ projEditStatus: v as ProjectStatus })}
+                options={PROJECT_STATUS_ORDER.map((s) => ({ value: s, label: t(PROJ_STATUS[s]?.label ?? s), dot: PROJ_STATUS[s]?.dot }))}
+              />
+            </div>
+            <div style={{ marginTop: 16 }}>
+              <StormAppSecFields key={`${state.projEditId ?? "edit"}:${state.projEditOpen}`} value={state.projEditAppsec} onChange={(p) => setState({ projEditAppsec: { ...state.projEditAppsec, ...p } })} works={state.worksEnabled} t={t} />
+            </div>
+            <div className="project-date-fields">
+              <div><label className="flabel">{t("Start date")}</label><StormDatePicker value={state.projEditStart} onChange={(v) => setState({ projEditStart: v })} max={state.projEditEnd || undefined} /></div>
+              <div><label className="flabel">{t("End date")}</label><StormDatePicker value={state.projEditEnd} onChange={(v) => setState({ projEditEnd: v })} min={state.projEditStart || undefined} /></div>
+            </div>
+            {datesInvalid(state.projEditStart, state.projEditEnd) && (
+              <div style={{ marginTop: 8, font: "600 12px Inter,sans-serif", color: "var(--st-danger)" }}>{DATES_ERROR}</div>
+            )}
           </div>
-          <div style={{ marginTop: 16 }}>
-            <StormAppSecFields key={`${state.projEditId ?? "edit"}:${state.projEditOpen}`} value={state.projEditAppsec} onChange={(p) => setState({ projEditAppsec: { ...state.projEditAppsec, ...p } })} works={state.worksEnabled} t={t} />
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 16 }}>
-            <div><label className="flabel">{t("Start date")}</label><StormDatePicker value={state.projEditStart} onChange={(v) => setState({ projEditStart: v })} max={state.projEditEnd || undefined} /></div>
-            <div><label className="flabel">{t("End date")}</label><StormDatePicker value={state.projEditEnd} onChange={(v) => setState({ projEditEnd: v })} min={state.projEditStart || undefined} /></div>
-          </div>
-          {datesInvalid(state.projEditStart, state.projEditEnd) && (
-            <div style={{ marginTop: 8, font: "600 12px Inter,sans-serif", color: "var(--st-danger)" }}>{DATES_ERROR}</div>
-          )}
           {modalFooter(closeProjEdit, saveProjEdit, t("Save"))}
-        </>
+        </>,
+        "project-form-modal"
       )}
 
       {/* activity: the full list behind a card's "Show more" */}

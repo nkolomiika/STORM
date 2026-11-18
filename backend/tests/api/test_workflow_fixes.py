@@ -86,6 +86,7 @@ async def test_member_can_edit_but_not_delete_or_manage_project(api):
     client.cookies.set('access_token', create_access_token(ids['outsider']))
     root = f"projects/{ids['project']}"
     assert checked(await client.put(root, json={"name": "Member edit"}))["name"] == "Member edit"
+    assert checked(await client.get(root))["name"] == "Member edit"
     assert (await client.delete(root)).status_code == 403
     assert (await client.post(root + '/members', json={"user_id": ids['admin']})).status_code == 403
     assert (await client.put(f"projects/{ids['foreign_project']}", json={"name": "IDOR"})).status_code == 403
