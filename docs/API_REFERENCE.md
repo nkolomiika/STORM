@@ -16,7 +16,7 @@ Healthcheck эндпоинт для проверки доступности се
 
 Operation ID: `health_health_get`.
 
-Обработчик: `health` — [backend/app/main.py:392](../backend/app/main.py#L392).
+Обработчик: `health` — [backend/app/main.py:395](../backend/app/main.py#L395).
 
 | HTTP | Ответ | Тип/схема |
 | --- | --- | --- |

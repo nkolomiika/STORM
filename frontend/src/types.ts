@@ -606,12 +606,14 @@ export interface OpenApiImportResult {
   errors: string[];
 }
 
-/** Поводы для уведомления — ровно те четыре, что создаёт бэкенд (NotificationType). */
+/** Поводы уведомлений соответствуют NotificationType на сервере. */
 export type NotificationKind =
   /** Упоминание @username в комментарии к находке или заметке. */
   | "mention"
   /** Пользователя добавили в проект. */
   | "project_member_added"
+  /** Участник проекта добавил уязвимость. */
+  | "vuln_created"
   /** Изменился статус находки, которую он завёл. */
   | "vuln_status_changed"
   /** Изменился статус проекта, в котором он состоит. */

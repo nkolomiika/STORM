@@ -295,7 +295,6 @@ interface StormState {
   epImportRaw: string;
   epImportPreview: string;
   epImportBusy: boolean;
-  epImportSwaggerHosts: string[];
   /** Hosts filter pills (multi-select, empty = all): "up" | "down" | HTTP code. */
   hostFilters: string[];
   /** Same status filter, for the IPs view. */
@@ -553,7 +552,6 @@ const initialState: StormState = {
   epImportRaw: "",
   epImportPreview: "",
   epImportBusy: false,
-  epImportSwaggerHosts: [],
   ipFarmJob: null,
   jsFarmJob: null,
   apiJsFiles: null,
@@ -2975,7 +2973,7 @@ export function StormApp() {
     } catch {
       return null;
     }
-    // Need a real host to attach to (domain or IP); a bare path has none.
+    // URL должен содержать домен или IP для привязки; DNS здесь не проверяется.
     if (!host || target.startsWith("/")) return null;
     return { host, method, path, url };
   };
@@ -2993,18 +2991,20 @@ export function StormApp() {
     }
     return out.join("\n");
   };
-  const openEpImport = () => setState({ epImportOpen: true, epImportRaw: "", epImportPreview: "", epImportBusy: false, epImportSwaggerHosts: [] });
-  const closeEpImport = () => setState({ epImportOpen: false, epImportRaw: "", epImportPreview: "", epImportBusy: false, epImportSwaggerHosts: [] });
+  const openEpImport = () => setState({ epImportOpen: true, epImportRaw: "", epImportPreview: "", epImportBusy: false });
+  const closeEpImport = () => setState({ epImportOpen: false, epImportRaw: "", epImportPreview: "", epImportBusy: false });
   /** Объединяет распознанные Swagger-строки с черновиком импорта без дублей.
    * Открывает предпросмотр Add endpoints; сохранение в БД выполняется отдельно.
    */
   const importSwaggerEndpoints = (lines: string[]) => setState((s) => ({
     exportPageOpen: false,
     epImportOpen: true,
-    epImportSwaggerHosts: [...new Set([...(s.epImportOpen ? s.epImportSwaggerHosts : []), ...lines.map(parseEpLine).filter((endpoint) => endpoint != null).map((endpoint) => endpoint.host)])],
     epImportRaw: [...new Set([...(s.epImportOpen ? s.epImportRaw.split(/\r?\n/).filter(Boolean) : []), ...lines])].join("\n"),
     epImportPreview: normalizeEpList([...(s.epImportOpen ? s.epImportPreview.split(/\r?\n/).filter(Boolean) : []), ...lines].join("\n")),
   }));
+  /** Импортирует предпросмотр URL, переиспользуя найденные и созданные хосты.
+   * Ручной ввод и Swagger используют одинаковые правила; сетевой пробив не запускается.
+   */
   const submitEpImport = async () => {
     const pid = state.openProjectId;
     const parsed = state.epImportPreview
@@ -3021,15 +3021,11 @@ export function StormApp() {
     const importHosts = new Map(hosts.map((h) => [h.host.toLowerCase(), h]));
     for (const ep of parsed) {
       let host = importHosts.get(ep.host);
-      if (!host && (ep.host === "unknown" || state.epImportSwaggerHosts.includes(ep.host))) {
+      if (!host) {
         try {
           host = toStormHost(await apiCreateHost(pid, { hostname: ep.host }));
           importHosts.set(ep.host, host);
         } catch (error) { pushToast(getApiErrorMessage(error, t("Couldn't add host")), "error"); skipped++; continue; }
-      }
-      if (!host) {
-        skipped++;
-        continue;
       }
       try {
         await apiCreateEndpoint(pid, host.id, { path: ep.path, method: ep.method as Method });
@@ -3038,17 +3034,17 @@ export function StormApp() {
         skipped++;
       }
     }
-    setState({ epImportOpen: false, epImportRaw: "", epImportPreview: "", epImportBusy: false, epImportSwaggerHosts: [] });
+    setState({ epImportOpen: false, epImportRaw: "", epImportPreview: "", epImportBusy: false });
     reloadHosts();
     pushToast(
-      skipped ? `${t("Added")} ${added} · ${skipped} ${t("skipped (host not found)")}` : `${t("Added")} ${added} ${t("endpoints")}`,
+      skipped ? `${t("Added")} ${added} · ${skipped} ${t("not imported")}` : `${t("Added")} ${added} ${t("endpoints")}`,
       added ? "success" : "error",
     );
   };
 
   /* Host editing only renames — status comes from the probe and ports hang off an
-     IP the probe materialises, so neither is editable here. New hosts come from the
-     "Add hosts" import, never this editor. */
+     IP the probe materialises, so neither is editable here. New hosts come from
+     the host/endpoint import flows, never this editor. */
   const saveHostEditor = async () => {
     const { editorIndex: index, editorForm: f } = state;
     const pid = state.openProjectId;
@@ -3951,8 +3947,7 @@ export function StormApp() {
   const isList = state.view === "list" && state.nav === "projects";
   const isDocs = state.view === "list" && state.nav === "docs";
   const isTasks = state.view === "list" && state.nav === "tasks";
-  /* Notification rows, built from the backend payload. There are exactly four
-     reasons to be notified (NotificationKind), and each reads differently — the
+  /* Notification rows, built from the backend payload. Each event reads differently — the
      row is a sentence: "<who> <action> <subject>". */
   const NOTIF_AVATAR_COLORS = ["var(--st-accent)", "var(--st-purple)", "var(--st-orange)", "var(--st-danger)", "var(--st-success)"];
   const notifs = state.notifs.map((n) => {
@@ -3970,6 +3965,10 @@ export function StormApp() {
         row.action = t("added you to");
         row.subject = project;
         break;
+      case "vuln_created":
+        row.action = t("added a vulnerability —");
+        row.subject = ctx?.vulnerability_title || "";
+        break;
       case "vuln_status_changed":
         row.action = t("set your finding to {status} —", { status: t(statusLabel) });
         row.subject = ctx?.vulnerability_title || "";
@@ -3978,9 +3977,13 @@ export function StormApp() {
         row.action = t("changed the project status to {status} —", { status: t(statusLabel) });
         row.subject = project;
         break;
-      default:
+      case "mention":
         row.action = t("mentioned you in");
         row.subject = ctx?.vulnerability_title || ctx?.note_title || (ctx?.endpoint_id != null ? `${ctx.endpoint_method || "GET"} ${ctx.endpoint_path || "/"}` : project);
+        break;
+      default:
+        row.action = t("Notification");
+        row.subject = project;
     }
     return {
       key: n.id,
@@ -3990,7 +3993,7 @@ export function StormApp() {
       action: row.action,
       where: row.subject,
       // The project is already the subject of project-level events; don't repeat it.
-      meta: [n.type === "mention" || n.type === "vuln_status_changed" ? project : "", relTime(n.created_at)].filter(Boolean).join(" · "),
+      meta: [n.type === "mention" || n.type === "vuln_status_changed" || n.type === "vuln_created" ? project : "", relTime(n.created_at)].filter(Boolean).join(" · "),
       unread: !n.is_read,
       onClick: () => goToNotif(n),
     };

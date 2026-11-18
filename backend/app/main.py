@@ -234,6 +234,8 @@ async def startup() -> None:
             await conn.execute(text('ALTER TABLE projects DROP COLUMN description'))
         if conn.dialect.name == "postgresql":
             await conn.execute(text("ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'PROJECT_DEADLINE'"))
+            await conn.execute(text("ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'VULN_CREATED'"))
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_notifications_created_at ON notifications (created_at)"))
             await conn.execute(text("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS context_data JSON"))
             await conn.execute(text("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS dedupe_key VARCHAR(255)"))
             await conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_notifications_dedupe_key ON notifications (dedupe_key)"))
@@ -345,6 +347,7 @@ async def startup() -> None:
             )
             await add_missing("users", {"is_locked": "is_locked BOOLEAN NOT NULL DEFAULT 0", "is_sso": "is_sso BOOLEAN NOT NULL DEFAULT 0"})
             await add_missing("notifications", {"context_data": "context_data JSON", "dedupe_key": "dedupe_key VARCHAR(255)"})
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_notifications_created_at ON notifications (created_at)"))
             await conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_notifications_dedupe_key ON notifications (dedupe_key)"))
             await add_missing("hosts", {"origin": "origin VARCHAR(16) NOT NULL DEFAULT 'host'"})
             await add_missing(

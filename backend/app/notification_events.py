@@ -4,7 +4,7 @@ import logging
 import re
 from datetime import UTC, date, datetime, timedelta
 
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, delete, or_, select
 from sqlalchemy.dialects.postgresql import insert
 
 from app.enums import NotificationType, ProjectStatus, UserRole
@@ -12,6 +12,39 @@ from app.models import Endpoint, Host, Notification, Project, ProjectMember, Use
 from app.ws_manager import ws_manager
 
 logger = logging.getLogger(__name__)
+NOTIFICATION_RETENTION = timedelta(days=7)
+
+
+def notification_cutoff(now: datetime | None = None) -> datetime:
+    """Нижняя граница семи суток хранения, время UTC."""
+    return (now or datetime.now(UTC)) - NOTIFICATION_RETENTION
+
+
+async def delete_expired_notifications(db, now: datetime | None = None, batch_size: int = 1000) -> int:
+    """Удаляет ограниченную порцию старых уведомлений; транзакцию завершает вызывающий код.
+
+    SKIP LOCKED позволяет нескольким процессам обслуживания не ждать друг друга.
+    Индекс created_at ограничивает чтение старыми строками; новые записи сохраняются.
+    """
+    expired = (select(Notification.id).where(Notification.created_at < notification_cutoff(now))
+               .order_by(Notification.created_at, Notification.id).limit(batch_size)
+               .with_for_update(skip_locked=True))
+    result = await db.execute(delete(Notification).where(Notification.id.in_(expired)))
+    return result.rowcount
+
+
+async def queue_vulnerability_created(db, project_id: int, vulnerability_id: int, actor_id: int) -> list[Notification]:
+    """Уведомляет активных участников проекта о новой находке, исключая автора."""
+    user_ids = list(await db.scalars(
+        select(User.id).join(ProjectMember, ProjectMember.user_id == User.id)
+        .where(ProjectMember.project_id == project_id, User.id != actor_id,
+               User.is_active.is_(True), User.is_locked.is_(False))
+    ))
+    events = [Notification(user_id=user_id, type=NotificationType.VULN_CREATED,
+                           project_id=project_id, vulnerability_id=vulnerability_id,
+                           actor_id=actor_id, is_read=False) for user_id in user_ids]
+    db.add_all(events)
+    return events
 
 
 def mentioned_names(content: str, names: list[str]) -> set[str]:
@@ -90,15 +123,18 @@ async def generate_deadline_notifications(db, today: date | None = None) -> list
 
 
 async def deadline_loop(sessions, interval: float = 60) -> None:
-    """Catch up after restarts and recheck dates without mail or scan workers."""
+    """Каждую минуту очищает старые уведомления и проверяет сроки проектов."""
     while True:
         try:
             async with sessions() as db:
+                deleted = await delete_expired_notifications(db)
                 events = await generate_deadline_notifications(db)
                 await db.commit()
+                if deleted:
+                    logger.info("expired_notifications_deleted count=%s retention_days=7", deleted)
                 await publish(events)
         except asyncio.CancelledError:
             raise
         except Exception:
-            logger.exception("Deadline notification sweep failed")
+            logger.exception("Notification maintenance sweep failed")
         await asyncio.sleep(interval)

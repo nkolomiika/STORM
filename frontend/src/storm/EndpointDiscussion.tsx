@@ -82,7 +82,7 @@ export function EndpointDiscussion({ projectId, hostId, endpointId }: Props) {
   return <section aria-label={t("Endpoint discussion")}>
     <div className="mono" style={{ fontSize: 10.5, letterSpacing: 1, color: "var(--st-text-faint)", fontWeight: 700, marginBottom: 10 }}>{t("DISCUSSION")}</div>
     <div aria-live="polite" style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 12 }}>
-      {comments.map((comment) => <article key={comment.id} className="listitem" style={{ background: "var(--st-hover)", border: "1px solid var(--st-divider)", borderRadius: 12, padding: 16 }}>
+      {comments.map((comment) => <article key={comment.id} className="discussion-comment" style={{ background: "var(--st-hover)", border: "1px solid var(--st-divider)", borderRadius: 12, padding: 16 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 8 }}>
           <b style={{ fontSize: 13, color: "var(--st-text)" }}>{comment.username}</b>
           <time dateTime={comment.created_at} style={{ fontSize: 11, color: "var(--st-text-faint)" }}>{new Date(comment.created_at).toLocaleString()}</time>

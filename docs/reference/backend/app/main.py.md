@@ -354,7 +354,7 @@ async def startup() -> None
 
 ## startup.add_missing
 
-[backend/app/main.py:323](../../../../backend/app/main.py#L323)
+[backend/app/main.py:325](../../../../backend/app/main.py#L325)
 
 ```python
 async def add_missing(table: str, columns: dict[str, str]) -> None
@@ -383,7 +383,7 @@ SQLite не умеет ADD COLUMN IF NOT EXISTS — проверяем чере�
 
 ## shutdown_notifications
 
-[backend/app/main.py:383](../../../../backend/app/main.py#L383)
+[backend/app/main.py:386](../../../../backend/app/main.py#L386)
 
 ```python
 async def shutdown_notifications() -> None
@@ -404,7 +404,7 @@ async def shutdown_notifications() -> None
 
 ## health
 
-[backend/app/main.py:392](../../../../backend/app/main.py#L392)
+[backend/app/main.py:395](../../../../backend/app/main.py#L395)
 
 ```python
 async def health() -> dict

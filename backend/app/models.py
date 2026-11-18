@@ -828,7 +828,7 @@ class Notification(Base):
         nullable=True,
     )
     # Предмет уведомления для не-mention поводов: добавление в проект и смена
-    # статуса проекта ссылаются на project_id, смена статуса находки — на
+    # статуса проекта ссылаются на project_id, добавление/смена статуса находки — на
     # vulnerability_id. У упоминаний оба пустые: их предмет — комментарий выше.
     project_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=True)
     vulnerability_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("vulnerabilities.id", ondelete="CASCADE"), nullable=True)
@@ -839,7 +839,7 @@ class Notification(Base):
     is_read: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
     context_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     dedupe_key: Mapped[str | None] = mapped_column(String(255), nullable=True, unique=True, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
 
 
 class AuditLog(Base):

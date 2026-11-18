@@ -124,6 +124,8 @@ class NotificationType(str, enum.Enum):
     MENTION = "mention"
     #: Пользователя добавили в проект.
     PROJECT_MEMBER_ADDED = "project_member_added"
+    #: Участник проекта добавил новую уязвимость.
+    VULN_CREATED = "vuln_created"
     #: Изменился статус находки, которую завёл пользователь.
     VULN_STATUS_CHANGED = "vuln_status_changed"
     #: Изменился статус проекта, в котором состоит пользователь.

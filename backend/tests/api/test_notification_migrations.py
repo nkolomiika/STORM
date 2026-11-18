@@ -20,6 +20,45 @@ def load(name):
 
 
 @pytest.mark.asyncio
+async def test_notification_retention_migration_upgrades_legacy_enum_and_preserves_old_events(api):
+    from app.enums import NotificationType
+    migration = load("20261118_0027_notification_retention.py")
+    _, ids = api
+    async with aclosing(app.dependency_overrides[get_db]()) as stream:
+        db = await anext(stream)
+        async with db.bind.connect() as conn:
+            assert (await conn.scalar(text("SELECT current_schema()"))).startswith("test_")
+            # Воспроизводим старую БД, где тип нового события и индекс ещё отсутствуют.
+            await conn.execute(text("DROP INDEX ix_notifications_created_at"))
+            await conn.execute(text("ALTER TYPE notification_type RENAME TO notification_type_before_test"))
+            labels = ", ".join("'" + item.name + "'" for item in NotificationType if item != NotificationType.VULN_CREATED)
+            await conn.execute(text("CREATE TYPE notification_type AS ENUM (" + labels + ")"))
+            await conn.execute(text("ALTER TABLE notifications ALTER COLUMN type TYPE notification_type USING type::text::notification_type"))
+            await conn.execute(text("DROP TYPE notification_type_before_test"))
+            await conn.commit()
+
+            def exercise(connection):
+                context = MigrationContext.configure(connection)
+                with context.begin_transaction(), Operations.context(context):
+                    migration.upgrade()
+                    migration.upgrade()
+                    indexes = {item["name"] for item in inspect(connection).get_indexes("notifications")}
+                    assert "ix_notifications_created_at" in indexes
+                    for kind in ("MENTION", "VULN_CREATED"):
+                        connection.execute(text("INSERT INTO notifications (user_id, type, is_read) VALUES (:user_id, CAST(:kind AS notification_type), false)"),
+                                           {"user_id": ids["admin"], "kind": kind})
+                    migration.downgrade()
+                    assert connection.scalar(text("SELECT count(*) FROM notifications")) == 1
+                    assert connection.scalar(text("SELECT type::text FROM notifications")) == "MENTION"
+                    assert "ix_notifications_created_at" not in {item["name"] for item in inspect(connection).get_indexes("notifications")}
+                    migration.upgrade()
+                    assert "ix_notifications_created_at" in {item["name"] for item in inspect(connection).get_indexes("notifications")}
+                    assert connection.scalar(text("SELECT count(*) FROM notifications")) == 1
+
+            await conn.run_sync(exercise)
+
+
+@pytest.mark.asyncio
 async def test_project_description_migration_only_removes_the_requested_column(api):
     migration = load('20261115_0025_remove_project_description.py')
     _, ids = api

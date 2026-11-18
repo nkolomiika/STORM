@@ -37,7 +37,7 @@
 | `backend/app/messaging.py` | 1 | [Методы](reference/backend/app/messaging.py.md) |
 | `backend/app/models.py` | 7 | [Методы](reference/backend/app/models.py.md) |
 | `backend/app/netguard.py` | 3 | [Методы](reference/backend/app/netguard.py.md) |
-| `backend/app/notification_events.py` | 6 | [Методы](reference/backend/app/notification_events.py.md) |
+| `backend/app/notification_events.py` | 9 | [Методы](reference/backend/app/notification_events.py.md) |
 | `backend/app/observability.py` | 6 | [Методы](reference/backend/app/observability.py.md) |
 | `backend/app/oidc.py` | 10 | [Методы](reference/backend/app/oidc.py.md) |
 | `backend/app/pagination.py` | 2 | [Методы](reference/backend/app/pagination.py.md) |
@@ -114,4 +114,4 @@
 | `frontend/src/storm/theme.ts` | 5 | [Методы](reference/frontend/src/storm/theme.ts.md) |
 | `frontend/src/storm/useReconJobPolling.ts` | 1 | [Методы](reference/frontend/src/storm/useReconJobPolling.ts.md) |
 
-Всего: backend **921**, frontend **562**, модулей **105**.
+Всего: backend **924**, frontend **562**, модулей **105**.

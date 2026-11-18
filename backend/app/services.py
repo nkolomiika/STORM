@@ -3388,6 +3388,7 @@ class VulnerabilityService:
         await self.db.flush()
         await self.db.refresh(vuln)
         events = await notification_events.queue_mentions(self.db, project_id, "\n".join(str(getattr(vuln, key, None) or "") for key in ("title", "description", "steps_to_reproduce", "impact", "recommendations")), actor_id, {"vulnerability_id": vuln.id, "vulnerability_title": vuln.title})
+        events += await notification_events.queue_vulnerability_created(self.db, project_id, vuln.id, actor_id)
         await self.audit.log(
             "CREATE",
             user_id=actor_id,
@@ -4500,12 +4501,13 @@ class NotificationService:
         return contexts
 
     async def list(self, user_id: int, page: int, size: int, is_read: bool | None) -> tuple[list[NotificationOut], int]:
-        query = select(Notification).where(Notification.user_id == user_id)
+        """Уведомления пользователя только за последние семь суток, включая непрочитанные."""
+        query = select(Notification).where(Notification.user_id == user_id, Notification.created_at >= notification_events.notification_cutoff())
         if is_read is not None:
             query = query.where(Notification.is_read == is_read)
         total = await self.db.scalar(select(func.count()).select_from(query.subquery())) or 0
         notifications = (
-            await self.db.scalars(query.order_by(Notification.created_at.desc()).offset((page - 1) * size).limit(size))
+            await self.db.scalars(query.order_by(Notification.created_at.desc(), Notification.id.desc()).offset((page - 1) * size).limit(size))
         ).all()
         contexts = await self._contexts(notifications)
         result: list[NotificationOut] = []
@@ -4526,12 +4528,12 @@ class NotificationService:
 
     async def unread_count(self, user_id: int) -> int:
         return await self.db.scalar(
-            select(func.count()).select_from(Notification).where(and_(Notification.user_id == user_id, Notification.is_read.is_(False)))
+            select(func.count()).select_from(Notification).where(and_(Notification.user_id == user_id, Notification.is_read.is_(False), Notification.created_at >= notification_events.notification_cutoff()))
         ) or 0
 
     async def mark_read(self, notification_id: int, user_id: int) -> Notification:
         notification = await self.db.scalar(
-            select(Notification).where(and_(Notification.id == notification_id, Notification.user_id == user_id))
+            select(Notification).where(and_(Notification.id == notification_id, Notification.user_id == user_id, Notification.created_at >= notification_events.notification_cutoff()))
         )
         if not notification:
             raise NotFoundError("Уведомление не найдено")
@@ -4541,7 +4543,7 @@ class NotificationService:
         return notification
 
     async def mark_all_read(self, user_id: int) -> None:
-        await self.db.execute(update(Notification).where(Notification.user_id == user_id).values(is_read=True))
+        await self.db.execute(update(Notification).where(Notification.user_id == user_id, Notification.created_at >= notification_events.notification_cutoff()).values(is_read=True))
         await self.db.commit()
 
 

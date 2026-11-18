@@ -1235,24 +1235,74 @@ describe("StormApp (design prototype port)", () => {
     expect(api.createHost).toHaveBeenCalledWith(2, { hostname: host });
   });
 
-  it("bulk-adds endpoints from a pasted URL list, matching hosts by name", async () => {
+  it("reuses existing hosts and creates one new host for all its pasted endpoints", async () => {
     await openHostsSection();
     await screen.findByText("api.northwind.test", { selector: ".hostname" });
     fireEvent.click(screen.getAllByText("Endpoints").find((n) => n.closest(".menu")) as HTMLElement);
     // "Add endpoints" opens a full paste page (like Add hosts/IPs), not the old modal.
     fireEvent.click(screen.getByRole("button", { name: /Add endpoints/i }));
-    // api.northwind.test is a project host → its lines create; other.example.com is not → skipped.
+    const base = await api.getHosts(2);
+    vi.mocked(api.createHost).mockResolvedValueOnce({ ...base.items[0], id: 900, hostname: "other.example.com", ip_addresses: [], ip_address: null });
     fireEvent.change(screen.getByPlaceholderText(/example\.com/), {
-      target: { value: "https://api.northwind.test/v2/login\nPOST https://api.northwind.test/api/users\nhttps://other.example.com/x" },
+      target: { value: "https://API.NORTHWIND.TEST/v2/login\nPOST https://api.northwind.test/api/users\nhttps://OTHER.example.com/x\nPOST https://other.example.com/y" },
     });
     // Preview normalizes to METHOD + URL.
     const preview = screen.getByPlaceholderText(/parsed endpoints/) as HTMLTextAreaElement;
     expect(preview.value).toContain("GET https://api.northwind.test/v2/login");
     expect(preview.value).toContain("POST https://api.northwind.test/api/users");
+    expect(api.createHost).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: /Add endpoints/i }));
-    await waitFor(() => expect(vi.mocked(api.createEndpoint)).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(vi.mocked(api.createEndpoint)).toHaveBeenCalledTimes(4));
     expect(vi.mocked(api.createEndpoint)).toHaveBeenCalledWith(2, 11, { path: "/v2/login", method: "GET" });
     expect(vi.mocked(api.createEndpoint)).toHaveBeenCalledWith(2, 11, { path: "/api/users", method: "POST" });
+    expect(api.createHost).toHaveBeenCalledTimes(1);
+    expect(api.createHost).toHaveBeenCalledWith(2, { hostname: "other.example.com" });
+    expect(api.createEndpoint).toHaveBeenCalledWith(2, 900, { path: "/x", method: "GET" });
+    expect(api.createEndpoint).toHaveBeenCalledWith(2, 900, { path: "/y", method: "POST" });
+    expect(api.startHostFarm).not.toHaveBeenCalled();
+    expect(api.startIpFarm).not.toHaveBeenCalled();
+  });
+
+  it("creates separate hosts for distinct domains in the endpoint preview", async () => {
+    await openEndpointsView();
+    const base = await api.getHosts(2);
+    vi.mocked(api.createHost)
+      .mockResolvedValueOnce({ ...base.items[0], id: 900, hostname: "first.example", ip_addresses: [], ip_address: null })
+      .mockResolvedValueOnce({ ...base.items[0], id: 901, hostname: "second.example", ip_addresses: [], ip_address: null });
+    fireEvent.click(screen.getByRole("button", { name: "Add endpoints" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Paste endpoints" }), { target: { value: "https://first.example/one\nhttps://second.example/two" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add endpoints" }));
+    await waitFor(() => expect(api.createEndpoint).toHaveBeenCalledTimes(2));
+    expect(api.createHost).toHaveBeenCalledTimes(2);
+    expect(api.createEndpoint).toHaveBeenCalledWith(2, 900, { path: "/one", method: "GET" });
+    expect(api.createEndpoint).toHaveBeenCalledWith(2, 901, { path: "/two", method: "GET" });
+  });
+
+  it("creates hosts from the edited endpoint preview rather than the original pasted text", async () => {
+    await openEndpointsView();
+    const base = await api.getHosts(2);
+    vi.mocked(api.createHost).mockResolvedValueOnce({ ...base.items[0], id: 900, hostname: "edited.example", ip_addresses: [], ip_address: null });
+    fireEvent.click(screen.getByRole("button", { name: "Add endpoints" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Paste endpoints" }), { target: { value: "https://original.example/old" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Will be imported" }), { target: { value: "PUT https://edited.example/new" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add endpoints" }));
+    await waitFor(() => expect(api.createEndpoint).toHaveBeenCalledWith(2, 900, { path: "/new", method: "PUT" }));
+    expect(api.createHost).toHaveBeenCalledTimes(1);
+    expect(api.createHost).toHaveBeenCalledWith(2, { hostname: "edited.example" });
+  });
+
+  it("skips endpoints whose host could not be created and continues importing existing hosts", async () => {
+    await openEndpointsView();
+    vi.mocked(api.createHost).mockRejectedValueOnce(new Error("internal-database-details"));
+    fireEvent.click(screen.getByRole("button", { name: "Add endpoints" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Paste endpoints" }), { target: { value: "https://failed.example/private\nhttps://api.northwind.test/healthy" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add endpoints" }));
+    await waitFor(() => expect(useToastStore.getState().toasts.some((toast) => toast.message === "Added 1 · 1 not imported")).toBe(true));
+    expect(api.createHost).toHaveBeenCalledTimes(1);
+    expect(api.createEndpoint).toHaveBeenCalledTimes(1);
+    expect(api.createEndpoint).toHaveBeenCalledWith(2, 11, { path: "/healthy", method: "GET" });
+    expect(useToastStore.getState().toasts.some((toast) => toast.message === "Couldn't add host")).toBe(true);
+    expect(useToastStore.getState().toasts.some((toast) => toast.message.includes("internal-database-details"))).toBe(false);
   });
 
   it("places a grey deletion button beside each host count and requires confirmation", async () => {
@@ -1642,8 +1692,7 @@ describe("StormApp (design prototype port)", () => {
     await waitFor(() => expect(api.markNotificationRead).toHaveBeenCalledWith(91));
   });
 
-  /* There are exactly four reasons to be notified, and each reads as its own
-     sentence — not everything is "mentioned you in". */
+  /* Each reason uses its own sentence; only explicit mentions say "mentioned". */
   it("words each kind of notification for what it is", async () => {
     mockNotifications();
     render(<MemoryRouter><StormApp /></MemoryRouter>);
@@ -1653,6 +1702,22 @@ describe("StormApp (design prototype port)", () => {
     expect(screen.getByText("changed the project status to Freeze —")).toBeInTheDocument();
     // Two of the four are unread.
     expect(screen.getByText("2 new")).toBeInTheDocument();
+  });
+
+  it("shows a new vulnerability as an addition rather than a mention and opens it", async () => {
+    vi.mocked(api.listNotifications).mockResolvedValue({ items: [{
+      id: 92, type: "vuln_created", comment_id: null, note_comment_id: null, is_read: false,
+      created_at: "2026-11-18T00:00:00Z",
+      context: { vulnerability_id: 71, vulnerability_title: "IDOR on GET /orders/{id}",
+        project_id: 2, project_name: "Northwind API", host_id: 11, commenter_username: "alice",
+        note_id: null, note_title: null, status: null },
+    }], total: 1, page: 1, size: 20, pages: 1 });
+    render(<MemoryRouter><StormApp /></MemoryRouter>);
+    expect(await screen.findByText("added a vulnerability —")).toBeInTheDocument();
+    expect(screen.queryByText("mentioned you in")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText("IDOR on GET /orders/{id}"));
+    expect(await screen.findByDisplayValue("IDOR on GET /orders/{id}")).toBeInTheDocument();
+    await waitFor(() => expect(api.markNotificationRead).toHaveBeenCalledWith(92));
   });
 
   // Clicking a finding notification opens that finding, not just its project.
