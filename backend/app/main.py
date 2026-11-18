@@ -380,10 +380,17 @@ async def startup() -> None:
         service = UserService(db)
         await service.bootstrap_admin()
     app.state.deadline_notifications = asyncio.create_task(deadline_loop(SessionLocal))
+    from app.project_status_sync import project_status_sync_loop
+    app.state.project_status_sync = asyncio.create_task(project_status_sync_loop(SessionLocal))
 
 
 @app.on_event("shutdown")
 async def shutdown_notifications() -> None:
+    sync_task = getattr(app.state, "project_status_sync", None)
+    if sync_task is not None:
+        sync_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await sync_task
     task = getattr(app.state, "deadline_notifications", None)
     if task is not None:
         task.cancel()

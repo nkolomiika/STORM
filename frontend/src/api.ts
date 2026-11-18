@@ -558,6 +558,7 @@ export async function getHosts(projectId: number): Promise<PaginatedResponse<Hos
 export async function createHost(
   projectId: number,
   payload: {
+    probe?: boolean;
     ip_address?: string;
     ip_addresses?: string[];
     hostname?: string;

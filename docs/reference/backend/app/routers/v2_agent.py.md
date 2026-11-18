@@ -162,15 +162,16 @@ router.get('/projects/{project_id}/hosts/{host_id}', response_model=dict)
 [backend/app/routers/v2_agent.py:76](../../../../../backend/app/routers/v2_agent.py#L76)
 
 ```python
-async def create_agent_host(project_id: int, payload: HostCreate, context: AgentTokenContext=Depends(require_agent_scope('assets:write')), _project: Project=Depends(require_agent_project_access), db: AsyncSession=Depends(get_db)) -> HostOut
+async def create_agent_host(project_id: int, payload: HostCreate, background_tasks: BackgroundTasks, context: AgentTokenContext=Depends(require_agent_scope('assets:write')), _project: Project=Depends(require_agent_project_access), db: AsyncSession=Depends(get_db)) -> HostOut
 ```
 
-Создаёт хост с IP-адресами без запуска сканеров или DNS-запросов.
+Создаёт хост; probe=true дополнительно ставит защищённую пробивку в очередь.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
 | `project_id` | `int` | `обязательный` | ID проекта; доступ проверяет dependency маршрута, принадлежность ресурса — сервис. |
 | `payload` | `HostCreate` | `обязательный` | Данные операции; для HTTP структура определена Pydantic request-схемой. |
+| `background_tasks` | `BackgroundTasks` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
 | `context` | `AgentTokenContext` | `Depends(require_agent_scope('assets:write'))` | Определяется именем/типом и контрактом вызывающего кода. |
 | `_project` | `Project` | `Depends(require_agent_project_access)` | Определяется именем/типом и контрактом вызывающего кода. |
 | `db` | `AsyncSession` | `Depends(get_db)` | Асинхронная SQLAlchemy-сессия текущего запроса. |
@@ -197,7 +198,7 @@ router.post('/projects/{project_id}/hosts', response_model=HostOut, status_code=
 
 ## list_agent_endpoints
 
-[backend/app/routers/v2_agent.py:89](../../../../../backend/app/routers/v2_agent.py#L89)
+[backend/app/routers/v2_agent.py:90](../../../../../backend/app/routers/v2_agent.py#L90)
 
 ```python
 async def list_agent_endpoints(project_id: int, host_id: int, _scope: AgentTokenContext=Depends(require_agent_scope('assets:read')), _project: Project=Depends(require_agent_project_access), db: AsyncSession=Depends(get_db)) -> list[EndpointOut]
@@ -234,7 +235,7 @@ router.get('/projects/{project_id}/hosts/{host_id}/endpoints', response_model=li
 
 ## get_agent_endpoint
 
-[backend/app/routers/v2_agent.py:102](../../../../../backend/app/routers/v2_agent.py#L102)
+[backend/app/routers/v2_agent.py:103](../../../../../backend/app/routers/v2_agent.py#L103)
 
 ```python
 async def get_agent_endpoint(project_id: int, host_id: int, endpoint_id: int, _scope: AgentTokenContext=Depends(require_agent_scope('assets:read')), _project: Project=Depends(require_agent_project_access), db: AsyncSession=Depends(get_db)) -> EndpointOut
@@ -272,7 +273,7 @@ router.get('/projects/{project_id}/hosts/{host_id}/endpoints/{endpoint_id}', res
 
 ## create_agent_endpoint
 
-[backend/app/routers/v2_agent.py:115](../../../../../backend/app/routers/v2_agent.py#L115)
+[backend/app/routers/v2_agent.py:116](../../../../../backend/app/routers/v2_agent.py#L116)
 
 ```python
 async def create_agent_endpoint(project_id: int, host_id: int, payload: EndpointCreate, context: AgentTokenContext=Depends(require_agent_scope('assets:write')), _project: Project=Depends(require_agent_project_access), db: AsyncSession=Depends(get_db)) -> EndpointOut
@@ -311,7 +312,7 @@ router.post('/projects/{project_id}/hosts/{host_id}/endpoints', response_model=E
 
 ## list_agent_ip_addresses
 
-[backend/app/routers/v2_agent.py:129](../../../../../backend/app/routers/v2_agent.py#L129)
+[backend/app/routers/v2_agent.py:130](../../../../../backend/app/routers/v2_agent.py#L130)
 
 ```python
 async def list_agent_ip_addresses(project_id: int, page: int=Query(1, ge=1), size: int=Query(100, ge=1, le=200), host_id: int | None=Query(None, ge=1), _scope: AgentTokenContext=Depends(require_agent_scope('assets:read')), _project: Project=Depends(require_agent_project_access), db: AsyncSession=Depends(get_db)) -> PaginatedResponse[HostIpAddressOut]
@@ -352,7 +353,7 @@ router.get('/projects/{project_id}/ip-addresses', response_model=PaginatedRespon
 
 ## get_agent_ip_address
 
-[backend/app/routers/v2_agent.py:144](../../../../../backend/app/routers/v2_agent.py#L144)
+[backend/app/routers/v2_agent.py:145](../../../../../backend/app/routers/v2_agent.py#L145)
 
 ```python
 async def get_agent_ip_address(project_id: int, ip_id: int, _scope: AgentTokenContext=Depends(require_agent_scope('assets:read')), _project: Project=Depends(require_agent_project_access), db: AsyncSession=Depends(get_db)) -> HostIpAddressOut
@@ -389,7 +390,7 @@ router.get('/projects/{project_id}/ip-addresses/{ip_id}', response_model=HostIpA
 
 ## create_agent_ip_address
 
-[backend/app/routers/v2_agent.py:156](../../../../../backend/app/routers/v2_agent.py#L156)
+[backend/app/routers/v2_agent.py:157](../../../../../backend/app/routers/v2_agent.py#L157)
 
 ```python
 async def create_agent_ip_address(project_id: int, payload: AgentIpAddressCreate, context: AgentTokenContext=Depends(require_agent_scope('assets:write')), _project: Project=Depends(require_agent_project_access), db: AsyncSession=Depends(get_db)) -> HostIpAddressOut
@@ -427,7 +428,7 @@ router.post('/projects/{project_id}/ip-addresses', response_model=HostIpAddressO
 
 ## list_agent_credentials
 
-[backend/app/routers/v2_agent.py:169](../../../../../backend/app/routers/v2_agent.py#L169)
+[backend/app/routers/v2_agent.py:170](../../../../../backend/app/routers/v2_agent.py#L170)
 
 ```python
 async def list_agent_credentials(project_id: int, response: Response, _scope: AgentTokenContext=Depends(require_agent_scope('credentials:read')), _project: Project=Depends(require_agent_project_access), db: AsyncSession=Depends(get_db)) -> list[ProjectCredentialOut]
@@ -464,7 +465,7 @@ router.get('/projects/{project_id}/credentials', response_model=list[ProjectCred
 
 ## get_agent_credential
 
-[backend/app/routers/v2_agent.py:182](../../../../../backend/app/routers/v2_agent.py#L182)
+[backend/app/routers/v2_agent.py:183](../../../../../backend/app/routers/v2_agent.py#L183)
 
 ```python
 async def get_agent_credential(project_id: int, credential_id: int, response: Response, _scope: AgentTokenContext=Depends(require_agent_scope('credentials:read')), _project: Project=Depends(require_agent_project_access), db: AsyncSession=Depends(get_db)) -> ProjectCredentialOut
@@ -502,7 +503,7 @@ router.get('/projects/{project_id}/credentials/{credential_id}', response_model=
 
 ## list_agent_notes
 
-[backend/app/routers/v2_agent.py:196](../../../../../backend/app/routers/v2_agent.py#L196)
+[backend/app/routers/v2_agent.py:197](../../../../../backend/app/routers/v2_agent.py#L197)
 
 ```python
 async def list_agent_notes(project_id: int, _scope: AgentTokenContext=Depends(require_agent_scope('notes:read')), _project: Project=Depends(require_agent_project_access), db: AsyncSession=Depends(get_db)) -> list[ProjectNoteOut]
@@ -538,7 +539,7 @@ router.get('/projects/{project_id}/notes', response_model=list[ProjectNoteOut])
 
 ## get_agent_note
 
-[backend/app/routers/v2_agent.py:207](../../../../../backend/app/routers/v2_agent.py#L207)
+[backend/app/routers/v2_agent.py:208](../../../../../backend/app/routers/v2_agent.py#L208)
 
 ```python
 async def get_agent_note(project_id: int, note_id: int, _scope: AgentTokenContext=Depends(require_agent_scope('notes:read')), _project: Project=Depends(require_agent_project_access), db: AsyncSession=Depends(get_db)) -> ProjectNoteOut
@@ -575,7 +576,7 @@ router.get('/projects/{project_id}/notes/{note_id}', response_model=ProjectNoteO
 
 ## create_agent_note
 
-[backend/app/routers/v2_agent.py:219](../../../../../backend/app/routers/v2_agent.py#L219)
+[backend/app/routers/v2_agent.py:220](../../../../../backend/app/routers/v2_agent.py#L220)
 
 ```python
 async def create_agent_note(project_id: int, payload: ProjectNoteCreate, context: AgentTokenContext=Depends(require_agent_scope('notes:write')), _project: Project=Depends(require_agent_project_access), db: AsyncSession=Depends(get_db)) -> ProjectNoteOut
@@ -613,7 +614,7 @@ router.post('/projects/{project_id}/notes', response_model=ProjectNoteOut, statu
 
 ## update_agent_note
 
-[backend/app/routers/v2_agent.py:231](../../../../../backend/app/routers/v2_agent.py#L231)
+[backend/app/routers/v2_agent.py:232](../../../../../backend/app/routers/v2_agent.py#L232)
 
 ```python
 async def update_agent_note(project_id: int, note_id: int, payload: ProjectNoteUpdate, context: AgentTokenContext=Depends(require_agent_scope('notes:write')), _project: Project=Depends(require_agent_project_access), db: AsyncSession=Depends(get_db)) -> ProjectNoteOut
@@ -652,7 +653,7 @@ router.put('/projects/{project_id}/notes/{note_id}', response_model=ProjectNoteO
 
 ## list_agent_host_vulnerabilities
 
-[backend/app/routers/v2_agent.py:244](../../../../../backend/app/routers/v2_agent.py#L244)
+[backend/app/routers/v2_agent.py:245](../../../../../backend/app/routers/v2_agent.py#L245)
 
 ```python
 async def list_agent_host_vulnerabilities(project_id: int, host_id: int, page: int=Query(1, ge=1), size: int=Query(100, ge=1, le=200), _scope: AgentTokenContext=Depends(require_agent_scope('vulns:read')), _project: Project=Depends(require_agent_project_access), db: AsyncSession=Depends(get_db)) -> dict
@@ -694,7 +695,7 @@ router.get('/projects/{project_id}/hosts/{host_id}/vulnerabilities', response_mo
 
 ## get_agent_host_vulnerability
 
-[backend/app/routers/v2_agent.py:258](../../../../../backend/app/routers/v2_agent.py#L258)
+[backend/app/routers/v2_agent.py:259](../../../../../backend/app/routers/v2_agent.py#L259)
 
 ```python
 async def get_agent_host_vulnerability(project_id: int, host_id: int, vulnerability_id: int, _scope: AgentTokenContext=Depends(require_agent_scope('vulns:read')), _project: Project=Depends(require_agent_project_access), db: AsyncSession=Depends(get_db)) -> VulnerabilityOut
@@ -747,7 +748,7 @@ NotFoundError('Хост не принадлежит указанному про�
 
 ## create_agent_vulnerability
 
-[backend/app/routers/v2_agent.py:279](../../../../../backend/app/routers/v2_agent.py#L279)
+[backend/app/routers/v2_agent.py:280](../../../../../backend/app/routers/v2_agent.py#L280)
 
 ```python
 async def create_agent_vulnerability(project_id: int, payload: VulnerabilityCreate, context: AgentTokenContext=Depends(require_agent_scope('vulns:write')), _project: Project=Depends(require_agent_project_access), db: AsyncSession=Depends(get_db)) -> VulnerabilityOut
@@ -785,7 +786,7 @@ router.post('/projects/{project_id}/vulnerabilities', response_model=Vulnerabili
 
 ## update_agent_vulnerability
 
-[backend/app/routers/v2_agent.py:291](../../../../../backend/app/routers/v2_agent.py#L291)
+[backend/app/routers/v2_agent.py:292](../../../../../backend/app/routers/v2_agent.py#L292)
 
 ```python
 async def update_agent_vulnerability(project_id: int, vuln_id: int, payload: VulnerabilityUpdate, context: AgentTokenContext=Depends(require_agent_scope('vulns:write')), _project: Project=Depends(require_agent_project_access), db: AsyncSession=Depends(get_db)) -> VulnerabilityOut

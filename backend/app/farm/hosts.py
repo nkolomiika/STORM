@@ -377,7 +377,7 @@ class HostFarmService:
         return existing
 
     async def _ensure_skeletons(
-        self, project_id: int, targets: dict[str, ParsedTarget], existing: set[str]
+        self, project_id: int, targets: dict[str, ParsedTarget], existing: set[str], *, commit: bool = True
     ) -> None:
         """Заводит хосты-заготовки (status unknown) сразу, чтобы список показался
         мгновенно; статус/порты подтянет фоновый пробив. Уже добавленные (existing)
@@ -394,9 +394,17 @@ class HostFarmService:
                     origin="host",
                 )
             )
-        await self.db.commit()
+        if commit:
+            await self.db.commit()
+        else:
+            await self.db.flush()
 
-    async def create_job(self, project_id: int, raw: str, actor_id: int) -> HostFarmJob:
+    async def create_job(self, project_id: int, raw: str, actor_id: int, *, probe_existing: bool = False, commit: bool = True) -> HostFarmJob:
+        """Ставит пробив; probe_existing включает только что созданный CRUD-хост.
+
+        commit=False оставляет запись в транзакции вызывающего сервиса,
+        чтобы хост, задача и аудит сохранялись или откатывались вместе.
+        """
         targets, _ = self.parse_targets(raw)
         if len(targets) > settings.farm_max_targets:
             raise ValidationError(f"Слишком много хостов: {len(targets)} (максимум {settings.farm_max_targets})")
@@ -404,10 +412,11 @@ class HostFarmService:
             raise ValidationError("Не удалось распознать ни одного хоста")
         # Существующие цели фиксируем ДО заготовок: иначе заготовка этой же задачи
         # выглядела бы как «уже добавленная». Воркер исключит их из пробива.
-        existing = await self._existing_target_keys(project_id, targets)
+        present = await self._existing_target_keys(project_id, targets)
+        existing = set() if probe_existing else present
         new_count = len(targets) - len(existing)
         # Заготовки создаём синхронно в запросе — фронт после ответа сразу видит хосты.
-        await self._ensure_skeletons(project_id, targets, existing)
+        await self._ensure_skeletons(project_id, targets, present, commit=commit)
         job = HostFarmJob(
             project_id=project_id,
             created_by=actor_id,
@@ -424,7 +433,10 @@ class HostFarmService:
             job.result = HostFarmResult(hosts_skipped=len(existing)).model_dump()
             job.finished_at = datetime.now(UTC)
         self.db.add(job)
-        await self.db.commit()
+        if commit:
+            await self.db.commit()
+        else:
+            await self.db.flush()
         await self.db.refresh(job)
         return job
 

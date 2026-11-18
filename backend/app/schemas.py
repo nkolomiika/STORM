@@ -624,6 +624,8 @@ class HostIpAddressOut(ORMBase):
 
 
 class HostCreate(InputBaseModel):
+    probe: bool = False
+    """Ставит новый хост в защищённую очередь пробивки после создания."""
     ip_address: str | None = Field(default=None, max_length=45)
     """Алиас для обратной совместимости — попадает в primary IP при создании."""
     ip_addresses: list[str] = Field(default_factory=list)
@@ -890,6 +892,8 @@ class VulnerabilityOut(ORMBase):
 class VulnerabilityListOut(VulnerabilityOut):
     """Список сразу содержит первую привязку к хосту, без HTTP-запроса на строку."""
     affected_host_id: int | None = None
+    task_tracker_issue_key: str | None = None
+    task_tracker_issue_url: str | None = None
 
 
 class VulnerabilityAssetCreate(InputBaseModel):

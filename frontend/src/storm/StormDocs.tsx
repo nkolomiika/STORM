@@ -119,7 +119,7 @@ export function StormDocs({ isAdmin, onNavigateWorkspace }: Props) {
 
         .stdoc-card { transition: border-color .14s ease, box-shadow .14s ease, transform .14s ease; }
         .stdoc-card:hover { border-color: var(--st-border-strong); box-shadow: 0 6px 18px var(--st-shadow); transform: translateY(-1px); }
-        .stdoc-search:focus-within { border-color: var(--st-focus-border); box-shadow: 0 0 0 3px var(--st-focus-ring); background: var(--st-surface); }
+        .stdoc-search:focus-within { box-shadow: none; }
         .stdoc-crumb { color: var(--st-accent-2); cursor: pointer; transition: color .12s ease; }
         .stdoc-crumb:hover { color: var(--st-accent); }
         .stdoc-chev { transition: background .12s ease; }

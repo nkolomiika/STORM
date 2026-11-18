@@ -131,7 +131,7 @@ async def update_project(
 ) -> ProjectOut:
     """Обновляет карточку проекта: название, статус, сроки и привязку APPSEC.
 
-    Доступно админу, лиду проекта или его создателю (удаление — только админу).
+    Доступно админу, создателю и участникам; права удаления проверяются отдельно.
     """
     service = ProjectService(db)
     await service.ensure_can_edit_project(project_id, current_user)

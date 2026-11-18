@@ -214,7 +214,7 @@
           "agent-v2"
         ],
         "summary": "Create Agent Host",
-        "description": "Создаёт хост с IP-адресами без запуска сканеров или DNS-запросов.",
+        "description": "Создаёт хост; probe=true дополнительно ставит защищённую пробивку в очередь.",
         "operationId": "create_agent_host_projects__project_id__hosts_post",
         "parameters": [
           {
@@ -1877,6 +1877,11 @@
       },
       "HostCreate": {
         "properties": {
+          "probe": {
+            "type": "boolean",
+            "title": "Probe",
+            "default": false
+          },
           "ip_address": {
             "anyOf": [
               {

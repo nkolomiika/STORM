@@ -1,5 +1,5 @@
 
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, Response, status
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -76,12 +76,13 @@ async def get_agent_host(
 async def create_agent_host(
     project_id: int,
     payload: HostCreate,
+    background_tasks: BackgroundTasks,
     context: AgentTokenContext = Depends(require_agent_scope("assets:write")),
     _project: Project = Depends(require_agent_project_access),
     db: AsyncSession = Depends(get_db),
 ) -> HostOut:
-    """Создаёт хост с IP-адресами без запуска сканеров или DNS-запросов."""
-    host = await AssetService(db).create_host(project_id, payload.model_dump(), context.created_by)
+    """Создаёт хост; probe=true дополнительно ставит защищённую пробивку в очередь."""
+    host = await AssetService(db).create_host(project_id, payload.model_dump(), context.created_by, background_tasks=background_tasks)
     return HostOut.model_validate(host)
 
 

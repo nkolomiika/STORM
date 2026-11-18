@@ -66,7 +66,7 @@ export function StormSelect({ value, options, onChange, id, placeholder }: Storm
           display: "flex",
           alignItems: "center",
           gap: 9,
-          border: `1px solid ${open ? "var(--st-focus-border)" : "var(--st-border)"}`,
+          border: "1px solid var(--st-border)",
           borderRadius: 11,
           padding: "0 12px",
           background: "var(--st-surface)",
@@ -74,7 +74,7 @@ export function StormSelect({ value, options, onChange, id, placeholder }: Storm
           color: selected ? "var(--st-text)" : "var(--st-text-faint)",
           cursor: "pointer",
           outline: "none",
-          boxShadow: open ? "0 0 0 3px var(--st-focus-ring)" : "none",
+          boxShadow: "none",
           transition: "border-color .12s, box-shadow .12s",
         }}
       >

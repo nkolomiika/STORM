@@ -3080,7 +3080,7 @@
           "projects"
         ],
         "summary": "Update Project",
-        "description": "Обновляет карточку проекта: название, статус, сроки и привязку APPSEC.\n\nДоступно админу, лиду проекта или его создателю (удаление — только админу).",
+        "description": "Обновляет карточку проекта: название, статус, сроки и привязку APPSEC.\n\nДоступно админу, создателю и участникам; права удаления проверяются отдельно.",
         "operationId": "update_project_api_v1_projects__project_id__put",
         "parameters": [
           {
@@ -5015,7 +5015,7 @@
           "assets"
         ],
         "summary": "Create Host",
-        "description": "Создаёт хост в проекте.",
+        "description": "Создаёт хост; probe=true запускает защищённую пробивку через очередь рекон-фермы.",
         "operationId": "create_host_api_v1_projects__project_id__hosts_post",
         "parameters": [
           {
@@ -10656,6 +10656,9 @@
               }
             }
           },
+          "404": {
+            "description": "Тикет не найден"
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -12395,6 +12398,11 @@
       },
       "HostCreate": {
         "properties": {
+          "probe": {
+            "type": "boolean",
+            "title": "Probe",
+            "default": false
+          },
           "ip_address": {
             "anyOf": [
               {
@@ -17690,6 +17698,28 @@
               }
             ],
             "title": "Affected Host Id"
+          },
+          "task_tracker_issue_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Tracker Issue Key"
+          },
+          "task_tracker_issue_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Tracker Issue Url"
           }
         },
         "type": "object",

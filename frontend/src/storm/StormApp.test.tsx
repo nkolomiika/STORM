@@ -514,6 +514,61 @@ describe("StormApp (design prototype port)", () => {
     expect(screen.getByText("critical")).toBeInTheDocument();
   });
 
+  it.each([['en', 'Ticket not found'], ['ru', 'Тикет не найден']] as const)("shows a missing ticket message in %s", async (lang, message) => {
+    useLangStore.setState({ lang });
+    vi.mocked(api.getTask).mockRejectedValueOnce(Object.assign(new Error('upstream internal details'), {
+      isAxiosError: true, response: { status: 404, data: { detail: 'upstream internal details' } },
+    }));
+    render(<MemoryRouter initialEntries={['/tasks/APPSEC-999999']}><StormApp /></MemoryRouter>);
+    expect(await screen.findByText(message)).toBeInTheDocument();
+    expect(screen.queryByText('upstream internal details')).not.toBeInTheDocument();
+    expect(api.getTask).toHaveBeenCalledWith('APPSEC-999999');
+    if (lang === 'en') {
+      act(() => useLangStore.setState({ lang: 'ru' }));
+      expect(screen.getByText('Тикет не найден')).toBeInTheDocument();
+    }
+  });
+
+  it("creates and probes a missing host when adding a finding", async () => {
+    const hosts = await api.getHosts(2);
+    vi.mocked(api.createHost).mockResolvedValueOnce({ ...hosts.items[0], id: 900, hostname: 'new.example', ip_address: null, ip_addresses: [] });
+    render(<MemoryRouter initialEntries={['/projects/2/vulns']}><StormApp /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole('button', { name: 'Add issue' }));
+    fireEvent.change(screen.getByPlaceholderText('e.g. Stored XSS in comments'), { target: { value: 'New finding' } });
+    fireEvent.change(screen.getByPlaceholderText('Start typing a hostname…'), { target: { value: 'NEW.EXAMPLE' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+    await waitFor(() => expect(api.createHost).toHaveBeenCalledExactlyOnceWith(2, { hostname: 'new.example', probe: true }));
+    expect(api.createVulnerability).toHaveBeenCalledWith(2, expect.objectContaining({ title: 'New finding', host_id: 900 }));
+  });
+
+  it.each(['/projects/2/vulns', '/projects/2/vulns/71'])("opens an already exported finding in Task Tracker (%s)", async (path) => {
+    const findings = await api.getVulnerabilities(2);
+    const url = 'https://tracker.example/swtr/units/current/unit/STS-700?space=STS';
+    vi.mocked(api.getVulnerabilities).mockResolvedValueOnce({ ...findings, items: findings.items.map((v) => v.id === 71 ? {
+      ...v, task_tracker_issue_key: 'STS-700', task_tracker_issue_url: url,
+    } : v) });
+    render(<MemoryRouter initialEntries={[path]}><StormApp /></MemoryRouter>);
+    const link = await screen.findByRole('link', { name: 'Open in Task Tracker' });
+    expect(link).toHaveAttribute('href', url);
+    expect(link).toHaveAttribute('target', '_blank');
+    if (path.endsWith('/71')) expect(screen.queryByRole('button', { name: 'Export to Task Tracker' })).not.toBeInTheDocument();
+    else expect(within(link.closest('.prow') as HTMLElement).queryByRole('button', { name: 'Export to Task Tracker' })).not.toBeInTheDocument();
+  });
+
+  it("lets a pentester edit their project without offering project deletion", async () => {
+    const user = { ...useAuthStore.getState().user!, id: 5, username: 'diana', role: 'pentester' as const, project_role: 'pentester' as const };
+    useAuthStore.setState({ user });
+    vi.mocked(api.getProjectMembers).mockResolvedValueOnce([{ user_id: 5, username: 'diana', email: 'diana@example.com', avatar_url: null, role: 'pentester', project_role: 'pentester', added_at: '2026-11-20T00:00:00Z' }]);
+    render(<MemoryRouter initialEntries={['/projects']}><StormApp /></MemoryRouter>);
+    const row = (await screen.findByText('Northwind API')).closest('.prow') as HTMLElement;
+    expect(row.querySelector('.actbtn:not(.del)')).toBeInTheDocument();
+    expect(row.querySelector('.actbtn.del')).not.toBeInTheDocument();
+    fireEvent.click(within(row).getByText('Northwind API'));
+    await waitFor(() => expect(screen.getByRole('button', { name: /Edit/i })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /Edit/i }));
+    expect(screen.getByText('Edit project')).toBeInTheDocument();
+  });
+
   it.each(["", "   "])("resets vulnerability severity when its CVSS vector is cleared to %j", async (empty) => {
     render(<MemoryRouter initialEntries={["/projects/2/vulns/71"]}><StormApp /></MemoryRouter>);
     await screen.findByDisplayValue("IDOR on GET /orders/{id}");
@@ -1258,7 +1313,7 @@ describe("StormApp (design prototype port)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add endpoints" }));
     await waitFor(() => expect(api.createEndpoint).toHaveBeenCalledWith(2, 900, { path: "/second", method: "OPTIONS" }));
     expect(api.createHost).toHaveBeenCalledTimes(1);
-    expect(api.createHost).toHaveBeenCalledWith(2, { hostname: host });
+    expect(api.createHost).toHaveBeenCalledWith(2, { hostname: host, probe: true });
   });
 
   it("reuses existing hosts and creates one new host for all its pasted endpoints", async () => {
@@ -1282,7 +1337,7 @@ describe("StormApp (design prototype port)", () => {
     expect(vi.mocked(api.createEndpoint)).toHaveBeenCalledWith(2, 11, { path: "/v2/login", method: "GET" });
     expect(vi.mocked(api.createEndpoint)).toHaveBeenCalledWith(2, 11, { path: "/api/users", method: "POST" });
     expect(api.createHost).toHaveBeenCalledTimes(1);
-    expect(api.createHost).toHaveBeenCalledWith(2, { hostname: "other.example.com" });
+    expect(api.createHost).toHaveBeenCalledWith(2, { hostname: "other.example.com", probe: true });
     expect(api.createEndpoint).toHaveBeenCalledWith(2, 900, { path: "/x", method: "GET" });
     expect(api.createEndpoint).toHaveBeenCalledWith(2, 900, { path: "/y", method: "POST" });
     expect(api.startHostFarm).not.toHaveBeenCalled();
@@ -1314,7 +1369,7 @@ describe("StormApp (design prototype port)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add endpoints" }));
     await waitFor(() => expect(api.createEndpoint).toHaveBeenCalledWith(2, 900, { path: "/new", method: "PUT" }));
     expect(api.createHost).toHaveBeenCalledTimes(1);
-    expect(api.createHost).toHaveBeenCalledWith(2, { hostname: "edited.example" });
+    expect(api.createHost).toHaveBeenCalledWith(2, { hostname: "edited.example", probe: true });
   });
 
   it("skips endpoints whose host could not be created and continues importing existing hosts", async () => {

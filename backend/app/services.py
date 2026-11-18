@@ -24,10 +24,10 @@ from minio.error import S3Error
 from urllib3.exceptions import HTTPError as StorageHTTPError
 import yaml
 from cvss import CVSS4
-from fastapi import HTTPException, UploadFile
+from fastapi import BackgroundTasks, HTTPException, UploadFile
 from pydantic import EmailStr, TypeAdapter, ValidationError as PydanticValidationError
 from PIL import Image as PillowImage, ImageOps, UnidentifiedImageError
-from sqlalchemy import Select, and_, delete, func, or_, select, update
+from sqlalchemy import Select, and_, delete, func, or_, select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -448,6 +448,8 @@ class WorksService:
             missing.append('компоненты')
         if missing:
             raise ValidationError('Заполните данные по проекту. Не заполнено: ' + ', '.join(missing))
+        if not project.end_date:
+            raise ValidationError('Для индекса уязвимости заполните дату окончания работ в проекте')
         if not settings.works_configured:
             raise ValidationError("Интеграция с Works не настроена или отключена")
         finding = await self.db.scalar(select(Vulnerability).where(
@@ -462,8 +464,7 @@ class WorksService:
             return existing
         ticket = {"appsec_ticket_key": project.appsec_ticket_key, "appsec_ticket_url": project.appsec_ticket_url}
         normalize_project_ticket(ticket, required=True)
-        vuln_data = await VulnerabilityService(self.db).get(project_id, vuln_id)
-        vulnerability = vuln_data["vulnerability"]
+        vulnerability = finding
 
         assignee_final = (project.appsec_assignee or "").strip()
         if not assignee_final:
@@ -483,36 +484,18 @@ class WorksService:
 
         summary = f"BUG_APPSEC: {vulnerability.title}"[:250]
         priority = priority_for_severity(vulnerability.severity.value)
-        description = vulnerability.description or "\n\n".join(
-            x for x in (vulnerability.steps_to_reproduce, vulnerability.impact, vulnerability.recommendations) if x
-        )
+        from app.reports.word_builder import finding_references
+        findings = list((await self.db.scalars(select(Vulnerability).where(Vulnerability.project_id == project_id).order_by(Vulnerability.id))).all())
+        hosts = list((await self.db.scalars(select(Host).where(Host.project_id == project_id).order_by(Host.id))).all())
+        assets = list((await self.db.scalars(select(VulnerabilityAsset).join(Vulnerability, Vulnerability.id == VulnerabilityAsset.vulnerability_id)
+            .where(Vulnerability.project_id == project_id).order_by(VulnerabilityAsset.id))).all())
+        reference = finding_references(project, findings, hosts, assets, kind=settings.works_report_kind)[vuln_id]
+        description = (f"Провести анализ и устранить уязвимость {reference['index']}, выявленную в ходе проведения анализа защищенности.\n"
+                       "Информация по уязвимости отправлена в почту ВП.\n"
+                       f"Пункт в отчете - {reference['point']}")
 
         try:
             async with WorksClient() as wc:
-                drafts_info = None
-                # Вложения (evidence-файлы) — предзагрузка в один черновик. Best-effort:
-                # падение загрузки отдельного файла не срывает создание тикета.
-                files = await FileService(self.db).list(project_id, vuln_id)
-                if files:
-                    draft_id = str(uuid4())
-                    uploaded = 0
-                    for f in files:
-                        try:
-                            _, content = await FileService(self.db).download(f.id, user)
-                            await wc.upload_draft_file(
-                                draft_id=draft_id,
-                                filename=f.original_name,
-                                content=content,
-                                content_type=f.content_type,
-                                relative_path=assignee_final,
-                            )
-                            uploaded += 1
-                        except Exception as exc:  # noqa: BLE001
-                            logging.getLogger("storm.works").warning(
-                                "Works: не удалось загрузить файл %s: %s", f.id, exc
-                            )
-                    if uploaded:
-                        drafts_info = [{"draftId": draft_id, "relativePathPart": assignee_final}]
                 response = await wc.create_bug_appsec(
                     summary=summary,
                     description_text=description,
@@ -525,7 +508,7 @@ class WorksService:
                     severity=vulnerability.severity.value,
                     cvss_vector=vulnerability.cvss_vector,
                     components=components,
-                    drafts_info=drafts_info,
+                    drafts_info=None,
                 )
                 # APPSEC проекта — source, каждый новый STS — destination.
                 # Best-effort: сбой связи не срывает экспорт.
@@ -1628,7 +1611,7 @@ class ProjectService:
             await self._notify_project_status_changed(project, actor_id)
         return project
 
-    async def _notify_project_status_changed(self, project: Project, actor_id: int) -> None:
+    async def _notify_project_status_changed(self, project: Project, actor_id: int | None) -> None:
         """Повод №4: статус проекта изменился — сообщаем его участникам.
 
         Кроме того, кто менял: он и так знает.
@@ -1777,14 +1760,15 @@ class ProjectService:
         raise ForbiddenError("Управлять участниками может админ, лид проекта или его создатель")
 
     async def ensure_can_edit_project(self, project_id: int, actor: User) -> Project:
-        """Карточку проекта (название/описание/сроки) правят те же роли, что и состав команды.
-
-        Удаление проекта при этом остаётся строго за админом.
-        """
+        """Карточку проекта редактируют админ, создатель и любой участник проекта."""
         project = await self.get_project(project_id)
-        if await self._is_project_manager(project, actor):
+        if actor.role == UserRole.ADMIN or project.created_by == actor.id:
             return project
-        raise ForbiddenError("Изменять проект может админ, лид проекта или его создатель")
+        membership = await self.db.scalar(select(ProjectMember.id).where(
+            ProjectMember.project_id == project_id, ProjectMember.user_id == actor.id))
+        if membership is not None:
+            return project
+        raise ForbiddenError("Изменять проект может только его участник")
 
     async def add_member(self, project_id: int, user_id: int, actor_id: int, ip_address: str | None = None) -> dict:
         """Добавляет пользователя в участники проекта."""
@@ -2415,7 +2399,32 @@ class AssetService:
         items = (await self.db.scalars(items_query)).all()
         return list(items), total
 
-    async def create_host(self, project_id: int, payload: dict, actor_id: int) -> Host:
+    async def create_host(self, project_id: int, payload: dict, actor_id: int, *, background_tasks: BackgroundTasks | None = None) -> Host:
+        """Создаёт хост и, при probe=true, атомарно сохраняет задачу защищённой пробивки."""
+        probe = payload.pop("probe", False)
+        job = None
+        if probe:
+            from app.farm.hosts import HostFarmService
+            raw = payload.get("hostname") or payload.get("ip_address") or ""
+            targets, invalid = HostFarmService.parse_targets(raw)
+            if len(targets) != 1 or invalid:
+                raise ValidationError("Укажите корректное имя хоста или IP-адрес")
+            target = next(iter(targets.values()))
+            if target.is_ip:
+                payload["ip_address"] = target.hostname
+                payload["hostname"] = None
+            else:
+                payload["hostname"] = target.hostname
+            # Повторные/параллельные импорты не создают дубли и не пробивают старый хост.
+            if self.db.bind.dialect.name == "postgresql":
+                await self.db.execute(text("SELECT pg_advisory_xact_lock(hashtextextended(:target, 0))"),
+                    {"target": f"storm-host:{project_id}:{target.hostname}"})
+            match = Host.ip_address == target.hostname if target.is_ip else func.lower(Host.hostname) == target.hostname
+            existing = await self.db.scalar(select(Host.id).where(Host.project_id == project_id, match).order_by(Host.id).limit(1))
+            if existing is not None:
+                return await self._get_host(project_id, existing)
+            if not settings.recon_worker_enabled and background_tasks is None:
+                raise ValidationError("Не удалось запустить проверку хоста. Попробуйте ещё раз.")
         ip_entries = self._normalize_host_ip_entries(payload.pop("ip_address", None), payload.pop("ip_addresses", None))
         host = Host(project_id=project_id, ip_address=ip_entries[0]["ip_address"] if ip_entries else None, **payload)
         self.db.add(host)
@@ -2426,8 +2435,13 @@ class AssetService:
         set_committed_value(host, "ip_addresses", [])
         await self._replace_host_ip_addresses(host, ip_entries)
         await self.db.flush()
+        if probe:
+            job = await HostFarmService(self.db).create_job(project_id, raw, actor_id, probe_existing=True, commit=False)
         events = await notification_events.queue_mentions(self.db, project_id, host.notes or "", actor_id, {"host_id": host.id, "hostname": host.hostname})
         await self.audit.log("CREATE", user_id=actor_id, entity_type="host", entity_id=host.id)
+        if job is not None:
+            from app.farm.jobs import enqueue_job
+            enqueue_job(job, background_tasks or BackgroundTasks())
         await notification_events.publish(events)
         await ws_manager.broadcast(project_id, {"event": "created", "entity": "host", "project_id": str(project_id), "data": {"id": str(host.id)}})
         return await self._get_host(project_id, host.id)
@@ -3344,6 +3358,15 @@ class VulnerabilityService:
         for vulnerability_id, host_id in rows:
             links.setdefault(vulnerability_id, host_id)
         return links
+
+    async def linked_issues_for_page(self, items: list[Vulnerability]) -> dict[int, dict]:
+        """Одним запросом получает сохранённые STS-ссылки страницы без обращений в TT."""
+        if not items:
+            return {}
+        links = (await self.db.scalars(select(WorksIssueLink).where(
+            WorksIssueLink.vulnerability_id.in_([item.id for item in items])))).all()
+        return {link.vulnerability_id: {"task_tracker_issue_key": link.works_key,
+                                       "task_tracker_issue_url": link.works_url} for link in links}
 
     async def list_for_host(
         self, project_id: int, host_id: int, page: int, size: int, severity: str | None, status: str | None
@@ -5428,8 +5451,8 @@ class ReportService:
                 .where(ProjectMember.project_id == project_id)
             )
         ).all()
-        vulnerabilities = (await self.db.scalars(select(Vulnerability).where(Vulnerability.project_id == project_id))).all()
-        hosts = (await self.db.scalars(select(Host).where(Host.project_id == project_id))).all()
+        vulnerabilities = (await self.db.scalars(select(Vulnerability).where(Vulnerability.project_id == project_id).order_by(Vulnerability.id))).all()
+        hosts = (await self.db.scalars(select(Host).where(Host.project_id == project_id).order_by(Host.id))).all()
         ports = (
             await self.db.scalars(select(Port).join(Host, Port.host_id == Host.id).where(Host.project_id == project_id))
         ).all()
@@ -5441,7 +5464,7 @@ class ReportService:
             vulnerability_assets = list(
                 (
                     await self.db.scalars(
-                        select(VulnerabilityAsset).where(VulnerabilityAsset.vulnerability_id.in_(vulnerability_ids))
+                        select(VulnerabilityAsset).where(VulnerabilityAsset.vulnerability_id.in_(vulnerability_ids)).order_by(VulnerabilityAsset.id)
                     )
                 ).all()
             )

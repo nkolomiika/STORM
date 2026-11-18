@@ -88,15 +88,16 @@ router.get('/projects/{project_id}/hosts', response_model=PaginatedResponse[Host
 [backend/app/routers/assets.py:69](../../../../../backend/app/routers/assets.py#L69)
 
 ```python
-async def create_host(project_id: int, payload: HostCreate, _: None=Depends(enforce_csrf), current_user: User=Depends(get_current_user), _project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> HostOut
+async def create_host(project_id: int, payload: HostCreate, background_tasks: BackgroundTasks, _: None=Depends(enforce_csrf), current_user: User=Depends(get_current_user), _project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> HostOut
 ```
 
-Создаёт хост в проекте.
+Создаёт хост; probe=true запускает защищённую пробивку через очередь рекон-фермы.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
 | `project_id` | `int` | `обязательный` | ID проекта; доступ проверяет dependency маршрута, принадлежность ресурса — сервис. |
 | `payload` | `HostCreate` | `обязательный` | Данные операции; для HTTP структура определена Pydantic request-схемой. |
+| `background_tasks` | `BackgroundTasks` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
 | `_` | `None` | `Depends(enforce_csrf)` | Определяется именем/типом и контрактом вызывающего кода. |
 | `current_user` | `User` | `Depends(get_current_user)` | Пользователь из dependency авторизации. |
 | `_project` | `не аннотирован` | `Depends(require_project_access)` | Определяется именем/типом и контрактом вызывающего кода. |
@@ -124,7 +125,7 @@ router.post('/projects/{project_id}/hosts', response_model=HostOut, status_code=
 
 ## get_host
 
-[backend/app/routers/assets.py:83](../../../../../backend/app/routers/assets.py#L83)
+[backend/app/routers/assets.py:84](../../../../../backend/app/routers/assets.py#L84)
 
 ```python
 async def get_host(project_id: int, host_id: int, _project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> dict
@@ -159,7 +160,7 @@ router.get('/projects/{project_id}/hosts/{host_id}')
 
 ## update_host
 
-[backend/app/routers/assets.py:94](../../../../../backend/app/routers/assets.py#L94)
+[backend/app/routers/assets.py:95](../../../../../backend/app/routers/assets.py#L95)
 
 ```python
 async def update_host(project_id: int, host_id: int, payload: HostUpdate, _: None=Depends(enforce_csrf), current_user: User=Depends(get_current_user), _project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> HostOut
@@ -199,7 +200,7 @@ router.put('/projects/{project_id}/hosts/{host_id}', response_model=HostOut)
 
 ## delete_host
 
-[backend/app/routers/assets.py:109](../../../../../backend/app/routers/assets.py#L109)
+[backend/app/routers/assets.py:110](../../../../../backend/app/routers/assets.py#L110)
 
 ```python
 async def delete_host(project_id: int, host_id: int, _: None=Depends(enforce_csrf), current_user: User=Depends(get_current_user), _project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> None
@@ -236,7 +237,7 @@ router.delete('/projects/{project_id}/hosts/{host_id}', status_code=status.HTTP_
 
 ## change_ip_address
 
-[backend/app/routers/assets.py:123](../../../../../backend/app/routers/assets.py#L123)
+[backend/app/routers/assets.py:124](../../../../../backend/app/routers/assets.py#L124)
 
 ```python
 async def change_ip_address(project_id: int, old_ip: str, payload: IpAddressChangeRequest, background_tasks: BackgroundTasks, _: None=Depends(enforce_csrf), current_user: User=Depends(get_current_user), _project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> dict
@@ -276,7 +277,7 @@ router.put('/projects/{project_id}/ip-addresses/{old_ip}', response_model=IpAddr
 
 ## list_hidden_ips
 
-[backend/app/routers/assets.py:140](../../../../../backend/app/routers/assets.py#L140)
+[backend/app/routers/assets.py:141](../../../../../backend/app/routers/assets.py#L141)
 
 ```python
 async def list_hidden_ips(project_id: int, _project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> list[str]
@@ -310,7 +311,7 @@ router.get('/projects/{project_id}/hidden-ips', response_model=list[str])
 
 ## hide_ip
 
-[backend/app/routers/assets.py:150](../../../../../backend/app/routers/assets.py#L150)
+[backend/app/routers/assets.py:151](../../../../../backend/app/routers/assets.py#L151)
 
 ```python
 async def hide_ip(project_id: int, payload: HiddenIpCreate, _: None=Depends(enforce_csrf), current_user: User=Depends(get_current_user), _project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> None
@@ -348,7 +349,7 @@ router.post('/projects/{project_id}/hidden-ips', status_code=status.HTTP_204_NO_
 
 ## unhide_ip
 
-[backend/app/routers/assets.py:164](../../../../../backend/app/routers/assets.py#L164)
+[backend/app/routers/assets.py:165](../../../../../backend/app/routers/assets.py#L165)
 
 ```python
 async def unhide_ip(project_id: int, ip_address: str, _: None=Depends(enforce_csrf), current_user: User=Depends(get_current_user), _project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> None
@@ -385,7 +386,7 @@ router.delete('/projects/{project_id}/hidden-ips/{ip_address}', status_code=stat
 
 ## list_ports
 
-[backend/app/routers/assets.py:177](../../../../../backend/app/routers/assets.py#L177)
+[backend/app/routers/assets.py:178](../../../../../backend/app/routers/assets.py#L178)
 
 ```python
 async def list_ports(project_id: int, host_id: int, _project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> list[PortOut]
@@ -421,7 +422,7 @@ router.get('/projects/{project_id}/hosts/{host_id}/ports', response_model=list[P
 
 ## create_port
 
-[backend/app/routers/assets.py:189](../../../../../backend/app/routers/assets.py#L189)
+[backend/app/routers/assets.py:190](../../../../../backend/app/routers/assets.py#L190)
 
 ```python
 async def create_port(project_id: int, host_id: int, payload: PortCreate, _: None=Depends(enforce_csrf), current_user: User=Depends(get_current_user), _project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> PortOut
@@ -461,7 +462,7 @@ router.post('/projects/{project_id}/hosts/{host_id}/ports', response_model=PortO
 
 ## get_port
 
-[backend/app/routers/assets.py:204](../../../../../backend/app/routers/assets.py#L204)
+[backend/app/routers/assets.py:205](../../../../../backend/app/routers/assets.py#L205)
 
 ```python
 async def get_port(project_id: int, host_id: int, port_id: int, _project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> PortOut
@@ -498,7 +499,7 @@ router.get('/projects/{project_id}/hosts/{host_id}/ports/{port_id}', response_mo
 
 ## update_port
 
-[backend/app/routers/assets.py:217](../../../../../backend/app/routers/assets.py#L217)
+[backend/app/routers/assets.py:218](../../../../../backend/app/routers/assets.py#L218)
 
 ```python
 async def update_port(project_id: int, host_id: int, port_id: int, payload: PortUpdate, _: None=Depends(enforce_csrf), current_user: User=Depends(get_current_user), _project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> PortOut
@@ -539,7 +540,7 @@ router.put('/projects/{project_id}/hosts/{host_id}/ports/{port_id}', response_mo
 
 ## delete_port
 
-[backend/app/routers/assets.py:233](../../../../../backend/app/routers/assets.py#L233)
+[backend/app/routers/assets.py:234](../../../../../backend/app/routers/assets.py#L234)
 
 ```python
 async def delete_port(project_id: int, host_id: int, port_id: int, _: None=Depends(enforce_csrf), current_user: User=Depends(get_current_user), _project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> None
@@ -577,7 +578,7 @@ router.delete('/projects/{project_id}/hosts/{host_id}/ports/{port_id}', status_c
 
 ## list_services
 
-[backend/app/routers/assets.py:247](../../../../../backend/app/routers/assets.py#L247)
+[backend/app/routers/assets.py:248](../../../../../backend/app/routers/assets.py#L248)
 
 ```python
 async def list_services(project_id: int, host_id: int, port_id: int, _project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> list[ServiceOut]
@@ -614,7 +615,7 @@ router.get('/projects/{project_id}/hosts/{host_id}/ports/{port_id}/services', re
 
 ## create_service
 
-[backend/app/routers/assets.py:264](../../../../../backend/app/routers/assets.py#L264)
+[backend/app/routers/assets.py:265](../../../../../backend/app/routers/assets.py#L265)
 
 ```python
 async def create_service(project_id: int, host_id: int, port_id: int, payload: ServiceCreate, _: None=Depends(enforce_csrf), current_user: User=Depends(get_current_user), _project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> ServiceOut
@@ -655,7 +656,7 @@ router.post('/projects/{project_id}/hosts/{host_id}/ports/{port_id}/services', r
 
 ## update_service
 
-[backend/app/routers/assets.py:280](../../../../../backend/app/routers/assets.py#L280)
+[backend/app/routers/assets.py:281](../../../../../backend/app/routers/assets.py#L281)
 
 ```python
 async def update_service(project_id: int, host_id: int, port_id: int, service_id: int, payload: ServiceUpdate, _: None=Depends(enforce_csrf), current_user: User=Depends(get_current_user), _project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> ServiceOut
@@ -697,7 +698,7 @@ router.put('/projects/{project_id}/hosts/{host_id}/ports/{port_id}/services/{ser
 
 ## delete_service
 
-[backend/app/routers/assets.py:304](../../../../../backend/app/routers/assets.py#L304)
+[backend/app/routers/assets.py:305](../../../../../backend/app/routers/assets.py#L305)
 
 ```python
 async def delete_service(project_id: int, host_id: int, port_id: int, service_id: int, _: None=Depends(enforce_csrf), current_user: User=Depends(get_current_user), _project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> None
@@ -736,7 +737,7 @@ router.delete('/projects/{project_id}/hosts/{host_id}/ports/{port_id}/services/{
 
 ## list_js_files
 
-[backend/app/routers/assets.py:319](../../../../../backend/app/routers/assets.py#L319)
+[backend/app/routers/assets.py:320](../../../../../backend/app/routers/assets.py#L320)
 
 ```python
 async def list_js_files(project_id: int, page: int=Query(1, ge=1), size: int=Query(200, ge=1, le=1000), _project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> PaginatedResponse[JsFileOut]
@@ -775,7 +776,7 @@ router.get('/projects/{project_id}/js-files', response_model=PaginatedResponse[J
 
 ## bulk_delete_js_files
 
-[backend/app/routers/assets.py:335](../../../../../backend/app/routers/assets.py#L335)
+[backend/app/routers/assets.py:336](../../../../../backend/app/routers/assets.py#L336)
 
 ```python
 async def bulk_delete_js_files(project_id: int, payload: JsBulkDeleteRequest, _: None=Depends(enforce_csrf), current_user: User=Depends(get_current_user), _project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> dict
@@ -812,7 +813,7 @@ router.post('/projects/{project_id}/js-files/bulk-delete', response_model=dict)
 
 ## delete_js_for_host
 
-[backend/app/routers/assets.py:351](../../../../../backend/app/routers/assets.py#L351)
+[backend/app/routers/assets.py:352](../../../../../backend/app/routers/assets.py#L352)
 
 ```python
 async def delete_js_for_host(project_id: int, host_id: int, _: None=Depends(enforce_csrf), current_user: User=Depends(get_current_user), _project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> None
@@ -849,7 +850,7 @@ router.delete('/projects/{project_id}/js-files/hosts/{host_id}', status_code=sta
 
 ## download_js_archive
 
-[backend/app/routers/assets.py:364](../../../../../backend/app/routers/assets.py#L364)
+[backend/app/routers/assets.py:365](../../../../../backend/app/routers/assets.py#L365)
 
 ```python
 async def download_js_archive(project_id: int, host_id: int | None=Query(None), _project=Depends(require_project_access), _current_user: User=Depends(get_current_user), db: AsyncSession=Depends(get_db)) -> Response
@@ -889,7 +890,7 @@ router.get('/projects/{project_id}/js-files/archive')
 
 ## list_endpoints
 
-[backend/app/routers/assets.py:383](../../../../../backend/app/routers/assets.py#L383)
+[backend/app/routers/assets.py:384](../../../../../backend/app/routers/assets.py#L384)
 
 ```python
 async def list_endpoints(project_id: int, host_id: int, _project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> list[EndpointOut]
@@ -925,7 +926,7 @@ router.get('/projects/{project_id}/hosts/{host_id}/endpoints', response_model=li
 
 ## create_endpoint
 
-[backend/app/routers/assets.py:395](../../../../../backend/app/routers/assets.py#L395)
+[backend/app/routers/assets.py:396](../../../../../backend/app/routers/assets.py#L396)
 
 ```python
 async def create_endpoint(project_id: int, host_id: int, payload: EndpointCreate, _: None=Depends(enforce_csrf), current_user: User=Depends(get_current_user), _project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> EndpointOut
@@ -965,7 +966,7 @@ router.post('/projects/{project_id}/hosts/{host_id}/endpoints', response_model=E
 
 ## update_endpoint
 
-[backend/app/routers/assets.py:410](../../../../../backend/app/routers/assets.py#L410)
+[backend/app/routers/assets.py:411](../../../../../backend/app/routers/assets.py#L411)
 
 ```python
 async def update_endpoint(project_id: int, host_id: int, endpoint_id: int, payload: EndpointUpdate, _: None=Depends(enforce_csrf), current_user: User=Depends(get_current_user), _project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> EndpointOut
@@ -1006,7 +1007,7 @@ router.put('/projects/{project_id}/hosts/{host_id}/endpoints/{endpoint_id}', res
 
 ## delete_endpoint
 
-[backend/app/routers/assets.py:426](../../../../../backend/app/routers/assets.py#L426)
+[backend/app/routers/assets.py:427](../../../../../backend/app/routers/assets.py#L427)
 
 ```python
 async def delete_endpoint(project_id: int, host_id: int, endpoint_id: int, _: None=Depends(enforce_csrf), current_user: User=Depends(get_current_user), _project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> None

@@ -42,7 +42,9 @@ router.get('/projects/{project_id}/vulnerabilities', response_model=PaginatedRes
 - `VulnerabilityListOut.model_validate(item).model_copy`
 - `VulnerabilityService`
 - `host_links.get`
+- `issue_links.get`
 - `service.host_links_for_page`
+- `service.linked_issues_for_page`
 - `service.list`
 - `to_paginated_response`
 
@@ -50,7 +52,7 @@ router.get('/projects/{project_id}/vulnerabilities', response_model=PaginatedRes
 
 ## list_host_vulnerabilities
 
-[backend/app/routers/vulnerabilities.py:44](../../../../../backend/app/routers/vulnerabilities.py#L44)
+[backend/app/routers/vulnerabilities.py:45](../../../../../backend/app/routers/vulnerabilities.py#L45)
 
 ```python
 async def list_host_vulnerabilities(project_id: int, host_id: int, page: int=Query(1, ge=1), size: int=Query(20, ge=1, le=200), severity: Severity | None=None, status_filter: VulnerabilityStatus | None=Query(None, alias='status'), _project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> PaginatedResponse[VulnerabilityOut]
@@ -92,7 +94,7 @@ router.get('/projects/{project_id}/hosts/{host_id}/vulnerabilities', response_mo
 
 ## create_vulnerability
 
-[backend/app/routers/vulnerabilities.py:60](../../../../../backend/app/routers/vulnerabilities.py#L60)
+[backend/app/routers/vulnerabilities.py:61](../../../../../backend/app/routers/vulnerabilities.py#L61)
 
 ```python
 async def create_vulnerability(project_id: int, payload: VulnerabilityCreate, _: None=Depends(enforce_csrf), current_user: User=Depends(get_current_user), _project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> VulnerabilityOut
@@ -131,7 +133,7 @@ router.post('/projects/{project_id}/vulnerabilities', response_model=Vulnerabili
 
 ## get_vulnerability
 
-[backend/app/routers/vulnerabilities.py:74](../../../../../backend/app/routers/vulnerabilities.py#L74)
+[backend/app/routers/vulnerabilities.py:75](../../../../../backend/app/routers/vulnerabilities.py#L75)
 
 ```python
 async def get_vulnerability(project_id: int, vuln_id: int, _project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> dict
@@ -167,12 +169,15 @@ router.get('/projects/{project_id}/vulnerabilities/{vuln_id}')
 - `VulnerabilityOut.model_validate(data['vulnerability']).model_dump`
 - `VulnerabilityService`
 - `VulnerabilityService(db).get`
+- `VulnerabilityService(db).linked_issues_for_page`
+- `links.get`
+- `vuln.update`
 
 </details>
 
 ## update_vulnerability
 
-[backend/app/routers/vulnerabilities.py:90](../../../../../backend/app/routers/vulnerabilities.py#L90)
+[backend/app/routers/vulnerabilities.py:93](../../../../../backend/app/routers/vulnerabilities.py#L93)
 
 ```python
 async def update_vulnerability(project_id: int, vuln_id: int, payload: VulnerabilityUpdate, _: None=Depends(enforce_csrf), current_user: User=Depends(get_current_user), _project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> VulnerabilityOut
@@ -212,7 +217,7 @@ router.put('/projects/{project_id}/vulnerabilities/{vuln_id}', response_model=Vu
 
 ## patch_vulnerability_status
 
-[backend/app/routers/vulnerabilities.py:105](../../../../../backend/app/routers/vulnerabilities.py#L105)
+[backend/app/routers/vulnerabilities.py:108](../../../../../backend/app/routers/vulnerabilities.py#L108)
 
 ```python
 async def patch_vulnerability_status(project_id: int, vuln_id: int, payload: VulnerabilityStatusPatch, _: None=Depends(enforce_csrf), current_user: User=Depends(get_current_user), _project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> VulnerabilityOut
@@ -251,7 +256,7 @@ router.patch('/projects/{project_id}/vulnerabilities/{vuln_id}/status', response
 
 ## delete_vulnerability
 
-[backend/app/routers/vulnerabilities.py:120](../../../../../backend/app/routers/vulnerabilities.py#L120)
+[backend/app/routers/vulnerabilities.py:123](../../../../../backend/app/routers/vulnerabilities.py#L123)
 
 ```python
 async def delete_vulnerability(project_id: int, vuln_id: int, _: None=Depends(enforce_csrf), current_user: User=Depends(get_current_user), _project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> None
@@ -288,7 +293,7 @@ router.delete('/projects/{project_id}/vulnerabilities/{vuln_id}', status_code=st
 
 ## list_vulnerability_assets
 
-[backend/app/routers/vulnerabilities.py:133](../../../../../backend/app/routers/vulnerabilities.py#L133)
+[backend/app/routers/vulnerabilities.py:136](../../../../../backend/app/routers/vulnerabilities.py#L136)
 
 ```python
 async def list_vulnerability_assets(project_id: int, vuln_id: int, _project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> list[VulnerabilityAssetOut]
@@ -324,7 +329,7 @@ router.get('/projects/{project_id}/vulnerabilities/{vuln_id}/assets', response_m
 
 ## add_vulnerability_asset
 
-[backend/app/routers/vulnerabilities.py:149](../../../../../backend/app/routers/vulnerabilities.py#L149)
+[backend/app/routers/vulnerabilities.py:152](../../../../../backend/app/routers/vulnerabilities.py#L152)
 
 ```python
 async def add_vulnerability_asset(project_id: int, vuln_id: int, payload: VulnerabilityAssetCreate, _: None=Depends(enforce_csrf), current_user: User=Depends(get_current_user), _project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> VulnerabilityAssetOut
@@ -363,7 +368,7 @@ router.post('/projects/{project_id}/vulnerabilities/{vuln_id}/assets', response_
 
 ## delete_vulnerability_asset
 
-[backend/app/routers/vulnerabilities.py:164](../../../../../backend/app/routers/vulnerabilities.py#L164)
+[backend/app/routers/vulnerabilities.py:167](../../../../../backend/app/routers/vulnerabilities.py#L167)
 
 ```python
 async def delete_vulnerability_asset(project_id: int, vuln_id: int, asset_link_id: int, _: None=Depends(enforce_csrf), current_user: User=Depends(get_current_user), _project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> None

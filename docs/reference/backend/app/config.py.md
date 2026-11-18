@@ -6,7 +6,7 @@
 
 ## Settings._parse_sso_verify_tls
 
-[backend/app/config.py:275](../../../../backend/app/config.py#L275)
+[backend/app/config.py:276](../../../../backend/app/config.py#L276)
 
 ```python
 def _parse_sso_verify_tls(cls, v) -> не аннотирован
@@ -31,7 +31,7 @@ def _parse_sso_verify_tls(cls, v) -> не аннотирован
 
 ## Settings.sso_discovery_url
 
-[backend/app/config.py:288](../../../../backend/app/config.py#L288)
+[backend/app/config.py:289](../../../../backend/app/config.py#L289)
 
 ```python
 def sso_discovery_url(self) -> str
@@ -52,7 +52,7 @@ def sso_discovery_url(self) -> str
 
 ## Settings.sso_configured
 
-[backend/app/config.py:296](../../../../backend/app/config.py#L296)
+[backend/app/config.py:297](../../../../backend/app/config.py#L297)
 
 ```python
 def sso_configured(self) -> bool
@@ -71,7 +71,7 @@ def sso_configured(self) -> bool
 
 ## Settings.sso_scope_list
 
-[backend/app/config.py:301](../../../../backend/app/config.py#L301)
+[backend/app/config.py:302](../../../../backend/app/config.py#L302)
 
 ```python
 def sso_scope_list(self) -> list[str]
@@ -92,7 +92,7 @@ def sso_scope_list(self) -> list[str]
 
 ## Settings.sso_redirect_uri
 
-[backend/app/config.py:306](../../../../backend/app/config.py#L306)
+[backend/app/config.py:307](../../../../backend/app/config.py#L307)
 
 ```python
 def sso_redirect_uri(self) -> str
@@ -112,7 +112,7 @@ def sso_redirect_uri(self) -> str
 
 ## Settings.validate_secret_key
 
-[backend/app/config.py:313](../../../../backend/app/config.py#L313)
+[backend/app/config.py:314](../../../../backend/app/config.py#L314)
 
 ```python
 def validate_secret_key(cls, value: str) -> str
@@ -142,7 +142,7 @@ ValueError('JWT_SECRET_KEY должен содержать минимум 32 с�
 
 ## Settings.validate_data_encryption_key
 
-[backend/app/config.py:321](../../../../backend/app/config.py#L321)
+[backend/app/config.py:322](../../../../backend/app/config.py#L322)
 
 ```python
 def validate_data_encryption_key(cls, value: str) -> str
@@ -173,7 +173,7 @@ ValueError('DATA_ENCRYPTION_KEY должен содержать минимум 3
 
 ## Settings.reject_private_scan_targets
 
-[backend/app/config.py:329](../../../../backend/app/config.py#L329)
+[backend/app/config.py:330](../../../../backend/app/config.py#L330)
 
 ```python
 def reject_private_scan_targets(cls, value: bool) -> bool
@@ -202,7 +202,7 @@ ValueError('Сканирование внутренних адресов зап�
 
 ## Settings.validate_previous_encryption_keys
 
-[backend/app/config.py:337](../../../../backend/app/config.py#L337)
+[backend/app/config.py:338](../../../../backend/app/config.py#L338)
 
 ```python
 def validate_previous_encryption_keys(cls, values: list[str]) -> list[str]
@@ -233,7 +233,7 @@ ValueError('Предыдущие ключи шифрования должны с
 
 ## Settings.validate_independent_encryption_keys
 
-[backend/app/config.py:344](../../../../backend/app/config.py#L344)
+[backend/app/config.py:345](../../../../backend/app/config.py#L345)
 
 ```python
 def validate_independent_encryption_keys(self) -> 'Settings'
@@ -258,7 +258,7 @@ ValueError('JWT_SECRET_KEY и ключи шифрования данных до�
 
 ## Settings.cors_origins
 
-[backend/app/config.py:351](../../../../backend/app/config.py#L351)
+[backend/app/config.py:352](../../../../backend/app/config.py#L352)
 
 ```python
 def cors_origins(self) -> list[str]
@@ -278,7 +278,7 @@ def cors_origins(self) -> list[str]
 
 ## Settings.csrf_origins
 
-[backend/app/config.py:356](../../../../backend/app/config.py#L356)
+[backend/app/config.py:357](../../../../backend/app/config.py#L357)
 
 ```python
 def csrf_origins(self) -> list[str]
@@ -298,7 +298,7 @@ def csrf_origins(self) -> list[str]
 
 ## Settings.works_configured
 
-[backend/app/config.py:361](../../../../backend/app/config.py#L361)
+[backend/app/config.py:362](../../../../backend/app/config.py#L362)
 
 ```python
 def works_configured(self) -> bool
@@ -319,7 +319,7 @@ def works_configured(self) -> bool
 
 ## Settings.works_cookies_dict
 
-[backend/app/config.py:366](../../../../backend/app/config.py#L366)
+[backend/app/config.py:367](../../../../backend/app/config.py#L367)
 
 ```python
 def works_cookies_dict(self) -> dict[str, str]
@@ -341,7 +341,7 @@ def works_cookies_dict(self) -> dict[str, str]
 
 ## get_settings
 
-[backend/app/config.py:378](../../../../backend/app/config.py#L378)
+[backend/app/config.py:379](../../../../backend/app/config.py#L379)
 
 ```python
 def get_settings() -> Settings

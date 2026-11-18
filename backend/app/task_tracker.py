@@ -95,7 +95,7 @@ def task_out(unit: dict) -> dict:
     is_demo = bool(settings.works_tasks_demo_file)
     if is_demo:
         url = f"{settings.app_base_url.rstrip('/')}/tasks/{quote(key, safe='')}"
-    return {'key':key, 'summary':display(unit.get('summary') or unit.get('title') or unit.get('name')), 'status':status, 'status_category':category, 'issue_type':display(unit.get('suit') or unit.get('type')), 'priority':display(attributes.get('priority')) or None, 'assignee':assignee, 'assignee_username':username, 'affected_versions':versions, 'product_code': product, 'component': component, 'components': components, 'is_demo':is_demo, 'reporter':reporter or None, 'updated':display(unit.get('updatedAt') or unit.get('updated') or unit.get('updated_at')), 'created':display(unit.get('createdAt') or unit.get('created') or unit.get('created_at')), 'description':description_text(unit.get('descriptionPlain') or unit.get('description')), 'labels':[display(label) for label in labels] if isinstance(labels,list) else [], 'url':url}
+    return {'_workflow_code': display(workflow.get('code')) if isinstance(workflow, dict) else '', 'key':key, 'summary':display(unit.get('summary') or unit.get('title') or unit.get('name')), 'status':status, 'status_category':category, 'issue_type':display(unit.get('suit') or unit.get('type')), 'priority':display(attributes.get('priority')) or None, 'assignee':assignee, 'assignee_username':username, 'affected_versions':versions, 'product_code': product, 'component': component, 'components': components, 'is_demo':is_demo, 'reporter':reporter or None, 'updated':display(unit.get('updatedAt') or unit.get('updated') or unit.get('updated_at')), 'created':display(unit.get('createdAt') or unit.get('created') or unit.get('created_at')), 'description':description_text(unit.get('descriptionPlain') or unit.get('description')), 'labels':[display(label) for label in labels] if isinstance(labels,list) else [], 'url':url}
 
 
 def read_demo_units(path: str):
@@ -211,6 +211,8 @@ class TaskTrackerService:
                 client._raise_for_status(response, 'task search')
                 payload = response.json()
         except WorksError as exc:
+            if key and exc.status_code == 404:
+                raise HTTPException(404, "Тикет не найден") from exc
             raise tracker_service_error(exc) from exc
         except (httpx.HTTPError, ValueError, RecursionError) as exc:
             raise HTTPException(502, 'Task Tracker недоступен или вернул некорректный ответ') from exc
@@ -358,12 +360,13 @@ class TaskTrackerService:
                 'is_last': not has_next, 'total': total}
 
     async def get_task(self, key: str) -> dict:
+        """Возвращает карточку APPSEC; отсутствующий или неподдерживаемый ключ — 404."""
         if not is_project_ticket(key):
-            raise HTTPException(404, 'No task found in the APPSEC space')
+            raise HTTPException(404, 'Тикет не найден')
         data = await self._request(key=key)
         if isinstance(data, dict) and display(data.get('code') or data.get('key')) == key:
             return task_out(data)
         items = _extract_items(data)
         unit = next((item for item in items if isinstance(item,dict) and display(item.get('code') or item.get('key'))==key),None)
-        if unit is None: raise HTTPException(404,'No task found in the AppSec space')
+        if unit is None: raise HTTPException(404,'Тикет не найден')
         return task_out(unit)

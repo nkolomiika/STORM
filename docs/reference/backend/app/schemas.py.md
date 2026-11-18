@@ -218,7 +218,7 @@ def _empty_hostnames(cls, value: object) -> object
 
 ## HostCreate.validate_target_defined
 
-[backend/app/schemas.py:637](../../../../backend/app/schemas.py#L637)
+[backend/app/schemas.py:639](../../../../backend/app/schemas.py#L639)
 
 ```python
 def validate_target_defined(self) -> 'HostCreate'
@@ -245,7 +245,7 @@ ValueError('Нужно указать хотя бы один ip_address или h
 
 ## EndpointCreate.validate_endpoint_target_defined
 
-[backend/app/schemas.py:770](../../../../backend/app/schemas.py#L770)
+[backend/app/schemas.py:772](../../../../backend/app/schemas.py#L772)
 
 ```python
 def validate_endpoint_target_defined(self) -> 'EndpointCreate'
@@ -270,7 +270,7 @@ ValueError('Нужно указать path или request_raw')
 
 ## EndpointOut._coerce_optional_list
 
-[backend/app/schemas.py:802](../../../../backend/app/schemas.py#L802)
+[backend/app/schemas.py:804](../../../../backend/app/schemas.py#L804)
 
 ```python
 def _coerce_optional_list(cls, value: object) -> object
@@ -286,7 +286,7 @@ def _coerce_optional_list(cls, value: object) -> object
 
 ## VulnerabilityCreate.validate_cvss_version
 
-[backend/app/schemas.py:836](../../../../backend/app/schemas.py#L836)
+[backend/app/schemas.py:838](../../../../backend/app/schemas.py#L838)
 
 ```python
 def validate_cvss_version(cls, value: CvssVersion | None) -> CvssVersion | None
@@ -315,7 +315,7 @@ ValueError('Поддерживается только CVSS 4.0')
 
 ## VulnerabilityUpdate.validate_cvss_version
 
-[backend/app/schemas.py:858](../../../../backend/app/schemas.py#L858)
+[backend/app/schemas.py:860](../../../../backend/app/schemas.py#L860)
 
 ```python
 def validate_cvss_version(cls, value: CvssVersion | None) -> CvssVersion | None
@@ -344,7 +344,7 @@ ValueError('Поддерживается только CVSS 4.0')
 
 ## JsFileOut._empty_endpoints
 
-[backend/app/schemas.py:1179](../../../../backend/app/schemas.py#L1179)
+[backend/app/schemas.py:1183](../../../../backend/app/schemas.py#L1183)
 
 ```python
 def _empty_endpoints(cls, value: object) -> object
@@ -360,7 +360,7 @@ def _empty_endpoints(cls, value: object) -> object
 
 ## StormImportEndpoint.validate_target_defined
 
-[backend/app/schemas.py:1338](../../../../backend/app/schemas.py#L1338)
+[backend/app/schemas.py:1342](../../../../backend/app/schemas.py#L1342)
 
 ```python
 def validate_target_defined(self) -> 'StormImportEndpoint'
@@ -385,7 +385,7 @@ ValueError('Каждый endpoint должен содержать path или re
 
 ## StormImportHost.validate_target_defined
 
-[backend/app/schemas.py:1353](../../../../backend/app/schemas.py#L1353)
+[backend/app/schemas.py:1357](../../../../backend/app/schemas.py#L1357)
 
 ```python
 def validate_target_defined(self) -> 'StormImportHost'

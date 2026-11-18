@@ -347,6 +347,7 @@ async def startup() -> None
 - `conn.run_sync`
 - `deadline_loop`
 - `engine.begin`
+- `project_status_sync_loop`
 - `service.bootstrap_admin`
 - `text`
 
@@ -383,13 +384,13 @@ SQLite не умеет ADD COLUMN IF NOT EXISTS — проверяем чере�
 
 ## shutdown_notifications
 
-[backend/app/main.py:386](../../../../backend/app/main.py#L386)
+[backend/app/main.py:388](../../../../backend/app/main.py#L388)
 
 ```python
 async def shutdown_notifications() -> None
 ```
 
-В теле вызывает `getattr`, `suppress`, `task.cancel`.
+В теле вызывает `getattr`, `suppress`, `sync_task.cancel`, `task.cancel`.
 
 Возвращает: `None`.
 
@@ -398,13 +399,14 @@ async def shutdown_notifications() -> None
 
 - `getattr`
 - `suppress`
+- `sync_task.cancel`
 - `task.cancel`
 
 </details>
 
 ## health
 
-[backend/app/main.py:395](../../../../backend/app/main.py#L395)
+[backend/app/main.py:402](../../../../backend/app/main.py#L402)
 
 ```python
 async def health() -> dict

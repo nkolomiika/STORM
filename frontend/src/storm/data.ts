@@ -102,6 +102,8 @@ export interface Member {
 }
 
 export interface Vuln {
+  trackerKey?: string | null;
+  trackerUrl?: string | null;
   /** Backend vulnerability id — used for deep links (/projects/{p}/vulns/{id}). */
   id: number;
   sev: Severity;

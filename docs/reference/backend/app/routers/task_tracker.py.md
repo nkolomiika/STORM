@@ -6,7 +6,7 @@
 
 ## list_tasks
 
-[backend/app/routers/task_tracker.py:14](../../../../../backend/app/routers/task_tracker.py#L14)
+[backend/app/routers/task_tracker.py:15](../../../../../backend/app/routers/task_tracker.py#L15)
 
 ```python
 async def list_tasks(query: str | None=None, category: str | None=None, page_number: int=Query(0, ge=0, le=1000000), sort: Literal['first', 'last']='last', refresh: bool=False, _user: User=Depends(get_current_user), db: AsyncSession=Depends(get_db)) -> не аннотирован
@@ -40,12 +40,13 @@ router.get('/tasks', response_model=TaskTrackerTaskListOut)
 - `TaskTrackerService`
 - `service.attach_project_access`
 - `service.list_tasks`
+- `sync_project_statuses`
 
 </details>
 
 ## get_task
 
-[backend/app/routers/task_tracker.py:23](../../../../../backend/app/routers/task_tracker.py#L23)
+[backend/app/routers/task_tracker.py:25](../../../../../backend/app/routers/task_tracker.py#L25)
 
 ```python
 async def get_task(key: str, _user: User=Depends(get_current_user), db: AsyncSession=Depends(get_db)) -> не аннотирован
@@ -66,7 +67,7 @@ Dependencies: `get_current_user`, `get_db`.
 Маршруты:
 
 ```python
-router.get('/tasks/{key}', response_model=TaskTrackerTaskDetailOut)
+router.get('/tasks/{key}', response_model=TaskTrackerTaskDetailOut, responses={404: {'description': 'Тикет не найден'}})
 ```
 
 <details>
@@ -75,5 +76,6 @@ router.get('/tasks/{key}', response_model=TaskTrackerTaskDetailOut)
 - `TaskTrackerService`
 - `service.attach_project_access`
 - `service.get_task`
+- `sync_project_statuses`
 
 </details>

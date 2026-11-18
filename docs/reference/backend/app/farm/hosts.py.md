@@ -428,7 +428,7 @@ _find_or_create_host): домен — по hostname, IP-литерал — по 
 [backend/app/farm/hosts.py:379](../../../../../backend/app/farm/hosts.py#L379)
 
 ```python
-async def _ensure_skeletons(self, project_id: int, targets: dict[str, ParsedTarget], existing: set[str]) -> None
+async def _ensure_skeletons(self, project_id: int, targets: dict[str, ParsedTarget], existing: set[str], *, commit: bool=True) -> None
 ```
 
 Заводит хосты-заготовки (status unknown) сразу, чтобы список показался
@@ -440,10 +440,11 @@ async def _ensure_skeletons(self, project_id: int, targets: dict[str, ParsedTarg
 | `project_id` | `int` | `обязательный` | ID проекта; доступ проверяет dependency маршрута, принадлежность ресурса — сервис. |
 | `targets` | `dict[str, ParsedTarget]` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
 | `existing` | `set[str]` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
+| `commit` | `bool` | `True` | Определяется именем/типом и контрактом вызывающего кода. |
 
 Возвращает: `None`.
 
-Прямые операции с БД: `self.db.add`, `self.db.commit`.
+Прямые операции с БД: `self.db.add`, `self.db.commit`, `self.db.flush`.
 
 <details>
 <summary>Прямые вызовы в теле</summary>
@@ -451,29 +452,35 @@ async def _ensure_skeletons(self, project_id: int, targets: dict[str, ParsedTarg
 - `Host`
 - `self.db.add`
 - `self.db.commit`
+- `self.db.flush`
 - `targets.items`
 
 </details>
 
 ## HostFarmService.create_job
 
-[backend/app/farm/hosts.py:399](../../../../../backend/app/farm/hosts.py#L399)
+[backend/app/farm/hosts.py:402](../../../../../backend/app/farm/hosts.py#L402)
 
 ```python
-async def create_job(self, project_id: int, raw: str, actor_id: int) -> HostFarmJob
+async def create_job(self, project_id: int, raw: str, actor_id: int, *, probe_existing: bool=False, commit: bool=True) -> HostFarmJob
 ```
 
-В теле вызывает `HostFarmJob`, `HostFarmResult`, `HostFarmResult(hosts_skipped=len(existing)).model_dump`, `ValidationError`, `datetime.now`, `len`, `self._ensure_skeletons`, `self._existing_target_keys`; полный список ниже.
+Ставит пробив; probe_existing включает только что созданный CRUD-хост.
+
+commit=False оставляет запись в транзакции вызывающего сервиса,
+чтобы хост, задача и аудит сохранялись или откатывались вместе.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
 | `project_id` | `int` | `обязательный` | ID проекта; доступ проверяет dependency маршрута, принадлежность ресурса — сервис. |
 | `raw` | `str` | `обязательный` | Исходное значение до нормализации/разбора. |
 | `actor_id` | `int` | `обязательный` | ID инициатора для аудита и уведомлений. |
+| `probe_existing` | `bool` | `False` | Определяется именем/типом и контрактом вызывающего кода. |
+| `commit` | `bool` | `True` | Определяется именем/типом и контрактом вызывающего кода. |
 
 Возвращает: `HostFarmJob`.
 
-Прямые операции с БД: `self.db.add`, `self.db.commit`, `self.db.refresh`.
+Прямые операции с БД: `self.db.add`, `self.db.commit`, `self.db.flush`, `self.db.refresh`.
 
 Явные raise в теле (исключения вызываемых методов могут добавляться):
 
@@ -495,15 +502,17 @@ ValidationError(f'Слишком много хостов: {len(targets)} (мак
 - `self._existing_target_keys`
 - `self.db.add`
 - `self.db.commit`
+- `self.db.flush`
 - `self.db.refresh`
 - `self.parse_targets`
+- `set`
 - `sorted`
 
 </details>
 
 ## HostFarmService.get_job
 
-[backend/app/farm/hosts.py:431](../../../../../backend/app/farm/hosts.py#L431)
+[backend/app/farm/hosts.py:443](../../../../../backend/app/farm/hosts.py#L443)
 
 ```python
 async def get_job(self, project_id: int, job_id: int) -> HostFarmJob

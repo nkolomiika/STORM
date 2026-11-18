@@ -135,6 +135,7 @@ class Settings(BaseSettings):
     works_api_token: str = ""              # Bearer-токен сервисной учётки Works
     works_cookies: str = "api_swtr_as21=true"  # статические cookie "k1=v1; k2=v2"
     works_space: str = "STS"
+    works_report_kind: Literal["szi", "pp"] = "szi"
     works_suit: str = "bug_appsec"
     works_tenant: str = "default"
     # true — проверять TLS системным бандлом; false — не проверять (только тест);

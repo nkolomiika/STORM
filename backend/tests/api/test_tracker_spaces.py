@@ -45,7 +45,7 @@ async def test_finding_export_goes_to_sts_and_links_to_project_appsec_ticket(api
         raise AssertionError(f"Unexpected Task Tracker request: {request.url.path}")
     native_tracker(monkeypatch, handler)
     project = ids["project"]
-    response = await client.put(f"projects/{project}", json={
+    response = await client.put(f"projects/{project}", json={'end_date': '2026-11-20',
         "appsec_ticket_url": "https://tracker.example/swtr/units/current/unit/APPSEC-7?space=APPSEC",
         "appsec_assignee": "analyst",
         "appsec_product_code": "product",
@@ -119,7 +119,7 @@ async def test_parallel_sts_exports_create_one_external_ticket(api, monkeypatch)
         raise AssertionError(request.url.path)
     native_tracker(monkeypatch, handler)
     root = f"projects/{ids['project']}"
-    saved = await client.put(root, json={'appsec_ticket_key':'APPSEC-1', 'appsec_assignee':'analyst',
+    saved = await client.put(root, json={'end_date': '2026-11-20', 'appsec_ticket_key':'APPSEC-1', 'appsec_assignee':'analyst',
                                         'appsec_product_code': 'product',
                                         'appsec_component_code': 'component-id',
                                         'appsec_versions':[{'code':'v1','name':'Platform 1.0'}]})
@@ -146,7 +146,7 @@ async def test_multiple_sts_findings_share_appsec_source_and_keep_distinct_desti
         raise AssertionError(request.url.path)
     native_tracker(monkeypatch, handler)
     root = f"projects/{ids['project']}"
-    saved = await client.put(root, json={'appsec_ticket_key': 'APPSEC-7', 'appsec_assignee': 'analyst',
+    saved = await client.put(root, json={'end_date': '2026-11-20', 'appsec_ticket_key': 'APPSEC-7', 'appsec_assignee': 'analyst',
                                        'appsec_product_code': 'product',
                                        'appsec_component_code': 'component-id',
                                        'appsec_versions': [{'code': 'v1', 'name': 'Product 1.0'}]})
@@ -203,7 +203,7 @@ async def test_tql_wrapped_attributes_reach_task_list_detail_and_project(api, mo
     assert detail.status_code == 200, detail.text
     assert detail.json()['description'] == 'Описание анализа'
     assert calls[-1] == ('/swtr/rest/api/unit/v2/APPSEC-123', {})
-    project = await client.post('projects', json={
+    project = await client.post('projects', json={'end_date': '2026-11-20',
         'name': 'Native AS21 project', 'appsec_ticket_key': task['key'],
         'appsec_assignee': task['assignee_username'], 'appsec_assignee_name': task['assignee'],
         'appsec_versions': task['affected_versions'],
@@ -357,7 +357,7 @@ async def test_native_card_to_project_to_sts_keeps_login_and_every_version(api, 
     assert task.status_code == 200, task.text
     data = task.json()
     assert data['assignee_username'] == 'analyst.login' and data['affected_versions'] == versions
-    response = await client.post('projects', json={'name': 'From native task', 'appsec_component_code': 'component-id', 'appsec_product_code': 'product', 'appsec_ticket_key': data['key'], 'appsec_ticket_url': data['url'], 'appsec_assignee': data['assignee_username'], 'appsec_assignee_name': data['assignee'], 'appsec_versions': data['affected_versions']})
+    response = await client.post('projects', json={'end_date': '2026-11-20', 'name': 'From native task', 'appsec_component_code': 'component-id', 'appsec_product_code': 'product', 'appsec_ticket_key': data['key'], 'appsec_ticket_url': data['url'], 'appsec_assignee': data['assignee_username'], 'appsec_assignee_name': data['assignee'], 'appsec_versions': data['affected_versions']})
     assert response.status_code == 201, response.text
     project = response.json()
     assert project['appsec_versions'] == versions
@@ -460,7 +460,7 @@ async def test_info_exports_as_trivial_but_unrealized_never_reaches_tracker(api,
         calls.append(json.loads(request.content))
         return httpx.Response(200, json={'id': 'STS-123'} if request.url.path.endswith('/create') else {'ok': True})
     native_tracker(monkeypatch, handler)
-    configured = await client.put(f"projects/{ids['project']}", json={
+    configured = await client.put(f"projects/{ids['project']}", json={'end_date': '2026-11-20',
         'appsec_ticket_key': 'APPSEC-123', 'appsec_assignee': 'pentester', 'appsec_product_code': 'evp',
         'appsec_components': [{'code': 'component', 'name': 'EVPC'}],
         'appsec_versions': [{'code': 'version', 'name': 'Product 1.0'}]})
@@ -558,7 +558,7 @@ async def test_actual_appsec_v2_to_project_to_sts_preserves_all_native_metadata(
     lookup = await client.get('tasks', params={'query': 'APPSEC-3291'})
     assert lookup.status_code == 200 and lookup.json()['items'][0]['key'] == 'APPSEC-3291'
     assert calls[-1][0] == 'GET'
-    response = await client.post('projects', json={
+    response = await client.post('projects', json={'end_date': '2026-11-20',
         'name': task['summary'], 'appsec_ticket_key': task['key'], 'appsec_ticket_url': task['url'],
         'appsec_assignee': task['assignee_username'], 'appsec_assignee_name': task['assignee'],
         'appsec_product_code': task['product_code'], 'appsec_components': task['components'],

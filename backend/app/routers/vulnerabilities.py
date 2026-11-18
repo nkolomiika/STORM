@@ -36,7 +36,8 @@ async def list_vulnerabilities(
     service = VulnerabilityService(db)
     items, total = await service.list(project_id, page, size, severity, status_filter)
     host_links = await service.host_links_for_page(items)
-    result = [VulnerabilityListOut.model_validate(item).model_copy(update={"affected_host_id": host_links.get(item.id)}) for item in items]
+    issue_links = await service.linked_issues_for_page(items)
+    result = [VulnerabilityListOut.model_validate(item).model_copy(update={"affected_host_id": host_links.get(item.id), **issue_links.get(item.id, {})}) for item in items]
     return to_paginated_response(result, total, PageParams(page=page, size=size))
 
 
@@ -80,6 +81,8 @@ async def get_vulnerability(
     """Возвращает подробную карточку уязвимости."""
     data = await VulnerabilityService(db).get(project_id, vuln_id)
     vuln = VulnerabilityOut.model_validate(data["vulnerability"]).model_dump()
+    links = await VulnerabilityService(db).linked_issues_for_page([data["vulnerability"]])
+    vuln.update(links.get(vuln_id, {}))
     vuln["assets"] = [VulnerabilityAssetOut.model_validate(item).model_dump() for item in data["assets"]]
     vuln["files"] = [FileOut.model_validate(item).model_dump() for item in data["files"]]
     vuln["comments_count"] = data["comments_count"]

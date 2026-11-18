@@ -269,6 +269,7 @@ async def _request(self, *, key: str | None=None, query: str='', page: int=0, pa
 Явные raise в теле (исключения вызываемых методов могут добавляться):
 
 ```python
+HTTPException(404, 'Тикет не найден')
 HTTPException(502, 'Task Tracker вернул недопустимые данные')
 HTTPException(502, 'Task Tracker вернул неожиданный формат ответа')
 HTTPException(502, 'Task Tracker недоступен или вернул некорректный ответ')
@@ -363,7 +364,7 @@ def expand(value) -> не аннотирован
 
 ## TaskTrackerService._snapshot
 
-[backend/app/task_tracker.py:225](../../../../backend/app/task_tracker.py#L225)
+[backend/app/task_tracker.py:227](../../../../backend/app/task_tracker.py#L227)
 
 ```python
 async def _snapshot(self, refresh: bool=False) -> list[dict]
@@ -433,7 +434,7 @@ HTTPException(502, 'Слишком много задач Task Tracker. Уточ�
 
 ## TaskTrackerService._snapshot.read
 
-[backend/app/task_tracker.py:269](../../../../backend/app/task_tracker.py#L269)
+[backend/app/task_tracker.py:271](../../../../backend/app/task_tracker.py#L271)
 
 ```python
 async def read(page) -> не аннотирован
@@ -456,7 +457,7 @@ async def read(page) -> не аннотирован
 
 ## TaskTrackerService._list_category
 
-[backend/app/task_tracker.py:309](../../../../backend/app/task_tracker.py#L309)
+[backend/app/task_tracker.py:311](../../../../backend/app/task_tracker.py#L311)
 
 ```python
 async def _list_category(self, category: str, page: int, query: str | None, sort: str, refresh: bool) -> dict
@@ -491,7 +492,7 @@ async def _list_category(self, category: str, page: int, query: str | None, sort
 
 ## TaskTrackerService._list_category.updated
 
-[backend/app/task_tracker.py:318](../../../../backend/app/task_tracker.py#L318)
+[backend/app/task_tracker.py:320](../../../../backend/app/task_tracker.py#L320)
 
 ```python
 def updated(item) -> не аннотирован
@@ -516,7 +517,7 @@ def updated(item) -> не аннотирован
 
 ## TaskTrackerService.list_tasks
 
-[backend/app/task_tracker.py:330](../../../../backend/app/task_tracker.py#L330)
+[backend/app/task_tracker.py:332](../../../../backend/app/task_tracker.py#L332)
 
 ```python
 async def list_tasks(self, query: str | None=None, category: str | None=None, page: int=0, sort: str='last', refresh: bool=False) -> dict
@@ -558,13 +559,13 @@ async def list_tasks(self, query: str | None=None, category: str | None=None, pa
 
 ## TaskTrackerService.get_task
 
-[backend/app/task_tracker.py:360](../../../../backend/app/task_tracker.py#L360)
+[backend/app/task_tracker.py:362](../../../../backend/app/task_tracker.py#L362)
 
 ```python
 async def get_task(self, key: str) -> dict
 ```
 
-В теле вызывает `HTTPException`, `_extract_items`, `data.get`, `display`, `is_project_ticket`, `isinstance`, `item.get`, `next`; полный список ниже.
+Возвращает карточку APPSEC; отсутствующий или неподдерживаемый ключ — 404.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -575,8 +576,7 @@ async def get_task(self, key: str) -> dict
 Явные raise в теле (исключения вызываемых методов могут добавляться):
 
 ```python
-HTTPException(404, 'No task found in the APPSEC space')
-HTTPException(404, 'No task found in the AppSec space')
+HTTPException(404, 'Тикет не найден')
 ```
 
 <details>

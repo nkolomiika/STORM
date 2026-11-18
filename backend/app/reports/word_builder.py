@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import copy
 import re
+from functools import lru_cache
 from datetime import date as _date
 from io import BytesIO
 from pathlib import Path
@@ -1418,12 +1419,16 @@ def _fill_card(
     if not paragraphs:
         return
 
-    # Заголовок карточки: SA-NN: <название уязвимости>.
+    # Один индекс используется в отчёте и описании STS-тикета.
     heading = paragraphs[0]
     title = (vuln.title or "").strip()
-    label = f"SA-{sequence:02d}"
+    label = indexes.get("finding_references", {}).get(vuln.id, {}).get("index") or finding_identifier(project, sequence)
     new_heading = f"{label}: {title}" if title else label
     _set_heading_text(heading, new_heading)
+    if not project.end_date or "COMPONENT" in label:
+        from docx.enum.text import WD_COLOR_INDEX
+        for run in heading.runs:
+            run.font.highlight_color = WD_COLOR_INDEX.YELLOW
 
     if table is not None:
         _fill_card_table(table, kind=kind, vuln=vuln, indexes=indexes, project=project)
@@ -1598,6 +1603,63 @@ def _sort_vulns_by_host_and_severity(
         return (host_rank, sev_rank)
 
     return sorted(vulnerabilities, key=sort_key)
+
+
+def finding_identifier(project: Project, sequence: int) -> str:
+    """Индекс SA-компонент-ДДММГГ/номер; дата — окончание работ, номер сквозной."""
+    components = project.appsec_components or []
+    component = (components[0].get("name") or components[0].get("code")) if components else project.appsec_component_name or project.appsec_component_code
+    component = str(component or "COMPONENT").strip()
+    finished = project.end_date.strftime("%d%m%y") if project.end_date else "ДДММГГ"
+    return f"SA-{component}-{finished}/{sequence:02d}"
+
+
+@lru_cache(maxsize=2)
+def _finding_section_layout(kind: ReportKind) -> dict[str, tuple[str, bool]]:
+    """Определяет номера разделов по заголовкам шаблона, исключая ненумеруемые."""
+    doc = load_template(kind)
+    chapter = section = 0
+    result = {}
+    current = None
+    for p in doc.paragraphs:
+        level = p.style.name
+        num = p._p.find("./" + qn("w:pPr") + "/" + qn("w:numPr") + "/" + qn("w:numId"))
+        if num is not None and num.get(qn("w:val")) == "0":
+            continue
+        if level == "Heading 1":
+            chapter += 1
+            section = 0
+            current = None
+        elif level == "Heading 2":
+            section += 1
+            current = "main" if p.text.strip() == "Информация по выявленным уязвимостям" else "weakness" if p.text.strip() == "Информация по выявленным слабостям" else None
+            if current:
+                result[current] = (f"{chapter}.{section}", False)
+        elif current and level == "Heading 3" and "Исследование стенда" in p.text:
+            result[current] = (result[current][0], True)
+    return result
+
+
+def finding_references(project: Project, vulnerabilities: list[Vulnerability], hosts: list[Host], assets: list[VulnerabilityAsset], *, kind: ReportKind = "szi") -> dict[int, dict]:
+    """Общие для Word и STS индексы и пункты; слабости продолжают номера уязвимостей."""
+    by_vuln: dict[int, list[VulnerabilityAsset]] = {}
+    for asset in assets:
+        by_vuln.setdefault(asset.vulnerability_id, []).append(asset)
+    indexes = {"host_by_id": {host.id: host for host in hosts}, "assets_by_vuln_id": by_vuln}
+    ordered = _sort_vulns_by_host_and_severity(vulnerabilities, indexes=indexes, hosts=hosts)
+    main, weaknesses, _ = _split_vulnerabilities(ordered)
+    layout = _finding_section_layout(kind)
+    refs = {}
+    sequence = 0
+    for name, items in (("main", main), ("weakness", weaknesses)):
+        prefix, grouped = layout[name]
+        groups = _group_items_by_host(items, indexes=indexes, hosts=hosts) if grouped else [("", items)]
+        for group_index, (_, findings) in enumerate(groups, 1):
+            for item_index, vuln in enumerate(findings, 1):
+                sequence += 1
+                point = f"{prefix}.{group_index}.{item_index}" if grouped else f"{prefix}.{item_index}"
+                refs[vuln.id] = {"index": finding_identifier(project, sequence), "point": point, "sequence": sequence}
+    return refs
 
 
 def _strip_run_highlight(run: Run) -> None:
@@ -3331,6 +3393,8 @@ def _build_common(
     _update_severity_summary_table(doc, severity_counts)
 
     main_vulns, weakness_vulns, unrealized_vulns = _split_vulnerabilities(vulnerabilities)
+    assets = data.get("vulnerability_assets", [asset for group in indexes["assets_by_vuln_id"].values() for asset in group])
+    indexes = {**indexes, "finding_references": finding_references(project, vulnerabilities, hosts, assets, kind=kind)}
     # В раздел «Тесты» (4.4) идут ВСЕ находки целиком (включая нереализуемые
     # «проверки»), в уже отсортированном порядке.
     all_items = vulnerabilities

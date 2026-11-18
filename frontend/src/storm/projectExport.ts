@@ -8,5 +8,6 @@ export function missingStsProjectFields(project: Project): string[] {
   if (!project.appsec_versions?.length && !project.appsec_version_code?.trim()) missing.push("Affected versions");
   if (!project.appsec_product_code?.trim()) missing.push('Product code');
   if (!project.appsec_components?.length && !project.appsec_component_code?.trim()) missing.push('Component');
+  if (!project.end_date) missing.push("End date");
   return missing;
 }

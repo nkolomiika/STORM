@@ -53,7 +53,6 @@ import {
   updateProject as apiUpdateProject,
   getProject as apiGetProject,
   getWorksConfig as apiGetWorksConfig,
-  getVulnerabilityWorksLink as apiGetVulnWorksLink,
   deleteProject as apiDeleteProject,
   createInvitation as apiCreateInvitation,
   getInvitations as apiGetInvitations,
@@ -145,7 +144,6 @@ import type {
   Service as ApiService,
   Vulnerability as ApiVulnerability,
   TaskTrackerIssueLink,
-  WorksIssueLink as ApiWorksLink,
   TaskTrackerTask,
   TaskTrackerTaskDetail,
   TaskTrackerTaskCategory,
@@ -495,7 +493,6 @@ interface StormState {
   vulnFiles: ApiVulnFile[];
   vulnFilesBusy: boolean;
   // Связь открытой находки с тикетом Works (AppSec) + флаг экспорта.
-  vulnWorksLink: ApiWorksLink | null;
   worksExportBusy: boolean;
   vulnFileDrag: boolean;
   /** Attachment opened in the preview modal, or null. */
@@ -705,7 +702,6 @@ const initialState: StormState = {
   vulnDetailForm: {},
   vulnFiles: [],
   vulnFilesBusy: false,
-  vulnWorksLink: null,
   worksExportBusy: false,
   vulnFileDrag: false,
   filePreview: null,
@@ -1109,6 +1105,8 @@ function toStormHost(h: ApiHost, endpoints: Endpoint[] = []): Host {
 /** Backend workflow steps carry ids/endpoints/images; Storm's editor shows the text only. */
 function toStormVuln(v: ApiVulnerability, hostName: string): Vuln {
   return {
+    trackerKey: v.task_tracker_issue_key,
+    trackerUrl: v.task_tracker_issue_url,
     id: v.id,
     sev: v.severity,
     title: v.title,
@@ -1958,14 +1956,12 @@ export function StormApp() {
   const canManageMembers = isAdmin || isProjectCreator || isProjectLead;
   /** Видеть список участников может любой участник проекта — но только смотреть, без управления. */
   const canViewMembers = canManageMembers || isProjectMember;
-  /** The same three roles may edit the project card (name / description / dates).
-      Mirrors ProjectService.ensure_can_edit_project — the backend is the gate,
-      this only hides a button the user would be refused anyway. */
-  const canEditProject = isAdmin || isProjectCreator || isProjectLead;
+  /** Карточку проекта может редактировать любой участник; удаление — только менеджеры. */
+  const canEditProject = canManageMembers || isProjectMember;
   /* In the projects list there is no membership loaded per row, but a non-admin
      only ever receives projects they belong to (rule 1.1) — so a listed row plus
      the global lead role already means "lead of a project I'm in". */
-  const canEditProjectRow = (row: ApiProjectRow) =>
+  const canDeleteProjectRow = (row: ApiProjectRow) =>
     isAdmin || (authUser != null && row.createdBy === authUser.id) || authUser?.project_role === "lead";
 
   // ================= navigation =================
@@ -2117,7 +2113,7 @@ export function StormApp() {
         const detail = await apiGetTask(key);
         if (!cancelled) setStateRaw((s) => (s.tasksOpenKey === key ? { ...s, tasksDetail: detail, tasksDetailLoading: false } : s));
       } catch (e) {
-        if (!cancelled) setStateRaw((s) => (s.tasksOpenKey === key ? { ...s, tasksDetailLoading: false, tasksDetailError: getApiErrorMessage(e, "Couldn't load this task") } : s));
+        if (!cancelled) setStateRaw((s) => (s.tasksOpenKey === key ? { ...s, tasksDetailLoading: false, tasksDetailError: getApiErrorStatus(e) === 404 ? "Ticket not found" : getApiErrorMessage(e, "Couldn't load this task") } : s));
       }
     })();
     return () => { cancelled = true; };
@@ -2153,7 +2149,7 @@ export function StormApp() {
     const pid = state.openProjectId;
     const vid = state.openVulnId;
     if (pid == null || vid == null) {
-      setStateRaw((s) => (s.vulnFiles.length === 0 && !s.vulnWorksLink ? s : { ...s, vulnFiles: [], vulnWorksLink: null }));
+      setStateRaw((s) => (s.vulnFiles.length === 0 ? s : { ...s, vulnFiles: [] }));
       return;
     }
     let cancelled = false;
@@ -2163,13 +2159,6 @@ export function StormApp() {
         if (!cancelled) setStateRaw((s) => ({ ...s, vulnFiles: files }));
       } catch {
         if (!cancelled) setStateRaw((s) => ({ ...s, vulnFiles: [] }));
-      }
-      // Связь с тикетом Works (если есть) — для «уже экспортировано» и статуса.
-      try {
-        const link = await apiGetVulnWorksLink(pid, vid);
-        if (!cancelled) setStateRaw((s) => ({ ...s, vulnWorksLink: link }));
-      } catch {
-        if (!cancelled) setStateRaw((s) => ({ ...s, vulnWorksLink: null }));
       }
     })();
     return () => {
@@ -2500,7 +2489,7 @@ export function StormApp() {
     }
   };
   // Экспорт находки в AppSec (Works): создаёт тикет bug_appsec в STS. Исполнитель,
-  // компонент и версия берутся из настроек проекта; статус потом подтянется (Stage 4).
+  // компонент и версии берутся из проекта; сохранённая ссылка приходит со списком находок.
 
   const openTaskTrackerExport = async (vulnId: number) => {
     const pid = state.openProjectId;
@@ -2529,6 +2518,7 @@ export function StormApp() {
     try {
       const link = await apiExportVulnerabilityToTaskTracker(pid, vid);
       setState({ taskTrackerExportBusy: false, taskTrackerExportLink: link });
+      reloadVulns();
       pushToast(t("Exported to Task Tracker: {issue}", { issue: link.task_tracker_issue_key || t("issue created") }), "success");
     } catch (e) {
       const msg = getApiErrorMessage(e, "Couldn't export to Task Tracker");
@@ -2946,10 +2936,8 @@ export function StormApp() {
     }
   };
 
-  /* "Add endpoints" mirrors "Add hosts/IPs": paste a list, preview the normalized
-     form, submit. Each line is a URL (with an optional leading METHOD); the host is
-     taken from the URL and matched to an existing project host — endpoints hang off
-     a host, so a line whose host is not in the project is skipped on submit. */
+  /* Импорт эндпоинтов сохраняет предпросмотр URL с необязательным HTTP-методом.
+     Существующий хост переиспользуется, новый создаётся с защищённой пробивкой. */
   const EP_METHODS = new Set<string>(ENDPOINT_METHODS);
   const parseEpLine = (line: string): { host: string; method: string; path: string; url: string } | null => {
     const l = line.trim();
@@ -2967,7 +2955,7 @@ export function StormApp() {
     try {
       const u = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(target) ? target : `https://${target}`);
       if (!["http:", "https:"].includes(u.protocol) || u.username || u.password) return null;
-      host = u.hostname.toLowerCase();
+      host = u.hostname.toLowerCase().replace(/^\[|\]$/g, "");
       url = `${u.protocol}//${u.host}${u.pathname}${u.search}`;
       path = (u.pathname || "/") + (u.search || "");
     } catch {
@@ -3003,7 +2991,7 @@ export function StormApp() {
     epImportPreview: normalizeEpList([...(s.epImportOpen ? s.epImportPreview.split(/\r?\n/).filter(Boolean) : []), ...lines].join("\n")),
   }));
   /** Импортирует предпросмотр URL, переиспользуя найденные и созданные хосты.
-   * Ручной ввод и Swagger используют одинаковые правила; сетевой пробив не запускается.
+   * Новые хосты ручного ввода и Swagger ставятся в защищённую очередь пробивки.
    */
   const submitEpImport = async () => {
     const pid = state.openProjectId;
@@ -3023,7 +3011,7 @@ export function StormApp() {
       let host = importHosts.get(ep.host);
       if (!host) {
         try {
-          host = toStormHost(await apiCreateHost(pid, { hostname: ep.host }));
+          host = toStormHost(await apiCreateHost(pid, { hostname: ep.host, probe: true }));
           importHosts.set(ep.host, host);
         } catch (error) { pushToast(getApiErrorMessage(error, t("Couldn't add host")), "error"); skipped++; continue; }
       }
@@ -3087,10 +3075,15 @@ export function StormApp() {
     try {
       if (mode === "add") {
         const typedHost = fstr(f.host).trim();
-        const host = resolveProjectHost(typedHost);
-        if (!host) {
-          pushToast(typedHost ? t("Host “{host}” not found", { host: typedHost }) : t("Select the host this finding belongs to"), "error");
+        if (!typedHost) {
+          pushToast(t("Select the host this finding belongs to"), "error");
           return;
+        }
+        const hostLabel = parseEpLine(typedHost)?.host ?? typedHost.toLowerCase();
+        let host = resolveProjectHost(hostLabel);
+        if (!host) {
+          host = toStormHost(await apiCreateHost(pid, { hostname: hostLabel, probe: true }));
+          reloadHosts();
         }
         // Add asks only for Title + Host; severity/status default here and the
         // user completes the finding on its detail card — redirect straight there.
@@ -4100,6 +4093,7 @@ export function StormApp() {
     .sort((a, b) => b.v.id - a.v.id)
     .map(({ v, idx }, i) => ({
       id: v.id,
+      trackerUrl: v.trackerUrl,
       num: i + 1,
       sev: v.sev,
       title: v.title,
@@ -4521,6 +4515,7 @@ export function StormApp() {
   const sa = secStyle("activity");
 
   const vd = state.vulnDetailForm;
+  const detailFinding = d.vulns.find((finding) => finding.id === state.openVulnId);
   const vdCvss = computeCvss4(vd.vector);
   const vdSev: Severity = vdCvss ? vdCvss.sev : "unrealized";
   const vdScore = vdCvss ? vdCvss.score.toFixed(1) : "—";
@@ -4652,12 +4647,12 @@ export function StormApp() {
                 </span>
               </div>
               <div style={{ fontSize: 13, color: "var(--st-text-3)" }}>{relTime(r.updated)}</div>
-              {/* Правки и удаление: admin / создатель / lead-участник. */}
+              {/* Правки доступны участникам; удаление — admin / создателю / lead-участнику. */}
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 4 }}>
-                {canEditProjectRow(r) && (
+                {authUser != null && (
                   <Tip label={t("Edit")}><div className="actbtn" onClick={(e) => { e.stopPropagation(); openProjEditRow(r); }}><Icon name="edit" size={15} /></div></Tip>
                 )}
-                {canEditProjectRow(r) && (
+                {canDeleteProjectRow(r) && (
                   <Tip label={t("Delete")}><div className="actbtn del" onClick={(e) => { e.stopPropagation(); askDeleteProject(r); }}><Icon name="trash" size={15} /></div></Tip>
                 )}
               </div>
@@ -4851,7 +4846,7 @@ export function StormApp() {
         </div>
         {state.tasksDetailLoading && <div style={{ ...CARD, padding: 52, textAlign: "center", color: "var(--st-text-faint)", fontSize: 14 }}>{t("Loading task…")}</div>}
         {!state.tasksDetailLoading && state.tasksDetailError && (
-          <div style={{ ...CARD, padding: 52, textAlign: "center", color: "var(--st-text-3)", fontSize: 14 }}>{state.tasksDetailError}</div>
+          <div style={{ ...CARD, padding: 52, textAlign: "center", color: "var(--st-text-3)", fontSize: 14 }}>{t(state.tasksDetailError)}</div>
         )}
         {!state.tasksDetailLoading && !state.tasksDetailError && d && (
           <div style={{ ...CARD, overflow: "hidden" }}>
@@ -5195,16 +5190,12 @@ export function StormApp() {
               {/* В карточке уязвимости кнопка экспорта — на линии заголовка (напротив «Issues»). */}
               {sec === "vulns" && state.openVulnId != null && (
                 <>
-                  {state.worksEnabled && state.vulnWorksLink && (
-                    <a href={state.vulnWorksLink.works_url} target="_blank" rel="noopener noreferrer" title={t("Open in Works")} style={{ display: "inline-flex", alignItems: "center", gap: 7, height: 42, padding: "0 16px", borderRadius: 10, border: "1px solid var(--st-success-soft)", background: "var(--st-success-soft)", color: "var(--st-text)", font: "700 12.5px Inter,sans-serif", textDecoration: "none" }}>
-                      <Icon name="check-circle" size={15} color="var(--st-success)" sw={2.2} />{state.vulnWorksLink.works_key}{state.vulnWorksLink.works_status ? ` · ${state.vulnWorksLink.works_status}` : ""}
-                    </a>
-                  )}
-                  <Tip label={findingExportHint(d.vulns.find((finding) => finding.id === state.openVulnId)?.sev)}><span className="export-availability" title={findingExportHint(d.vulns.find((finding) => finding.id === state.openVulnId)?.sev)}>
+                  {detailFinding?.trackerUrl ? <a className="addbtn clk" href={detailFinding.trackerUrl} target="_blank" rel="noopener noreferrer" style={{ height: 42, textDecoration: "none" }}><Icon name="eye" size={15} color="currentColor" />{t("Open in Task Tracker")}</a> :
+                  <Tip label={findingExportHint(detailFinding?.sev)}><span className="export-availability" title={findingExportHint(detailFinding?.sev)}>
                     <button className="addbtn clk" disabled={!canExportFinding(d.vulns.find((finding) => finding.id === state.openVulnId)?.sev)} onClick={() => state.openVulnId != null && openTaskTrackerExport(state.openVulnId)} style={{ height: 42 }}>
                       <Icon name="upload" size={15} color="currentColor" sw={2.4} />{t("Export to Task Tracker")}
                     </button>
-                  </span></Tip>
+                  </span></Tip>}
                 </>
               )}
               {sec === "notes" && (
@@ -5908,7 +5899,7 @@ export function StormApp() {
                   <Icon name="globe2" size={16} color="var(--st-text-3)" />
                   <span className="mono" style={{ font: "700 14px 'JetBrains Mono',monospace", color: "var(--st-text)", flex: 1 }}>{g.host}</span>
                   <span className="mono" style={{ fontSize: 11.5, fontWeight: 700, color: "var(--st-text-2)", background: "var(--st-hover)", borderRadius: 7, padding: "3px 9px" }}>{g.count}</span>
-                  {canEditProject && <div className="endpoint-actions">
+                  {canManageMembers && <div className="endpoint-actions">
                     <Tip label={`${t("Edit host")}: ${g.host}`}><button type="button" className="actbtn" aria-label={`${t("Edit host")}: ${g.host}`} title={t("Edit host")} onClick={(event) => { event.stopPropagation(); openEditor("host", "edit", hosts.findIndex((host) => host.id === g.hostId)); }}><Icon name="edit" size={15} /></button></Tip>
                     <Tip label={`${t("Delete endpoints")}: ${g.host}`}><button type="button" className="actbtn del" aria-label={`${t("Delete endpoints")}: ${g.host}`} title={t("Delete endpoints")} disabled={deletingEndpointHosts.includes(g.hostId)} onClick={(event) => { event.stopPropagation(); askDeleteEndpoints(g); }}><Icon name="trash" size={15} /></button></Tip>
                   </div>}
@@ -5983,7 +5974,7 @@ export function StormApp() {
                     <div style={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
                       {/* Re-downloads this host's .js into a zip (files aren't stored). */}
                       <Tip label={t("Download JS archive")}><div className="actbtn" onClick={(ev) => { ev.stopPropagation(); downloadJsArchive(g.hostId, g.host); }}><Icon name="download" size={15} /></div></Tip>
-                      {canEditProject && <Tip label={t("Delete host JS")}><div className="actbtn del" onClick={(ev) => { ev.stopPropagation(); deleteJsHost(g.hostId, g.host); }}><Icon name="trash" size={15} /></div></Tip>}
+                      {canManageMembers && <Tip label={t("Delete host JS")}><div className="actbtn del" onClick={(ev) => { ev.stopPropagation(); deleteJsHost(g.hostId, g.host); }}><Icon name="trash" size={15} /></div></Tip>}
                     </div>
                   </div>
                   <Collapse open={exp}>
@@ -6270,7 +6261,8 @@ export function StormApp() {
               <div className="mono" style={{ fontSize: 12, color: "var(--st-text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.author}</div>
               <div className="mono" style={{ fontSize: 11.5, color: "var(--st-text-faint)" }}>{relTime(v.updated)}</div>
               <div style={{ display: "flex", justifyContent: "center", gap: 2 }}>
-                <Tip label={findingExportHint(v.sev)}><span className="export-availability" title={findingExportHint(v.sev)}><button type="button" className="actbtn" aria-label={t("Export to Task Tracker")} disabled={!canExportFinding(v.sev)} onClick={(e) => { e.stopPropagation(); openTaskTrackerExport(v.id); }}><Icon name="upload" size={15} /></button></span></Tip>
+                {v.trackerUrl ? <Tip label={t("Open in Task Tracker")}><a className="actbtn" href={v.trackerUrl} target="_blank" rel="noopener noreferrer" aria-label={t("Open in Task Tracker")} onClick={(e) => e.stopPropagation()}><Icon name="eye" size={15} /></a></Tip> :
+                  <Tip label={findingExportHint(v.sev)}><span className="export-availability" title={findingExportHint(v.sev)}><button type="button" className="actbtn" aria-label={t("Export to Task Tracker")} disabled={!canExportFinding(v.sev)} onClick={(e) => { e.stopPropagation(); openTaskTrackerExport(v.id); }}><Icon name="upload" size={15} /></button></span></Tip>}
                 <Tip label={t("Delete")}><div className="actbtn del" onClick={v.onDelete}><Icon name="trash" size={15} /></div></Tip>
               </div>
             </div>

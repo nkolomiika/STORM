@@ -876,6 +876,7 @@ const RU: Record<string, string> = {
   "Couldn't load activity": "Не удалось загрузить активность",
   "Couldn't load tasks from Task Tracker": "Не удалось загрузить задачи из Task Tracker",
   "Couldn't load this task": "Не удалось загрузить задачу",
+  "Ticket not found": "Тикет не найден",
   "Couldn't create project": "Не удалось создать проект",
   "Couldn't save project": "Не удалось сохранить проект",
   "Couldn't generate report": "Не удалось сформировать отчёт",

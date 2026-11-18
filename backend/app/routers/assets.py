@@ -69,13 +69,14 @@ async def list_hosts(
 async def create_host(
     project_id: int,
     payload: HostCreate,
+    background_tasks: BackgroundTasks,
     _: None = Depends(enforce_csrf),
     current_user: User = Depends(get_current_user),
     _project=Depends(require_project_access),
     db: AsyncSession = Depends(get_db),
 ) -> HostOut:
-    """Создаёт хост в проекте."""
-    host = await AssetService(db).create_host(project_id, payload.model_dump(), current_user.id)
+    """Создаёт хост; probe=true запускает защищённую пробивку через очередь рекон-фермы."""
+    host = await AssetService(db).create_host(project_id, payload.model_dump(), current_user.id, background_tasks=background_tasks)
     return HostOut.model_validate(host)
 
 

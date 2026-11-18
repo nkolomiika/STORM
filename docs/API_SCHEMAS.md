@@ -292,6 +292,7 @@ IP агента: привязка к хосту необязательна, ад
 
 | Поле | Тип | Required | Ограничения/описание |
 | --- | --- | --- | --- |
+| `probe` | `boolean` | нет | {"default": false} |
 | `ip_address` | `string \| null` | нет | — |
 | `ip_addresses` | `list[string]` | нет | — |
 | `hostname` | `string \| null` | нет | — |
@@ -1687,6 +1688,8 @@ Union не годится: pydantic должен знать точный тип 
 | `created_at` | `string` | да | {"format": "date-time"} |
 | `updated_at` | `string` | да | {"format": "date-time"} |
 | `affected_host_id` | `integer \| null` | нет | — |
+| `task_tracker_issue_key` | `string \| null` | нет | — |
+| `task_tracker_issue_url` | `string \| null` | нет | — |
 
 ## VulnerabilityOut
 

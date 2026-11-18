@@ -271,13 +271,12 @@ async def test_ensure_can_edit_project_rejects_lead_without_membership() -> None
 
 
 @pytest.mark.asyncio
-async def test_ensure_can_edit_project_rejects_plain_member() -> None:
+async def test_ensure_can_edit_project_allows_plain_member() -> None:
     project = SimpleNamespace(id=1, created_by=999)
     service = _edit_service(project, membership=SimpleNamespace(id=7))
     member = SimpleNamespace(id=42, role=UserRole.PENTESTER, project_role=ProjectRole.PENTESTER)
 
-    with pytest.raises(ForbiddenError, match="Изменять проект"):
-        await service.ensure_can_edit_project(1, member)
+    assert await service.ensure_can_edit_project(1, member) is project
 
 
 # ---- уведомления по проекту ----

@@ -41,8 +41,9 @@
 | `backend/app/observability.py` | 6 | [Методы](reference/backend/app/observability.py.md) |
 | `backend/app/oidc.py` | 10 | [Методы](reference/backend/app/oidc.py.md) |
 | `backend/app/pagination.py` | 2 | [Методы](reference/backend/app/pagination.py.md) |
+| `backend/app/project_status_sync.py` | 4 | [Методы](reference/backend/app/project_status_sync.py.md) |
 | `backend/app/public_errors.py` | 2 | [Методы](reference/backend/app/public_errors.py.md) |
-| `backend/app/reports/word_builder.py` | 127 | [Методы](reference/backend/app/reports/word_builder.py.md) |
+| `backend/app/reports/word_builder.py` | 130 | [Методы](reference/backend/app/reports/word_builder.py.md) |
 | `backend/app/routers/agent_tokens.py` | 3 | [Методы](reference/backend/app/routers/agent_tokens.py.md) |
 | `backend/app/routers/assets.py` | 27 | [Методы](reference/backend/app/routers/assets.py.md) |
 | `backend/app/routers/audit_logs.py` | 1 | [Методы](reference/backend/app/routers/audit_logs.py.md) |
@@ -69,7 +70,7 @@
 | `backend/app/schemas.py` | 16 | [Методы](reference/backend/app/schemas.py.md) |
 | `backend/app/secret_rotation.py` | 2 | [Методы](reference/backend/app/secret_rotation.py.md) |
 | `backend/app/security.py` | 22 | [Методы](reference/backend/app/security.py.md) |
-| `backend/app/services.py` | 252 | [Методы](reference/backend/app/services.py.md) |
+| `backend/app/services.py` | 253 | [Методы](reference/backend/app/services.py.md) |
 | `backend/app/storage/minio_client.py` | 7 | [Методы](reference/backend/app/storage/minio_client.py.md) |
 | `backend/app/task_tracker.py` | 16 | [Методы](reference/backend/app/task_tracker.py.md) |
 | `backend/app/tracker_metadata.py` | 7 | [Методы](reference/backend/app/tracker_metadata.py.md) |
@@ -114,4 +115,4 @@
 | `frontend/src/storm/theme.ts` | 5 | [Методы](reference/frontend/src/storm/theme.ts.md) |
 | `frontend/src/storm/useReconJobPolling.ts` | 1 | [Методы](reference/frontend/src/storm/useReconJobPolling.ts.md) |
 
-Всего: backend **924**, frontend **562**, модулей **105**.
+Всего: backend **932**, frontend **562**, модулей **106**.

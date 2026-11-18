@@ -520,6 +520,8 @@ export interface EndpointQueryParam {
 }
 
 export interface Vulnerability {
+  task_tracker_issue_key?: string | null;
+  task_tracker_issue_url?: string | null;
   id: number;
   project_id: number;
   /** Первая привязка к хосту; возвращается в списке, чтобы не читать каждую карточку. */
