@@ -242,6 +242,8 @@ const RU: Record<string, string> = {
   "Filter by author…": "Фильтр по автору…",
   "All hosts": "Все хосты",
   "All IPs": "Все IP",
+  "All endpoints": "Все эндпоинты",
+  "Back": "Назад",
   "Hostnames": "Имена хостов",
   "No hostnames.": "Имён хостов нет.",
   "No hosts found.": "Хосты не найдены.",

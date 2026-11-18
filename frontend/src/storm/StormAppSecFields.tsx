@@ -152,7 +152,7 @@ function Typeahead({
           {opts.slice(0, 5).map((o) => (
             <div
               key={o.code}
-              className="prow clk"
+              className="prow listitem clk"
               // onMouseDown (не onClick): срабатывает до blur инпута.
               onMouseDown={() => {
                 onPick(o);
@@ -267,7 +267,7 @@ function TicketField({
           {opts.map((task) => (
             <div
               key={task.key}
-              className="prow clk"
+              className="prow listitem clk"
               onMouseDown={async () => {
                 const request = ++selectionRequest.current;
                 setOpen(false);

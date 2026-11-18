@@ -729,8 +729,8 @@ const initialState: StormState = {
 };
 
 const CARD: CSSProperties = { background: "var(--st-surface)", border: "1px solid var(--st-border-light)", borderRadius: 16 };
-const PILL_ON: CSSProperties = { background: "var(--st-accent-2)", color: "var(--st-on-accent)", border: "1px solid var(--st-accent-2)" };
-const PILL_OFF: CSSProperties = { background: "var(--st-surface)", color: "var(--st-text-2)", border: "1px solid var(--st-border)" };
+const PILL_ON: CSSProperties = { background: "var(--st-accent-2)", color: "var(--st-on-accent)", border: "1px solid transparent" };
+const PILL_OFF: CSSProperties = { background: "var(--st-surface)", color: "var(--st-text-2)", border: "1px solid transparent" };
 const stop = (e: { stopPropagation: () => void }) => e.stopPropagation();
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -4618,7 +4618,7 @@ export function StormApp() {
           </svg>
           <input placeholder={t("Filter projects…")} value={state.query} onChange={(e) => setState({ query: e.target.value })} />
         </label>
-        <button type="button" className="clk iconbtn" onClick={() => setState((s) => ({ projSort: s.projSort === "first" ? "last" : "first" }))} style={{ display: "flex", alignItems: "center", gap: 9, height: 40, width: 172, flexShrink: 0, justifyContent: "center", boxSizing: "border-box", padding: "0 16px", border: "1px solid var(--st-border)", borderRadius: 20, background: "var(--st-surface)", font: "500 13.5px Inter,sans-serif", color: "var(--st-text-2)" }}>
+        <button type="button" className="clk iconbtn sort-filter" onClick={() => setState((s) => ({ projSort: s.projSort === "first" ? "last" : "first" }))} style={{ display: "flex", alignItems: "center", gap: 9, height: 40, width: 172, flexShrink: 0, justifyContent: "center", boxSizing: "border-box", padding: "0 16px", border: "1px solid transparent", borderRadius: 20, background: "var(--st-surface)", font: "700 13.5px Inter,sans-serif", color: "var(--st-text-2)" }}>
           <Icon name={state.projSort === "first" ? "sort-asc" : "sort-desc"} size={16} />
           {state.projSort === "first" ? t("First updated") : t("Last updated")}
         </button>
@@ -4762,7 +4762,7 @@ export function StormApp() {
           </div>
           <div style={{ flex: 1 }} />
           {searchBox(t("Filter tasks by title…"), state.tasksQuery, (v) => setState({ tasksQuery: v }), 280)}
-          <button type="button" className="clk iconbtn" onClick={() => setState((s) => ({ tasksSort: s.tasksSort === "first" ? "last" : "first" }))} style={{ display: "flex", alignItems: "center", gap: 9, height: 40, width: 172, flexShrink: 0, justifyContent: "center", boxSizing: "border-box", padding: "0 16px", border: "1px solid var(--st-border)", borderRadius: 20, background: "var(--st-surface)", font: "500 13.5px Inter,sans-serif", color: "var(--st-text-2)" }}>
+          <button type="button" className="clk iconbtn sort-filter" onClick={() => setState((s) => ({ tasksSort: s.tasksSort === "first" ? "last" : "first" }))} style={{ display: "flex", alignItems: "center", gap: 9, height: 40, width: 172, flexShrink: 0, justifyContent: "center", boxSizing: "border-box", padding: "0 16px", border: "1px solid transparent", borderRadius: 20, background: "var(--st-surface)", font: "700 13.5px Inter,sans-serif", color: "var(--st-text-2)" }}>
             <Icon name={state.tasksSort === "first" ? "sort-asc" : "sort-desc"} size={16} />{state.tasksSort === "first" ? t("First updated") : t("Last updated")}
           </button>
         </div>
@@ -4916,14 +4916,14 @@ export function StormApp() {
         {/* Every pill toggles; filters combine (AND across groups, OR inside one).
             An empty group means "All", so unpicking the last pill re-selects it. */}
         <span className="mono" style={{ fontSize: 10.5, letterSpacing: 1, color: "var(--st-text-faint)", fontWeight: 700 }}>{t("ROLE")}</span>
-        <div className="clk" onClick={() => setState({ wsMemberRoles: [] })} style={{ font: "600 12px Inter,sans-serif", padding: "6px 12px", borderRadius: 20, cursor: "pointer", ...vfPill(state.wsMemberRoles.length === 0) }}>{t("All")}</div>
+        <div className="clk filter-pill" onClick={() => setState({ wsMemberRoles: [] })} style={{ font: "600 12px Inter,sans-serif", padding: "6px 12px", borderRadius: 20, cursor: "pointer", ...vfPill(state.wsMemberRoles.length === 0) }}>{t("All")}</div>
         {([{ label: "Admin", v: "admin" as const }, { label: "User", v: "user" as const }]).map((o) => (
-          <div key={o.v} className="clk" onClick={() => setState((s) => ({ wsMemberRoles: toggleIn(s.wsMemberRoles, o.v) }))} style={{ font: "600 12px Inter,sans-serif", padding: "6px 12px", borderRadius: 20, cursor: "pointer", ...vfPill(state.wsMemberRoles.includes(o.v)) }}>{t(o.label)}</div>
+          <div key={o.v} className="clk filter-pill" onClick={() => setState((s) => ({ wsMemberRoles: toggleIn(s.wsMemberRoles, o.v) }))} style={{ font: "600 12px Inter,sans-serif", padding: "6px 12px", borderRadius: 20, cursor: "pointer", ...vfPill(state.wsMemberRoles.includes(o.v)) }}>{t(o.label)}</div>
         ))}
         <span className="mono" style={{ fontSize: 10.5, letterSpacing: 1, color: "var(--st-text-faint)", fontWeight: 700, marginLeft: 8 }}>{t("PROJECT")}</span>
-        <div className="clk" onClick={() => setState({ wsMemberProjectRoles: [] })} style={{ font: "600 12px Inter,sans-serif", padding: "6px 12px", borderRadius: 20, cursor: "pointer", ...vfPill(state.wsMemberProjectRoles.length === 0) }}>{t("All")}</div>
+        <div className="clk filter-pill" onClick={() => setState({ wsMemberProjectRoles: [] })} style={{ font: "600 12px Inter,sans-serif", padding: "6px 12px", borderRadius: 20, cursor: "pointer", ...vfPill(state.wsMemberProjectRoles.length === 0) }}>{t("All")}</div>
         {([{ label: "Lead", v: "lead" as const }, { label: "Pentester", v: "pentester" as const }]).map((o) => (
-          <div key={o.v} className="clk" onClick={() => setState((s) => ({ wsMemberProjectRoles: toggleIn(s.wsMemberProjectRoles, o.v) }))} style={{ font: "600 12px Inter,sans-serif", padding: "6px 12px", borderRadius: 20, cursor: "pointer", ...vfPill(state.wsMemberProjectRoles.includes(o.v)) }}>{t(o.label)}</div>
+          <div key={o.v} className="clk filter-pill" onClick={() => setState((s) => ({ wsMemberProjectRoles: toggleIn(s.wsMemberProjectRoles, o.v) }))} style={{ font: "600 12px Inter,sans-serif", padding: "6px 12px", borderRadius: 20, cursor: "pointer", ...vfPill(state.wsMemberProjectRoles.includes(o.v)) }}>{t(o.label)}</div>
         ))}
       </div>
       {/* Ожидающие приглашения — это будущие активные участники, показываем их
@@ -5186,7 +5186,7 @@ export function StormApp() {
               {sec === "vulns" && state.openVulnId == null && (
                 <>
                   <Tip label={stsExportHint}><span className="export-availability" title={stsExportHint}><button className="clk" disabled={!canExportSts} title={stsExportHint} onClick={openBulkTaskTracker} style={{ height: 42, padding: "0 16px", border: "1px solid var(--st-border)", borderRadius: 10, background: "var(--st-surface)", font: "700 13px Inter,sans-serif", color: "var(--st-accent-2)", display: "inline-flex", alignItems: "center", gap: 7 }}>
-                    <Icon name="upload" size={15} sw={2.2} color="var(--st-accent-2)" />{t("Export all to Task Tracker")}
+                    <Icon name="upload" size={15} sw={2.2} />{t("Export all to Task Tracker")}
                   </button></span></Tip>
                   <button className="addbtn clk" onClick={() => openEditor("vuln", "add", -1)} style={{ height: 42 }}><Icon name="plus" size={15} color="var(--st-on-accent)" sw={2.6} />{t("Add issue")}</button>
                 </>
@@ -5419,6 +5419,7 @@ export function StormApp() {
      stay in step. */
   const renderImportPage = (cfg: {
     title: string;
+    backLabel: string;
     pasteLabel: string;
     placeholder: string;
     previewPlaceholder: string;
@@ -5439,7 +5440,7 @@ export function StormApp() {
       // Fills the whole section area: the two textareas grow to take all remaining height.
       <div className="route" style={{ ...CARD, padding: 0, overflow: "hidden", display: "flex", flexDirection: "column", height: "calc(100vh - 260px)" }}>
         <div style={{ flex: "none", display: "flex", alignItems: "center", gap: 10, padding: "16px 22px", borderBottom: "1px solid var(--st-divider)" }}>
-          <span className="clk" onClick={cfg.onCancel} style={{ display: "flex", color: "var(--st-text-3)", cursor: "pointer" }}><Icon name="chevron-left" size={20} /></span>
+          <button type="button" className="clk back-arrow" onClick={cfg.onCancel} aria-label={cfg.backLabel} title={cfg.backLabel} style={{ color: "var(--st-text-3)" }}><Icon name="chevron-left" size={20} /></button>
           <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "var(--st-text)" }}>{cfg.title}</h2>
         </div>
         <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", padding: "18px 22px 20px" }}>
@@ -5465,6 +5466,7 @@ export function StormApp() {
   const renderHostImport = () =>
     renderImportPage({
       title: t("Add hosts"),
+      backLabel: t("All hosts"),
       pasteLabel: t("Paste hosts"),
       placeholder: "https://example.com\nwww.example.com\napp.example.com\napi.example.com:8443\nadmin.acme-corp.com\nstaging.example.org",
       previewPlaceholder: t("parsed hosts appear here…"),
@@ -5480,6 +5482,7 @@ export function StormApp() {
   const renderIpImport = () =>
     renderImportPage({
       title: t("Add IPs"),
+      backLabel: t("All IPs"),
       pasteLabel: t("Paste IPs"),
       placeholder: "1.2.3.4\n1.2.3.4:8443\nhttps://5.6.7.8:443",
       previewPlaceholder: t("parsed IPs appear here…"),
@@ -5495,6 +5498,7 @@ export function StormApp() {
   const renderEpImport = () =>
     renderImportPage({
       title: t("Add endpoints"),
+      backLabel: t("All endpoints"),
       pasteLabel: t("Paste endpoints"),
       placeholder: "https://api.example.com/v1/login\nhttps://example.com/admin\nPOST https://example.com/api/users",
       previewPlaceholder: t("parsed endpoints appear here…"),
@@ -5517,7 +5521,7 @@ export function StormApp() {
   );
 
   const filterPill = (label: string, on: boolean, onClick: () => void) => (
-    <div key={label} className="clk" onClick={onClick} style={{ font: "600 12px Inter,sans-serif", padding: "6px 12px", borderRadius: 20, cursor: "pointer", ...vfPill(on) }}>{label}</div>
+    <div key={label} className="clk filter-pill" onClick={onClick} style={{ font: "600 12px Inter,sans-serif", padding: "6px 12px", borderRadius: 20, cursor: "pointer", ...vfPill(on) }}>{label}</div>
   );
 
   /* The recon filter rows. The export page renders the same row as the view it
@@ -5609,7 +5613,7 @@ export function StormApp() {
         {/* Height leaves room for the filter row the card now sits under. */}
         <div style={{ ...CARD, padding: 0, overflow: "hidden", display: "flex", flexDirection: "column", height: "calc(100vh - 318px)" }}>
           <div style={{ flex: "none", display: "flex", alignItems: "center", gap: 10, padding: "16px 22px", borderBottom: "1px solid var(--st-divider)" }}>
-            <span className="clk" onClick={closeReconExport} style={{ display: "flex", color: "var(--st-text-3)", cursor: "pointer" }}><Icon name="chevron-left" size={20} /></span>
+            <button type="button" className="clk back-arrow" onClick={closeReconExport} aria-label={t("Back")} title={t("Back")} style={{ color: "var(--st-text-3)" }}><Icon name="chevron-left" size={20} /></button>
             <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "var(--st-text)" }}>{title}</h2>
             <div style={{ marginLeft: "auto" }}>{scope === "endpoints" && <SwaggerEndpointImport disabled={state.epImportBusy} onParsed={importSwaggerEndpoints} />}</div>
           </div>
@@ -5662,7 +5666,7 @@ export function StormApp() {
         {reconFilterRow("hosts")}
         <div style={{ ...CARD, padding: 0, overflow: "hidden", display: "flex", flexDirection: "column", height: "calc(100vh - 318px)" }}>
           <div style={{ flex: "none", display: "flex", alignItems: "center", gap: 10, padding: "16px 22px", borderBottom: "1px solid var(--st-divider)" }}>
-            <span className="clk" onClick={closeJsScanSetup} style={{ display: "flex", color: "var(--st-text-3)", cursor: "pointer" }}><Icon name="chevron-left" size={20} /></span>
+            <button type="button" className="clk back-arrow" onClick={closeJsScanSetup} aria-label={t("All JS files")} title={t("All JS files")} style={{ color: "var(--st-text-3)" }}><Icon name="chevron-left" size={20} /></button>
             <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "var(--st-text)" }}>{t("Choose domains to scan")}</h2>
           </div>
           <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", padding: "18px 22px 20px" }}>
@@ -6691,9 +6695,9 @@ export function StormApp() {
           <div style={{ flex: 1 }} />
           {/* Every pill toggles; an empty selection means "All". */}
           <span className="mono" style={{ fontSize: 10.5, letterSpacing: 1, color: "var(--st-text-faint)", fontWeight: 700 }}>{t("ROLE")}</span>
-          <div className="clk" onClick={() => setState({ memberRoles: [] })} style={{ font: "600 12px Inter,sans-serif", padding: "6px 12px", borderRadius: 20, cursor: "pointer", ...vfPill(state.memberRoles.length === 0) }}>{t("All")}</div>
+          <div className="clk filter-pill" onClick={() => setState({ memberRoles: [] })} style={{ font: "600 12px Inter,sans-serif", padding: "6px 12px", borderRadius: 20, cursor: "pointer", ...vfPill(state.memberRoles.length === 0) }}>{t("All")}</div>
           {([{ label: "Lead", v: "lead" as const }, { label: "Pentester", v: "pentester" as const }]).map((o) => (
-            <div key={o.v} className="clk" onClick={() => setState((s) => ({ memberRoles: toggleIn(s.memberRoles, o.v) }))} style={{ font: "600 12px Inter,sans-serif", padding: "6px 12px", borderRadius: 20, cursor: "pointer", ...vfPill(state.memberRoles.includes(o.v)) }}>{t(o.label)}</div>
+            <div key={o.v} className="clk filter-pill" onClick={() => setState((s) => ({ memberRoles: toggleIn(s.memberRoles, o.v) }))} style={{ font: "600 12px Inter,sans-serif", padding: "6px 12px", borderRadius: 20, cursor: "pointer", ...vfPill(state.memberRoles.includes(o.v)) }}>{t(o.label)}</div>
           ))}
         </div>
         <div style={{ ...CARD, overflow: "hidden" }}>
@@ -6882,7 +6886,7 @@ export function StormApp() {
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <input id="pfFileInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif" style={{ display: "none" }} onChange={onAvatarPick} />
               <label htmlFor="pfFileInput" className="clk" style={{ display: "inline-flex", alignItems: "center", gap: 8, height: 42, padding: "0 18px", border: "1px solid var(--st-border)", borderRadius: 11, background: "var(--st-surface)", font: "700 13px Inter,sans-serif", color: "var(--st-text-2)", cursor: "pointer" }}><Icon name="image" size={15} />{t("Choose file")}</label>
-              <button className="clk" disabled={!avatarFile || avatarUploading} onClick={submitAvatar} style={{ display: "inline-flex", alignItems: "center", gap: 8, height: 42, padding: "0 18px", border: "none", borderRadius: 11, background: !avatarFile || avatarUploading ? "var(--st-accent-muted)" : "var(--st-accent)", color: "var(--st-on-accent)", font: "700 13px Inter,sans-serif", cursor: !avatarFile || avatarUploading ? "not-allowed" : "pointer" }}><Icon name="upload" size={15} color="var(--st-on-accent)" />{avatarUploading ? t("Uploading…") : t("Upload")}</button>
+              <button className="clk avatar-upload" disabled={!avatarFile || avatarUploading} onClick={submitAvatar} style={{ display: "inline-flex", alignItems: "center", gap: 8, height: 42, padding: "0 18px", border: "none", borderRadius: 11, background: !avatarFile || avatarUploading ? "var(--st-accent-muted)" : "var(--st-accent)", color: "#fff", font: "700 13px Inter,sans-serif", cursor: !avatarFile || avatarUploading ? "not-allowed" : "pointer" }}><Icon name="upload" size={15} color="currentColor" />{avatarUploading ? t("Uploading…") : t("Upload")}</button>
               {avatarFile && !avatarUploading && (
                 <button className="clk" onClick={clearAvatarPick} style={{ display: "inline-flex", alignItems: "center", height: 42, padding: "0 14px", border: "1px solid var(--st-border)", borderRadius: 11, background: "var(--st-surface)", font: "700 13px Inter,sans-serif", color: "var(--st-text-3)", cursor: "pointer" }}>{t("Cancel")}</button>
               )}
@@ -7103,8 +7107,8 @@ export function StormApp() {
           <div className="mono brand-tagline" style={{ fontSize: 10.5, letterSpacing: 2, color: "var(--st-text-faint)", fontWeight: 600 }}>{t("OFFENSIVE RESEARCH & MANAGEMENT")}</div>
         </div>
         <div style={{ flex: 1 }} />
-        <div className="clk nav iconbtn" onClick={() => toggle("notifOpen")} style={{ width: 40, height: 40, borderRadius: 11, display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
-          <Icon name="bell" size={19} color="var(--st-text-3)" />
+        <div className="clk nav iconbtn" onClick={() => toggle("notifOpen")} style={{ width: 40, height: 40, borderRadius: 11, display: "flex", alignItems: "center", justifyContent: "center", position: "relative", color: "var(--st-text-3)" }}>
+          <Icon name="bell" size={19} />
           {hasUnread && <span style={{ position: "absolute", top: 6, right: 7, width: 8, height: 8, borderRadius: "50%", background: "var(--st-danger)", border: "2px solid var(--st-surface)" }} />}
         </div>
         <div className="clk" onClick={() => toggle("userMenuOpen")} style={{ display: "flex", alignItems: "center", gap: 9, padding: 4, borderRadius: 24 }}>
@@ -7248,7 +7252,7 @@ export function StormApp() {
               {API_SCOPES.map((s) => {
                 const checked = !!state.apiKeyScopes[s];
                 return (
-                  <div key={s} className="prow clk" onClick={() => toggleApiScope(s)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 14px", borderTop: "1px solid var(--st-divider)", cursor: "pointer" }}>
+                  <div key={s} className="prow listitem clk" onClick={() => toggleApiScope(s)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 14px", borderTop: "1px solid var(--st-divider)", cursor: "pointer" }}>
                     <span style={{ width: 18, height: 18, flex: "none", borderRadius: 5, border: `1.5px solid ${checked ? "var(--st-accent)" : "var(--st-border)"}`, background: checked ? "var(--st-accent)" : "var(--st-surface)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       {checked && <Icon name="check" size={12} color="var(--st-on-accent)" sw={3} />}
                     </span>
@@ -7262,15 +7266,15 @@ export function StormApp() {
           <div style={{ marginTop: 16 }}>
             <label className="flabel">{t("Project access")}</label>
             <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
-              <div className="clk" onClick={() => setState({ apiKeyAllProjects: true })} style={{ font: "600 12.5px Inter,sans-serif", padding: "7px 13px", borderRadius: 9, cursor: "pointer", ...vfPill(state.apiKeyAllProjects) }}>{t("All my projects")}</div>
-              <div className="clk" onClick={() => setState({ apiKeyAllProjects: false })} style={{ font: "600 12.5px Inter,sans-serif", padding: "7px 13px", borderRadius: 9, cursor: "pointer", ...vfPill(!state.apiKeyAllProjects) }}>{t("Selected projects")}</div>
+              <div className="clk filter-pill" onClick={() => setState({ apiKeyAllProjects: true })} style={{ font: "600 12.5px Inter,sans-serif", padding: "7px 13px", borderRadius: 9, cursor: "pointer", ...vfPill(state.apiKeyAllProjects) }}>{t("All my projects")}</div>
+              <div className="clk filter-pill" onClick={() => setState({ apiKeyAllProjects: false })} style={{ font: "600 12.5px Inter,sans-serif", padding: "7px 13px", borderRadius: 9, cursor: "pointer", ...vfPill(!state.apiKeyAllProjects) }}>{t("Selected projects")}</div>
             </div>
             {!state.apiKeyAllProjects && (
               <div style={{ marginTop: 8, border: "1px solid var(--st-divider)", borderRadius: 11, maxHeight: 168, overflow: "auto" }}>
                 {(state.apiProjects ?? []).map((p) => {
                   const checked = state.apiKeyProjectIds.includes(p.id);
                   return (
-                    <div key={p.id} className="prow clk" onClick={() => toggleApiProject(p.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderTop: "1px solid var(--st-divider)", cursor: "pointer" }}>
+                    <div key={p.id} className="prow listitem clk" onClick={() => toggleApiProject(p.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderTop: "1px solid var(--st-divider)", cursor: "pointer" }}>
                       <span style={{ width: 18, height: 18, flex: "none", borderRadius: 5, border: `1.5px solid ${checked ? "var(--st-accent)" : "var(--st-border)"}`, background: checked ? "var(--st-accent)" : "var(--st-surface)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         {checked && <Icon name="check" size={12} color="var(--st-on-accent)" sw={3} />}
                       </span>

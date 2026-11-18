@@ -58,10 +58,10 @@ html, body, #root {
 @keyframes storm-spin { to { transform: rotate(360deg); } }
 .storm .storm-spin { animation: storm-spin .7s linear infinite; }
 
-/* A translucent layer also works over inline/selected backgrounds. It never
-   intercepts row actions, and preserves card shadows and selection colours. */
+/* Строки таблиц сохраняют прежнее лёгкое затемнение. Выпадающие списки,
+   использующие prow вместе с listitem, получают общий голубой hover ниже. */
 .storm :is(.prow, .listitem, .nav, .notifitem) { position: relative; }
-.storm :is(.prow, .listitem, .nav, .notifitem)::after {
+.storm .prow:not(.listitem)::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -71,7 +71,7 @@ html, body, #root {
   pointer-events: none;
   transition: opacity .12s;
 }
-.storm :is(.prow, .listitem, .nav, .notifitem):not(:disabled):is(:hover, :focus-visible)::after { opacity: 1; }
+.storm .prow:not(.listitem):not(:disabled):is(:hover, :focus-visible)::after { opacity: 1; }
 
 .storm .statc { transition: box-shadow .16s, border-color .16s; min-width: 0; overflow: hidden; user-select: none; }
 .storm .statc:hover { box-shadow: 0 8px 22px var(--st-shadow); border-color: var(--st-border-strong); }
@@ -80,23 +80,17 @@ html, body, #root {
 
 .storm .clk { cursor: pointer; }
 
+.storm .back-arrow { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 10px; background: var(--st-surface); cursor: pointer; }
+
 .storm .iconbtn { transition: background .12s; }
-.storm .iconbtn:not(:disabled):is(:hover, :focus-visible),
-.storm button.clk:not(:disabled)[style*="var(--st-surface)"]:is(:hover, :focus-visible) {
-  background: var(--st-accent-soft) !important;
-  color: var(--st-accent-2) !important;
-  box-shadow: inset 0 0 0 1px var(--st-focus-border);
-}
 .storm .export-availability { display: inline-flex; }
 .storm .export-availability > :disabled { pointer-events: none; }
 .storm :is(.addbtn, .actbtn, button.clk):disabled { cursor: not-allowed; }
 .storm .addbtn:disabled { background: var(--st-border-strong) !important; color: var(--st-text-faint) !important; }
 .storm .actbtn:disabled { opacity: .4; }
-.storm button.clk:disabled:not(.addbtn):not(.actbtn) { color: var(--st-text-faint) !important; }
+.storm button.clk:disabled:not(.addbtn):not(.actbtn):not(.avatar-upload) { color: var(--st-text-faint) !important; }
 
 .storm .actbtn { width: 28px; height: 28px; padding: 0; border: 0; background: transparent; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--st-text-faint); cursor: pointer; transition: background .12s, color .12s; }
-.storm .actbtn:not(:disabled):hover { background: var(--st-accent-soft) !important; color: var(--st-accent-2) !important; }
-.storm .actbtn.del:not(:disabled):hover { background: var(--st-danger-soft) !important; color: var(--st-danger) !important; }
 .storm .actbtn:not(:disabled):hover svg:not([stroke="none"]) { stroke: currentColor; }
 .storm .endpoint-actions { display: flex; align-items: center; justify-content: flex-end; gap: 4px; flex: none; }
 .storm .endpoint-actions .actbtn { box-sizing: border-box; flex: 0 0 28px; color: var(--st-text-3); }
@@ -109,7 +103,7 @@ html, body, #root {
 
 .storm .fq input { width: 100%; height: 40px; border: 1px solid var(--st-border); border-radius: 20px; padding: 0 14px 0 38px; font: 500 13.5px Inter, sans-serif; color: var(--st-text); background: var(--st-surface); outline: none; }
 .storm .fq input::placeholder { color: var(--st-text-faint); }
-.storm .fq input:focus { border-color: var(--st-focus-border); box-shadow: 0 0 0 3px var(--st-focus-ring); }
+.storm .fq input:is(:focus, :focus-visible) { outline: none; box-shadow: none; }
 
 .storm .pillinp { font: 600 12px Inter, sans-serif; padding: 6px 12px; border-radius: 20px; background: var(--st-surface); color: var(--st-text-2); border: 1px solid var(--st-border); width: 150px; outline: none; transition: border-color .12s, box-shadow .12s; }
 .storm .pillinp::placeholder { color: var(--st-text-faint); }
@@ -141,9 +135,10 @@ html, body, #root {
 .storm .sb.collapsed .nav { width: 40px; height: 40px; padding: 0; margin: 0 auto; justify-content: center; gap: 0; }
 .storm .sb.collapsed .sbhead { justify-content: center; padding-left: 14px; }
 
-.storm .tab { border: 1px solid transparent; color: var(--st-text-3); transition: background .12s, border-color .12s, color .12s; cursor: pointer; }
-.storm .tab.on { background: var(--st-surface); border-color: var(--st-accent-2); color: var(--st-text); }
-.storm .tab:not(.on):is(:hover, :focus-visible) { background: var(--st-accent-soft); border-color: var(--st-accent-2); }
+.storm .tab { border: 1px solid transparent; outline: none; box-shadow: none; color: var(--st-text-3); transition: background .12s, color .12s; cursor: pointer; }
+.storm .tab.on { background: var(--st-surface); color: var(--st-text); }
+.storm .tab:not(.on):is(:hover, :focus-visible) { background: var(--st-accent-soft); }
+.storm .filter-pill { transition: background .12s, color .12s; }
 
 /* Section tabs (Overview / Recon / Vulnerabilities / …). The selected tab is
    marked by the blue underline plus accent text; hovering a tab previews that
@@ -235,6 +230,10 @@ html, body, #root {
   outline: 2px solid var(--st-focus-border);
   outline-offset: 3px;
 }
+.storm :is(.tab, .sort-filter, .filter-pill, .iconbtn):is(:hover, :active, :focus, :focus-visible) {
+  outline: none;
+  box-shadow: none !important;
+}
 :root[data-theme="dark"] .storm :is(.finp, .esel, .pillinp, .fq input) { border-color: var(--st-control-border); }
 :root[data-theme="dark"] .storm ::placeholder { opacity: 1; }
 
@@ -247,3 +246,30 @@ html, body, #root {
 .storm .storm-markdown code { font-family: ui-monospace, Menlo, monospace; }
 
 @media (max-width: 1100px) { .storm .brand-tagline { display: none; } }
+
+/* Единое наведение для кнопок и списков. Табличные строки и их текстовые
+   ссылки исключены; отдельные кнопки действий внутри таблиц остаются кнопками.
+   Не задаём общий цвет текста: основной (--st-text), в том числе у кнопок,
+   должен сохраняться. Меняем только серый/белый текст и нейтральные иконки.
+   Кнопки с заливкой accent/accent-2 и addbtn не меняются при наведении. */
+.storm :where(button, [role="button"], .actbtn, .iconbtn, .addbtn, .tab, .filter-pill, .sectab, .listitem, .nav, .notifitem, .reconrow, .stdoc-apilink, .clk:not(.prow):not(.prow *)):not(.brand-home):not(.addbtn):not([style*="background: var(--st-accent)"]):not([style*="background: var(--st-accent-2)"]):not([style*="background: var(--st-accent-muted)"]):not(:disabled):not([aria-disabled="true"]):is(:hover, :focus-visible) {
+  background: var(--st-accent-soft) !important;
+  outline: none;
+  box-shadow: none !important;
+}
+
+.storm :where(button, [role="button"], .actbtn, .iconbtn, .addbtn, .tab, .filter-pill, .sectab, .listitem, .nav, .notifitem, .reconrow, .stdoc-apilink, .clk:not(.prow):not(.prow *)):where(.actbtn, .iconbtn, .addbtn, .filter-pill, .tab:not(.on), .sectab:not(.on), .stdoc-apilink,
+      [style*="color: var(--st-text-2)"], [style*="color: var(--st-text-3)"],
+      [style*="color: var(--st-text-faint)"], [style*="color: var(--st-on-accent)"]):not(:where([style*="color: var(--st-text);"], [style*="color: black"], [style*="color: rgb(0, 0, 0)"])):not(.brand-home):not(.addbtn):not([style*="background: var(--st-accent)"]):not([style*="background: var(--st-accent-2)"]):not([style*="background: var(--st-accent-muted)"]):not(:disabled):not([aria-disabled="true"]):is(:hover, :focus-visible) { color: var(--st-accent-2) !important; }
+
+.storm :where(button, [role="button"], .actbtn, .iconbtn, .addbtn, .tab, .filter-pill, .sectab, .listitem, .nav, .notifitem, .reconrow, .stdoc-apilink, .clk:not(.prow):not(.prow *)):not(.brand-home):not(.addbtn):not([style*="background: var(--st-accent)"]):not([style*="background: var(--st-accent-2)"]):not([style*="background: var(--st-accent-muted)"]):not(:disabled):not([aria-disabled="true"]):is(:hover, :focus-visible)
+  > svg:is([stroke="var(--st-text-2)"], [stroke="var(--st-text-3)"], [stroke="var(--st-text-faint)"], [stroke="var(--st-on-accent)"]) {
+  stroke: var(--st-accent-2);
+}
+
+/* Удаление остаётся красным. Фон не перекрашивает недоступные действия. */
+.storm :where(button, [role="button"], .actbtn, .iconbtn, .addbtn, .tab, .filter-pill, .sectab, .listitem, .nav, .notifitem, .reconrow, .stdoc-apilink, .clk:not(.prow):not(.prow *)):is(.del, [style*="background: var(--st-danger)"], [style*="color: var(--st-danger)"]):not(.brand-home):not(.addbtn):not([style*="background: var(--st-accent)"]):not([style*="background: var(--st-accent-2)"]):not([style*="background: var(--st-accent-muted)"]):not(:disabled):not([aria-disabled="true"]):is(:hover, :focus-visible) {
+  background: var(--st-danger-soft) !important;
+  color: var(--st-danger) !important;
+}
+.storm :where(button, [role="button"], .actbtn, .iconbtn, .addbtn, .tab, .filter-pill, .sectab, .listitem, .nav, .notifitem, .reconrow, .stdoc-apilink, .clk:not(.prow):not(.prow *)):is(.del, [style*="background: var(--st-danger)"], [style*="color: var(--st-danger)"]):not(.brand-home):not(.addbtn):not([style*="background: var(--st-accent)"]):not([style*="background: var(--st-accent-2)"]):not([style*="background: var(--st-accent-muted)"]):not(:disabled):not([aria-disabled="true"]):is(:hover, :focus-visible) > svg:not([stroke="none"]) { stroke: currentColor; }

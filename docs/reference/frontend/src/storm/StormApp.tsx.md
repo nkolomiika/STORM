@@ -6751,14 +6751,14 @@ hostnamePills(names: { hostname: string; source: string; confirmed: boolean }[])
 [frontend/src/storm/StormApp.tsx:5420](../../../../../frontend/src/storm/StormApp.tsx#L5420)
 
 ```typescript
-renderImportPage(cfg: { title: string; pasteLabel: string; placeholder: string; previewPlaceholder: string; raw: string; preview: string; busy: boolean; submitLabel?: string; busyLabel?: string; onRaw: (v: string) => void; onPreview: (v: string) => void; onCancel: () => void; onSubmit: () => void; }) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
+renderImportPage(cfg: { title: string; backLabel: string; pasteLabel: string; placeholder: string; previewPlaceholder: string; raw: string; preview: string; busy: boolean; submitLabel?: string; busyLabel?: string; onRaw: (v: string) => void; onPreview: (v: string) => void; onCancel: () => void; onSubmit: () => void; }) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
 ```
 
 В теле вызывает `cfg.preview.split`, `cfg.preview.split(/\r?\n/).filter`, `t`.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
-| `cfg` | `{ title: string; pasteLabel: string; placeholder: string; previewPlaceholder: string; raw: string; preview: string; busy: boolean; submitLabel?: string; busyLabel?: string; onRaw: (v: string) => void; onPreview: (v: string) => void; onCancel: () => void; onSubmit: () => void; }` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
+| `cfg` | `{ title: string; backLabel: string; pasteLabel: string; placeholder: string; previewPlaceholder: string; raw: string; preview: string; busy: boolean; submitLabel?: string; busyLabel?: string; onRaw: (v: string) => void; onPreview: (v: string) => void; onCancel: () => void; onSubmit: () => void; }` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
 
 Возвращает: `import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element`.
 
@@ -6773,7 +6773,7 @@ renderImportPage(cfg: { title: string; pasteLabel: string; placeholder: string; 
 
 ## StormApp.renderHostImport
 
-[frontend/src/storm/StormApp.tsx:5465](../../../../../frontend/src/storm/StormApp.tsx#L5465)
+[frontend/src/storm/StormApp.tsx:5466](../../../../../frontend/src/storm/StormApp.tsx#L5466)
 
 ```typescript
 renderHostImport() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -6793,7 +6793,7 @@ renderHostImport() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend
 
 ## StormApp.renderHostImport.onRaw
 
-[frontend/src/storm/StormApp.tsx:5474](../../../../../frontend/src/storm/StormApp.tsx#L5474)
+[frontend/src/storm/StormApp.tsx:5476](../../../../../frontend/src/storm/StormApp.tsx#L5476)
 
 ```typescript
 onRaw(v) => void
@@ -6817,7 +6817,7 @@ onRaw(v) => void
 
 ## StormApp.renderHostImport.onPreview
 
-[frontend/src/storm/StormApp.tsx:5475](../../../../../frontend/src/storm/StormApp.tsx#L5475)
+[frontend/src/storm/StormApp.tsx:5477](../../../../../frontend/src/storm/StormApp.tsx#L5477)
 
 ```typescript
 onPreview(v) => void
@@ -6840,7 +6840,7 @@ onPreview(v) => void
 
 ## StormApp.renderIpImport
 
-[frontend/src/storm/StormApp.tsx:5480](../../../../../frontend/src/storm/StormApp.tsx#L5480)
+[frontend/src/storm/StormApp.tsx:5482](../../../../../frontend/src/storm/StormApp.tsx#L5482)
 
 ```typescript
 renderIpImport() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -6860,7 +6860,7 @@ renderIpImport() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/n
 
 ## StormApp.renderIpImport.onRaw
 
-[frontend/src/storm/StormApp.tsx:5489](../../../../../frontend/src/storm/StormApp.tsx#L5489)
+[frontend/src/storm/StormApp.tsx:5492](../../../../../frontend/src/storm/StormApp.tsx#L5492)
 
 ```typescript
 onRaw(v) => void
@@ -6884,7 +6884,7 @@ onRaw(v) => void
 
 ## StormApp.renderIpImport.onPreview
 
-[frontend/src/storm/StormApp.tsx:5490](../../../../../frontend/src/storm/StormApp.tsx#L5490)
+[frontend/src/storm/StormApp.tsx:5493](../../../../../frontend/src/storm/StormApp.tsx#L5493)
 
 ```typescript
 onPreview(v) => void
@@ -6907,7 +6907,7 @@ onPreview(v) => void
 
 ## StormApp.renderEpImport
 
-[frontend/src/storm/StormApp.tsx:5495](../../../../../frontend/src/storm/StormApp.tsx#L5495)
+[frontend/src/storm/StormApp.tsx:5498](../../../../../frontend/src/storm/StormApp.tsx#L5498)
 
 ```typescript
 renderEpImport() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -6927,7 +6927,7 @@ renderEpImport() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/n
 
 ## StormApp.renderEpImport.onRaw
 
-[frontend/src/storm/StormApp.tsx:5506](../../../../../frontend/src/storm/StormApp.tsx#L5506)
+[frontend/src/storm/StormApp.tsx:5510](../../../../../frontend/src/storm/StormApp.tsx#L5510)
 
 ```typescript
 onRaw(v) => void
@@ -6951,7 +6951,7 @@ onRaw(v) => void
 
 ## StormApp.renderEpImport.onPreview
 
-[frontend/src/storm/StormApp.tsx:5507](../../../../../frontend/src/storm/StormApp.tsx#L5507)
+[frontend/src/storm/StormApp.tsx:5511](../../../../../frontend/src/storm/StormApp.tsx#L5511)
 
 ```typescript
 onPreview(v) => void
@@ -6974,7 +6974,7 @@ onPreview(v) => void
 
 ## StormApp.searchBox
 
-[frontend/src/storm/StormApp.tsx:5512](../../../../../frontend/src/storm/StormApp.tsx#L5512)
+[frontend/src/storm/StormApp.tsx:5516](../../../../../frontend/src/storm/StormApp.tsx#L5516)
 
 ```typescript
 searchBox(placeholder: string, value: string, onChange: (v: string) => void, width: number | string = 280) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -6993,7 +6993,7 @@ searchBox(placeholder: string, value: string, onChange: (v: string) => void, wid
 
 ## StormApp.filterPill
 
-[frontend/src/storm/StormApp.tsx:5519](../../../../../frontend/src/storm/StormApp.tsx#L5519)
+[frontend/src/storm/StormApp.tsx:5523](../../../../../frontend/src/storm/StormApp.tsx#L5523)
 
 ```typescript
 filterPill(label: string, on: boolean, onClick: () => void) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7018,7 +7018,7 @@ filterPill(label: string, on: boolean, onClick: () => void) => import("/Users/nk
 
 ## StormApp.reconFilterRow
 
-[frontend/src/storm/StormApp.tsx:5526](../../../../../frontend/src/storm/StormApp.tsx#L5526)
+[frontend/src/storm/StormApp.tsx:5530](../../../../../frontend/src/storm/StormApp.tsx#L5530)
 
 ```typescript
 reconFilterRow(view: ReconView) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7045,7 +7045,7 @@ reconFilterRow(view: ReconView) => import("/Users/nkolomiika/Cursor Projects/Sbe
 
 ## StormApp.renderExport
 
-[frontend/src/storm/StormApp.tsx:5592](../../../../../frontend/src/storm/StormApp.tsx#L5592)
+[frontend/src/storm/StormApp.tsx:5596](../../../../../frontend/src/storm/StormApp.tsx#L5596)
 
 ```typescript
 renderExport() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7071,7 +7071,7 @@ renderExport() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/nod
 
 ## StormApp.renderJsScanSetup
 
-[frontend/src/storm/StormApp.tsx:5654](../../../../../frontend/src/storm/StormApp.tsx#L5654)
+[frontend/src/storm/StormApp.tsx:5658](../../../../../frontend/src/storm/StormApp.tsx#L5658)
 
 ```typescript
 renderJsScanSetup() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7095,7 +7095,7 @@ renderJsScanSetup() => import("/Users/nkolomiika/Cursor Projects/SberPCF/fronten
 
 ## StormApp.renderJsHostDetail
 
-[frontend/src/storm/StormApp.tsx:5699](../../../../../frontend/src/storm/StormApp.tsx#L5699)
+[frontend/src/storm/StormApp.tsx:5703](../../../../../frontend/src/storm/StormApp.tsx#L5703)
 
 ```typescript
 renderJsHostDetail(host: string) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7126,7 +7126,7 @@ renderJsHostDetail(host: string) => import("/Users/nkolomiika/Cursor Projects/Sb
 
 ## StormApp.renderJsFileDetail
 
-[frontend/src/storm/StormApp.tsx:5788](../../../../../frontend/src/storm/StormApp.tsx#L5788)
+[frontend/src/storm/StormApp.tsx:5792](../../../../../frontend/src/storm/StormApp.tsx#L5792)
 
 ```typescript
 renderJsFileDetail(f: JsFileEntry) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7153,7 +7153,7 @@ One JS file's card — its secrets table and paths list, with Export.
 
 ## StormApp.renderRecon
 
-[frontend/src/storm/StormApp.tsx:5852](../../../../../frontend/src/storm/StormApp.tsx#L5852)
+[frontend/src/storm/StormApp.tsx:5856](../../../../../frontend/src/storm/StormApp.tsx#L5856)
 
 ```typescript
 renderRecon() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7192,7 +7192,7 @@ renderRecon() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node
 
 ## StormApp.renderHostDetail
 
-[frontend/src/storm/StormApp.tsx:6084](../../../../../frontend/src/storm/StormApp.tsx#L6084)
+[frontend/src/storm/StormApp.tsx:6088](../../../../../frontend/src/storm/StormApp.tsx#L6088)
 
 ```typescript
 renderHostDetail(h: Host) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7219,7 +7219,7 @@ renderHostDetail(h: Host) => import("/Users/nkolomiika/Cursor Projects/SberPCF/f
 
 ## StormApp.renderIpDetail
 
-[frontend/src/storm/StormApp.tsx:6164](../../../../../frontend/src/storm/StormApp.tsx#L6164)
+[frontend/src/storm/StormApp.tsx:6168](../../../../../frontend/src/storm/StormApp.tsx#L6168)
 
 ```typescript
 renderIpDetail(row: (typeof ipsRows)[number]) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7246,7 +7246,7 @@ renderIpDetail(row: (typeof ipsRows)[number]) => import("/Users/nkolomiika/Curso
 
 ## StormApp.renderVulns
 
-[frontend/src/storm/StormApp.tsx:6219](../../../../../frontend/src/storm/StormApp.tsx#L6219)
+[frontend/src/storm/StormApp.tsx:6223](../../../../../frontend/src/storm/StormApp.tsx#L6223)
 
 ```typescript
 renderVulns() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7274,7 +7274,7 @@ renderVulns() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node
 
 ## StormApp.renderVulnDetail
 
-[frontend/src/storm/StormApp.tsx:6280](../../../../../frontend/src/storm/StormApp.tsx#L6280)
+[frontend/src/storm/StormApp.tsx:6284](../../../../../frontend/src/storm/StormApp.tsx#L6284)
 
 ```typescript
 renderVulnDetail() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7308,7 +7308,7 @@ renderVulnDetail() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend
 
 ## StormApp.renderVulnDetail.vdHostPick
 
-[frontend/src/storm/StormApp.tsx:6298](../../../../../frontend/src/storm/StormApp.tsx#L6298)
+[frontend/src/storm/StormApp.tsx:6302](../../../../../frontend/src/storm/StormApp.tsx#L6302)
 
 ```typescript
 vdHostPick(v: string) => void
@@ -7331,7 +7331,7 @@ vdHostPick(v: string) => void
 
 ## StormApp.notePreview
 
-[frontend/src/storm/StormApp.tsx:6480](../../../../../frontend/src/storm/StormApp.tsx#L6480)
+[frontend/src/storm/StormApp.tsx:6484](../../../../../frontend/src/storm/StormApp.tsx#L6484)
 
 ```typescript
 notePreview(md: string) => string
@@ -7363,7 +7363,7 @@ First non-empty line of the body, with Markdown syntax stripped — the card pre
 
 ## StormApp.renderCreds
 
-[frontend/src/storm/StormApp.tsx:6502](../../../../../frontend/src/storm/StormApp.tsx#L6502)
+[frontend/src/storm/StormApp.tsx:6506](../../../../../frontend/src/storm/StormApp.tsx#L6506)
 
 ```typescript
 renderCreds() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7383,7 +7383,7 @@ renderCreds() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node
 
 ## StormApp.renderNotes
 
-[frontend/src/storm/StormApp.tsx:6562](../../../../../frontend/src/storm/StormApp.tsx#L6562)
+[frontend/src/storm/StormApp.tsx:6566](../../../../../frontend/src/storm/StormApp.tsx#L6566)
 
 ```typescript
 renderNotes() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7403,7 +7403,7 @@ renderNotes() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node
 
 ## StormApp.renderNoteViewer
 
-[frontend/src/storm/StormApp.tsx:6590](../../../../../frontend/src/storm/StormApp.tsx#L6590)
+[frontend/src/storm/StormApp.tsx:6594](../../../../../frontend/src/storm/StormApp.tsx#L6594)
 
 ```typescript
 renderNoteViewer() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7425,7 +7425,7 @@ renderNoteViewer() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend
 
 ## StormApp.renderNoteEditor
 
-[frontend/src/storm/StormApp.tsx:6636](../../../../../frontend/src/storm/StormApp.tsx#L6636)
+[frontend/src/storm/StormApp.tsx:6640](../../../../../frontend/src/storm/StormApp.tsx#L6640)
 
 ```typescript
 renderNoteEditor() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7445,7 +7445,7 @@ renderNoteEditor() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend
 
 ## StormApp.renderMembers
 
-[frontend/src/storm/StormApp.tsx:6678](../../../../../frontend/src/storm/StormApp.tsx#L6678)
+[frontend/src/storm/StormApp.tsx:6682](../../../../../frontend/src/storm/StormApp.tsx#L6682)
 
 ```typescript
 renderMembers() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7471,7 +7471,7 @@ renderMembers() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/no
 
 ## StormApp.resolveActivityName
 
-[frontend/src/storm/StormApp.tsx:6725](../../../../../frontend/src/storm/StormApp.tsx#L6725)
+[frontend/src/storm/StormApp.tsx:6729](../../../../../frontend/src/storm/StormApp.tsx#L6729)
 
 ```typescript
 resolveActivityName(type, id) => string | null
@@ -7498,7 +7498,7 @@ resolveActivityName(type, id) => string | null
 
 ## StormApp.activityLineRow
 
-[frontend/src/storm/StormApp.tsx:6746](../../../../../frontend/src/storm/StormApp.tsx#L6746)
+[frontend/src/storm/StormApp.tsx:6750](../../../../../frontend/src/storm/StormApp.tsx#L6750)
 
 ```typescript
 activityLineRow(l: ActivityLine, tone: ActTone) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7515,7 +7515,7 @@ One line of the dark event panel: + text [SEVERITY].
 
 ## StormApp.renderActivity
 
-[frontend/src/storm/StormApp.tsx:6768](../../../../../frontend/src/storm/StormApp.tsx#L6768)
+[frontend/src/storm/StormApp.tsx:6772](../../../../../frontend/src/storm/StormApp.tsx#L6772)
 
 ```typescript
 renderActivity() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7536,7 +7536,7 @@ renderActivity() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/n
 
 ## StormApp.renderProfile
 
-[frontend/src/storm/StormApp.tsx:6829](../../../../../frontend/src/storm/StormApp.tsx#L6829)
+[frontend/src/storm/StormApp.tsx:6833](../../../../../frontend/src/storm/StormApp.tsx#L6833)
 
 ```typescript
 renderProfile() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7562,7 +7562,7 @@ renderProfile() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/no
 
 ## StormApp.cardHeader
 
-[frontend/src/storm/StormApp.tsx:6865](../../../../../frontend/src/storm/StormApp.tsx#L6865)
+[frontend/src/storm/StormApp.tsx:6869](../../../../../frontend/src/storm/StormApp.tsx#L6869)
 
 ```typescript
 cardHeader(icon: Parameters<typeof Icon>[0]["name"], title: string, sub: string, right?: ReactNode) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7588,7 +7588,7 @@ cardHeader(icon: Parameters<typeof Icon>[0]["name"], title: string, sub: string,
 
 ## StormApp.renderProfileAccount
 
-[frontend/src/storm/StormApp.tsx:6875](../../../../../frontend/src/storm/StormApp.tsx#L6875)
+[frontend/src/storm/StormApp.tsx:6879](../../../../../frontend/src/storm/StormApp.tsx#L6879)
 
 ```typescript
 renderProfileAccount() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7611,7 +7611,7 @@ renderProfileAccount() => import("/Users/nkolomiika/Cursor Projects/SberPCF/fron
 
 ## StormApp.renderProfileCustomizing
 
-[frontend/src/storm/StormApp.tsx:6920](../../../../../frontend/src/storm/StormApp.tsx#L6920)
+[frontend/src/storm/StormApp.tsx:6924](../../../../../frontend/src/storm/StormApp.tsx#L6924)
 
 ```typescript
 renderProfileCustomizing() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7632,7 +7632,7 @@ renderProfileCustomizing() => import("/Users/nkolomiika/Cursor Projects/SberPCF/
 
 ## StormApp.renderProfileCustomizing.tile
 
-[frontend/src/storm/StormApp.tsx:6922](../../../../../frontend/src/storm/StormApp.tsx#L6922)
+[frontend/src/storm/StormApp.tsx:6926](../../../../../frontend/src/storm/StormApp.tsx#L6926)
 
 ```typescript
 tile(key: string, active: boolean, onClick: () => void, icon: Parameters<typeof Icon>[0]["name"], title: string, desc: string) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7653,7 +7653,7 @@ tile(key: string, active: boolean, onClick: () => void, icon: Parameters<typeof 
 
 ## StormApp.renderProfileSecurity
 
-[frontend/src/storm/StormApp.tsx:6974](../../../../../frontend/src/storm/StormApp.tsx#L6974)
+[frontend/src/storm/StormApp.tsx:6978](../../../../../frontend/src/storm/StormApp.tsx#L6978)
 
 ```typescript
 renderProfileSecurity() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7674,7 +7674,7 @@ renderProfileSecurity() => import("/Users/nkolomiika/Cursor Projects/SberPCF/fro
 
 ## StormApp.renderProfileApi
 
-[frontend/src/storm/StormApp.tsx:7047](../../../../../frontend/src/storm/StormApp.tsx#L7047)
+[frontend/src/storm/StormApp.tsx:7051](../../../../../frontend/src/storm/StormApp.tsx#L7051)
 
 ```typescript
 renderProfileApi() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7694,7 +7694,7 @@ renderProfileApi() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend
 
 ## StormApp.modalShell
 
-[frontend/src/storm/StormApp.tsx:7078](../../../../../frontend/src/storm/StormApp.tsx#L7078)
+[frontend/src/storm/StormApp.tsx:7082](../../../../../frontend/src/storm/StormApp.tsx#L7082)
 
 ```typescript
 modalShell(open: boolean, onClose: () => void, zIndex: number, width: number, children: ReactNode, align: "center" | "flex-start" = "center", pad = "24px") => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7716,7 +7716,7 @@ modalShell(open: boolean, onClose: () => void, zIndex: number, width: number, ch
 
 ## StormApp.modalFooter
 
-[frontend/src/storm/StormApp.tsx:7086](../../../../../frontend/src/storm/StormApp.tsx#L7086)
+[frontend/src/storm/StormApp.tsx:7090](../../../../../frontend/src/storm/StormApp.tsx#L7090)
 
 ```typescript
 modalFooter(onCancel: () => void, onSave: () => void, saveLabel: string, saveBg = "var(--st-accent-2)", disabled = false) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7743,7 +7743,7 @@ modalFooter(onCancel: () => void, onSave: () => void, saveLabel: string, saveBg 
 
 ## StormApp.onClick
 
-[frontend/src/storm/StormApp.tsx:7146](../../../../../frontend/src/storm/StormApp.tsx#L7146)
+[frontend/src/storm/StormApp.tsx:7150](../../../../../frontend/src/storm/StormApp.tsx#L7150)
 
 ```typescript
 onClick() => void
@@ -7762,7 +7762,7 @@ onClick() => void
 
 ## StormApp.onClick
 
-[frontend/src/storm/StormApp.tsx:7147](../../../../../frontend/src/storm/StormApp.tsx#L7147)
+[frontend/src/storm/StormApp.tsx:7151](../../../../../frontend/src/storm/StormApp.tsx#L7151)
 
 ```typescript
 onClick() => void
@@ -7781,7 +7781,7 @@ onClick() => void
 
 ## StormApp.close
 
-[frontend/src/storm/StormApp.tsx:7356](../../../../../frontend/src/storm/StormApp.tsx#L7356)
+[frontend/src/storm/StormApp.tsx:7360](../../../../../frontend/src/storm/StormApp.tsx#L7360)
 
 ```typescript
 close() => void
