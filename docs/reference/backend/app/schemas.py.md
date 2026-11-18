@@ -344,7 +344,7 @@ ValueError('Поддерживается только CVSS 4.0')
 
 ## JsFileOut._empty_endpoints
 
-[backend/app/schemas.py:1183](../../../../backend/app/schemas.py#L1183)
+[backend/app/schemas.py:1184](../../../../backend/app/schemas.py#L1184)
 
 ```python
 def _empty_endpoints(cls, value: object) -> object
@@ -360,7 +360,7 @@ def _empty_endpoints(cls, value: object) -> object
 
 ## StormImportEndpoint.validate_target_defined
 
-[backend/app/schemas.py:1342](../../../../backend/app/schemas.py#L1342)
+[backend/app/schemas.py:1343](../../../../backend/app/schemas.py#L1343)
 
 ```python
 def validate_target_defined(self) -> 'StormImportEndpoint'
@@ -385,7 +385,7 @@ ValueError('Каждый endpoint должен содержать path или re
 
 ## StormImportHost.validate_target_defined
 
-[backend/app/schemas.py:1357](../../../../backend/app/schemas.py#L1357)
+[backend/app/schemas.py:1358](../../../../backend/app/schemas.py#L1358)
 
 ```python
 def validate_target_defined(self) -> 'StormImportHost'

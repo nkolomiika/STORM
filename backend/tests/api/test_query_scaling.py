@@ -9,7 +9,7 @@ from app.enums import AssetType, NotificationType
 from app.main import app
 from app.models import (
     Comment, CommentMention, Endpoint, Host, JsFile, Notification, ProjectNote,
-    ProjectNoteComment, Vulnerability, VulnerabilityAsset,
+    ProjectNoteComment, User, Vulnerability, VulnerabilityAsset,
 )
 
 pytestmark = pytest.mark.asyncio
@@ -80,6 +80,8 @@ async def test_notification_page_batches_all_context_types(api):
                 Notification(user_id=ids["admin"], type=NotificationType.VULN_STATUS_CHANGED, vulnerability_id=vuln.id, actor_id=ids["admin"], status="confirmed"),
                 Notification(user_id=ids["admin"], type=NotificationType.MENTION),
             ])
+        author = await db.get(User, ids["admin"])
+        author.avatar_minio_key = "test-photo"
         # Чужое уведомление не должно попасть ни в страницу, ни в total.
         db.add(Notification(user_id=ids["outsider"], type=NotificationType.MENTION))
         await db.commit()
@@ -96,9 +98,11 @@ async def test_notification_page_batches_all_context_types(api):
                 assert context["vulnerability_title"] == "Finding context"
                 assert context["host_id"] == ids["host"]
                 assert context["commenter_username"] == "tester"
+                assert context["actor_avatar_url"] == author.avatar_url
             elif item["note_comment_id"]:
                 assert context["note_title"] == "Note context"
                 assert context["commenter_username"] == "tester"
+                assert context["actor_avatar_url"] == author.avatar_url
             elif item["type"] == "project_member_added":
                 assert context["project_name"] == "API test"
                 assert context["commenter_username"] == "outsider"

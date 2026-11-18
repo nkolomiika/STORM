@@ -2,7 +2,7 @@
 
 Сгенерировано из объявлений кода. [Правила чтения](../../../METHODS.md).
 
-Методов и именованных функций: **104**.
+Методов и именованных функций: **105**.
 
 ## isBlank
 
@@ -887,9 +887,32 @@ new UserInputError("An avatar file is required")
 
 </details>
 
+## deleteMyAvatar
+
+[frontend/src/api.ts:371](../../../../frontend/src/api.ts#L371)
+
+```typescript
+async deleteMyAvatar() => Promise<User>
+```
+
+Удаляет сохранённый аватар владельца сессии и возвращает обновлённый профиль.
+
+Возвращает: `Promise<User>`.
+
+Прямые HTTP-вызовы:
+
+- `DELETE "/users/me/avatar"`; аргументы: `нет`.
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `api.delete`
+
+</details>
+
 ## getProjects
 
-[frontend/src/api.ts:370](../../../../frontend/src/api.ts#L370)
+[frontend/src/api.ts:376](../../../../frontend/src/api.ts#L376)
 
 ```typescript
 async getProjects(page = 1, size = 20, status?: Project["status"]) => Promise<PaginatedResponse<Project>>
@@ -918,7 +941,7 @@ async getProjects(page = 1, size = 20, status?: Project["status"]) => Promise<Pa
 
 ## getProjectStats
 
-[frontend/src/api.ts:375](../../../../frontend/src/api.ts#L375)
+[frontend/src/api.ts:381](../../../../frontend/src/api.ts#L381)
 
 ```typescript
 async getProjectStats() => Promise<ProjectStats[]>
@@ -941,7 +964,7 @@ async getProjectStats() => Promise<ProjectStats[]>
 
 ## createProject
 
-[frontend/src/api.ts:386](../../../../frontend/src/api.ts#L386)
+[frontend/src/api.ts:392](../../../../frontend/src/api.ts#L392)
 
 ```typescript
 async createProject(payload: { name: string; folder?: string; start_date?: string; end_date?: string; appsec_component_code?: string | null; appsec_component_name?: string | null; appsec_version_code?: string | null; appsec_version_name?: string | null; appsec_versions?: WorksRef[]; appsec_assignee?: string | null; appsec_assignee_name?: string | null; appsec_ticket_url?: string | null; appsec_ticket_key?: string | null; }) => Promise<Project>
@@ -969,7 +992,7 @@ async createProject(payload: { name: string; folder?: string; start_date?: strin
 
 ## getProject
 
-[frontend/src/api.ts:406](../../../../frontend/src/api.ts#L406)
+[frontend/src/api.ts:412](../../../../frontend/src/api.ts#L412)
 
 ```typescript
 async getProject(projectId: number) => Promise<Project>
@@ -996,7 +1019,7 @@ async getProject(projectId: number) => Promise<Project>
 
 ## updateProject
 
-[frontend/src/api.ts:411](../../../../frontend/src/api.ts#L411)
+[frontend/src/api.ts:417](../../../../frontend/src/api.ts#L417)
 
 ```typescript
 async updateProject(projectId: number, payload: { name?: string; folder?: string; start_date?: string; end_date?: string; status?: Project["status"]; appsec_component_code?: string | null; appsec_component_name?: string | null; appsec_version_code?: string | null; appsec_version_name?: string | null; appsec_versions?: WorksRef[]; appsec_assignee?: string | null; appsec_assignee_name?: string | null; appsec_ticket_url?: string | null; appsec_ticket_key?: string | null; }) => Promise<Project>
@@ -1024,7 +1047,7 @@ async updateProject(projectId: number, payload: { name?: string; folder?: string
 
 ## getProjectMembers
 
-[frontend/src/api.ts:434](../../../../frontend/src/api.ts#L434)
+[frontend/src/api.ts:440](../../../../frontend/src/api.ts#L440)
 
 ```typescript
 async getProjectMembers(projectId: number) => Promise<ProjectMember[]>
@@ -1051,7 +1074,7 @@ async getProjectMembers(projectId: number) => Promise<ProjectMember[]>
 
 ## addProjectMember
 
-[frontend/src/api.ts:439](../../../../frontend/src/api.ts#L439)
+[frontend/src/api.ts:445](../../../../frontend/src/api.ts#L445)
 
 ```typescript
 async addProjectMember(projectId: number, userId: number) => Promise<void>
@@ -1085,7 +1108,7 @@ new UserInputError("Select a user")
 
 ## removeProjectMember
 
-[frontend/src/api.ts:446](../../../../frontend/src/api.ts#L446)
+[frontend/src/api.ts:452](../../../../frontend/src/api.ts#L452)
 
 ```typescript
 async removeProjectMember(projectId: number, userId: number) => Promise<void>
@@ -1113,7 +1136,7 @@ async removeProjectMember(projectId: number, userId: number) => Promise<void>
 
 ## getProjectActivity
 
-[frontend/src/api.ts:451](../../../../frontend/src/api.ts#L451)
+[frontend/src/api.ts:457](../../../../frontend/src/api.ts#L457)
 
 ```typescript
 async getProjectActivity(projectId: number, limit = 50) => Promise<ProjectActivityItem[]>
@@ -1141,7 +1164,7 @@ async getProjectActivity(projectId: number, limit = 50) => Promise<ProjectActivi
 
 ## listProjectNotes
 
-[frontend/src/api.ts:456](../../../../frontend/src/api.ts#L456)
+[frontend/src/api.ts:462](../../../../frontend/src/api.ts#L462)
 
 ```typescript
 async listProjectNotes(projectId: number) => Promise<ProjectNote[]>
@@ -1168,7 +1191,7 @@ async listProjectNotes(projectId: number) => Promise<ProjectNote[]>
 
 ## createProjectNote
 
-[frontend/src/api.ts:471](../../../../frontend/src/api.ts#L471)
+[frontend/src/api.ts:477](../../../../frontend/src/api.ts#L477)
 
 ```typescript
 async createProjectNote(projectId: number, payload: { title: string; parent_id?: number | null; content?: string | null }) => Promise<ProjectNote>
@@ -1197,7 +1220,7 @@ async createProjectNote(projectId: number, payload: { title: string; parent_id?:
 
 ## updateProjectNote
 
-[frontend/src/api.ts:480](../../../../frontend/src/api.ts#L480)
+[frontend/src/api.ts:486](../../../../frontend/src/api.ts#L486)
 
 ```typescript
 async updateProjectNote(projectId: number, noteId: number, payload: { title?: string; content?: string | null }) => Promise<ProjectNote>
@@ -1227,7 +1250,7 @@ async updateProjectNote(projectId: number, noteId: number, payload: { title?: st
 
 ## deleteProjectNote
 
-[frontend/src/api.ts:492](../../../../frontend/src/api.ts#L492)
+[frontend/src/api.ts:498](../../../../frontend/src/api.ts#L498)
 
 ```typescript
 async deleteProjectNote(projectId: number, noteId: number) => Promise<void>
@@ -1255,7 +1278,7 @@ async deleteProjectNote(projectId: number, noteId: number) => Promise<void>
 
 ## listProjectCredentials
 
-[frontend/src/api.ts:498](../../../../frontend/src/api.ts#L498)
+[frontend/src/api.ts:504](../../../../frontend/src/api.ts#L504)
 
 ```typescript
 async listProjectCredentials(projectId: number) => Promise<ProjectCredential[]>
@@ -1282,7 +1305,7 @@ async listProjectCredentials(projectId: number) => Promise<ProjectCredential[]>
 
 ## createProjectCredential
 
-[frontend/src/api.ts:503](../../../../frontend/src/api.ts#L503)
+[frontend/src/api.ts:509](../../../../frontend/src/api.ts#L509)
 
 ```typescript
 async createProjectCredential(projectId: number, payload: { username?: string | null; password: string; host?: string | null }) => Promise<ProjectCredential>
@@ -1311,7 +1334,7 @@ async createProjectCredential(projectId: number, payload: { username?: string | 
 
 ## updateProjectCredential
 
-[frontend/src/api.ts:512](../../../../frontend/src/api.ts#L512)
+[frontend/src/api.ts:518](../../../../frontend/src/api.ts#L518)
 
 ```typescript
 async updateProjectCredential(projectId: number, credentialId: number, payload: { username?: string | null; password?: string; host?: string | null }) => Promise<ProjectCredential>
@@ -1340,7 +1363,7 @@ async updateProjectCredential(projectId: number, credentialId: number, payload: 
 
 ## deleteProjectCredential
 
-[frontend/src/api.ts:523](../../../../frontend/src/api.ts#L523)
+[frontend/src/api.ts:529](../../../../frontend/src/api.ts#L529)
 
 ```typescript
 async deleteProjectCredential(projectId: number, credentialId: number) => Promise<void>
@@ -1368,7 +1391,7 @@ async deleteProjectCredential(projectId: number, credentialId: number) => Promis
 
 ## deleteProject
 
-[frontend/src/api.ts:527](../../../../frontend/src/api.ts#L527)
+[frontend/src/api.ts:533](../../../../frontend/src/api.ts#L533)
 
 ```typescript
 async deleteProject(projectId: number) => Promise<void>
@@ -1395,7 +1418,7 @@ async deleteProject(projectId: number) => Promise<void>
 
 ## getHostCreationTimes
 
-[frontend/src/api.ts:532](../../../../frontend/src/api.ts#L532)
+[frontend/src/api.ts:538](../../../../frontend/src/api.ts#L538)
 
 ```typescript
 async getHostCreationTimes(projectId: number) => Promise<string[]>
@@ -1422,7 +1445,7 @@ async getHostCreationTimes(projectId: number) => Promise<string[]>
 
 ## getHosts
 
-[frontend/src/api.ts:537](../../../../frontend/src/api.ts#L537)
+[frontend/src/api.ts:543](../../../../frontend/src/api.ts#L543)
 
 ```typescript
 async getHosts(projectId: number) => Promise<PaginatedResponse<Host>>
@@ -1451,7 +1474,7 @@ async getHosts(projectId: number) => Promise<PaginatedResponse<Host>>
 
 ## createHost
 
-[frontend/src/api.ts:558](../../../../frontend/src/api.ts#L558)
+[frontend/src/api.ts:564](../../../../frontend/src/api.ts#L564)
 
 ```typescript
 async createHost(projectId: number, payload: { probe?: boolean; ip_address?: string; ip_addresses?: string[]; hostname?: string; notes?: string; status?: "up" | "down" | "unknown"; os_type?: OsType; }) => Promise<Host>
@@ -1486,7 +1509,7 @@ new UserInputError('Provide at least "IP address" or "Hostname"')
 
 ## getHost
 
-[frontend/src/api.ts:577](../../../../frontend/src/api.ts#L577)
+[frontend/src/api.ts:583](../../../../frontend/src/api.ts#L583)
 
 ```typescript
 async getHost(projectId: number, hostId: number) => Promise<HostDetails>
@@ -1514,7 +1537,7 @@ async getHost(projectId: number, hostId: number) => Promise<HostDetails>
 
 ## updateHost
 
-[frontend/src/api.ts:582](../../../../frontend/src/api.ts#L582)
+[frontend/src/api.ts:588](../../../../frontend/src/api.ts#L588)
 
 ```typescript
 async updateHost(projectId: number, hostId: number, payload: { ip_address?: string; ip_addresses?: Array<{ ip_address: string; label?: string | null; is_primary?: boolean }>; hostname?: string; notes?: string | null; status?: "up" | "down" | "unknown"; os_type?: OsType; }) => Promise<Host>
@@ -1543,7 +1566,7 @@ async updateHost(projectId: number, hostId: number, payload: { ip_address?: stri
 
 ## deleteHost
 
-[frontend/src/api.ts:598](../../../../frontend/src/api.ts#L598)
+[frontend/src/api.ts:604](../../../../frontend/src/api.ts#L604)
 
 ```typescript
 async deleteHost(projectId: number, hostId: number) => Promise<void>
@@ -1571,7 +1594,7 @@ async deleteHost(projectId: number, hostId: number) => Promise<void>
 
 ## changeIpAddress
 
-[frontend/src/api.ts:602](../../../../frontend/src/api.ts#L602)
+[frontend/src/api.ts:608](../../../../frontend/src/api.ts#L608)
 
 ```typescript
 async changeIpAddress(projectId: number, previous: string, address: string) => Promise<IpAddressChangeResult>
@@ -1602,7 +1625,7 @@ async changeIpAddress(projectId: number, previous: string, address: string) => P
 
 ## getHiddenIps
 
-[frontend/src/api.ts:611](../../../../frontend/src/api.ts#L611)
+[frontend/src/api.ts:617](../../../../frontend/src/api.ts#L617)
 
 ```typescript
 async getHiddenIps(projectId: number) => Promise<string[]>
@@ -1629,7 +1652,7 @@ async getHiddenIps(projectId: number) => Promise<string[]>
 
 ## hideIp
 
-[frontend/src/api.ts:617](../../../../frontend/src/api.ts#L617)
+[frontend/src/api.ts:623](../../../../frontend/src/api.ts#L623)
 
 ```typescript
 async hideIp(projectId: number, ip: string) => Promise<void>
@@ -1657,7 +1680,7 @@ async hideIp(projectId: number, ip: string) => Promise<void>
 
 ## startHostFarm
 
-[frontend/src/api.ts:624](../../../../frontend/src/api.ts#L624)
+[frontend/src/api.ts:630](../../../../frontend/src/api.ts#L630)
 
 ```typescript
 async startHostFarm(projectId: number, raw: string) => Promise<HostFarmJob>
@@ -1686,7 +1709,7 @@ async startHostFarm(projectId: number, raw: string) => Promise<HostFarmJob>
 
 ## getHostFarmJob
 
-[frontend/src/api.ts:631](../../../../frontend/src/api.ts#L631)
+[frontend/src/api.ts:637](../../../../frontend/src/api.ts#L637)
 
 ```typescript
 async getHostFarmJob(projectId: number, jobId: number) => Promise<HostFarmJob>
@@ -1714,7 +1737,7 @@ async getHostFarmJob(projectId: number, jobId: number) => Promise<HostFarmJob>
 
 ## startIpFarm
 
-[frontend/src/api.ts:637](../../../../frontend/src/api.ts#L637)
+[frontend/src/api.ts:643](../../../../frontend/src/api.ts#L643)
 
 ```typescript
 async startIpFarm(projectId: number, raw: string) => Promise<IpFarmJob>
@@ -1743,7 +1766,7 @@ async startIpFarm(projectId: number, raw: string) => Promise<IpFarmJob>
 
 ## getIpFarmJob
 
-[frontend/src/api.ts:644](../../../../frontend/src/api.ts#L644)
+[frontend/src/api.ts:650](../../../../frontend/src/api.ts#L650)
 
 ```typescript
 async getIpFarmJob(projectId: number, jobId: number) => Promise<IpFarmJob>
@@ -1771,7 +1794,7 @@ async getIpFarmJob(projectId: number, jobId: number) => Promise<IpFarmJob>
 
 ## startJsScan
 
-[frontend/src/api.ts:650](../../../../frontend/src/api.ts#L650)
+[frontend/src/api.ts:656](../../../../frontend/src/api.ts#L656)
 
 ```typescript
 async startJsScan(projectId: number, raw = "") => Promise<JsFarmJob>
@@ -1799,7 +1822,7 @@ async startJsScan(projectId: number, raw = "") => Promise<JsFarmJob>
 
 ## getJsScanJob
 
-[frontend/src/api.ts:656](../../../../frontend/src/api.ts#L656)
+[frontend/src/api.ts:662](../../../../frontend/src/api.ts#L662)
 
 ```typescript
 async getJsScanJob(projectId: number, jobId: number) => Promise<JsFarmJob>
@@ -1827,7 +1850,7 @@ async getJsScanJob(projectId: number, jobId: number) => Promise<JsFarmJob>
 
 ## getJsFilesPage
 
-[frontend/src/api.ts:664](../../../../frontend/src/api.ts#L664)
+[frontend/src/api.ts:670](../../../../frontend/src/api.ts#L670)
 
 ```typescript
 async getJsFilesPage(projectId: number, page: number, size: number) => Promise<PaginatedResponse<JsFile>>
@@ -1858,7 +1881,7 @@ JS-файлы проекта с находками — раздел JS груп�
 
 ## deleteJsFilesForHost
 
-[frontend/src/api.ts:676](../../../../frontend/src/api.ts#L676)
+[frontend/src/api.ts:682](../../../../frontend/src/api.ts#L682)
 
 ```typescript
 async deleteJsFilesForHost(projectId: number, hostId: number) => Promise<void>
@@ -1886,7 +1909,7 @@ async deleteJsFilesForHost(projectId: number, hostId: number) => Promise<void>
 
 ## downloadJsArchive
 
-[frontend/src/api.ts:682](../../../../frontend/src/api.ts#L682)
+[frontend/src/api.ts:688](../../../../frontend/src/api.ts#L688)
 
 ```typescript
 async downloadJsArchive(projectId: number, hostId?: number) => Promise<Blob>
@@ -1915,7 +1938,7 @@ Zip найденных .js. `hostId` сужает архив до одного �
 
 ## listEndpointComments
 
-[frontend/src/api.ts:691](../../../../frontend/src/api.ts#L691)
+[frontend/src/api.ts:697](../../../../frontend/src/api.ts#L697)
 
 ```typescript
 async listEndpointComments(projectId: number, hostId: number, endpointId: number, page = 1) => Promise<PaginatedResponse<EndpointComment>>
@@ -1945,7 +1968,7 @@ async listEndpointComments(projectId: number, hostId: number, endpointId: number
 
 ## createEndpointComment
 
-[frontend/src/api.ts:696](../../../../frontend/src/api.ts#L696)
+[frontend/src/api.ts:702](../../../../frontend/src/api.ts#L702)
 
 ```typescript
 async createEndpointComment(projectId: number, hostId: number, endpointId: number, content: string) => Promise<EndpointComment>
@@ -1976,7 +1999,7 @@ async createEndpointComment(projectId: number, hostId: number, endpointId: numbe
 
 ## getEndpoints
 
-[frontend/src/api.ts:702](../../../../frontend/src/api.ts#L702)
+[frontend/src/api.ts:708](../../../../frontend/src/api.ts#L708)
 
 ```typescript
 async getEndpoints(projectId: number, hostId: number) => Promise<Endpoint[]>
@@ -2004,7 +2027,7 @@ async getEndpoints(projectId: number, hostId: number) => Promise<Endpoint[]>
 
 ## createEndpoint
 
-[frontend/src/api.ts:707](../../../../frontend/src/api.ts#L707)
+[frontend/src/api.ts:713](../../../../frontend/src/api.ts#L713)
 
 ```typescript
 async createEndpoint(projectId: number, hostId: number, payload: { path?: string; method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "HEAD" | "OPTIONS" | "TRACE" | "QUERY"; description?: string | null; request_raw?: string; query_params?: { name: string; value?: string | null; required?: boolean; description?: string | null }[]; request_body?: string | null; request_content_type?: string | null; request_headers?: EndpointRequestHeader[]; }) => Promise<Endpoint>
@@ -2040,7 +2063,7 @@ new UserInputError('Provide at least "Path" or "Raw request"')
 
 ## updateEndpoint
 
-[frontend/src/api.ts:728](../../../../frontend/src/api.ts#L728)
+[frontend/src/api.ts:734](../../../../frontend/src/api.ts#L734)
 
 ```typescript
 async updateEndpoint(projectId: number, hostId: number, endpointId: number, payload: { path?: string; method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "HEAD" | "OPTIONS" | "TRACE" | "QUERY"; description?: string | null; request_raw?: string; query_params?: { name: string; value?: string | null; required?: boolean; description?: string | null }[]; request_body?: string | null; request_content_type?: string | null; request_headers?: EndpointRequestHeader[]; }) => Promise<Endpoint>
@@ -2077,7 +2100,7 @@ new UserInputError('Provide at least "Path" or "Raw request"')
 
 ## deleteEndpoint
 
-[frontend/src/api.ts:750](../../../../frontend/src/api.ts#L750)
+[frontend/src/api.ts:756](../../../../frontend/src/api.ts#L756)
 
 ```typescript
 async deleteEndpoint(projectId: number, hostId: number, endpointId: number) => Promise<void>
@@ -2106,7 +2129,7 @@ async deleteEndpoint(projectId: number, hostId: number, endpointId: number) => P
 
 ## getVulnerabilities
 
-[frontend/src/api.ts:754](../../../../frontend/src/api.ts#L754)
+[frontend/src/api.ts:760](../../../../frontend/src/api.ts#L760)
 
 ```typescript
 async getVulnerabilities(projectId: number) => Promise<PaginatedResponse<Vulnerability>>
@@ -2138,7 +2161,7 @@ async getVulnerabilities(projectId: number) => Promise<PaginatedResponse<Vulnera
 
 ## createVulnerability
 
-[frontend/src/api.ts:773](../../../../frontend/src/api.ts#L773)
+[frontend/src/api.ts:779](../../../../frontend/src/api.ts#L779)
 
 ```typescript
 async createVulnerability(projectId: number, payload: { host_id: number; title: string; description?: string | null; // Необязательно: бэкенд по умолчанию ставит "unknown" (критичность не определена). severity?: "critical" | "high" | "medium" | "low" | "info" | "unrealized"; cvss_version?: "4.0" | null; cvss_score?: number | null; cvss_vector?: string | null; cwe_id?: string | null; status?: "open" | "in_progress" | "problem_analysis" | "need_info" | "paused" | "resolved" | "closed" | "cancelled" | "sent_by_mistake"; workflow_steps?: Array<{ id: string; description?: string | null; image_file_ids?: number[]; endpoint_id?: number | null; endpoint_request_raw?: string | null; }>; steps_to_reproduce?: string | null; impact?: string | null; recommendations?: string | null; }) => Promise<Vulnerability>
@@ -2173,7 +2196,7 @@ new UserInputError("Select a host")
 
 ## updateVulnerability
 
-[frontend/src/api.ts:806](../../../../frontend/src/api.ts#L806)
+[frontend/src/api.ts:812](../../../../frontend/src/api.ts#L812)
 
 ```typescript
 async updateVulnerability(projectId: number, vulnerabilityId: number, payload: { title?: string; description?: string | null; severity?: "critical" | "high" | "medium" | "low" | "info" | "unrealized"; cvss_version?: "4.0" | null; cvss_score?: number | null; cvss_vector?: string | null; cwe_id?: string | null; status?: "open" | "in_progress" | "problem_analysis" | "need_info" | "paused" | "resolved" | "closed" | "cancelled" | "sent_by_mistake"; workflow_steps?: Array<{ id: string; description?: string | null; image_file_ids?: number[]; endpoint_id?: number | null; endpoint_request_raw?: string | null; }>; steps_to_reproduce?: string | null; impact?: string | null; recommendations?: string | null; }) => Promise<Vulnerability>
@@ -2203,7 +2226,7 @@ async updateVulnerability(projectId: number, vulnerabilityId: number, payload: {
 
 ## deleteVulnerability
 
-[frontend/src/api.ts:837](../../../../frontend/src/api.ts#L837)
+[frontend/src/api.ts:843](../../../../frontend/src/api.ts#L843)
 
 ```typescript
 async deleteVulnerability(projectId: number, vulnerabilityId: number) => Promise<void>
@@ -2231,7 +2254,7 @@ async deleteVulnerability(projectId: number, vulnerabilityId: number) => Promise
 
 ## getVulnerabilityTaskTrackerLink
 
-[frontend/src/api.ts:841](../../../../frontend/src/api.ts#L841)
+[frontend/src/api.ts:847](../../../../frontend/src/api.ts#L847)
 
 ```typescript
 async getVulnerabilityTaskTrackerLink(projectId: number, vulnerabilityId: number) => Promise<TaskTrackerIssueLink | null>
@@ -2255,7 +2278,7 @@ async getVulnerabilityTaskTrackerLink(projectId: number, vulnerabilityId: number
 
 ## exportVulnerabilityToTaskTracker
 
-[frontend/src/api.ts:846](../../../../frontend/src/api.ts#L846)
+[frontend/src/api.ts:852](../../../../frontend/src/api.ts#L852)
 
 ```typescript
 async exportVulnerabilityToTaskTracker(projectId: number, vulnerabilityId: number) => Promise<TaskTrackerIssueLink>
@@ -2280,7 +2303,7 @@ async exportVulnerabilityToTaskTracker(projectId: number, vulnerabilityId: numbe
 
 ## getWorksConfig
 
-[frontend/src/api.ts:853](../../../../frontend/src/api.ts#L853)
+[frontend/src/api.ts:859](../../../../frontend/src/api.ts#L859)
 
 ```typescript
 async getWorksConfig() => Promise<WorksConfig>
@@ -2303,7 +2326,7 @@ async getWorksConfig() => Promise<WorksConfig>
 
 ## findWorksComponents
 
-[frontend/src/api.ts:859](../../../../frontend/src/api.ts#L859)
+[frontend/src/api.ts:865](../../../../frontend/src/api.ts#L865)
 
 ```typescript
 async findWorksComponents(q: string) => Promise<WorksRef[]>
@@ -2330,7 +2353,7 @@ Typeahead по компонентам Works (имя→UUID).
 
 ## findWorksVersions
 
-[frontend/src/api.ts:865](../../../../frontend/src/api.ts#L865)
+[frontend/src/api.ts:871](../../../../frontend/src/api.ts#L871)
 
 ```typescript
 async findWorksVersions(q: string) => Promise<WorksRef[]>
@@ -2357,7 +2380,7 @@ Typeahead по версиям Works (имя→UUID).
 
 ## findWorksProductCodes
 
-[frontend/src/api.ts:871](../../../../frontend/src/api.ts#L871)
+[frontend/src/api.ts:877](../../../../frontend/src/api.ts#L877)
 
 ```typescript
 async findWorksProductCodes(q: string) => Promise<WorksRef[]>
@@ -2384,7 +2407,7 @@ async findWorksProductCodes(q: string) => Promise<WorksRef[]>
 
 ## getVulnerabilityWorksLink
 
-[frontend/src/api.ts:877](../../../../frontend/src/api.ts#L877)
+[frontend/src/api.ts:883](../../../../frontend/src/api.ts#L883)
 
 ```typescript
 async getVulnerabilityWorksLink(projectId: number, vulnerabilityId: number) => Promise<WorksIssueLink | null>
@@ -2412,7 +2435,7 @@ async getVulnerabilityWorksLink(projectId: number, vulnerabilityId: number) => P
 
 ## exportVulnerabilityToWorks
 
-[frontend/src/api.ts:883](../../../../frontend/src/api.ts#L883)
+[frontend/src/api.ts:889](../../../../frontend/src/api.ts#L889)
 
 ```typescript
 async exportVulnerabilityToWorks(projectId: number, vulnerabilityId: number, assignee?: string | null) => Promise<WorksIssueLink>
@@ -2441,7 +2464,7 @@ async exportVulnerabilityToWorks(projectId: number, vulnerabilityId: number, ass
 
 ## getVulnerability
 
-[frontend/src/api.ts:895](../../../../frontend/src/api.ts#L895)
+[frontend/src/api.ts:901](../../../../frontend/src/api.ts#L901)
 
 ```typescript
 async getVulnerability(projectId: number, vulnerabilityId: number) => Promise<VulnerabilityDetails>
@@ -2469,7 +2492,7 @@ async getVulnerability(projectId: number, vulnerabilityId: number) => Promise<Vu
 
 ## addVulnerabilityAsset
 
-[frontend/src/api.ts:900](../../../../frontend/src/api.ts#L900)
+[frontend/src/api.ts:906](../../../../frontend/src/api.ts#L906)
 
 ```typescript
 async addVulnerabilityAsset(projectId: number, vulnerabilityId: number, payload: { asset_type: "host" | "port" | "service" | "endpoint"; asset_id: number; }) => Promise<VulnerabilityAsset>
@@ -2498,7 +2521,7 @@ async addVulnerabilityAsset(projectId: number, vulnerabilityId: number, payload:
 
 ## deleteVulnerabilityAsset
 
-[frontend/src/api.ts:912](../../../../frontend/src/api.ts#L912)
+[frontend/src/api.ts:918](../../../../frontend/src/api.ts#L918)
 
 ```typescript
 async deleteVulnerabilityAsset(projectId: number, vulnerabilityId: number, assetLinkId: number) => Promise<void>
@@ -2527,7 +2550,7 @@ async deleteVulnerabilityAsset(projectId: number, vulnerabilityId: number, asset
 
 ## listVulnerabilityFiles
 
-[frontend/src/api.ts:916](../../../../frontend/src/api.ts#L916)
+[frontend/src/api.ts:922](../../../../frontend/src/api.ts#L922)
 
 ```typescript
 async listVulnerabilityFiles(projectId: number, vulnerabilityId: number) => Promise<VulnerabilityFile[]>
@@ -2555,7 +2578,7 @@ async listVulnerabilityFiles(projectId: number, vulnerabilityId: number) => Prom
 
 ## uploadVulnerabilityFile
 
-[frontend/src/api.ts:921](../../../../frontend/src/api.ts#L921)
+[frontend/src/api.ts:927](../../../../frontend/src/api.ts#L927)
 
 ```typescript
 async uploadVulnerabilityFile(projectId: number, vulnerabilityId: number, file: File) => Promise<VulnerabilityFile>
@@ -2591,7 +2614,7 @@ new UserInputError("Select a file")
 
 ## deleteVulnerabilityFile
 
-[frontend/src/api.ts:933](../../../../frontend/src/api.ts#L933)
+[frontend/src/api.ts:939](../../../../frontend/src/api.ts#L939)
 
 ```typescript
 async deleteVulnerabilityFile(projectId: number, vulnerabilityId: number, fileId: number) => Promise<void>
@@ -2620,7 +2643,7 @@ async deleteVulnerabilityFile(projectId: number, vulnerabilityId: number, fileId
 
 ## uploadProjectImage
 
-[frontend/src/api.ts:939](../../../../frontend/src/api.ts#L939)
+[frontend/src/api.ts:945](../../../../frontend/src/api.ts#L945)
 
 ```typescript
 async uploadProjectImage(projectId: number, file: File) => Promise<{ url: string }>
@@ -2656,7 +2679,7 @@ new UserInputError("Select an image")
 
 ## namedReportBlob
 
-[frontend/src/api.ts:952](../../../../frontend/src/api.ts#L952)
+[frontend/src/api.ts:958](../../../../frontend/src/api.ts#L958)
 
 ```typescript
 namedReportBlob(data: Blob, disposition: unknown) => Blob
@@ -2683,7 +2706,7 @@ namedReportBlob(data: Blob, disposition: unknown) => Blob
 
 ## downloadProjectCertificationReport
 
-[frontend/src/api.ts:961](../../../../frontend/src/api.ts#L961)
+[frontend/src/api.ts:967](../../../../frontend/src/api.ts#L967)
 
 ```typescript
 async downloadProjectCertificationReport(projectId: number) => Promise<Blob>
@@ -2711,7 +2734,7 @@ async downloadProjectCertificationReport(projectId: number) => Promise<Blob>
 
 ## downloadProjectAcceptanceReport
 
-[frontend/src/api.ts:968](../../../../frontend/src/api.ts#L968)
+[frontend/src/api.ts:974](../../../../frontend/src/api.ts#L974)
 
 ```typescript
 async downloadProjectAcceptanceReport(projectId: number) => Promise<Blob>
@@ -2739,7 +2762,7 @@ async downloadProjectAcceptanceReport(projectId: number) => Promise<Blob>
 
 ## listAgentTokens
 
-[frontend/src/api.ts:975](../../../../frontend/src/api.ts#L975)
+[frontend/src/api.ts:981](../../../../frontend/src/api.ts#L981)
 
 ```typescript
 async listAgentTokens() => Promise<AgentApiToken[]>
@@ -2762,7 +2785,7 @@ async listAgentTokens() => Promise<AgentApiToken[]>
 
 ## createAgentToken
 
-[frontend/src/api.ts:980](../../../../frontend/src/api.ts#L980)
+[frontend/src/api.ts:986](../../../../frontend/src/api.ts#L986)
 
 ```typescript
 async createAgentToken(payload: { name: string; scopes: string[]; project_ids: number[]; all_projects: boolean; expires_at?: string | null; }) => Promise<AgentApiToken & { token: string }>
@@ -2789,7 +2812,7 @@ async createAgentToken(payload: { name: string; scopes: string[]; project_ids: n
 
 ## revokeAgentToken
 
-[frontend/src/api.ts:991](../../../../frontend/src/api.ts#L991)
+[frontend/src/api.ts:997](../../../../frontend/src/api.ts#L997)
 
 ```typescript
 async revokeAgentToken(tokenId: number) => Promise<void>
@@ -2816,7 +2839,7 @@ async revokeAgentToken(tokenId: number) => Promise<void>
 
 ## listNotifications
 
-[frontend/src/api.ts:995](../../../../frontend/src/api.ts#L995)
+[frontend/src/api.ts:1001](../../../../frontend/src/api.ts#L1001)
 
 ```typescript
 async listNotifications(options?: { is_read?: boolean }) => Promise<PaginatedResponse<Notification>>
@@ -2843,7 +2866,7 @@ async listNotifications(options?: { is_read?: boolean }) => Promise<PaginatedRes
 
 ## markNotificationRead
 
-[frontend/src/api.ts:1004](../../../../frontend/src/api.ts#L1004)
+[frontend/src/api.ts:1010](../../../../frontend/src/api.ts#L1010)
 
 ```typescript
 async markNotificationRead(notificationId: number) => Promise<void>
@@ -2870,7 +2893,7 @@ async markNotificationRead(notificationId: number) => Promise<void>
 
 ## markAllNotificationsRead
 
-[frontend/src/api.ts:1008](../../../../frontend/src/api.ts#L1008)
+[frontend/src/api.ts:1014](../../../../frontend/src/api.ts#L1014)
 
 ```typescript
 async markAllNotificationsRead() => Promise<void>
@@ -2893,7 +2916,7 @@ async markAllNotificationsRead() => Promise<void>
 
 ## getTasks
 
-[frontend/src/api.ts:1019](../../../../frontend/src/api.ts#L1019)
+[frontend/src/api.ts:1025](../../../../frontend/src/api.ts#L1025)
 
 ```typescript
 async getTasks(params: { query?: string; category?: string; page_number?: number; sort?: 'first' | 'last'; refresh?: boolean; } = {}) => Promise<TaskTrackerTaskList>
@@ -2920,7 +2943,7 @@ async getTasks(params: { query?: string; category?: string; page_number?: number
 
 ## getTask
 
-[frontend/src/api.ts:1031](../../../../frontend/src/api.ts#L1031)
+[frontend/src/api.ts:1037](../../../../frontend/src/api.ts#L1037)
 
 ```typescript
 async getTask(key: string) => Promise<TaskTrackerTaskDetail>

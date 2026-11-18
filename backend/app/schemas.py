@@ -993,6 +993,7 @@ class NotificationContext(BaseModel):
     host_id: int | None = None
     # Кто инициировал событие: автор комментария либо тот, кто сменил статус.
     commenter_username: str | None = None
+    actor_avatar_url: str | None = None
     # Выставленный статус — для уведомлений о смене статуса находки/проекта.
     status: str | None = None
 

@@ -2,7 +2,7 @@
 
 Сгенерировано из объявлений кода. [Правила чтения](../../../../METHODS.md).
 
-Методов и именованных функций: **23**.
+Методов и именованных функций: **24**.
 
 ## me
 
@@ -280,9 +280,46 @@ router.post('/me/avatar', response_model=UserOut)
 
 </details>
 
-## list_users
+## delete_my_avatar
 
 [backend/app/routers/users.py:126](../../../../../backend/app/routers/users.py#L126)
+
+```python
+async def delete_my_avatar(request: Request, _: None=Depends(enforce_csrf), current_user: User=Depends(get_current_user), db: AsyncSession=Depends(get_db)) -> UserOut
+```
+
+Удаляет аватар владельца сессии и возвращает обновлённый профиль.
+
+| Параметр | Тип | По умолчанию | Назначение |
+| --- | --- | --- | --- |
+| `request` | `Request` | `обязательный` | HTTP-запрос Starlette/FastAPI. |
+| `_` | `None` | `Depends(enforce_csrf)` | Определяется именем/типом и контрактом вызывающего кода. |
+| `current_user` | `User` | `Depends(get_current_user)` | Пользователь из dependency авторизации. |
+| `db` | `AsyncSession` | `Depends(get_db)` | Асинхронная SQLAlchemy-сессия текущего запроса. |
+
+Возвращает: `UserOut`.
+
+Dependencies: `enforce_csrf`, `get_current_user`, `get_db`.
+
+Маршруты:
+
+```python
+router.delete('/me/avatar', response_model=UserOut)
+```
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `UserOut.model_validate`
+- `UserService`
+- `UserService(db).delete_avatar`
+- `get_client_ip`
+
+</details>
+
+## list_users
+
+[backend/app/routers/users.py:138](../../../../../backend/app/routers/users.py#L138)
 
 ```python
 async def list_users(page: int=Query(1, ge=1), size: int=Query(20, ge=1, le=200), _admin: User=Depends(require_admin), db: AsyncSession=Depends(get_db)) -> dict
@@ -321,7 +358,7 @@ router.get('', response_model=dict)
 
 ## _activation_url
 
-[backend/app/routers/users.py:137](../../../../../backend/app/routers/users.py#L137)
+[backend/app/routers/users.py:149](../../../../../backend/app/routers/users.py#L149)
 
 ```python
 def _activation_url(job) -> str | None
@@ -345,7 +382,7 @@ def _activation_url(job) -> str | None
 
 ## _mail_preview_url
 
-[backend/app/routers/users.py:144](../../../../../backend/app/routers/users.py#L144)
+[backend/app/routers/users.py:156](../../../../../backend/app/routers/users.py#L156)
 
 ```python
 def _mail_preview_url() -> str | None
@@ -357,7 +394,7 @@ URL веб-интерфейса для просмотра письма (MAIL_PRE
 
 ## create_invitation
 
-[backend/app/routers/users.py:150](../../../../../backend/app/routers/users.py#L150)
+[backend/app/routers/users.py:162](../../../../../backend/app/routers/users.py#L162)
 
 ```python
 async def create_invitation(payload: InvitationCreate, request: Request, _: None=Depends(enforce_csrf), admin: User=Depends(require_admin), db: AsyncSession=Depends(get_db)) -> InvitationSentOut
@@ -399,7 +436,7 @@ router.post('/invitations', response_model=InvitationSentOut, status_code=status
 
 ## list_invitations
 
-[backend/app/routers/users.py:168](../../../../../backend/app/routers/users.py#L168)
+[backend/app/routers/users.py:180](../../../../../backend/app/routers/users.py#L180)
 
 ```python
 async def list_invitations(_admin: User=Depends(require_admin), db: AsyncSession=Depends(get_db)) -> list[InvitationOut]
@@ -436,7 +473,7 @@ router.get('/invitations', response_model=list[InvitationOut])
 
 ## resend_invitation
 
-[backend/app/routers/users.py:180](../../../../../backend/app/routers/users.py#L180)
+[backend/app/routers/users.py:192](../../../../../backend/app/routers/users.py#L192)
 
 ```python
 async def resend_invitation(invitation_id: int, request: Request, _: None=Depends(enforce_csrf), admin: User=Depends(require_admin), db: AsyncSession=Depends(get_db)) -> InvitationSentOut
@@ -477,7 +514,7 @@ router.post('/invitations/{invitation_id}/resend', response_model=InvitationSent
 
 ## revoke_invitation
 
-[backend/app/routers/users.py:198](../../../../../backend/app/routers/users.py#L198)
+[backend/app/routers/users.py:210](../../../../../backend/app/routers/users.py#L210)
 
 ```python
 async def revoke_invitation(invitation_id: int, request: Request, _: None=Depends(enforce_csrf), admin: User=Depends(require_admin), db: AsyncSession=Depends(get_db)) -> None
@@ -514,7 +551,7 @@ router.delete('/invitations/{invitation_id}', status_code=status.HTTP_204_NO_CON
 
 ## search_users
 
-[backend/app/routers/users.py:210](../../../../../backend/app/routers/users.py#L210)
+[backend/app/routers/users.py:222](../../../../../backend/app/routers/users.py#L222)
 
 ```python
 async def search_users(q: str=Query('', max_length=100), limit: int=Query(10, ge=1, le=25), _: User=Depends(get_current_user), db: AsyncSession=Depends(get_db)) -> list[UserSearchOut]
@@ -552,7 +589,7 @@ router.get('/search', response_model=list[UserSearchOut])
 
 ## get_user
 
-[backend/app/routers/users.py:226](../../../../../backend/app/routers/users.py#L226)
+[backend/app/routers/users.py:238](../../../../../backend/app/routers/users.py#L238)
 
 ```python
 async def get_user(user_id: int, _admin: User=Depends(require_admin), db: AsyncSession=Depends(get_db)) -> UserOut
@@ -587,18 +624,18 @@ router.get('/{user_id}', response_model=UserOut)
 
 ## get_user_avatar
 
-[backend/app/routers/users.py:237](../../../../../backend/app/routers/users.py#L237)
+[backend/app/routers/users.py:249](../../../../../backend/app/routers/users.py#L249)
 
 ```python
-async def get_user_avatar(user_id: int, current_user: User=Depends(get_current_user), db: AsyncSession=Depends(get_db)) -> Response
+async def get_user_avatar(user_id: int, _: User=Depends(get_current_user), db: AsyncSession=Depends(get_db)) -> Response
 ```
 
-Возвращает аватар пользователя.
+Возвращает изображение профиля авторизованному пользователю рабочего пространства.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
 | `user_id` | `int` | `обязательный` | ID пользователя. |
-| `current_user` | `User` | `Depends(get_current_user)` | Пользователь из dependency авторизации. |
+| `_` | `User` | `Depends(get_current_user)` | Определяется именем/типом и контрактом вызывающего кода. |
 | `db` | `AsyncSession` | `Depends(get_db)` | Асинхронная SQLAlchemy-сессия текущего запроса. |
 
 Возвращает: `Response`.
@@ -616,14 +653,13 @@ router.get('/{user_id}/avatar')
 
 - `Response`
 - `UserService`
-- `service.download_avatar`
-- `service.ensure_can_view_avatar`
+- `UserService(db).download_avatar`
 
 </details>
 
 ## update_user
 
-[backend/app/routers/users.py:250](../../../../../backend/app/routers/users.py#L250)
+[backend/app/routers/users.py:260](../../../../../backend/app/routers/users.py#L260)
 
 ```python
 async def update_user(user_id: int, payload: UserUpdate, request: Request, _: None=Depends(enforce_csrf), admin: User=Depends(require_admin), db: AsyncSession=Depends(get_db)) -> UserOut
@@ -663,7 +699,7 @@ router.put('/{user_id}', response_model=UserOut)
 
 ## delete_user
 
-[backend/app/routers/users.py:264](../../../../../backend/app/routers/users.py#L264)
+[backend/app/routers/users.py:274](../../../../../backend/app/routers/users.py#L274)
 
 ```python
 async def delete_user(user_id: int, request: Request, _: None=Depends(enforce_csrf), admin: User=Depends(require_admin), db: AsyncSession=Depends(get_db)) -> None
@@ -700,7 +736,7 @@ router.delete('/{user_id}', status_code=status.HTTP_204_NO_CONTENT)
 
 ## reactivate_user
 
-[backend/app/routers/users.py:276](../../../../../backend/app/routers/users.py#L276)
+[backend/app/routers/users.py:286](../../../../../backend/app/routers/users.py#L286)
 
 ```python
 async def reactivate_user(user_id: int, request: Request, _: None=Depends(enforce_csrf), admin: User=Depends(require_admin), db: AsyncSession=Depends(get_db)) -> UserOut
@@ -738,7 +774,7 @@ router.post('/{user_id}/reactivate', response_model=UserOut, status_code=status.
 
 ## reset_password
 
-[backend/app/routers/users.py:289](../../../../../backend/app/routers/users.py#L289)
+[backend/app/routers/users.py:299](../../../../../backend/app/routers/users.py#L299)
 
 ```python
 async def reset_password(user_id: int, request: Request, _: None=Depends(enforce_csrf), admin: User=Depends(require_admin), db: AsyncSession=Depends(get_db)) -> PasswordResetOut
@@ -776,7 +812,7 @@ router.patch('/{user_id}/password', response_model=PasswordResetOut, status_code
 
 ## reset_2fa
 
-[backend/app/routers/users.py:303](../../../../../backend/app/routers/users.py#L303)
+[backend/app/routers/users.py:313](../../../../../backend/app/routers/users.py#L313)
 
 ```python
 async def reset_2fa(user_id: int, request: Request, _: None=Depends(enforce_csrf), admin: User=Depends(require_admin), db: AsyncSession=Depends(get_db)) -> UserOut

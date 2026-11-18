@@ -644,6 +644,7 @@ export interface Notification {
     host_id: number | null;
     /** Кто это сделал: автор комментария либо тот, кто сменил статус. */
     commenter_username: string | null;
+    actor_avatar_url?: string | null;
     /** Выставленный статус — у уведомлений о смене статуса. */
     status: string | null;
   } | null;

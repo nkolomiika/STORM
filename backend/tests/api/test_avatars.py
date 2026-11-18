@@ -11,7 +11,9 @@ import pytest
 
 from app.database import get_db
 from app.main import app
-from app.models import ProjectMember, User
+from app.enums import NotificationType
+from app.models import Notification, ProjectMember, User
+from app.security import create_access_token
 from app.storage.minio_client import MinioStorage
 
 pytestmark = pytest.mark.asyncio
@@ -128,6 +130,50 @@ async def test_user_and_project_member_lists_expose_the_same_protected_avatar(ap
     assert next(user for user in members.json() if user['user_id'] == ids['outsider'])['avatar_url'] == url
     client.cookies.clear()
     assert (await client.get('https://test.local'+url)).status_code == 401
+
+
+async def test_actor_avatar_visible_to_recipient_until_owner_removes_it(api, monkeypatch):
+    client, ids = api
+    await old_avatar(ids)
+    async with aclosing(app.dependency_overrides[get_db]()) as stream:
+        db = await anext(stream)
+        db.add(Notification(user_id=ids['outsider'], actor_id=ids['admin'], project_id=ids['project'],
+                            type=NotificationType.MENTION, context_data={'project_id': ids['project'], 'endpoint_path': '/example'}))
+        await db.commit()
+    image = picture()
+    monkeypatch.setattr(MinioStorage, 'download_bytes', lambda self, key: image)
+    remove = Mock()
+    monkeypatch.setattr(MinioStorage, 'delete', remove)
+    client.cookies.set('access_token', create_access_token(ids['outsider']))
+    event = (await client.get('notifications')).json()['items'][0]['context']
+    assert event['commenter_username'] == 'tester' and event['endpoint_path'] == '/example'
+    url = 'https://test.local' + event['actor_avatar_url']
+    assert (await client.get(url)).content == image
+    assert (await client.delete(f"users/{ids['admin']}/avatar")).status_code == 405
+    assert (await client.delete('users/me/avatar')).json()['avatar_url'] is None
+    remove.assert_not_called()
+
+    client.cookies.set('access_token', create_access_token(ids['admin']))
+    for _ in range(2):
+        deleted = await client.delete('users/me/avatar')
+        assert deleted.status_code == 200 and deleted.json()['avatar_url'] is None
+    remove.assert_called_once_with('old-avatar')
+    client.cookies.set('access_token', create_access_token(ids['outsider']))
+    assert (await client.get(url)).status_code == 404
+    event = (await client.get('notifications')).json()['items'][0]['context']
+    assert event['actor_avatar_url'] is None and event['commenter_username'] == 'tester'
+
+
+async def test_avatar_delete_storage_failure_preserves_photo_for_retry(api, monkeypatch):
+    client, ids = api
+    await old_avatar(ids)
+    remove = Mock(side_effect=[OSError('internal storage detail'), None])
+    monkeypatch.setattr(MinioStorage, 'delete', remove)
+    failed = await client.delete('users/me/avatar')
+    assert failed.status_code == 503 and failed.json()['code'] == 'storage_unavailable'
+    assert 'internal storage detail' not in failed.text
+    assert (await client.get('users/me')).json()['avatar_url']
+    assert (await client.delete('users/me/avatar')).json()['avatar_url'] is None
 
 
 async def test_seeded_preview_user_is_serializable_and_repeatable(api, monkeypatch):

@@ -74,11 +74,11 @@
 | TC-USER-001 | UserCreate отклоняет короткий пароль | — | `UserCreate(username, email, password="short")` (`tests/test_schemas.py`) | `pydantic.ValidationError` | Реализован |
 | TC-USER-002 | UserCreate принимает роль admin | — | `UserCreate(..., role="admin")` (`tests/test_additional_validations.py`) | `payload.role.value == "admin"` | Реализован |
 | TC-USER-003 | Admin не может менять email другого пользователя | Целевой user existing | `UserService.update_user(user_id, {"email": "new@..."}, actor_id=other)` (`tests/test_user_service_security.py`) | `ValidationError("не может менять email")` | Реализован |
-| TC-USER-004 | Аватар: запрет просмотра чужого аватара пентестером | requester role=PENTESTER, target_id != requester.id | `UserService.ensure_can_view_avatar(requester, target_id)` | `ForbiddenError("чужого аватара")` | Реализован |
+| TC-USER-004 | Просмотр аватара автора уведомления | Авторизованный пентестер | GET по `context.actor_avatar_url` | 200 и изображение. После удаления владельцем — 404 | Реализован |
 | TC-USER-005 | Создание admin / pentester через POST /users | Логин admin | POST `/api/v1/users` с разными ролями | 201, поля пользователя без `password_hash` | Запланирован |
 | TC-USER-006 | Reset password (admin) генерирует временный пароль и письмо | Admin авторизован | PATCH `/api/v1/users/{user_id}/password` | 200, `ok=true`, `email_sent_to=<email>`, опционально `mail_preview_url`; активные refresh-токены отозваны | Запланирован |
 | TC-USER-007 | Self-update profile (PATCH /users/me) меняет full_name/tags | Любой пользователь | PATCH `/api/v1/users/me` с `{full_name, tags}` | 200, обновлённый профиль | Запланирован |
-| TC-USER-008 | Загрузка аватара POST /users/me/avatar | Авторизован | POST `/api/v1/users/me/avatar` с файлом изображения | 200, `avatar_url` обновлён | Запланирован |
+| TC-USER-008 | Загрузка аватара POST /users/me/avatar | Авторизован | POST `/api/v1/users/me/avatar` с файлом изображения | 200, `avatar_url` обновлён | Реализован |
 | TC-USER-009 | Самоудаление запрещено (DELETE /users/{self_id}) | Admin | DELETE `/api/v1/users/{admin_id}` под admin | 400/403 | Запланирован |
 | TC-USER-010 | Listing пользователей доступен только admin | Pentester | GET `/api/v1/users` без admin прав | 403 ForbiddenError | Запланирован |
 | TC-USER-011 | Смена собственного пароля требует current_password | Любой пользователь | PATCH `/api/v1/users/me/password` с неверным текущим | 400/403 ValidationError | Запланирован |
@@ -360,7 +360,8 @@
 | `backend/tests/test_security.py` | 4 | TC-AUTH-001..004 |
 | `backend/tests/test_auth_cookies.py` | 2 | TC-AUTH-005, TC-AUTH-006 |
 | `backend/tests/test_dependencies.py` | 5 | TC-AUTH-007..011 |
-| `backend/tests/test_user_service_security.py` | 3 | TC-AUTH-019, TC-USER-003, TC-USER-004 |
+| `backend/tests/test_user_service_security.py` | 1 | TC-USER-003 |
+| `backend/tests/api/test_avatars.py` | — | TC-USER-004, TC-USER-008 |
 | `backend/tests/test_project_service.py` | 5 | TC-PROJ-001..006 |
 | `backend/tests/test_project_note_service.py` | 2 | TC-NOTE-001, TC-NOTE-002 |
 | `backend/tests/test_asset_service.py` | 7 | TC-ASSET-001..006, TC-JIRA-001 |

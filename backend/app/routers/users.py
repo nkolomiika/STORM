@@ -122,6 +122,18 @@ async def upload_my_avatar(
     return UserOut.model_validate(user)
 
 
+@router.delete("/me/avatar", response_model=UserOut)
+async def delete_my_avatar(
+    request: Request,
+    _: None = Depends(enforce_csrf),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> UserOut:
+    """Удаляет аватар владельца сессии и возвращает обновлённый профиль."""
+    user = await UserService(db).delete_avatar(current_user.id, get_client_ip(request))
+    return UserOut.model_validate(user)
+
+
 @router.get("", response_model=dict)
 async def list_users(
     page: int = Query(1, ge=1),
@@ -236,13 +248,11 @@ async def get_user(
 @router.get("/{user_id}/avatar")
 async def get_user_avatar(
     user_id: int,
-    current_user: User = Depends(get_current_user),
+    _: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
-    """Возвращает аватар пользователя."""
-    service = UserService(db)
-    service.ensure_can_view_avatar(current_user, user_id)
-    user, content = await service.download_avatar(user_id)
+    """Возвращает изображение профиля авторизованному пользователю рабочего пространства."""
+    user, content = await UserService(db).download_avatar(user_id)
     return Response(content=content, media_type=user.avatar_content_type or "application/octet-stream")
 
 

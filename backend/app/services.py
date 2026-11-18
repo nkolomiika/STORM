@@ -30,7 +30,7 @@ from PIL import Image as PillowImage, ImageOps, UnidentifiedImageError
 from sqlalchemy import Select, and_, delete, func, or_, select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import load_only, selectinload
 from sqlalchemy.orm.attributes import set_committed_value
 
 from app import notification_events
@@ -779,11 +779,6 @@ class UserService:
             logging.getLogger('storm.mail').warning('mail_not_configured enabled=%s host_present=%s', settings.mail_enabled, bool(settings.smtp_host.strip()))
             raise ServiceUnavailableError('Отправка писем пока не настроена. Обратитесь к администратору.', 'mail_not_configured')
 
-    @staticmethod
-    def ensure_can_view_avatar(requester: User, target_user_id: int) -> None:
-        if requester.role != UserRole.ADMIN and requester.id != target_user_id:
-            raise ForbiddenError("Недостаточно прав для просмотра чужого аватара")
-
     async def _ensure_unique_identity(
         self,
         *,
@@ -1424,9 +1419,15 @@ class UserService:
         await self.db.refresh(user)
         return user
 
+    async def _lock_avatar_owner(self, user_id: int) -> User:
+        """Загружает актуальный ключ под блокировкой строки для смены или удаления фото."""
+        user = await self.db.get(User, user_id, with_for_update=True, populate_existing=True)
+        if user is None:
+            raise NotFoundError("User not found")
+        return user
+
     async def upload_avatar(self, user_id: int, upload: UploadFile, ip_address: str | None = None) -> User:
         """Проверяет реальное изображение; прежний аватар удаляет после сохранения нового."""
-        user = await self.get_user(user_id)
         content = await read_upload(upload, 5 * 1024 * 1024)
         try:
             with PillowImage.open(BytesIO(content)) as image:
@@ -1436,6 +1437,7 @@ class UserService:
                 image.verify()
         except (ValueError, OSError, UnidentifiedImageError, PillowImage.DecompressionBombError) as exc:
             raise ValidationError('Аватар должен быть корректным изображением PNG, JPEG, WEBP или GIF, не более 16 мегапикселей') from exc
+        user = await self._lock_avatar_owner(user_id)
         previous_key = user.avatar_minio_key
         safe_name = _sanitize_filename(upload.filename, fallback="avatar.bin")
         try:
@@ -1465,6 +1467,28 @@ class UserService:
                 await asyncio.to_thread(self.storage.delete, previous_key)
             except (S3Error, StorageHTTPError, OSError):
                 logging.getLogger('storm.storage').warning('avatar_previous_cleanup_failed user_id=%s', user_id)
+        return user
+
+    async def delete_avatar(self, user_id: int, ip_address: str | None = None) -> User:
+        """Удаляет сохранённое фото владельца. Повторный вызов возвращает тот же профиль."""
+        user = await self._lock_avatar_owner(user_id)
+        object_key = user.avatar_minio_key
+        if not object_key:
+            return user
+        user.avatar_minio_bucket = None
+        user.avatar_minio_key = None
+        user.avatar_content_type = None
+        user.avatar_uploaded_at = None
+        await self.audit.log("FILE_DELETE", user_id=user_id, entity_type="user_avatar", entity_id=user_id,
+                             ip_address=ip_address, commit=False)
+        try:
+            await asyncio.to_thread(self.storage.delete, object_key)
+        except (S3Error, StorageHTTPError, OSError) as exc:
+            await self.db.rollback()
+            logging.getLogger('storm.storage').warning('avatar_delete_failed user_id=%s error_type=%s', user_id, type(exc).__name__)
+            raise ServiceUnavailableError('Не удалось удалить аватар. Попробуйте позже.', 'storage_unavailable') from exc
+        await self.db.commit()
+        await self.db.refresh(user)
         return user
 
     async def download_avatar(self, user_id: int) -> tuple[User, bytes]:
@@ -4458,6 +4482,7 @@ class NotificationService:
     async def _contexts(self, notifications: list[Notification]) -> dict[int, NotificationContext]:
         """Контекст только текущей страницы, общими запросами для каждого типа."""
         contexts: dict[int, NotificationContext] = {}
+        actor_fields = load_only(User.username, User.avatar_minio_key, User.avatar_uploaded_at)
         comment_ids = {item.comment_id for item in notifications if item.comment_id}
         comment_contexts: dict[int, NotificationContext] = {}
         if comment_ids:
@@ -4469,63 +4494,66 @@ class NotificationService:
                        .correlate(Vulnerability).limit(1).scalar_subquery())
             rows = (await self.db.execute(
                 select(Comment.id, Vulnerability.id, Vulnerability.title,
-                       Vulnerability.project_id, User.username, host_id)
+                       Vulnerability.project_id, User, host_id)
+                .select_from(Comment).options(actor_fields)
                 .join(Vulnerability, Vulnerability.id == Comment.vulnerability_id)
                 .join(User, User.id == Comment.user_id)
                 .where(Comment.id.in_(comment_ids))
             )).all()
-            for comment_id, vuln_id, title, project_id, username, linked_host_id in rows:
+            for comment_id, vuln_id, title, project_id, author, linked_host_id in rows:
                 comment_contexts[comment_id] = NotificationContext(
                     vulnerability_id=vuln_id, vulnerability_title=title,
-                    project_id=project_id, host_id=linked_host_id, commenter_username=username,
+                    project_id=project_id, host_id=linked_host_id, commenter_username=author.username,
+                    actor_avatar_url=author.avatar_url,
                 )
         note_comment_ids = {item.note_comment_id for item in notifications if not item.comment_id and item.note_comment_id}
         note_contexts: dict[int, NotificationContext] = {}
         if note_comment_ids:
             rows = (await self.db.execute(
                 select(ProjectNoteComment.id, ProjectNote.id, ProjectNote.title,
-                       ProjectNote.project_id, User.username)
+                       ProjectNote.project_id, User)
+                .select_from(ProjectNoteComment).options(actor_fields)
                 .join(ProjectNote, ProjectNote.id == ProjectNoteComment.note_id)
                 .join(User, User.id == ProjectNoteComment.user_id)
                 .where(ProjectNoteComment.id.in_(note_comment_ids))
             )).all()
-            for comment_id, note_id, title, project_id, username in rows:
+            for comment_id, note_id, title, project_id, author in rows:
                 note_contexts[comment_id] = NotificationContext(
                     note_id=note_id, note_title=title, project_id=project_id,
-                    commenter_username=username,
+                    commenter_username=author.username, actor_avatar_url=author.avatar_url,
                 )
         event_ids = [item.id for item in notifications
                      if not item.comment_id and not item.note_comment_id
-                     and (item.project_id is not None or item.vulnerability_id is not None)]
+                     and (item.project_id is not None or item.vulnerability_id is not None or item.actor_id is not None)]
         if event_ids:
             # При наличии находки проект берётся из неё, иначе из уведомления.
             project_id = func.coalesce(Vulnerability.project_id, Notification.project_id)
             rows = (await self.db.execute(
                 select(Notification.id, Notification.vulnerability_id, Vulnerability.title,
-                       project_id, Project.name, User.username, Notification.status)
+                       project_id, Project.name, User, Notification.status)
+                .select_from(Notification).options(actor_fields)
                 .outerjoin(Vulnerability, Vulnerability.id == Notification.vulnerability_id)
                 .outerjoin(Project, Project.id == project_id)
                 .outerjoin(User, User.id == Notification.actor_id)
                 .where(Notification.id.in_(event_ids))
             )).all()
-            for notification_id, vuln_id, title, linked_project_id, name, username, status in rows:
+            for notification_id, vuln_id, title, linked_project_id, name, actor, status in rows:
                 contexts[notification_id] = NotificationContext(
                     vulnerability_id=vuln_id, vulnerability_title=title,
                     project_id=linked_project_id, project_name=name,
-                    commenter_username=username, status=status,
+                    commenter_username=actor.username if actor else None, status=status,
+                    actor_avatar_url=actor.avatar_url if actor else None,
                 )
         for item in notifications:
+            context = comment_contexts.get(item.comment_id) or note_contexts.get(item.note_comment_id) or contexts.get(item.id)
             if item.context_data:
-                contexts[item.id] = NotificationContext.model_validate(item.context_data)
-                continue
-            if item.comment_id:
-                context = comment_contexts.get(item.comment_id)
-                if context is not None:
-                    contexts[item.id] = context
-            elif item.note_comment_id:
-                context = note_contexts.get(item.note_comment_id)
-                if context is not None:
-                    contexts[item.id] = context
+                snapshot = NotificationContext.model_validate(item.context_data)
+                snapshot.actor_avatar_url = context.actor_avatar_url if context else None
+                if context and context.commenter_username:
+                    snapshot.commenter_username = context.commenter_username
+                context = snapshot
+            if context is not None:
+                contexts[item.id] = context
         return contexts
 
     async def list(self, user_id: int, page: int, size: int, is_read: bool | None) -> tuple[list[NotificationOut], int]:

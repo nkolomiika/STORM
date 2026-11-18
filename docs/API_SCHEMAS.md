@@ -735,6 +735,7 @@ Union не годится: pydantic должен знать точный тип 
 | `project_name` | `string \| null` | нет | — |
 | `host_id` | `integer \| null` | нет | — |
 | `commenter_username` | `string \| null` | нет | — |
+| `actor_avatar_url` | `string \| null` | нет | — |
 | `status` | `string \| null` | нет | — |
 
 ## NotificationOut

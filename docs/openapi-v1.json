@@ -1592,6 +1592,70 @@
             }
           }
         }
+      },
+      "delete": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Delete My Avatar",
+        "description": "Удаляет аватар владельца сессии и возвращает обновлённый профиль.",
+        "operationId": "delete_my_avatar_api_v1_users_me_avatar_delete",
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Origin"
+            }
+          },
+          {
+            "name": "access_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Access Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/users": {
@@ -2231,7 +2295,7 @@
           "users"
         ],
         "summary": "Get User Avatar",
-        "description": "Возвращает аватар пользователя.",
+        "description": "Возвращает изображение профиля авторизованному пользователю рабочего пространства.",
         "operationId": "get_user_avatar_api_v1_users__user_id__avatar_get",
         "parameters": [
           {
@@ -14086,6 +14150,17 @@
               }
             ],
             "title": "Commenter Username"
+          },
+          "actor_avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Avatar Url"
           },
           "status": {
             "anyOf": [

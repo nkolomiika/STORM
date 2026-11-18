@@ -92,7 +92,7 @@ class User(Base, TimestampMixin):
     def avatar_url(self) -> str | None:
         if not self.avatar_minio_key:
             return None
-        version = int(self.avatar_uploaded_at.timestamp()) if self.avatar_uploaded_at else 0
+        version = int(self.avatar_uploaded_at.timestamp() * 1_000_000) if self.avatar_uploaded_at else 0
         return f"/api/v1/users/{self.id}/avatar?v={version}"
 
 

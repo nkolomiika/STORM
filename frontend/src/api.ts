@@ -367,6 +367,12 @@ export async function uploadMyAvatar(file: File): Promise<User> {
   return data;
 }
 
+/** Удаляет сохранённый аватар владельца сессии и возвращает обновлённый профиль. */
+export async function deleteMyAvatar(): Promise<User> {
+  const { data } = await api.delete<User>("/users/me/avatar");
+  return data;
+}
+
 export async function getProjects(page = 1, size = 20, status?: Project["status"]): Promise<PaginatedResponse<Project>> {
   const { data } = await api.get<PaginatedResponse<Project>>("/projects", { params: { page, size, status } });
   return data;

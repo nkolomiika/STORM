@@ -104,6 +104,7 @@ import {
   getProjectActivity as apiGetProjectActivity,
   listNotifications as apiListNotifications,
   uploadMyAvatar as apiUploadMyAvatar,
+  deleteMyAvatar as apiDeleteMyAvatar,
   listVulnerabilityFiles as apiListVulnFiles,
   uploadVulnerabilityFile as apiUploadVulnFile,
   uploadProjectImage as apiUploadProjectImage,
@@ -1420,7 +1421,7 @@ export function StormApp() {
   const AVATAR_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarAction, setAvatarAction] = useState<"upload" | "delete" | null>(null);
 
   const clearAvatarPick = () => {
     setAvatarPreview((prev) => {
@@ -1449,18 +1450,24 @@ export function StormApp() {
     });
   };
 
-  const submitAvatar = async () => {
-    if (!avatarFile || avatarUploading) return;
-    setAvatarUploading(true);
+  const saveAvatar = async (action: "upload" | "delete") => {
+    if (avatarAction) return;
+    setAvatarAction(action);
     try {
-      const updated = await apiUploadMyAvatar(avatarFile);
-      setUser(updated); // avatar_url меняется → круги по всему интерфейсу обновятся
+      let updated;
+      if (action === "upload") {
+        if (!avatarFile) return;
+        updated = await apiUploadMyAvatar(avatarFile);
+      } else {
+        updated = await apiDeleteMyAvatar();
+      }
+      setUser(updated);
       clearAvatarPick();
-      pushToast(t("Avatar updated"), "success");
+      pushToast(action === "upload" ? t("Avatar updated") : t("Avatar removed"), "success");
     } catch (err) {
-      pushToast(getApiErrorMessage(err, "Couldn't upload avatar"), "error");
+      pushToast(getApiErrorMessage(err, action === "upload" ? t("Couldn't upload avatar") : t("Couldn't remove avatar")), "error");
     } finally {
-      setAvatarUploading(false);
+      setAvatarAction(null);
     }
   };
 
@@ -3979,6 +3986,7 @@ export function StormApp() {
     return {
       key: n.id,
       initials: avatarLetter(who),
+      avatarUrl: ctx?.actor_avatar_url,
       avBg: NOTIF_AVATAR_COLORS[n.id % NOTIF_AVATAR_COLORS.length],
       user: who === "System" ? t("System") : `@${who}`,
       action: row.action,
@@ -6876,11 +6884,14 @@ export function StormApp() {
         <div style={{ display: "flex", alignItems: "center", gap: 28 }}>
           {meAvatar(84, 30, meInitials[0], avatarPreview || (authUser?.avatar_url ?? null))}
           <div style={{ flex: 1 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <input id="pfFileInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif" style={{ display: "none" }} onChange={onAvatarPick} />
+            <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+              <input disabled={avatarAction !== null} id="pfFileInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif" style={{ display: "none" }} onChange={onAvatarPick} />
               <label htmlFor="pfFileInput" className="clk" style={{ display: "inline-flex", alignItems: "center", gap: 8, height: 42, padding: "0 18px", border: "1px solid var(--st-border)", borderRadius: 11, background: "var(--st-surface)", font: "700 13px Inter,sans-serif", color: "var(--st-text-2)", cursor: "pointer" }}><Icon name="image" size={15} />{t("Choose file")}</label>
-              <button className="clk avatar-upload" disabled={!avatarFile || avatarUploading} onClick={submitAvatar} style={{ display: "inline-flex", alignItems: "center", gap: 8, height: 42, padding: "0 18px", border: "none", borderRadius: 11, background: !avatarFile || avatarUploading ? "var(--st-accent-muted)" : "var(--st-accent)", color: "#fff", font: "700 13px Inter,sans-serif", cursor: !avatarFile || avatarUploading ? "not-allowed" : "pointer" }}><Icon name="upload" size={15} color="currentColor" />{avatarUploading ? t("Uploading…") : t("Upload")}</button>
-              {avatarFile && !avatarUploading && (
+              <button className="clk avatar-upload" disabled={!avatarFile || avatarAction !== null} onClick={() => void saveAvatar("upload")} style={{ display: "inline-flex", alignItems: "center", gap: 8, height: 42, padding: "0 18px", border: "none", borderRadius: 11, background: !avatarFile || avatarAction !== null ? "var(--st-accent-muted)" : "var(--st-accent)", color: "#fff", font: "700 13px Inter,sans-serif", cursor: !avatarFile || avatarAction !== null ? "not-allowed" : "pointer" }}><Icon name="upload" size={15} color="currentColor" />{avatarAction === "upload" ? t("Uploading…") : t("Upload")}</button>
+              {authUser?.avatar_url && !avatarFile && (
+                <Tip label={t("Remove avatar")}><button type="button" className="actbtn del" aria-label={t("Remove avatar")} disabled={avatarAction !== null} onClick={() => void saveAvatar("delete")}><Icon name="trash" size={16} /></button></Tip>
+              )}
+              {avatarFile && avatarAction === null && (
                 <button className="clk" onClick={clearAvatarPick} style={{ display: "inline-flex", alignItems: "center", height: 42, padding: "0 14px", border: "1px solid var(--st-border)", borderRadius: 11, background: "var(--st-surface)", font: "700 13px Inter,sans-serif", color: "var(--st-text-3)", cursor: "pointer" }}>{t("Cancel")}</button>
               )}
             </div>
@@ -7697,7 +7708,7 @@ export function StormApp() {
           <div style={{ flex: 1, overflow: "auto", padding: 6 }}>
             {notifs.map((n) => (
               <div key={n.key} className="notifitem clk" onClick={n.onClick} style={{ display: "flex", gap: 13, padding: "14px 16px", borderRadius: 12, alignItems: "flex-start" }}>
-                <div style={{ width: 36, height: 36, flex: "none", borderRadius: "50%", background: n.avBg, color: "var(--st-on-accent)", display: "flex", alignItems: "center", justifyContent: "center", font: "700 12px 'JetBrains Mono',monospace" }}>{n.initials}</div>
+                <UserAvatar name={n.user} src={n.avatarUrl} initials={n.initials} size={36} background={n.avBg} />
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div style={{ fontSize: 13.5, color: "var(--st-text)", lineHeight: 1.45 }}>
                     <span className="mono" style={{ color: "var(--st-accent)", fontWeight: 600 }}>{n.user}</span> {n.action}{" "}

@@ -201,6 +201,7 @@ vi.mock("../api", async (importOriginal) => {
     /* Empty by default: the bell renders project and finding names, and a populated
        panel would collide with the same names in the main view. The notification
        tests below opt in with mockResolvedValue. */
+    deleteMyAvatar: vi.fn(),
     listNotifications: vi.fn(async () => ({ items: [], total: 0, page: 1, size: 20, pages: 1 })),
     markNotificationRead: vi.fn(async () => undefined),
     listAgentTokens: vi.fn(async () => [mkToken(1, "CI pipeline", "storm_ci"), mkToken(2, "Slack alerts bot", "storm_sl")]),
@@ -911,6 +912,17 @@ describe("StormApp (design prototype port)", () => {
     fireEvent.click(image.closest('.clk')!);
     const menu = document.querySelector('.menu.open') as HTMLElement;
     expect(within(menu).getByRole('img', { name: 'admin' })).toHaveAttribute('src', '/api/v1/users/1/avatar?v=2');
+  });
+
+  it('removes the saved profile picture and shows the username letter', async () => {
+    const profile = useAuthStore.getState().user!;
+    useAuthStore.setState({ user: { ...profile, avatar_url: '/api/v1/users/1/avatar?v=1' } });
+    vi.mocked(api.deleteMyAvatar).mockResolvedValueOnce({ ...profile, avatar_url: null });
+    render(<MemoryRouter initialEntries={['/profile']}><StormApp /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove avatar' }));
+    await waitFor(() => expect(useAuthStore.getState().user?.avatar_url).toBeNull());
+    expect(document.querySelector('header .user-avatar')?.textContent).toBe('A');
+    expect(screen.queryByRole('button', { name: 'Remove avatar' })).not.toBeInTheDocument();
   });
 
   it('renders saved avatars in the workspace list and uses the username letter in the header', async () => {
@@ -1731,7 +1743,7 @@ describe("StormApp (design prototype port)", () => {
         {
           id: 1, type: "mention", comment_id: 5, note_comment_id: null, is_read: false,
           created_at: "2026-07-10T00:00:00Z",
-          context: { ...ctx, vulnerability_id: 71, vulnerability_title: "IDOR on GET /orders/{id}", host_id: 11, commenter_username: "alice" },
+          context: { ...ctx, vulnerability_id: 71, vulnerability_title: "IDOR on GET /orders/{id}", host_id: 11, commenter_username: "alice", actor_avatar_url: "/api/v1/users/2/avatar?v=2" },
         },
         { id: 2, type: "project_member_added", comment_id: null, note_comment_id: null, is_read: false, created_at: "2026-07-10T00:00:00Z", context: { ...ctx } },
         {
@@ -1778,6 +1790,7 @@ describe("StormApp (design prototype port)", () => {
     mockNotifications();
     render(<MemoryRouter><StormApp /></MemoryRouter>);
     expect(await screen.findByText("mentioned you in")).toBeInTheDocument();
+    expect(within(document.querySelector(".notifpanel") as HTMLElement).getByRole("img", { name: "@alice" })).toHaveAttribute("src", "/api/v1/users/2/avatar?v=2");
     expect(screen.getByText("added you to")).toBeInTheDocument();
     expect(screen.getByText("set your finding to Cancelled —")).toBeInTheDocument();
     expect(screen.getByText("changed the project status to Freeze —")).toBeInTheDocument();
