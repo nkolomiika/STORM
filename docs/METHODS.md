@@ -11,7 +11,7 @@
 | `backend/app/auth_limits.py` | 4 | [Методы](reference/backend/app/auth_limits.py.md) |
 | `backend/app/config.py` | 15 | [Методы](reference/backend/app/config.py.md) |
 | `backend/app/database.py` | 1 | [Методы](reference/backend/app/database.py.md) |
-| `backend/app/dependencies.py` | 9 | [Методы](reference/backend/app/dependencies.py.md) |
+| `backend/app/dependencies.py` | 10 | [Методы](reference/backend/app/dependencies.py.md) |
 | `backend/app/endpoint_comments.py` | 5 | [Методы](reference/backend/app/endpoint_comments.py.md) |
 | `backend/app/endpoint_fields.py` | 1 | [Методы](reference/backend/app/endpoint_fields.py.md) |
 | `backend/app/entity_access.py` | 2 | [Методы](reference/backend/app/entity_access.py.md) |
@@ -42,7 +42,7 @@
 | `backend/app/oidc.py` | 10 | [Методы](reference/backend/app/oidc.py.md) |
 | `backend/app/pagination.py` | 2 | [Методы](reference/backend/app/pagination.py.md) |
 | `backend/app/public_errors.py` | 2 | [Методы](reference/backend/app/public_errors.py.md) |
-| `backend/app/reports/word_builder.py` | 126 | [Методы](reference/backend/app/reports/word_builder.py.md) |
+| `backend/app/reports/word_builder.py` | 127 | [Методы](reference/backend/app/reports/word_builder.py.md) |
 | `backend/app/routers/agent_tokens.py` | 3 | [Методы](reference/backend/app/routers/agent_tokens.py.md) |
 | `backend/app/routers/assets.py` | 27 | [Методы](reference/backend/app/routers/assets.py.md) |
 | `backend/app/routers/audit_logs.py` | 1 | [Методы](reference/backend/app/routers/audit_logs.py.md) |
@@ -61,17 +61,17 @@
 | `backend/app/routers/scanner.py` | 6 | [Методы](reference/backend/app/routers/scanner.py.md) |
 | `backend/app/routers/task_tracker.py` | 2 | [Методы](reference/backend/app/routers/task_tracker.py.md) |
 | `backend/app/routers/users.py` | 23 | [Методы](reference/backend/app/routers/users.py.md) |
-| `backend/app/routers/v2_agent.py` | 12 | [Методы](reference/backend/app/routers/v2_agent.py.md) |
+| `backend/app/routers/v2_agent.py` | 21 | [Методы](reference/backend/app/routers/v2_agent.py.md) |
 | `backend/app/routers/vulnerabilities.py` | 10 | [Методы](reference/backend/app/routers/vulnerabilities.py.md) |
 | `backend/app/routers/websocket.py` | 5 | [Методы](reference/backend/app/routers/websocket.py.md) |
 | `backend/app/routers/works.py` | 6 | [Методы](reference/backend/app/routers/works.py.md) |
 | `backend/app/scanner_sandbox.py` | 2 | [Методы](reference/backend/app/scanner_sandbox.py.md) |
-| `backend/app/schemas.py` | 15 | [Методы](reference/backend/app/schemas.py.md) |
+| `backend/app/schemas.py` | 16 | [Методы](reference/backend/app/schemas.py.md) |
 | `backend/app/secret_rotation.py` | 2 | [Методы](reference/backend/app/secret_rotation.py.md) |
 | `backend/app/security.py` | 22 | [Методы](reference/backend/app/security.py.md) |
-| `backend/app/services.py` | 247 | [Методы](reference/backend/app/services.py.md) |
+| `backend/app/services.py` | 252 | [Методы](reference/backend/app/services.py.md) |
 | `backend/app/storage/minio_client.py` | 7 | [Методы](reference/backend/app/storage/minio_client.py.md) |
-| `backend/app/task_tracker.py` | 9 | [Методы](reference/backend/app/task_tracker.py.md) |
+| `backend/app/task_tracker.py` | 16 | [Методы](reference/backend/app/task_tracker.py.md) |
 | `backend/app/tracker_metadata.py` | 7 | [Методы](reference/backend/app/tracker_metadata.py.md) |
 | `backend/app/tracker_spaces.py` | 2 | [Методы](reference/backend/app/tracker_spaces.py.md) |
 | `backend/app/worker/mail_worker.py` | 5 | [Методы](reference/backend/app/worker/mail_worker.py.md) |
@@ -79,7 +79,7 @@
 | `backend/app/works.py` | 25 | [Методы](reference/backend/app/works.py.md) |
 | `backend/app/ws_manager.py` | 10 | [Методы](reference/backend/app/ws_manager.py.md) |
 | `frontend/src/StormRoot.tsx` | 1 | [Методы](reference/frontend/src/StormRoot.tsx.md) |
-| `frontend/src/api.ts` | 103 | [Методы](reference/frontend/src/api.ts.md) |
+| `frontend/src/api.ts` | 104 | [Методы](reference/frontend/src/api.ts.md) |
 | `frontend/src/cvss.ts` | 3 | [Методы](reference/frontend/src/cvss.ts.md) |
 | `frontend/src/errorMessages.ts` | 2 | [Методы](reference/frontend/src/errorMessages.ts.md) |
 | `frontend/src/markdownUrlTransform.ts` | 2 | [Методы](reference/frontend/src/markdownUrlTransform.ts.md) |
@@ -89,7 +89,7 @@
 | `frontend/src/storm/PasswordInput.tsx` | 1 | [Методы](reference/frontend/src/storm/PasswordInput.tsx.md) |
 | `frontend/src/storm/ResizableImage.ts` | 21 | [Методы](reference/frontend/src/storm/ResizableImage.ts.md) |
 | `frontend/src/storm/StormActivate.tsx` | 2 | [Методы](reference/frontend/src/storm/StormActivate.tsx.md) |
-| `frontend/src/storm/StormApp.tsx` | 325 | [Методы](reference/frontend/src/storm/StormApp.tsx.md) |
+| `frontend/src/storm/StormApp.tsx` | 326 | [Методы](reference/frontend/src/storm/StormApp.tsx.md) |
 | `frontend/src/storm/StormAppSecFields.tsx` | 7 | [Методы](reference/frontend/src/storm/StormAppSecFields.tsx.md) |
 | `frontend/src/storm/StormDatePicker.tsx` | 9 | [Методы](reference/frontend/src/storm/StormDatePicker.tsx.md) |
 | `frontend/src/storm/StormDocs.tsx` | 9 | [Методы](reference/frontend/src/storm/StormDocs.tsx.md) |
@@ -101,6 +101,8 @@
 | `frontend/src/storm/StormSelect.tsx` | 3 | [Методы](reference/frontend/src/storm/StormSelect.tsx.md) |
 | `frontend/src/storm/StormToaster.tsx` | 1 | [Методы](reference/frontend/src/storm/StormToaster.tsx.md) |
 | `frontend/src/storm/SwaggerEndpointImport.tsx` | 5 | [Методы](reference/frontend/src/storm/SwaggerEndpointImport.tsx.md) |
+| `frontend/src/storm/Tip.tsx` | 3 | [Методы](reference/frontend/src/storm/Tip.tsx.md) |
+| `frontend/src/storm/UserAvatar.tsx` | 1 | [Методы](reference/frontend/src/storm/UserAvatar.tsx.md) |
 | `frontend/src/storm/docs/index.ts` | 1 | [Методы](reference/frontend/src/storm/docs/index.ts.md) |
 | `frontend/src/storm/hostIndex.ts` | 1 | [Методы](reference/frontend/src/storm/hostIndex.ts.md) |
 | `frontend/src/storm/i18n.ts` | 6 | [Методы](reference/frontend/src/storm/i18n.ts.md) |
@@ -112,4 +114,4 @@
 | `frontend/src/storm/theme.ts` | 5 | [Методы](reference/frontend/src/storm/theme.ts.md) |
 | `frontend/src/storm/useReconJobPolling.ts` | 1 | [Методы](reference/frontend/src/storm/useReconJobPolling.ts.md) |
 
-Всего: backend **897**, frontend **556**, модулей **103**.
+Всего: backend **921**, frontend **562**, модулей **105**.

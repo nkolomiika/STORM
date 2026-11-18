@@ -3,6 +3,7 @@ from contextlib import aclosing
 from io import BytesIO
 from unittest.mock import Mock
 from uuid import uuid4
+from datetime import UTC, datetime
 
 from PIL import Image
 from minio.error import S3Error
@@ -10,7 +11,7 @@ import pytest
 
 from app.database import get_db
 from app.main import app
-from app.models import User
+from app.models import ProjectMember, User
 from app.storage.minio_client import MinioStorage
 
 pytestmark = pytest.mark.asyncio
@@ -107,3 +108,43 @@ async def test_note_image_missing_object_and_storage_outage_are_distinct(api, mo
     response = await client.get(f"projects/{ids['project']}/images/{uuid4()}.png/download")
     assert response.status_code == status, response.text
     assert response.json()['request_id'] and 'private' not in response.text
+
+
+async def test_user_and_project_member_lists_expose_the_same_protected_avatar(api):
+    client, ids = api
+    async with aclosing(app.dependency_overrides[get_db]()) as stream:
+        db = await anext(stream)
+        user = await db.get(User, ids['outsider'])
+        user.avatar_minio_key = 'test-avatar-key'
+        user.avatar_uploaded_at = datetime.now(UTC)
+        db.add(ProjectMember(project_id=ids['project'], user_id=user.id))
+        await db.commit()
+        url = user.avatar_url
+    listing = await client.get('users')
+    assert listing.status_code == 200, listing.text
+    assert next(user for user in listing.json()['items'] if user['id'] == ids['outsider'])['avatar_url'] == url
+    members = await client.get(f"projects/{ids['project']}/members")
+    assert members.status_code == 200, members.text
+    assert next(user for user in members.json() if user['user_id'] == ids['outsider'])['avatar_url'] == url
+    client.cookies.clear()
+    assert (await client.get('https://test.local'+url)).status_code == 401
+
+
+async def test_seeded_preview_user_is_serializable_and_repeatable(api, monkeypatch):
+    from scripts.seed_ui_demo import seed_preview_user
+    from sqlalchemy import func, select
+    client, ids = api
+    monkeypatch.setattr(MinioStorage, 'ensure_bucket', lambda *args: None)
+    upload = Mock(return_value='demo-avatar-key')
+    monkeypatch.setattr(MinioStorage, 'upload_bytes', upload)
+    async with aclosing(app.dependency_overrides[get_db]()) as stream:
+        db = await anext(stream)
+        for _ in range(2):
+            await seed_preview_user(db, MinioStorage(), ids['project'])
+            await db.commit()
+        assert await db.scalar(select(func.count()).select_from(User).where(User.username == 'demo.avatar')) == 1
+    upload.assert_called_once()
+    response = await client.get('users')
+    assert response.status_code == 200, response.text
+    user = next(user for user in response.json()['items'] if user['username'] == 'demo.avatar')
+    assert user['avatar_url'] and user['email'] == 'demo.avatar@example.com'

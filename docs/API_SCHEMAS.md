@@ -2,6 +2,17 @@
 
 Сгенерировано из OpenAPI. `required` означает наличие поля; `null` в типе отдельно определяет допустимость пустого значения. Отсутствие поля в PUT не равно явному null: сервисы используют exclude_unset и собственные правила обновления.
 
+## AgentIpAddressCreate
+
+IP агента: привязка к хосту необязательна, адрес строго IPv4/IPv6.
+
+| Поле | Тип | Required | Ограничения/описание |
+| --- | --- | --- | --- |
+| `ip_address` | `string` | да | {"maxLength": 45, "minLength": 1} |
+| `label` | `string \| null` | нет | — |
+| `is_primary` | `boolean` | нет | {"default": false} |
+| `host_id` | `integer \| null` | нет | — |
+
 ## AgentTokenCreate
 
 
@@ -790,6 +801,18 @@ Union не годится: pydantic должен знать точный тип 
 | `size` | `integer` | да | — |
 | `pages` | `integer` | да | — |
 
+## PaginatedResponse_HostIpAddressOut_
+
+
+
+| Поле | Тип | Required | Ограничения/описание |
+| --- | --- | --- | --- |
+| `items` | `list[HostIpAddressOut]` | да | — |
+| `total` | `integer` | да | — |
+| `page` | `integer` | да | — |
+| `size` | `integer` | да | — |
+| `pages` | `integer` | да | — |
+
 ## PaginatedResponse_HostOut_
 
 
@@ -1098,6 +1121,7 @@ Union не годится: pydantic должен знать точный тип 
 | `user_id` | `integer` | да | — |
 | `username` | `string` | да | — |
 | `email` | `string` | да | {"format": "email"} |
+| `avatar_url` | `string \| null` | нет | — |
 | `role` | `UserRole` | да | — |
 | `project_role` | `ProjectRole` | нет | {"default": "pentester"} |
 | `added_at` | `string` | да | {"format": "date-time"} |
@@ -1280,16 +1304,6 @@ Union не годится: pydantic должен знать точный тип 
 | `username` | `string \| null` | нет | — |
 | `reason` | `string \| null` | нет | — |
 
-## ReactivationRequestOut
-
-Ответ на запрос возврата пользователя — с превью письма в dev.
-
-| Поле | Тип | Required | Ограничения/описание |
-| --- | --- | --- | --- |
-| `ok` | `boolean` | нет | {"default": true} |
-| `email_sent_to` | `string` | да | {"format": "email"} |
-| `mail_preview_url` | `string \| null` | нет | — |
-
 ## RefreshResponse
 
 
@@ -1440,6 +1454,8 @@ Union не годится: pydantic должен знать точный тип 
 | `component` | `WorksRefOut \| null` | нет | — |
 | `components` | `list[WorksRefOut]` | нет | — |
 | `is_demo` | `boolean` | нет | {"default": false} |
+| `project_exists` | `boolean` | нет | {"default": false} |
+| `project_id` | `integer \| null` | нет | — |
 | `updated` | `string` | да | — |
 | `created` | `string` | да | — |
 | `url` | `string` | нет | {"default": ""} |
@@ -1456,6 +1472,9 @@ Union не годится: pydantic должен знать точный тип 
 | `items` | `list[TaskTrackerTaskOut]` | да | — |
 | `next_page_token` | `string \| null` | нет | — |
 | `is_last` | `boolean` | нет | {"default": true} |
+| `total` | `integer \| null` | нет | — |
+| `active_total` | `integer \| null` | нет | — |
+| `closed_total` | `integer \| null` | нет | — |
 
 ## TaskTrackerTaskOut
 
@@ -1476,6 +1495,8 @@ Union не годится: pydantic должен знать точный тип 
 | `component` | `WorksRefOut \| null` | нет | — |
 | `components` | `list[WorksRefOut]` | нет | — |
 | `is_demo` | `boolean` | нет | {"default": false} |
+| `project_exists` | `boolean` | нет | {"default": false} |
+| `project_id` | `integer \| null` | нет | — |
 | `updated` | `string` | да | — |
 | `created` | `string` | да | — |
 | `url` | `string \| null` | нет | — |

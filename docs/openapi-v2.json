@@ -157,6 +157,17 @@
             }
           },
           {
+            "name": "origin",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(host|ip|all)$",
+              "default": "host",
+              "title": "Origin"
+            }
+          },
+          {
             "name": "Authorization",
             "in": "header",
             "required": false,
@@ -182,6 +193,73 @@
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response List Agent Hosts Projects  Project Id  Hosts Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "agent-v2"
+        ],
+        "summary": "Create Agent Host",
+        "description": "Создаёт хост с IP-адресами без запуска сканеров или DNS-запросов.",
+        "operationId": "create_agent_host_projects__project_id__hosts_post",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HostCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HostOut"
                 }
               }
             }
@@ -251,6 +329,596 @@
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response Get Agent Host Projects  Project Id  Hosts  Host Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{project_id}/hosts/{host_id}/endpoints": {
+      "get": {
+        "tags": [
+          "agent-v2"
+        ],
+        "summary": "List Agent Endpoints",
+        "description": "Читает эндпоинты хоста, принадлежащего доступному проекту.",
+        "operationId": "list_agent_endpoints_projects__project_id__hosts__host_id__endpoints_get",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "host_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Host Id"
+            }
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EndpointOut"
+                  },
+                  "title": "Response List Agent Endpoints Projects  Project Id  Hosts  Host Id  Endpoints Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "agent-v2"
+        ],
+        "summary": "Create Agent Endpoint",
+        "description": "Сохраняет разобранный запрос эндпоинта; сам HTTP-запрос не отправляется.",
+        "operationId": "create_agent_endpoint_projects__project_id__hosts__host_id__endpoints_post",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "host_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Host Id"
+            }
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EndpointCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EndpointOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{project_id}/hosts/{host_id}/endpoints/{endpoint_id}": {
+      "get": {
+        "tags": [
+          "agent-v2"
+        ],
+        "summary": "Get Agent Endpoint",
+        "description": "Читает один эндпоинт с проверкой всей цепочки проект → хост → эндпоинт.",
+        "operationId": "get_agent_endpoint_projects__project_id__hosts__host_id__endpoints__endpoint_id__get",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "host_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Host Id"
+            }
+          },
+          {
+            "name": "endpoint_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Endpoint Id"
+            }
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EndpointOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{project_id}/ip-addresses": {
+      "get": {
+        "tags": [
+          "agent-v2"
+        ],
+        "summary": "List Agent Ip Addresses",
+        "description": "Читает страницу всех привязок IP проекта, при необходимости по одному хосту.",
+        "operationId": "list_agent_ip_addresses_projects__project_id__ip_addresses_get",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 100,
+              "title": "Size"
+            }
+          },
+          {
+            "name": "host_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Host Id"
+            }
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_HostIpAddressOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "agent-v2"
+        ],
+        "summary": "Create Agent Ip Address",
+        "description": "Добавляет IPv4/IPv6 к хосту либо отдельным активом, не запуская разведку.",
+        "operationId": "create_agent_ip_address_projects__project_id__ip_addresses_post",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentIpAddressCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HostIpAddressOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{project_id}/ip-addresses/{ip_id}": {
+      "get": {
+        "tags": [
+          "agent-v2"
+        ],
+        "summary": "Get Agent Ip Address",
+        "description": "Читает IP проекта с портами и сервисами без обращения к самому адресу.",
+        "operationId": "get_agent_ip_address_projects__project_id__ip_addresses__ip_id__get",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "ip_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Ip Id"
+            }
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HostIpAddressOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{project_id}/credentials": {
+      "get": {
+        "tags": [
+          "agent-v2"
+        ],
+        "summary": "List Agent Credentials",
+        "description": "Читает креды только с отдельным scope; запрещает кэширование ответа с паролями.",
+        "operationId": "list_agent_credentials_projects__project_id__credentials_get",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProjectCredentialOut"
+                  },
+                  "title": "Response List Agent Credentials Projects  Project Id  Credentials Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{project_id}/credentials/{credential_id}": {
+      "get": {
+        "tags": [
+          "agent-v2"
+        ],
+        "summary": "Get Agent Credential",
+        "description": "Читает одну учётную запись проекта; ответ с паролем не кэшируется.",
+        "operationId": "get_agent_credential_projects__project_id__credentials__credential_id__get",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "credential_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Credential Id"
+            }
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectCredentialOut"
                 }
               }
             }
@@ -854,6 +1522,51 @@
   },
   "components": {
     "schemas": {
+      "AgentIpAddressCreate": {
+        "properties": {
+          "ip_address": {
+            "type": "string",
+            "maxLength": 45,
+            "minLength": 1,
+            "title": "Ip Address"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "is_primary": {
+            "type": "boolean",
+            "title": "Is Primary",
+            "default": false
+          },
+          "host_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Host Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "ip_address"
+        ],
+        "title": "AgentIpAddressCreate",
+        "description": "IP агента: привязка к хосту необязательна, адрес строго IPv4/IPv6."
+      },
       "AppSecComponentRef": {
         "properties": {
           "code": {
@@ -906,6 +1619,249 @@
         ],
         "title": "CvssVersion"
       },
+      "EndpointCreate": {
+        "properties": {
+          "path": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path"
+          },
+          "method": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HttpMethod"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "request_raw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Raw"
+          },
+          "query_params": {
+            "items": {
+              "$ref": "#/components/schemas/EndpointQueryParam"
+            },
+            "type": "array",
+            "title": "Query Params"
+          },
+          "request_body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Body"
+          },
+          "request_content_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 127
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Content Type"
+          },
+          "request_headers": {
+            "items": {
+              "$ref": "#/components/schemas/EndpointRequestHeader"
+            },
+            "type": "array",
+            "title": "Request Headers"
+          }
+        },
+        "type": "object",
+        "title": "EndpointCreate"
+      },
+      "EndpointOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "host_id": {
+            "type": "integer",
+            "title": "Host Id"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "method": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HttpMethod"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "query_params": {
+            "items": {
+              "$ref": "#/components/schemas/EndpointQueryParam"
+            },
+            "type": "array",
+            "title": "Query Params"
+          },
+          "request_body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Body"
+          },
+          "request_content_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Content Type"
+          },
+          "request_headers": {
+            "items": {
+              "$ref": "#/components/schemas/EndpointRequestHeader"
+            },
+            "type": "array",
+            "title": "Request Headers"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "host_id",
+          "path",
+          "method",
+          "description",
+          "request_body",
+          "request_content_type",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "EndpointOut"
+      },
+      "EndpointQueryParam": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Name"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "required": {
+            "type": "boolean",
+            "title": "Required",
+            "default": false
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "EndpointQueryParam"
+      },
+      "EndpointRequestHeader": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Name"
+          },
+          "value": {
+            "type": "string",
+            "title": "Value",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "EndpointRequestHeader"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -918,6 +1874,481 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "HostCreate": {
+        "properties": {
+          "ip_address": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 45
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ip Address"
+          },
+          "ip_addresses": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Ip Addresses"
+          },
+          "hostname": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hostname"
+          },
+          "status": {
+            "$ref": "#/components/schemas/HostStatus",
+            "default": "unknown"
+          },
+          "os_type": {
+            "$ref": "#/components/schemas/OsType",
+            "default": "unknown"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "title": "HostCreate"
+      },
+      "HostIpAddressOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "host_id": {
+            "type": "integer",
+            "title": "Host Id"
+          },
+          "ip_address": {
+            "type": "string",
+            "title": "Ip Address"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "is_primary": {
+            "type": "boolean",
+            "title": "Is Primary"
+          },
+          "hostnames": {
+            "items": {
+              "$ref": "#/components/schemas/HostnameResolutionOut"
+            },
+            "type": "array",
+            "title": "Hostnames"
+          },
+          "ports": {
+            "items": {
+              "$ref": "#/components/schemas/PortOut"
+            },
+            "type": "array",
+            "title": "Ports"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "host_id",
+          "ip_address",
+          "label",
+          "is_primary",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "HostIpAddressOut"
+      },
+      "HostOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "project_id": {
+            "type": "integer",
+            "title": "Project Id"
+          },
+          "ip_address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ip Address"
+          },
+          "ip_addresses": {
+            "items": {
+              "$ref": "#/components/schemas/HostIpAddressOut"
+            },
+            "type": "array",
+            "title": "Ip Addresses"
+          },
+          "endpoints": {
+            "items": {
+              "$ref": "#/components/schemas/EndpointOut"
+            },
+            "type": "array",
+            "title": "Endpoints"
+          },
+          "hostname": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hostname"
+          },
+          "status": {
+            "$ref": "#/components/schemas/HostStatus"
+          },
+          "os_type": {
+            "$ref": "#/components/schemas/OsType",
+            "default": "unknown"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "origin": {
+            "type": "string",
+            "title": "Origin",
+            "default": "host"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "project_id",
+          "ip_address",
+          "hostname",
+          "status",
+          "notes",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "HostOut"
+      },
+      "HostStatus": {
+        "type": "string",
+        "enum": [
+          "up",
+          "down",
+          "unknown"
+        ],
+        "title": "HostStatus"
+      },
+      "HostnameResolutionOut": {
+        "properties": {
+          "hostname": {
+            "type": "string",
+            "title": "Hostname"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "confirmed": {
+            "type": "boolean",
+            "title": "Confirmed",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "hostname",
+          "source"
+        ],
+        "title": "HostnameResolutionOut",
+        "description": "Имя, в которое резолвится адрес: провенанс + подтверждение прямым резолвом."
+      },
+      "HttpMethod": {
+        "type": "string",
+        "enum": [
+          "GET",
+          "POST",
+          "PUT",
+          "PATCH",
+          "DELETE",
+          "HEAD",
+          "OPTIONS",
+          "TRACE",
+          "QUERY"
+        ],
+        "title": "HttpMethod"
+      },
+      "OsType": {
+        "type": "string",
+        "enum": [
+          "windows",
+          "linux",
+          "macos",
+          "freebsd",
+          "android",
+          "ios",
+          "other",
+          "unknown"
+        ],
+        "title": "OsType"
+      },
+      "PaginatedResponse_HostIpAddressOut_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/HostIpAddressOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "pages": {
+            "type": "integer",
+            "title": "Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "size",
+          "pages"
+        ],
+        "title": "PaginatedResponse[HostIpAddressOut]"
+      },
+      "PortOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "host_id": {
+            "type": "integer",
+            "title": "Host Id"
+          },
+          "ip_address_id": {
+            "type": "integer",
+            "title": "Ip Address Id"
+          },
+          "port_number": {
+            "type": "integer",
+            "title": "Port Number"
+          },
+          "protocol": {
+            "$ref": "#/components/schemas/Protocol"
+          },
+          "state": {
+            "$ref": "#/components/schemas/PortState"
+          },
+          "http_status": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Http Status"
+          },
+          "services": {
+            "items": {
+              "$ref": "#/components/schemas/ServiceOut"
+            },
+            "type": "array",
+            "title": "Services"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "host_id",
+          "ip_address_id",
+          "port_number",
+          "protocol",
+          "state",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "PortOut"
+      },
+      "PortState": {
+        "type": "string",
+        "enum": [
+          "open",
+          "closed",
+          "filtered"
+        ],
+        "title": "PortState"
+      },
+      "ProjectCredentialOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "project_id": {
+            "type": "integer",
+            "title": "Project Id"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
+          },
+          "password_available": {
+            "type": "boolean",
+            "title": "Password Available",
+            "default": true
+          },
+          "host": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Host"
+          },
+          "created_by": {
+            "type": "integer",
+            "title": "Created By"
+          },
+          "created_by_username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By Username"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "project_id",
+          "username",
+          "password",
+          "host",
+          "created_by",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ProjectCredentialOut"
       },
       "ProjectNoteCreate": {
         "properties": {
@@ -1285,6 +2716,73 @@
           "archived"
         ],
         "title": "ProjectStatus"
+      },
+      "Protocol": {
+        "type": "string",
+        "enum": [
+          "tcp",
+          "udp"
+        ],
+        "title": "Protocol"
+      },
+      "ServiceOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "port_id": {
+            "type": "integer",
+            "title": "Port Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          },
+          "banner": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Banner"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "port_id",
+          "name",
+          "version",
+          "banner",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ServiceOut"
       },
       "Severity": {
         "type": "string",

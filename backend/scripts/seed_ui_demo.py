@@ -6,6 +6,7 @@ Only local PostgreSQL and MinIO are used; no mail or scanning jobs are queued.
 import asyncio
 import hashlib
 import json
+import secrets
 from datetime import UTC, date, datetime, timedelta
 from io import BytesIO
 from pathlib import Path
@@ -19,7 +20,7 @@ from app.database import Base, SessionLocal, engine
 from app.config import get_settings
 from app.tracker_metadata import affected_versions, assignee_identity
 from app.enums import AssetType, CvssVersion, HostStatus, HttpMethod, NotificationType, OsType, PortState, ProjectStatus, Protocol, Severity, UserRole, VulnerabilityStatus
-from app.security import encrypt_secret
+from app.security import encrypt_secret, hash_password
 from app.services import VulnerabilityService
 from app.storage.minio_client import MinioStorage
 
@@ -174,13 +175,15 @@ async def seed_task_units(db, project_id: int, *, target: Path | None = None) ->
     users = list((await db.scalars(select(m.User).where(m.User.is_active.is_(True), m.User.is_locked.is_(False)).order_by(m.User.id).limit(3))).all())
     now = datetime.now(UTC)
     versions = [{'code': str(uuid5(NAMESPACE_URL, f'storm-ui-demo-version-{index}')), 'name': name} for index, name in enumerate(['Platform V Stack 1.0.2', 'Platform V Stack 1.0.2-beta2', 'Platform V Stack 1.0.2-beta.2'])]
+    components = [{'code': str(uuid5(NAMESPACE_URL, 'storm-ui-demo-component-'+name)), 'name': name} for name in ['STAK', 'CORE']]
     statuses = ['Open', 'In progress', 'Problem analysis', 'Need info', 'Paused', 'Resolved', 'Closed', 'Cancelled', 'Sent by mistake']
     titles = ['Внешний периметр — связанный проект', 'Проверка API — несколько версий', 'Тикет без исполнителя и версии', 'Мобильное приложение — три версии', 'Проверка поставлена на паузу', 'Анализ завершён', 'Закрытый запрос на анализ', 'Отменённый запрос', 'Ошибочно направленный запрос']
     units = []
-    for index, status in enumerate(statuses):
+    for index in range(45):
+        status = statuses[index % len(statuses)]
         user = users[index % len(users)]
         selected = [] if index == 2 else versions[:3] if index == 3 else versions[:2] if index == 1 else versions[:1]
-        units.append({'code': f'APPSEC-{900001 + index}', 'summary': f'[DEMO] {titles[index]}', 'suit': {'code': 'assessment', 'name': 'Security assessment'}, 'createdAt': (now-timedelta(days=10+index)).isoformat(), 'updatedAt': (now-timedelta(hours=index)).isoformat(), 'attributes': {'workflow_status': {'name': status}, 'assigned_to': None if index == 2 else {'username': user.username, 'displayName': user.full_name or user.username}, 'affects_version_s_crpv': selected, 'priority': {'name': ['Critical', 'High', 'Medium'][index % 3]}, 'reporter': users[0].username, 'label': ['demo', 'APPSEC']}, 'description': {'type': 'doc', 'content': [{'type': 'paragraph', 'content': [{'type': 'text', 'text': 'Синтетический APPSEC-тикет для проверки списка, карточки и автозаполнения проекта. Все affected versions должны переноситься массивом. Внешний Task Tracker не вызывается.'}]}]}})
+        units.append({'code': f'APPSEC-{900001 + index}', 'summary': f'[DEMO] {titles[index % len(titles)]} · {index+1}', 'suit': {'code': 'assessment', 'name': 'Security assessment'}, 'createdAt': (now-timedelta(days=10+index)).isoformat(), 'updatedAt': (now-timedelta(hours=index)).isoformat(), 'attributes': {'workflow_status': {'name': status}, 'assigned_to': None if index == 2 else {'username': user.username, 'displayName': user.full_name or user.username}, 'affects_version_s_crpv': selected, get_settings().works_appsec_product_code_attribute: {'code': '285902', 'name': 'OST'}, get_settings().works_appsec_component_attribute: components if index == 3 else components[:1], 'priority': {'name': ['Critical', 'High', 'Medium'][index % 3]}, 'reporter': users[0].username, 'label': ['demo', 'APPSEC']}, 'description': {'type': 'doc', 'content': [{'type': 'paragraph', 'content': [{'type': 'text', 'text': 'Синтетический APPSEC-тикет для проверки списка, карточки и автозаполнения проекта. Все affected versions, код продукта и компоненты переносятся из полной карточки. Внешний Task Tracker не вызывается.'}]}]}})
     project = await db.get(m.Project, project_id)
     if not project.appsec_ticket_key and not project.appsec_ticket_url:
         first = units[0]
@@ -190,6 +193,12 @@ async def seed_task_units(db, project_id: int, *, target: Path | None = None) ->
         project.appsec_version_code = project.appsec_versions[0]['code']
         project.appsec_version_name = project.appsec_versions[0]['name']
         project.appsec_assignee, project.appsec_assignee_name = assignee_identity(first['attributes']['assigned_to'])
+    if project.appsec_ticket_key == units[0]['code']:
+        project.appsec_product_code = project.appsec_product_code or '285902'
+        if not project.appsec_components:
+            project.appsec_components = components[:1]
+            project.appsec_component_code = components[0]['code']
+            project.appsec_component_name = components[0]['name']
     target = target or Path(__file__).resolve().parents[1] / '.local' / 'task-tracker-demo.json'
     target.parent.mkdir(parents=True, exist_ok=True)
     temporary = target.with_suffix('.tmp')
@@ -198,12 +207,41 @@ async def seed_task_units(db, project_id: int, *, target: Path | None = None) ->
     return {'demo_tickets': len(units), 'demo_file': str(target)}
 
 
+async def seed_preview_user(db, storage, project_id: int) -> None:
+    """Добавляет отдельного демо-участника с фото, не меняя аватары существующих людей."""
+    user = await db.scalar(select(m.User).where(m.User.username == 'demo.avatar'))
+    if user is None:
+        user = m.User(username='demo.avatar', email='demo.avatar@example.com', role=UserRole.PENTESTER,
+                      password_hash=hash_password(secrets.token_urlsafe(32)))
+        db.add(user)
+        await db.flush()
+    elif user.email == 'demo.avatar@example.invalid':
+        user.email = 'demo.avatar@example.com'
+    if not await db.scalar(select(m.ProjectMember.id).where(m.ProjectMember.project_id == project_id, m.ProjectMember.user_id == user.id)):
+        db.add(m.ProjectMember(project_id=project_id, user_id=user.id))
+    if not user.avatar_minio_key:
+        image = Image.new('RGB', (160, 160), '#2e5fbf')
+        draw = ImageDraw.Draw(image)
+        draw.ellipse((24, 16, 136, 128), fill='#b8d8fa')
+        draw.ellipse((58, 38, 102, 82), fill='#ffffff')
+        draw.ellipse((34, 91, 126, 190), fill='#ffffff')
+        buffer = BytesIO()
+        image.save(buffer, format='PNG')
+        await asyncio.to_thread(storage.ensure_bucket)
+        user.avatar_minio_key = await asyncio.to_thread(storage.upload_bytes, buffer.getvalue(), 'image/png', 'demo-avatar.png')
+        user.avatar_minio_bucket = get_settings().minio_bucket_name
+        user.avatar_content_type = 'image/png'
+        user.avatar_uploaded_at = datetime.now(UTC)
+
+
 async def main() -> None:
     engine.echo = False
     async with SessionLocal() as db:
         async with db.begin():
             result = await seed(db, MinioStorage())
             result.update(await seed_task_units(db, result['project_id']))
+            await seed_preview_user(db, MinioStorage(), result['project_id'])
+            result['tables'] = await table_counts(db)
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
 

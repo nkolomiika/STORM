@@ -20,9 +20,26 @@ Authorization: Bearer <ваш_токен>
 - `GET /api/v2/projects` — проекты, доступные токену: все или из списка допуска (`projects:read`).
 - `GET /api/v2/projects/{id}` — один проект (`projects:read`).
 
-**Хосты и активы** (только чтение)
-- `GET /api/v2/projects/{id}/hosts` — список хостов проекта (`assets:read`).
+**Хосты и активы**
+- `GET /api/v2/projects/{id}/hosts` — список хостов проекта (`assets:read`); `page` начинается с 1, `size` от 1 до 200 (по умолчанию 100). `origin=host` возвращает обычные хосты, `origin=ip` — служебные родители отдельных IP, `origin=all` — оба вида.
 - `GET /api/v2/projects/{id}/hosts/{host_id}` — хост с вложенными сущностями (`assets:read`).
+- `POST /api/v2/projects/{id}/hosts` — добавить хост и его IP (`assets:write`). Нужен `hostname` или хотя бы один IP в `ip_address` / `ip_addresses`.
+- `GET /api/v2/projects/{id}/hosts/{host_id}/endpoints` — эндпоинты хоста (`assets:read`), массив без пагинации.
+- `GET /api/v2/projects/{id}/hosts/{host_id}/endpoints/{endpoint_id}` — один эндпоинт (`assets:read`).
+- `POST /api/v2/projects/{id}/hosts/{host_id}/endpoints` — добавить эндпоинт (`assets:write`). Передайте `path` с необязательным `method` либо полный `request_raw`. Доступны `description`, `query_params`, `request_headers`, `request_body`, `request_content_type`.
+- `GET /api/v2/projects/{id}/ip-addresses` — страница IP с портами и сервисами (`assets:read`). Параметры `page` и `size` как у хостов; необязательный `host_id` фильтрует по хосту проекта.
+- `GET /api/v2/projects/{id}/ip-addresses/{ip_id}` — одна привязка IP (`assets:read`). `ip_id` — числовой ID из ответа, а не текст адреса.
+- `POST /api/v2/projects/{id}/ip-addresses` — добавить IP (`assets:write`): обязательный `ip_address` (IPv4/IPv6), необязательные `host_id`, `label`, `is_primary`.
+
+Без `host_id` для IP создаётся отдельный актив со служебным хостом `origin=ip`; с `host_id` адрес добавляется к существующему хосту этого проекта. Первый адрес становится основным автоматически, а `is_primary=true` переключает основной адрес без удаления старых адресов и портов. Повторная отправка того же адреса тому же хосту возвращает существующую привязку без изменений. Один IP, привязанный к разным хостам, представлен разными записями.
+
+Эти POST-методы возвращают `201`. Они сохраняют данные в БД: не выполняют DNS, HTTP-запросы, пробив IP или сканирование. Добавление внутреннего IP в инвентаризацию само по себе не даёт сетевого доступа к нему.
+
+**Учётные данные**
+- `GET /api/v2/projects/{id}/credentials` — все учётные данные проекта (`credentials:read`), массив без пагинации.
+- `GET /api/v2/projects/{id}/credentials/{credential_id}` — одна учётная запись (`credentials:read`).
+
+Ответ содержит `username`, `password`, `password_available`, `host`, автора и даты. Пароль возвращается расшифрованным только при наличии отдельного права. Если старый пароль не читается текущими ключами шифрования, `password=null`, `password_available=false`, остальные записи продолжают возвращаться. Ответы с учётными данными имеют `Cache-Control: no-store`.
 
 **Уязвимости**
 - `GET /api/v2/projects/{id}/hosts/{host_id}/vulnerabilities` — находки по хосту (`vulns:read`).
@@ -36,7 +53,7 @@ Authorization: Bearer <ваш_токен>
 - `POST /api/v2/projects/{id}/notes` — создать заметку (`notes:write`).
 - `PUT /api/v2/projects/{id}/notes/{note_id}` — обновить заметку (`notes:write`).
 
-> Обратите внимание на асимметрию: **чтение** уязвимостей — в разрезе хоста, а **создание/обновление** — на уровне проекта. Удаления через Agent API нет; изменять активы тоже нельзя (нет `assets:write`).
+Чтение уязвимостей выполняется в разрезе хоста, а создание/обновление — на уровне проекта. Удаления через агентский API нет.
 
 Записи, сделанные токеном, приписываются пользователю, от имени которого выпущен токен.
 
@@ -56,6 +73,41 @@ curl -s https://storm.example/api/v2/projects/42/hosts \
   -H "Authorization: Bearer $STORM_TOKEN"
 ```
 
+Добавить хост с двумя IP-адресами:
+
+```bash
+curl --fail-with-body -sS https://storm.example/api/v2/projects/42/hosts \
+  -H "Authorization: Bearer $STORM_TOKEN" -H "Content-Type: application/json" \
+  -d '{"hostname":"api.example.com","ip_addresses":["192.0.2.10","2001:db8::10"]}'
+```
+
+Добавить эндпоинт к хосту `100`:
+
+```bash
+curl --fail-with-body -sS https://storm.example/api/v2/projects/42/hosts/100/endpoints \
+  -H "Authorization: Bearer $STORM_TOKEN" -H "Content-Type: application/json" \
+  -d '{"path":"/api/health","method":"GET"}'
+```
+
+Добавить отдельный IP (чтобы привязать к существующему хосту, добавьте `"host_id":100`):
+
+```bash
+curl --fail-with-body -sS https://storm.example/api/v2/projects/42/ip-addresses \
+  -H "Authorization: Bearer $STORM_TOKEN" -H "Content-Type: application/json" \
+  -d '{"ip_address":"192.0.2.20","label":"Test server"}'
+```
+
+Прочитать IP и учётные данные проекта:
+
+```bash
+curl --fail-with-body -sS https://storm.example/api/v2/projects/42/ip-addresses \
+  -H "Authorization: Bearer $STORM_TOKEN"
+curl --fail-with-body -sS https://storm.example/api/v2/projects/42/credentials \
+  -H "Authorization: Bearer $STORM_TOKEN"
+```
+
+Последний запрос выводит пароли: не сохраняйте его ответ в общие журналы CI/CD. Для него нужен `credentials:read`; `assets:read` доступа к учётным данным не даёт.
+
 Создать находку в проекте `42` (поля находки — те же, что в интерфейсе: см. документ «Пользователь», глава «Уязвимости». Находка обязана быть привязана к хосту):
 
 ```
@@ -73,6 +125,15 @@ curl -s -X POST https://storm.example/api/v2/projects/42/vulnerabilities \
 > Замените `storm.example` на адрес вашего экземпляра Storm, а `$STORM_TOKEN` — на значение выпущенного токена. Значения `host_id` и id проекта берутся из ответов эндпоинтов чтения.
 
 > Поле `severity` необязательно: если его не передать, критичность создаётся со значением `info` и уточняется позже CVSS-вектором.
+
+## Ошибки и проверка доступа
+
+- `401` — нет действительного Bearer-токена, он истёк/отозван или его владелец заблокирован.
+- `403` — нет нужного scope или доступа к проекту. Права проверяются заново на каждом запросе: выход владельца ключа из проекта закрывает доступ агенту.
+- `404` — запись не найдена в указанном проекте/хосте; подмена родительского ID не открывает чужие данные.
+- `422` — неверные поля, адрес IP или параметры пагинации.
+
+Ошибки используют общий формат Storm: `detail`, `code`, `request_id`; валидация может дополнительно содержать `errors`. Для поиска в логах используйте `request_id` из ответа или заголовка `X-Request-ID`.
 
 ## Интерактивная документация (Swagger)
 

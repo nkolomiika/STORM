@@ -98,6 +98,7 @@ export interface Member {
   email: string;
   role: Role;
   color: string;
+  avatarUrl?: string | null;
 }
 
 export interface Vuln {
@@ -169,6 +170,7 @@ export interface WorkspaceUser {
   projectRole: Role;
   /** Деактивирован (мягкое удаление): показывается с бейджем, вход закрыт. */
   locked: boolean;
+  avatarUrl?: string | null;
 }
 
 export interface ApiKey {

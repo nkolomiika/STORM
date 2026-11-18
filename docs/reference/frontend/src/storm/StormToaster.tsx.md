@@ -6,7 +6,7 @@
 
 ## StormToaster
 
-[frontend/src/storm/StormToaster.tsx:18](../../../../../frontend/src/storm/StormToaster.tsx#L18)
+[frontend/src/storm/StormToaster.tsx:20](../../../../../frontend/src/storm/StormToaster.tsx#L20)
 
 ```typescript
 StormToaster() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element | null

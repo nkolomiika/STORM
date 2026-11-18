@@ -2,7 +2,7 @@
 
 Сгенерировано из объявлений кода. [Правила чтения](../../../METHODS.md).
 
-Методов и именованных функций: **9**.
+Методов и именованных функций: **10**.
 
 ## get_client_ip
 
@@ -123,9 +123,40 @@ ForbiddenError('Недостаточно прав')
 
 </details>
 
-## require_project_access
+## require_project_creator
 
 [backend/app/dependencies.py:74](../../../../backend/app/dependencies.py#L74)
+
+```python
+async def require_project_creator(current_user: User=Depends(get_current_user)) -> User
+```
+
+Разрешает создание проектов только администратору или глобальному lead.
+
+| Параметр | Тип | По умолчанию | Назначение |
+| --- | --- | --- | --- |
+| `current_user` | `User` | `Depends(get_current_user)` | Пользователь из dependency авторизации. |
+
+Возвращает: `User`.
+
+Dependencies: `get_current_user`.
+
+Явные raise в теле (исключения вызываемых методов могут добавляться):
+
+```python
+ForbiddenError('Создавать проекты могут только lead и admin')
+```
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `ForbiddenError`
+
+</details>
+
+## require_project_access
+
+[backend/app/dependencies.py:81](../../../../backend/app/dependencies.py#L81)
 
 ```python
 async def require_project_access(project_id: int, db: AsyncSession=Depends(get_db), current_user: User=Depends(get_current_user)) -> Project
@@ -166,7 +197,7 @@ ForbiddenError('Проект не найден или недоступен')
 
 ## get_agent_token_context
 
-[backend/app/dependencies.py:100](../../../../backend/app/dependencies.py#L100)
+[backend/app/dependencies.py:107](../../../../backend/app/dependencies.py#L107)
 
 ```python
 async def get_agent_token_context(authorization: str | None=Header(default=None, alias='Authorization'), db: AsyncSession=Depends(get_db)) -> AgentTokenContext
@@ -220,7 +251,7 @@ UnauthorizedError('Требуется Bearer token')
 
 ## require_agent_scope
 
-[backend/app/dependencies.py:152](../../../../backend/app/dependencies.py#L152)
+[backend/app/dependencies.py:159](../../../../backend/app/dependencies.py#L159)
 
 ```python
 def require_agent_scope(scope: str) -> не аннотирован
@@ -236,7 +267,7 @@ def require_agent_scope(scope: str) -> не аннотирован
 
 ## require_agent_scope.dependency
 
-[backend/app/dependencies.py:153](../../../../backend/app/dependencies.py#L153)
+[backend/app/dependencies.py:160](../../../../backend/app/dependencies.py#L160)
 
 ```python
 async def dependency(context: AgentTokenContext=Depends(get_agent_token_context)) -> AgentTokenContext
@@ -267,7 +298,7 @@ ForbiddenError(f'Недостаточно прав agent token: требуетс
 
 ## require_agent_project_access
 
-[backend/app/dependencies.py:161](../../../../backend/app/dependencies.py#L161)
+[backend/app/dependencies.py:168](../../../../backend/app/dependencies.py#L168)
 
 ```python
 async def require_agent_project_access(project_id: int, context: AgentTokenContext=Depends(get_agent_token_context), db: AsyncSession=Depends(get_db)) -> Project

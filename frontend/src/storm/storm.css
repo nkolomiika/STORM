@@ -141,11 +141,9 @@ html, body, #root {
 .storm .sb.collapsed .nav { width: 40px; height: 40px; padding: 0; margin: 0 auto; justify-content: center; gap: 0; }
 .storm .sb.collapsed .sbhead { justify-content: center; padding-left: 14px; }
 
-.storm .tab { transition: background .12s, border-color .12s, color .12s; cursor: pointer; }
-/* Неактивный таб (Active/Archived и т.п.) фон inline не задаёт (undefined),
-   поэтому наведение подсвечивает его через этот hover; активный таб со своим
-   inline-фоном hover перекрывает — ему подсветка не нужна. */
-.storm .tab:hover { background: var(--st-accent-soft); }
+.storm .tab { border: 1px solid transparent; color: var(--st-text-3); transition: background .12s, border-color .12s, color .12s; cursor: pointer; }
+.storm .tab.on { background: var(--st-surface); border-color: var(--st-accent-2); color: var(--st-text); }
+.storm .tab:not(.on):is(:hover, :focus-visible) { background: var(--st-accent-soft); border-color: var(--st-accent-2); }
 
 /* Section tabs (Overview / Recon / Vulnerabilities / …). The selected tab is
    marked by the blue underline plus accent text; hovering a tab previews that
@@ -224,7 +222,13 @@ html, body, #root {
 }
 
 /* Ссылка-ключ тикета: подчёркивание при наведении (чтобы было видно, что это ссылка). */
-.storm a.keylink:hover { text-decoration: underline; }
+.storm a.keylink { text-decoration: none; }
+.storm a.keylink:is(:hover, :focus-visible) { text-decoration: underline; }
+
+.storm .tasks-pagination { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 20px; }
+.storm .tasks-load-more { border: 1px solid var(--st-border); border-radius: 10px; background: var(--st-surface); color: var(--st-accent-2); padding: 6px 11px; font: 600 12px Inter,sans-serif; }
+.storm .tasks-load-more:not(:disabled):hover { background: var(--st-accent-soft); }
+.storm .tasks-pagination-count { margin-left: auto; color: var(--st-text-2); font-size: 12px; }
 
 /* Клавиатурный фокус и границы полей различимы в тёмной теме. */
 .storm :is(button, a, [role="button"], input, textarea, select):focus-visible {

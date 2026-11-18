@@ -2,11 +2,65 @@
 
 Сгенерировано из объявлений кода. [Правила чтения](../../../METHODS.md).
 
-Методов и именованных функций: **9**.
+Методов и именованных функций: **16**.
+
+## is_closed_task
+
+[backend/app/task_tracker.py:30](../../../../backend/app/task_tracker.py#L30)
+
+```python
+def is_closed_task(task: dict) -> bool
+```
+
+Закрытые задачи: завершённые статусы и явно поставленные на паузу.
+
+| Параметр | Тип | По умолчанию | Назначение |
+| --- | --- | --- | --- |
+| `task` | `dict` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
+
+Возвращает: `bool`.
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `task['status'].strip`
+- `task['status'].strip().casefold`
+
+</details>
+
+## page_metadata
+
+[backend/app/task_tracker.py:35](../../../../backend/app/task_tracker.py#L35)
+
+```python
+def page_metadata(data: object, page: int, size: int, count: int) -> tuple[int | None, bool]
+```
+
+Читает варианты метаданных AS21, не продолжая пустую страницу бесконечно.
+
+| Параметр | Тип | По умолчанию | Назначение |
+| --- | --- | --- | --- |
+| `data` | `object` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
+| `page` | `int` | `обязательный` | Номер страницы, начиная с 1. |
+| `size` | `int` | `обязательный` | Число элементов страницы; верхняя граница задаётся маршрутом. |
+| `count` | `int` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
+
+Возвращает: `tuple[int \| None, bool]`.
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `bool`
+- `isinstance`
+- `meta.get`
+- `nested.get`
+- `source.get`
+
+</details>
 
 ## display
 
-[backend/app/task_tracker.py:18](../../../../backend/app/task_tracker.py#L18)
+[backend/app/task_tracker.py:57](../../../../backend/app/task_tracker.py#L57)
 
 ```python
 def display(value) -> str
@@ -32,7 +86,7 @@ def display(value) -> str
 
 ## task_out
 
-[backend/app/task_tracker.py:27](../../../../backend/app/task_tracker.py#L27)
+[backend/app/task_tracker.py:66](../../../../backend/app/task_tracker.py#L66)
 
 ```python
 def task_out(unit: dict) -> dict
@@ -87,7 +141,7 @@ ValueError('Слишком длинный код продукта')
 
 ## read_demo_units
 
-[backend/app/task_tracker.py:62](../../../../backend/app/task_tracker.py#L62)
+[backend/app/task_tracker.py:101](../../../../backend/app/task_tracker.py#L101)
 
 ```python
 def read_demo_units(path: str) -> не аннотирован
@@ -125,7 +179,7 @@ ValueError('Expected units')
 
 ## description_text
 
-[backend/app/task_tracker.py:78](../../../../backend/app/task_tracker.py#L78)
+[backend/app/task_tracker.py:117](../../../../backend/app/task_tracker.py#L117)
 
 ```python
 def description_text(value) -> str
@@ -154,12 +208,47 @@ def description_text(value) -> str
 
 </details>
 
-## TaskTrackerService._request
+## TaskTrackerService.attach_project_access
 
-[backend/app/task_tracker.py:102](../../../../backend/app/task_tracker.py#L102)
+[backend/app/task_tracker.py:144](../../../../backend/app/task_tracker.py#L144)
 
 ```python
-async def _request(self, *, key: str | None=None, query: str='') -> dict
+async def attach_project_access(db: AsyncSession, user: User, tasks: list[dict]) -> None
+```
+
+Одним запросом отмечает существование проекта, скрывая ID недоступных.
+
+| Параметр | Тип | По умолчанию | Назначение |
+| --- | --- | --- | --- |
+| `db` | `AsyncSession` | `обязательный` | Асинхронная SQLAlchemy-сессия текущего запроса. |
+| `user` | `User` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
+| `tasks` | `list[dict]` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
+
+Возвращает: `None`.
+
+Прямые операции с БД: `db.execute`.
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `(await db.execute(select(Project.appsec_ticket_key, Project.id, ProjectMember.user_id).outerjoin(ProjectMember, and_(ProjectMember.project_id == Project.id, ProjectMember.user_id == user.id)).where(Project.appsec_ticket_key.in_(keys)).order_by(Project.id))).all`
+- `Project.appsec_ticket_key.in_`
+- `and_`
+- `db.execute`
+- `linked.get`
+- `select`
+- `select(Project.appsec_ticket_key, Project.id, ProjectMember.user_id).outerjoin`
+- `select(Project.appsec_ticket_key, Project.id, ProjectMember.user_id).outerjoin(ProjectMember, and_(ProjectMember.project_id == Project.id, ProjectMember.user_id == user.id)).where`
+- `select(Project.appsec_ticket_key, Project.id, ProjectMember.user_id).outerjoin(ProjectMember, and_(ProjectMember.project_id == Project.id, ProjectMember.user_id == user.id)).where(Project.appsec_ticket_key.in_(keys)).order_by`
+
+</details>
+
+## TaskTrackerService._request
+
+[backend/app/task_tracker.py:161](../../../../backend/app/task_tracker.py#L161)
+
+```python
+async def _request(self, *, key: str | None=None, query: str='', page: int=0, page_size: int=20) -> dict
 ```
 
 Читает полную карточку GET unit/v2 или список через TQL-поиск AS21.
@@ -172,6 +261,8 @@ async def _request(self, *, key: str | None=None, query: str='') -> dict
 | --- | --- | --- | --- |
 | `key` | `str \| None` | `None` | Определяется именем/типом и контрактом вызывающего кода. |
 | `query` | `str` | `''` | Определяется именем/типом и контрактом вызывающего кода. |
+| `page` | `int` | `0` | Номер страницы, начиная с 1. |
+| `page_size` | `int` | `20` | Определяется именем/типом и контрактом вызывающего кода. |
 
 Возвращает: `dict`.
 
@@ -216,7 +307,7 @@ tracker_service_error(exc)
 
 ## TaskTrackerService._request.has_space
 
-[backend/app/task_tracker.py:125](../../../../backend/app/task_tracker.py#L125)
+[backend/app/task_tracker.py:184](../../../../backend/app/task_tracker.py#L184)
 
 ```python
 def has_space(value) -> не аннотирован
@@ -246,7 +337,7 @@ def has_space(value) -> не аннотирован
 
 ## TaskTrackerService._request.expand
 
-[backend/app/task_tracker.py:137](../../../../backend/app/task_tracker.py#L137)
+[backend/app/task_tracker.py:196](../../../../backend/app/task_tracker.py#L196)
 
 ```python
 def expand(value) -> не аннотирован
@@ -270,20 +361,176 @@ def expand(value) -> не аннотирован
 
 </details>
 
-## TaskTrackerService.list_tasks
+## TaskTrackerService._snapshot
 
-[backend/app/task_tracker.py:165](../../../../backend/app/task_tracker.py#L165)
+[backend/app/task_tracker.py:225](../../../../backend/app/task_tracker.py#L225)
 
 ```python
-async def list_tasks(self, query: str | None=None, category: str | None=None) -> dict
+async def _snapshot(self, refresh: bool=False) -> list[dict]
 ```
 
-В теле вызывает `(item['key'] + ' ' + item['summary']).casefold`, `_extract_items`, `bool`, `data.get`, `display`, `is_project_ticket`, `isinstance`, `page.get`; полный список ниже.
+Кэширует общий индекс TT на 60 секунд для точных счётчиков обеих вкладок.
+
+До 20 тысяч тикетов; страницы до 100, максимум четыре запроса одновременно.
+Кэш разделён по event loop и отпечатку подключения, ошибки не кэшируются.
+Проектные права добавляются отдельно на каждом HTTP-запросе.
+
+| Параметр | Тип | По умолчанию | Назначение |
+| --- | --- | --- | --- |
+| `refresh` | `bool` | `False` | Определяется именем/типом и контрактом вызывающего кода. |
+
+Возвращает: `list[dict]`.
+
+Явные raise в теле (исключения вызываемых методов могут добавляться):
+
+```python
+HTTPException(502, 'Task Tracker не переключает страницы задач. Обратитесь к администратору.')
+HTTPException(502, 'Слишком много задач Task Tracker. Уточните фильтр APPSEC в настройках интеграции.')
+```
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `HTTPException`
+- `_extract_items`
+- `_snapshots.pop`
+- `_snapshots.setdefault`
+- `asyncio.Lock`
+- `asyncio.Semaphore`
+- `asyncio.gather`
+- `asyncio.get_running_loop`
+- `cache.pop`
+- `dict`
+- `display`
+- `entry.update`
+- `get_settings`
+- `hashlib.sha256`
+- `hashlib.sha256(signature.encode()).digest`
+- `indexed.values`
+- `is_project_ticket`
+- `isinstance`
+- `iter`
+- `json.dumps`
+- `keys.difference`
+- `len`
+- `list`
+- `loop.is_closed`
+- `math.ceil`
+- `next`
+- `page_metadata`
+- `range`
+- `read`
+- `seen.update`
+- `self._request`
+- `signature.encode`
+- `task_out`
+- `time.monotonic`
+- `unit.get`
+- `unit.items`
+- `units.extend`
+
+</details>
+
+## TaskTrackerService._snapshot.read
+
+[backend/app/task_tracker.py:269](../../../../backend/app/task_tracker.py#L269)
+
+```python
+async def read(page) -> не аннотирован
+```
+
+В теле вызывает `self._request`.
+
+| Параметр | Тип | По умолчанию | Назначение |
+| --- | --- | --- | --- |
+| `page` | `не аннотирован` | `обязательный` | Номер страницы, начиная с 1. |
+
+Возвращает: `не аннотирован`.
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `self._request`
+
+</details>
+
+## TaskTrackerService._list_category
+
+[backend/app/task_tracker.py:309](../../../../backend/app/task_tracker.py#L309)
+
+```python
+async def _list_category(self, category: str, page: int, query: str | None, sort: str, refresh: bool) -> dict
+```
+
+Сначала фильтрует и сортирует общий индекс, затем отдаёт 20 нужных тикетов.
+
+| Параметр | Тип | По умолчанию | Назначение |
+| --- | --- | --- | --- |
+| `category` | `str` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
+| `page` | `int` | `обязательный` | Номер страницы, начиная с 1. |
+| `query` | `str \| None` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
+| `sort` | `str` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
+| `refresh` | `bool` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
+
+Возвращает: `dict`.
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `(item['key'] + ' ' + item['summary']).casefold`
+- `(query or '').strip`
+- `(query or '').strip().casefold`
+- `is_closed_task`
+- `items.sort`
+- `len`
+- `self._snapshot`
+- `str`
+- `sum`
+
+</details>
+
+## TaskTrackerService._list_category.updated
+
+[backend/app/task_tracker.py:318](../../../../backend/app/task_tracker.py#L318)
+
+```python
+def updated(item) -> не аннотирован
+```
+
+В теле вызывает `datetime.fromisoformat`, `datetime.fromisoformat(item['updated'].replace('Z', '+00:00')).timestamp`, `item['updated'].replace`.
+
+| Параметр | Тип | По умолчанию | Назначение |
+| --- | --- | --- | --- |
+| `item` | `не аннотирован` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
+
+Возвращает: `не аннотирован`.
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `datetime.fromisoformat`
+- `datetime.fromisoformat(item['updated'].replace('Z', '+00:00')).timestamp`
+- `item['updated'].replace`
+
+</details>
+
+## TaskTrackerService.list_tasks
+
+[backend/app/task_tracker.py:330](../../../../backend/app/task_tracker.py#L330)
+
+```python
+async def list_tasks(self, query: str | None=None, category: str | None=None, page: int=0, sort: str='last', refresh: bool=False) -> dict
+```
+
+Читает следующую порцию из 20 тикетов, сохраняя метаданные пагинации AS21.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
 | `query` | `str \| None` | `None` | Определяется именем/типом и контрактом вызывающего кода. |
 | `category` | `str \| None` | `None` | Определяется именем/типом и контрактом вызывающего кода. |
+| `page` | `int` | `0` | Номер страницы, начиная с 1. |
+| `sort` | `str` | `'last'` | Определяется именем/типом и контрактом вызывающего кода. |
+| `refresh` | `bool` | `False` | Определяется именем/типом и контрактом вызывающего кода. |
 
 Возвращает: `dict`.
 
@@ -292,16 +539,18 @@ async def list_tasks(self, query: str | None=None, category: str | None=None) ->
 
 - `(item['key'] + ' ' + item['summary']).casefold`
 - `_extract_items`
-- `bool`
-- `data.get`
 - `display`
+- `get_settings`
 - `is_project_ticket`
 - `isinstance`
-- `page.get`
+- `len`
+- `page_metadata`
 - `query.casefold`
 - `query.strip`
+- `self._list_category`
 - `self._request`
 - `self.get_task`
+- `str`
 - `task_out`
 - `unit.get`
 
@@ -309,7 +558,7 @@ async def list_tasks(self, query: str | None=None, category: str | None=None) ->
 
 ## TaskTrackerService.get_task
 
-[backend/app/task_tracker.py:186](../../../../backend/app/task_tracker.py#L186)
+[backend/app/task_tracker.py:360](../../../../backend/app/task_tracker.py#L360)
 
 ```python
 async def get_task(self, key: str) -> dict

@@ -187,6 +187,7 @@ export interface ProjectMember {
   user_id: number;
   username: string;
   email: string;
+  avatar_url?: string | null;
   role: UserRole;
   /** Глобальная проектная роль пользователя — настраивается на странице /members. */
   project_role: "lead" | "pentester";
@@ -706,6 +707,8 @@ export interface TaskTrackerTask {
   component?: WorksRef | null;
   components?: WorksRef[];
   is_demo?: boolean;
+  project_exists?: boolean;
+  project_id?: number | null;
   updated: string;
   created: string;
 }
@@ -722,4 +725,7 @@ export interface TaskTrackerTaskList {
   items: TaskTrackerTask[];
   next_page_token: string | null;
   is_last: boolean;
+  total?: number | null;
+  active_total?: number | null;
+  closed_total?: number | null;
 }

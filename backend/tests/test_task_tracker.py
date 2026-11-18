@@ -133,3 +133,35 @@ def test_invalid_external_version_metadata_is_a_502_instead_of_response_500():
     with pytest.raises(HTTPException) as exc:
         task_out({'code': 'APPSEC-3', 'attributes': {'affects_version_s_crpv': [{'code': 'x' * 100, 'name': 'Too long'}]}})
     assert exc.value.status_code == 502
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('metadata,count,next_token,total', [
+    ({'hasNext': True, 'totalElements': 45}, 20, '1', 45),
+    ({'hasNext': False, 'totalElements': 20}, 20, None, 20),
+    ({'page': {'last': False, 'totalElements': 45}}, 20, '1', 45),
+    ({'last': True}, 5, None, 5),
+    ({}, 20, '1', None),
+    ({}, 5, None, 5),
+    ({'hasNext': True}, 0, None, 0),
+])
+async def test_pagination_metadata_does_not_drop_pages_or_loop_on_empty_response(monkeypatch, metadata, count, next_token, total):
+    response = {'content': [{'code': f'APPSEC-{i+1}', 'summary': 'Ticket'} for i in range(count)], **metadata}
+    monkeypatch.setattr(TaskTrackerService, '_request', AsyncMock(return_value=response))
+    result = await TaskTrackerService().list_tasks()
+    assert result['next_page_token'] == next_token
+    assert result['is_last'] is (next_token is None)
+    assert result['total'] == total
+
+
+@pytest.mark.asyncio
+async def test_demo_tickets_are_paginated_instead_of_all_rendering_at_once(monkeypatch, tmp_path):
+    import json
+    path = tmp_path/'tickets.json'
+    path.write_text(json.dumps({'content': [{'code': f'APPSEC-{i+1}', 'summary': f'Demo {i+1}'} for i in range(45)]}))
+    monkeypatch.setattr(get_settings(), 'works_enabled', False)
+    monkeypatch.setattr(get_settings(), 'works_tasks_demo_file', str(path))
+    results = [await TaskTrackerService().list_tasks(page=page) for page in range(3)]
+    assert [len(result['items']) for result in results] == [20, 20, 5]
+    assert [result['next_page_token'] for result in results] == ['1', '2', None]
+    assert all(result['total'] == 45 for result in results)

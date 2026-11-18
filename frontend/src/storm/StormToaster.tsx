@@ -1,3 +1,5 @@
+import { t as translate } from "./i18n";
+import { Tip } from "./Tip";
 /* Bottom-right toast notifications in the STORM design language.
    Reads the shared useToastStore, so any part of the app can pushToast(). */
 
@@ -54,7 +56,7 @@ export function StormToaster() {
               <Icon name={s.icon} size={17} color={s.color} sw={2.2} />
             </span>
             <div style={{ flex: 1, minWidth: 0, font: "600 13px Inter,sans-serif", color: "var(--st-text)", lineHeight: 1.45, paddingTop: 3 }}>{t.message}</div>
-            <div className="clk actbtn" onClick={() => dismiss(t.id)} style={{ flex: "none" }}><Icon name="close" size={16} /></div>
+            <Tip label={translate("Close")}><div className="clk actbtn" onClick={() => dismiss(t.id)} style={{ flex: "none" }}><Icon name="close" size={16} /></div></Tip>
           </div>
         );
       })}

@@ -1,18 +1,57 @@
 """Read-only Task Tracker/Works units using the native API and deployment auth."""
 from copy import deepcopy
 import asyncio
+import hashlib
 import json
+import math
 import re
+import time
+from datetime import datetime
+from weakref import WeakKeyDictionary
 from urllib.parse import quote
 
 import httpx
 from fastapi import HTTPException
+from sqlalchemy import and_, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
+from app.enums import UserRole
+from app.exceptions import UpstreamServiceError
+from app.models import Project, ProjectMember, User
 from app.input_safety import validate_json_value
 from app.tracker_spaces import is_project_ticket
 from app.tracker_metadata import affected_versions, assignee_identity, unit_attributes, component_references
 from app.works import WorksClient, WorksError, _extract_items, _workflow_status_name, works_issue_url, tracker_service_error
+
+_snapshots = WeakKeyDictionary()
+
+
+def is_closed_task(task: dict) -> bool:
+    """Закрытые задачи: завершённые статусы и явно поставленные на паузу."""
+    return task['status_category'] == 'done' or task['status'].strip().casefold() in {'paused', 'на паузе'}
+
+
+def page_metadata(data: object, page: int, size: int, count: int) -> tuple[int | None, bool]:
+    """Читает варианты метаданных AS21, не продолжая пустую страницу бесконечно."""
+    meta = data if isinstance(data, dict) else {}
+    nested = meta.get('page') if isinstance(meta.get('page'), dict) else {}
+    total = nested.get('totalElements', meta.get('totalElements', meta.get('total')))
+    total = total if isinstance(total, int) and not isinstance(total, bool) and total >= 0 else None
+    has_next = None
+    for source in (nested, meta):
+        if isinstance(source.get('hasNext'), bool):
+            has_next = source['hasNext']
+            break
+        if isinstance(source.get('last'), bool):
+            has_next = not source['last']
+            break
+    if has_next is None:
+        has_next = (page+1)*size < total if total is not None else count >= size
+    has_next = bool(has_next and count > 0)
+    if total is None and not has_next:
+        total = page*size + count
+    return total, has_next
 
 
 def display(value) -> str:
@@ -99,7 +138,27 @@ def description_text(value) -> str:
 
 
 class TaskTrackerService:
-    async def _request(self, *, key: str | None = None, query: str = '') -> dict:
+    PAGE_SIZE = 20
+
+    @staticmethod
+    async def attach_project_access(db: AsyncSession, user: User, tasks: list[dict]) -> None:
+        """Одним запросом отмечает существование проекта, скрывая ID недоступных."""
+        if not tasks:
+            return
+        keys = {task['key'] for task in tasks}
+        rows = (await db.execute(select(Project.appsec_ticket_key, Project.id, ProjectMember.user_id)
+            .outerjoin(ProjectMember, and_(ProjectMember.project_id == Project.id, ProjectMember.user_id == user.id))
+            .where(Project.appsec_ticket_key.in_(keys)).order_by(Project.id))).all()
+        linked: dict[str, int | None] = {}
+        for key, project_id, member_id in rows:
+            accessible_id = project_id if user.role == UserRole.ADMIN or member_id is not None else None
+            if key not in linked or linked[key] is None:
+                linked[key] = accessible_id
+        for task in tasks:
+            task['project_exists'] = task['key'] in linked
+            task['project_id'] = linked.get(task['key'])
+
+    async def _request(self, *, key: str | None = None, query: str = '', page: int = 0, page_size: int = 20) -> dict:
         """Читает полную карточку GET unit/v2 или список через TQL-поиск AS21.
 
         Нативный TQL ограничен APPSEC и типом анализа. Пользовательский текст
@@ -140,6 +199,7 @@ class TaskTrackerService:
                 if isinstance(value,dict): return {key:expand(item) for key,item in value.items()}
                 return value
             body = expand(deepcopy(settings.works_tasks_search_body))
+            body['page'] = {'page': page, 'size': page_size}
         if not path.startswith('/') or path.startswith('//') or '://' in path:
             raise HTTPException(503, 'Task Tracker: путь поиска должен быть относительным к WORKS_BASE_URL')
         try:
@@ -162,26 +222,140 @@ class TaskTrackerService:
             raise HTTPException(502,'Task Tracker вернул неожиданный формат ответа')
         return payload
 
-    async def list_tasks(self, query: str | None = None, category: str | None = None) -> dict:
+    async def _snapshot(self, refresh: bool = False) -> list[dict]:
+        """Кэширует общий индекс TT на 60 секунд для точных счётчиков обеих вкладок.
+
+        До 20 тысяч тикетов; страницы до 100, максимум четыре запроса одновременно.
+        Кэш разделён по event loop и отпечатку подключения, ошибки не кэшируются.
+        Проектные права добавляются отдельно на каждом HTTP-запросе.
+        """
+        settings = get_settings()
+        if settings.works_tasks_demo_file:
+            data = await self._request()
+            return [task_out(unit) for unit in _extract_items(data) if is_project_ticket(display(unit.get('code') or unit.get('key')))]
+        signature = json.dumps([settings.works_base_url, settings.works_api_token, settings.works_cookies,
+                                settings.works_tasks_space, settings.works_tenant, settings.works_tasks_search_path,
+                                settings.works_tasks_search_body], sort_keys=True)
+        key = hashlib.sha256(signature.encode()).digest()
+        for loop in list(_snapshots):
+            if loop.is_closed():
+                _snapshots.pop(loop, None)
+        cache = _snapshots.setdefault(asyncio.get_running_loop(), {})
+        if key not in cache:
+            if len(cache) >= 4:
+                cache.pop(next(iter(cache)))
+            cache[key] = {'lock': asyncio.Lock(), 'expires': 0, 'items': []}
+        entry = cache[key]
+        async with entry['lock']:
+            if not refresh and time.monotonic() < entry['expires']:
+                return [dict(item) for item in entry['items']]
+            requested_size = 100
+            try:
+                first = await self._request(page=0, page_size=requested_size)
+            except UpstreamServiceError as exc:
+                if not isinstance(exc.__cause__, WorksError) or exc.__cause__.status_code != 422:
+                    raise
+                # Подтверждённый размер TQL из production-запроса — 20.
+                requested_size = self.PAGE_SIZE
+                first = await self._request(page=0, page_size=requested_size)
+            units = _extract_items(first)
+            total, has_next = page_metadata(first, 0, requested_size, len(units))
+            size = len(units) if units and len(units) < requested_size and (has_next or (total is not None and total > len(units))) else requested_size
+            total, has_next = page_metadata(first, 0, size, len(units))
+            if total is not None and total > 20_000:
+                raise HTTPException(502, 'Слишком много задач Task Tracker. Уточните фильтр APPSEC в настройках интеграции.')
+            if has_next and total is not None:
+                semaphore = asyncio.Semaphore(4)
+                async def read(page):
+                    async with semaphore:
+                        return await self._request(page=page, page_size=size)
+                pages = await asyncio.gather(*(read(page) for page in range(1, math.ceil(total/size))))
+                seen = {display(unit.get('code') or unit.get('key')) for unit in units}
+                for data in pages:
+                    batch = _extract_items(data)
+                    keys = {display(unit.get('code') or unit.get('key')) for unit in batch}
+                    if batch and not keys.difference(seen):
+                        raise HTTPException(502, 'Task Tracker не переключает страницы задач. Обратитесь к администратору.')
+                    units.extend(batch)
+                    seen.update(keys)
+            elif has_next:
+                page = 1
+                seen = {display(unit.get('code') or unit.get('key')) for unit in units}
+                while has_next:
+                    if page*size >= 20_000:
+                        raise HTTPException(502, 'Слишком много задач Task Tracker. Уточните фильтр APPSEC в настройках интеграции.')
+                    data = await self._request(page=page, page_size=size)
+                    batch = _extract_items(data)
+                    keys = {display(unit.get('code') or unit.get('key')) for unit in batch}
+                    if batch and not keys.difference(seen):
+                        raise HTTPException(502, 'Task Tracker не переключает страницы задач. Обратитесь к администратору.')
+                    units.extend(batch)
+                    seen.update(keys)
+                    _, has_next = page_metadata(data, page, size, len(batch))
+                    page += 1
+            if len(units) > 20_000:
+                raise HTTPException(502, 'Слишком много задач Task Tracker. Уточните фильтр APPSEC в настройках интеграции.')
+            indexed = {}
+            for unit in units:
+                if not is_project_ticket(display(unit.get('code') or unit.get('key'))):
+                    continue
+                # Описания нужны карточке, а не индексу списка: не держим их в памяти.
+                compact = {k: v for k, v in unit.items() if k not in {'description', 'descriptionPlain'}}
+                task = task_out(compact)
+                indexed[task['key']] = task
+            entry.update(items=list(indexed.values()), expires=time.monotonic()+60)
+            return [dict(item) for item in entry['items']]
+
+    async def _list_category(self, category: str, page: int, query: str | None, sort: str, refresh: bool) -> dict:
+        """Сначала фильтрует и сортирует общий индекс, затем отдаёт 20 нужных тикетов."""
+        items = await self._snapshot(refresh)
+        needle = (query or '').strip().casefold()
+        if needle:
+            items = [item for item in items if needle in (item['key']+' '+item['summary']).casefold()]
+        closed_total = sum(is_closed_task(item) for item in items)
+        active_total = len(items)-closed_total
+        items = [item for item in items if is_closed_task(item) == (category == 'closed')]
+        def updated(item):
+            try:
+                return datetime.fromisoformat(item['updated'].replace('Z', '+00:00')).timestamp()
+            except (ValueError, TypeError, OverflowError, OSError):
+                return 0
+        items.sort(key=lambda item: (updated(item), item['key']), reverse=sort != 'first')
+        total = len(items)
+        end = (page+1)*self.PAGE_SIZE
+        return {'items': items[page*self.PAGE_SIZE:end], 'total': total,
+                'next_page_token': str(page+1) if end < total else None, 'is_last': end >= total,
+                'active_total': active_total, 'closed_total': closed_total}
+
+    async def list_tasks(self, query: str | None = None, category: str | None = None, page: int = 0, sort: str = 'last', refresh: bool = False) -> dict:
+        """Читает следующую порцию из 20 тикетов, сохраняя метаданные пагинации AS21."""
+        if category in {'active', 'closed'}:
+            return await self._list_category(category, page, query, sort, refresh)
         if query and is_project_ticket(query.strip()):
             try:
                 task = await self.get_task(query.strip())
             except HTTPException as exc:
                 if exc.status_code != 404:
                     raise
-                return {'items': [], 'next_page_token': None, 'is_last': True}
-            return {'items': [task] if not category or task['status_category'] == category else [],
-                    'next_page_token': None, 'is_last': True}
-        data = await self._request(query=query or '')
+                return {'items': [], 'next_page_token': None, 'is_last': True, 'total': 0}
+            selected = [task] if not category or task['status_category'] == category else []
+            return {'items': selected if page == 0 else [],
+                    'next_page_token': None, 'is_last': True, 'total': len(selected)}
+        data = await self._request(query=query or '', page=page)
+        raw_count = len(_extract_items(data))
         items = [task_out(unit) for unit in _extract_items(data) if isinstance(unit,dict) and is_project_ticket(display(unit.get('code') or unit.get('key')))]
         if query:
             needle = query.casefold()
             items = [item for item in items if needle in (item['key']+' '+item['summary']).casefold()]
         if category: items = [item for item in items if item['status_category']==category]
-        page = data.get('page') if isinstance(data,dict) else None
-        is_last = data.get('last', True) if isinstance(data,dict) else True
-        if isinstance(page,dict): is_last = page.get('last',is_last)
-        return {'items':items,'next_page_token':None,'is_last':bool(is_last)}
+        if get_settings().works_tasks_demo_file:
+            total = len(items)
+            return {'items': items[page*self.PAGE_SIZE:(page+1)*self.PAGE_SIZE],
+                    'next_page_token': str(page+1) if (page+1)*self.PAGE_SIZE < total else None,
+                    'is_last': (page+1)*self.PAGE_SIZE >= total, 'total': total}
+        total, has_next = page_metadata(data, page, self.PAGE_SIZE, raw_count)
+        return {'items': items, 'next_page_token': str(page+1) if has_next else None,
+                'is_last': not has_next, 'total': total}
 
     async def get_task(self, key: str) -> dict:
         if not is_project_ticket(key):

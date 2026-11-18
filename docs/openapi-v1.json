@@ -2288,7 +2288,7 @@
           "users"
         ],
         "summary": "Reactivate User",
-        "description": "Возвращает деактивированного пользователя: шлёт ему письмо-возврат со ссылкой.\n\nАккаунт разблокируется не здесь, а когда пользователь сам перейдёт по ссылке\n(там же сразу выдаётся сессия — см. /auth/reactivate).",
+        "description": "Сразу возвращает пользователю доступ; письмо и SMTP не используются.",
         "operationId": "reactivate_user_api_v1_users__user_id__reactivate_post",
         "parameters": [
           {
@@ -2339,7 +2339,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ReactivationRequestOut"
+                  "$ref": "#/components/schemas/UserOut"
                 }
               }
             }
@@ -2602,7 +2602,7 @@
           "projects"
         ],
         "summary": "Create Project",
-        "description": "Создаёт проект.",
+        "description": "Создаёт проект от имени admin/lead и добавляет автора в участники.",
         "operationId": "create_project_api_v1_projects_post",
         "parameters": [
           {
@@ -3163,7 +3163,7 @@
           "projects"
         ],
         "summary": "Delete Project",
-        "description": "Удаляет проект.",
+        "description": "Удаляет проект, если инициатор — admin, создатель или lead-участник.",
         "operationId": "delete_project_api_v1_projects__project_id__delete",
         "parameters": [
           {
@@ -10498,6 +10498,7 @@
           "task-tracker"
         ],
         "summary": "List Tasks",
+        "description": "Возвращает по 20 тикетов и доступные пользователю связи с проектами.",
         "operationId": "list_tasks_api_v1_tasks_get",
         "parameters": [
           {
@@ -10530,6 +10531,42 @@
                 }
               ],
               "title": "Category"
+            }
+          },
+          {
+            "name": "page_number",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000000,
+              "minimum": 0,
+              "default": 0,
+              "title": "Page Number"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "first",
+                "last"
+              ],
+              "type": "string",
+              "default": "last",
+              "title": "Sort"
+            }
+          },
+          {
+            "name": "refresh",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Refresh"
             }
           },
           {
@@ -10579,6 +10616,7 @@
           "task-tracker"
         ],
         "summary": "Get Task",
+        "description": "Читает карточку; ID связанного проекта отдаёт только при наличии доступа.",
         "operationId": "get_task_api_v1_tasks__key__get",
         "parameters": [
           {
@@ -15364,6 +15402,17 @@
             "format": "email",
             "title": "Email"
           },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
           "role": {
             "$ref": "#/components/schemas/UserRole"
           },
@@ -16148,37 +16197,6 @@
         "title": "ReactivationInfoOut",
         "description": "Публичная проверка ссылки-возврата (для страницы /reactivate)."
       },
-      "ReactivationRequestOut": {
-        "properties": {
-          "ok": {
-            "type": "boolean",
-            "title": "Ok",
-            "default": true
-          },
-          "email_sent_to": {
-            "type": "string",
-            "format": "email",
-            "title": "Email Sent To"
-          },
-          "mail_preview_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Mail Preview Url"
-          }
-        },
-        "type": "object",
-        "required": [
-          "email_sent_to"
-        ],
-        "title": "ReactivationRequestOut",
-        "description": "Ответ на запрос возврата пользователя — с превью письма в dev."
-      },
       "RefreshResponse": {
         "properties": {
           "ok": {
@@ -16699,6 +16717,22 @@
             "title": "Is Demo",
             "default": false
           },
+          "project_exists": {
+            "type": "boolean",
+            "title": "Project Exists",
+            "default": false
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
+          },
           "updated": {
             "type": "string",
             "title": "Updated"
@@ -16772,6 +16806,39 @@
             "type": "boolean",
             "title": "Is Last",
             "default": true
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          },
+          "active_total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Total"
+          },
+          "closed_total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed Total"
           }
         },
         "type": "object",
@@ -16874,6 +16941,22 @@
             "type": "boolean",
             "title": "Is Demo",
             "default": false
+          },
+          "project_exists": {
+            "type": "boolean",
+            "title": "Project Exists",
+            "default": false
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
           },
           "updated": {
             "type": "string",

@@ -141,12 +141,14 @@ export const FINDING_SEV: Record<"none" | "med" | "high", { fBg: string; fColor:
 /* Scopes агент-токенов /api/v2. ЕДИНСТВЕННЫЙ источник истины — бэкенд
    (AgentTokenService.ALLOWED_SCOPES / require_agent_scope). Здесь только те права,
    что реально существуют в БД и проверяются на запросе — никаких выдуманных. */
-export const API_SCOPES = ["projects:read", "assets:read", "vulns:read", "vulns:write", "notes:read", "notes:write"];
+export const API_SCOPES = ["projects:read", "assets:read", "assets:write", "credentials:read", "vulns:read", "vulns:write", "notes:read", "notes:write"];
 
 /** Человекочитаемые подписи scopes для UI выпуска ключа. */
 export const API_SCOPE_LABELS: Record<string, string> = {
   "projects:read": "Projects — read",
-  "assets:read": "Assets (hosts/ports/endpoints) — read",
+  "assets:read": "Assets (hosts/IPs/endpoints) — read",
+  "assets:write": "Assets (hosts/IPs/endpoints) — create",
+  "credentials:read": "Credentials (including passwords) — read",
   "vulns:read": "Vulnerabilities — read",
   "vulns:write": "Vulnerabilities — write",
   "notes:read": "Notes — read",

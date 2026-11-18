@@ -6,7 +6,7 @@
 
 ## readJson
 
-[frontend/src/storm/SwaggerEndpointImport.tsx:10](../../../../../frontend/src/storm/SwaggerEndpointImport.tsx#L10)
+[frontend/src/storm/SwaggerEndpointImport.tsx:11](../../../../../frontend/src/storm/SwaggerEndpointImport.tsx#L11)
 
 ```typescript
 readJson(file: File) => Promise<unknown>
@@ -22,7 +22,7 @@ readJson(file: File) => Promise<unknown>
 
 ## SwaggerEndpointImport
 
-[frontend/src/storm/SwaggerEndpointImport.tsx:20](../../../../../frontend/src/storm/SwaggerEndpointImport.tsx#L20)
+[frontend/src/storm/SwaggerEndpointImport.tsx:21](../../../../../frontend/src/storm/SwaggerEndpointImport.tsx#L21)
 
 ```typescript
 SwaggerEndpointImport({ onParsed, disabled = false }: { disabled?: boolean; onParsed: (lines: string[]) => void }) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -50,7 +50,7 @@ SwaggerEndpointImport({ onParsed, disabled = false }: { disabled?: boolean; onPa
 
 ## SwaggerEndpointImport.close
 
-[frontend/src/storm/SwaggerEndpointImport.tsx:30](../../../../../frontend/src/storm/SwaggerEndpointImport.tsx#L30)
+[frontend/src/storm/SwaggerEndpointImport.tsx:31](../../../../../frontend/src/storm/SwaggerEndpointImport.tsx#L31)
 
 ```typescript
 close() => void
@@ -70,7 +70,7 @@ close() => void
 
 ## SwaggerEndpointImport.onKey
 
-[frontend/src/storm/SwaggerEndpointImport.tsx:33](../../../../../frontend/src/storm/SwaggerEndpointImport.tsx#L33)
+[frontend/src/storm/SwaggerEndpointImport.tsx:34](../../../../../frontend/src/storm/SwaggerEndpointImport.tsx#L34)
 
 ```typescript
 onKey(event: KeyboardEvent) => void
@@ -94,7 +94,7 @@ onKey(event: KeyboardEvent) => void
 
 ## SwaggerEndpointImport.load
 
-[frontend/src/storm/SwaggerEndpointImport.tsx:37](../../../../../frontend/src/storm/SwaggerEndpointImport.tsx#L37)
+[frontend/src/storm/SwaggerEndpointImport.tsx:38](../../../../../frontend/src/storm/SwaggerEndpointImport.tsx#L38)
 
 ```typescript
 async load(files: File[]) => Promise<void>

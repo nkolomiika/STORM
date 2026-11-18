@@ -6,7 +6,7 @@
 
 ## fio2fi
 
-[frontend/src/storm/StormAppSecFields.tsx:18](../../../../../frontend/src/storm/StormAppSecFields.tsx#L18)
+[frontend/src/storm/StormAppSecFields.tsx:19](../../../../../frontend/src/storm/StormAppSecFields.tsx#L19)
 
 ```typescript
 fio2fi(s: string | null | undefined) => string
@@ -34,7 +34,7 @@ fio2fi(s: string | null | undefined) => string
 
 ## emptyAppsecFields
 
-[frontend/src/storm/StormAppSecFields.tsx:34](../../../../../frontend/src/storm/StormAppSecFields.tsx#L34)
+[frontend/src/storm/StormAppSecFields.tsx:35](../../../../../frontend/src/storm/StormAppSecFields.tsx#L35)
 
 ```typescript
 emptyAppsecFields() => AppSecFieldsValue
@@ -46,7 +46,7 @@ emptyAppsecFields() => AppSecFieldsValue
 
 ## appsecMetadataFromTask
 
-[frontend/src/storm/StormAppSecFields.tsx:39](../../../../../frontend/src/storm/StormAppSecFields.tsx#L39)
+[frontend/src/storm/StormAppSecFields.tsx:40](../../../../../frontend/src/storm/StormAppSecFields.tsx#L40)
 
 ```typescript
 appsecMetadataFromTask(task?: TaskTrackerTask) => Partial<AppSecFieldsValue>
@@ -62,7 +62,7 @@ appsecMetadataFromTask(task?: TaskTrackerTask) => Partial<AppSecFieldsValue>
 
 ## Typeahead
 
-[frontend/src/storm/StormAppSecFields.tsx:55](../../../../../frontend/src/storm/StormAppSecFields.tsx#L55)
+[frontend/src/storm/StormAppSecFields.tsx:56](../../../../../frontend/src/storm/StormAppSecFields.tsx#L56)
 
 ```typescript
 Typeahead({ label, placeholder, value, fetchOptions, onPick, clearOnPick = false, onInputChange, codeAsValue = false, t, }: { label: string; placeholder: string; value: string; fetchOptions: (q: string) => Promise<Opt[]>; onPick: (opt: Opt) => void; clearOnPick?: boolean; onInputChange?: (value: string) => void; codeAsValue?: boolean; t: (s: string) => string; }) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -90,7 +90,7 @@ Typeahead({ label, placeholder, value, fetchOptions, onPick, clearOnPick = false
 
 ## TicketField
 
-[frontend/src/storm/StormAppSecFields.tsx:176](../../../../../frontend/src/storm/StormAppSecFields.tsx#L176)
+[frontend/src/storm/StormAppSecFields.tsx:177](../../../../../frontend/src/storm/StormAppSecFields.tsx#L177)
 
 ```typescript
 TicketField({ url, taskKey, onChange, t, }: { url: string; taskKey: string | null; onChange: (patch: Partial<AppSecFieldsValue>) => void; t: (s: string) => string; }) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -119,7 +119,7 @@ TicketField({ url, taskKey, onChange, t, }: { url: string; taskKey: string | nul
 
 ## TicketField.looksLikeUrl
 
-[frontend/src/storm/StormAppSecFields.tsx:199](../../../../../frontend/src/storm/StormAppSecFields.tsx#L199)
+[frontend/src/storm/StormAppSecFields.tsx:200](../../../../../frontend/src/storm/StormAppSecFields.tsx#L200)
 
 ```typescript
 looksLikeUrl(s: string) => boolean
@@ -143,7 +143,7 @@ looksLikeUrl(s: string) => boolean
 
 ## StormAppSecFields
 
-[frontend/src/storm/StormAppSecFields.tsx:306](../../../../../frontend/src/storm/StormAppSecFields.tsx#L306)
+[frontend/src/storm/StormAppSecFields.tsx:307](../../../../../frontend/src/storm/StormAppSecFields.tsx#L307)
 
 ```typescript
 StormAppSecFields({ value, onChange, works, t, }: { value: AppSecFieldsValue; onChange: (patch: Partial<AppSecFieldsValue>) => void; // true — показывать поля экспорта в Works (компонент/версия/исполнитель). // Поле тикета показывается всегда (нужно для отчёта независимо от Works). works: boolean; t: (s: string) => string; }) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element

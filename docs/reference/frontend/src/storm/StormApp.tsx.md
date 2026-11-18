@@ -2,11 +2,11 @@
 
 Сгенерировано из объявлений кода. [Правила чтения](../../../../METHODS.md).
 
-Методов и именованных функций: **325**.
+Методов и именованных функций: **326**.
 
 ## getApiErrorMessage
 
-[frontend/src/storm/StormApp.tsx:200](../../../../../frontend/src/storm/StormApp.tsx#L200)
+[frontend/src/storm/StormApp.tsx:202](../../../../../frontend/src/storm/StormApp.tsx#L202)
 
 ```typescript
 getApiErrorMessage(error: unknown, fallback: string) => string
@@ -31,7 +31,7 @@ getApiErrorMessage(error: unknown, fallback: string) => string
 
 ## stop
 
-[frontend/src/storm/StormApp.tsx:722](../../../../../frontend/src/storm/StormApp.tsx#L722)
+[frontend/src/storm/StormApp.tsx:734](../../../../../frontend/src/storm/StormApp.tsx#L734)
 
 ```typescript
 stop(e: { stopPropagation: () => void }) => void
@@ -54,7 +54,7 @@ stop(e: { stopPropagation: () => void }) => void
 
 ## cap
 
-[frontend/src/storm/StormApp.tsx:723](../../../../../frontend/src/storm/StormApp.tsx#L723)
+[frontend/src/storm/StormApp.tsx:735](../../../../../frontend/src/storm/StormApp.tsx#L735)
 
 ```typescript
 cap(s: string) => string
@@ -79,7 +79,7 @@ cap(s: string) => string
 
 ## Collapse
 
-[frontend/src/storm/StormApp.tsx:732](../../../../../frontend/src/storm/StormApp.tsx#L732)
+[frontend/src/storm/StormApp.tsx:744](../../../../../frontend/src/storm/StormApp.tsx#L744)
 
 ```typescript
 Collapse({ open, children }: { open: boolean; children: ReactNode }) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -95,7 +95,7 @@ Collapse({ open, children }: { open: boolean; children: ReactNode }) => import("
 
 ## FilePreview
 
-[frontend/src/storm/StormApp.tsx:745](../../../../../frontend/src/storm/StormApp.tsx#L745)
+[frontend/src/storm/StormApp.tsx:757](../../../../../frontend/src/storm/StormApp.tsx#L757)
 
 ```typescript
 FilePreview({ file, onClose }: { file: ApiVulnFile; onClose: () => void }) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").ReactPortal
@@ -122,33 +122,9 @@ FilePreview({ file, onClose }: { file: ApiVulnFile; onClose: () => void }) => im
 
 </details>
 
-## Tip
-
-[frontend/src/storm/StormApp.tsx:818](../../../../../frontend/src/storm/StormApp.tsx#L818)
-
-```typescript
-Tip({ label, children }: { label: string; children: ReactNode }) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
-```
-
-В теле вызывает `createPortal`, `useState`.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `{ label, children }` | `{ label: string; children: ReactNode }` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-
-Возвращает: `import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `createPortal`
-- `useState`
-
-</details>
-
 ## toggleIn
 
-[frontend/src/storm/StormApp.tsx:855](../../../../../frontend/src/storm/StormApp.tsx#L855)
+[frontend/src/storm/StormApp.tsx:831](../../../../../frontend/src/storm/StormApp.tsx#L831)
 
 ```typescript
 toggleIn<T>(arr: T[], v: T) => T[]
@@ -173,7 +149,7 @@ Multi-select filter toggle: add the value if absent, drop it if already held.
 
 ## fstr
 
-[frontend/src/storm/StormApp.tsx:857](../../../../../frontend/src/storm/StormApp.tsx#L857)
+[frontend/src/storm/StormApp.tsx:833](../../../../../frontend/src/storm/StormApp.tsx#L833)
 
 ```typescript
 fstr(v: string | string[] | undefined) => string
@@ -189,7 +165,7 @@ Coerce an editor-form value (string or tag-array) to a plain string.
 
 ## toDispDate
 
-[frontend/src/storm/StormApp.tsx:860](../../../../../frontend/src/storm/StormApp.tsx#L860)
+[frontend/src/storm/StormApp.tsx:836](../../../../../frontend/src/storm/StormApp.tsx#L836)
 
 ```typescript
 toDispDate(s?: string) => string
@@ -213,7 +189,7 @@ dd.mm.yyyy → yyyy-mm-dd (for <input type=date>) and back.
 
 ## fmtDateTime
 
-[frontend/src/storm/StormApp.tsx:867](../../../../../frontend/src/storm/StormApp.tsx#L867)
+[frontend/src/storm/StormApp.tsx:843](../../../../../frontend/src/storm/StormApp.tsx#L843)
 
 ```typescript
 fmtDateTime(s?: string | null) => string
@@ -244,7 +220,7 @@ ISO-таймстамп → «ДД.ММ.ГГГГ, ЧЧ:ММ» (привлекат
 
 ## fmtDateTime.p
 
-[frontend/src/storm/StormApp.tsx:871](../../../../../frontend/src/storm/StormApp.tsx#L871)
+[frontend/src/storm/StormApp.tsx:847](../../../../../frontend/src/storm/StormApp.tsx#L847)
 
 ```typescript
 p(n: number) => string
@@ -268,7 +244,7 @@ p(n: number) => string
 
 ## pathFor
 
-[frontend/src/storm/StormApp.tsx:882](../../../../../frontend/src/storm/StormApp.tsx#L882)
+[frontend/src/storm/StormApp.tsx:858](../../../../../frontend/src/storm/StormApp.tsx#L858)
 
 ```typescript
 pathFor(s: { view: ViewId; nav: NavId; openProjectId: number | null; section: SectionId; reconView: ReconView; profileTab: ProfileTab; openVulnId: number | null; openNoteId: number | null; openHostId: number | null; openIp: string | null; openJsFileId: number | null; tasksOpenKey: string | null; }) => string
@@ -296,7 +272,7 @@ parsed back there, or the round-trip through the router will drop it.
 
 ## navStateFromPath
 
-[frontend/src/storm/StormApp.tsx:919](../../../../../frontend/src/storm/StormApp.tsx#L919)
+[frontend/src/storm/StormApp.tsx:895](../../../../../frontend/src/storm/StormApp.tsx#L895)
 
 ```typescript
 navStateFromPath(path: string) => Partial<StormState>
@@ -325,7 +301,7 @@ Parse a URL path back into the navigation-state fields it encodes.
 
 ## navStateFromPath.entityId
 
-[frontend/src/storm/StormApp.tsx:939](../../../../../frontend/src/storm/StormApp.tsx#L939)
+[frontend/src/storm/StormApp.tsx:915](../../../../../frontend/src/storm/StormApp.tsx#L915)
 
 ```typescript
 entityId() => number | null
@@ -343,37 +319,34 @@ entityId() => number | null
 
 </details>
 
-## initialsOf
+## avatarLetter
 
-[frontend/src/storm/StormApp.tsx:987](../../../../../frontend/src/storm/StormApp.tsx#L987)
+[frontend/src/storm/StormApp.tsx:963](../../../../../frontend/src/storm/StormApp.tsx#L963)
 
 ```typescript
-initialsOf(name: string) => string
+avatarLetter(username: string) => string
 ```
 
-В теле вызывает `(parts[0] || "U").slice`, `(parts[0] || "U").slice(0, 2).toUpperCase`, `(parts[0][0] + parts[1][0]).toUpperCase`, `name.trim`, `name.trim().split`, `name.trim().split(/[^A-Za-zА-Яа-яЁё0-9]+/).filter`.
+В теле вызывает `(Array.from(username.trim())[0] || "U").toUpperCase`, `Array.from`, `username.trim`.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
-| `name` | `string` | `обязательный` | Имя/название обрабатываемого объекта. |
+| `username` | `string` | `обязательный` | Имя пользователя. |
 
 Возвращает: `string`.
 
 <details>
 <summary>Прямые вызовы в теле</summary>
 
-- `(parts[0] || "U").slice`
-- `(parts[0] || "U").slice(0, 2).toUpperCase`
-- `(parts[0][0] + parts[1][0]).toUpperCase`
-- `name.trim`
-- `name.trim().split`
-- `name.trim().split(/[^A-Za-zА-Яа-яЁё0-9]+/).filter`
+- `(Array.from(username.trim())[0] || "U").toUpperCase`
+- `Array.from`
+- `username.trim`
 
 </details>
 
 ## computeCvss4
 
-[frontend/src/storm/StormApp.tsx:1002](../../../../../frontend/src/storm/StormApp.tsx#L1002)
+[frontend/src/storm/StormApp.tsx:976](../../../../../frontend/src/storm/StormApp.tsx#L976)
 
 ```typescript
 computeCvss4(vector?: string) => { score: number; sev: Severity } | null
@@ -407,7 +380,7 @@ CVSS:4.0/AV:L/AC:L/AT:P/PR:L/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N/SA:N давала 8.8
 
 ## renderMarkdown
 
-[frontend/src/storm/StormApp.tsx:1011](../../../../../frontend/src/storm/StormApp.tsx#L1011)
+[frontend/src/storm/StormApp.tsx:985](../../../../../frontend/src/storm/StormApp.tsx#L985)
 
 ```typescript
 renderMarkdown(src: string) => ReactNode
@@ -423,7 +396,7 @@ renderMarkdown(src: string) => ReactNode
 
 ## cumulativeSpark
 
-[frontend/src/storm/StormApp.tsx:1029](../../../../../frontend/src/storm/StormApp.tsx#L1029)
+[frontend/src/storm/StormApp.tsx:1003](../../../../../frontend/src/storm/StormApp.tsx#L1003)
 
 ```typescript
 cumulativeSpark(timestamps: (string | null | undefined)[], startMs: number, endMs: number, w = 111, h = 30, pad = 3) => string
@@ -469,7 +442,7 @@ renders something meaningful.
 
 ## sparkArea
 
-[frontend/src/storm/StormApp.tsx:1077](../../../../../frontend/src/storm/StormApp.tsx#L1077)
+[frontend/src/storm/StormApp.tsx:1051](../../../../../frontend/src/storm/StormApp.tsx#L1051)
 
 ```typescript
 sparkArea(points: string, w: number, h = 30) => string
@@ -487,7 +460,7 @@ sparkArea(points: string, w: number, h = 30) => string
 
 ## toStormMethod
 
-[frontend/src/storm/StormApp.tsx:1091](../../../../../frontend/src/storm/StormApp.tsx#L1091)
+[frontend/src/storm/StormApp.tsx:1065](../../../../../frontend/src/storm/StormApp.tsx#L1065)
 
 ```typescript
 toStormMethod(m: ApiEndpoint["method"]) => Method
@@ -510,7 +483,7 @@ toStormMethod(m: ApiEndpoint["method"]) => Method
 
 ## isFarmJobInFlight
 
-[frontend/src/storm/StormApp.tsx:1097](../../../../../frontend/src/storm/StormApp.tsx#L1097)
+[frontend/src/storm/StormApp.tsx:1071](../../../../../frontend/src/storm/StormApp.tsx#L1071)
 
 ```typescript
 isFarmJobInFlight(status: string) => boolean
@@ -527,7 +500,7 @@ pre-run states — a job sits there until the worker picks it off the queue.
 
 ## toStormPort
 
-[frontend/src/storm/StormApp.tsx:1102](../../../../../frontend/src/storm/StormApp.tsx#L1102)
+[frontend/src/storm/StormApp.tsx:1076](../../../../../frontend/src/storm/StormApp.tsx#L1076)
 
 ```typescript
 toStormPort(p: ApiPortWithServices) => Host["ports"][number]
@@ -550,7 +523,7 @@ Ports live under each IP on the backend; Storm shows them flat per host.
 
 ## toStormPorts
 
-[frontend/src/storm/StormApp.tsx:1113](../../../../../frontend/src/storm/StormApp.tsx#L1113)
+[frontend/src/storm/StormApp.tsx:1087](../../../../../frontend/src/storm/StormApp.tsx#L1087)
 
 ```typescript
 toStormPorts(h: ApiHost) => Host["ports"]
@@ -573,7 +546,7 @@ toStormPorts(h: ApiHost) => Host["ports"]
 
 ## toStormHost
 
-[frontend/src/storm/StormApp.tsx:1117](../../../../../frontend/src/storm/StormApp.tsx#L1117)
+[frontend/src/storm/StormApp.tsx:1091](../../../../../frontend/src/storm/StormApp.tsx#L1091)
 
 ```typescript
 toStormHost(h: ApiHost, endpoints: Endpoint[] = []) => Host
@@ -598,7 +571,7 @@ toStormHost(h: ApiHost, endpoints: Endpoint[] = []) => Host
 
 ## toStormVuln
 
-[frontend/src/storm/StormApp.tsx:1138](../../../../../frontend/src/storm/StormApp.tsx#L1138)
+[frontend/src/storm/StormApp.tsx:1112](../../../../../frontend/src/storm/StormApp.tsx#L1112)
 
 ```typescript
 toStormVuln(v: ApiVulnerability, hostName: string) => Vuln
@@ -622,7 +595,7 @@ Backend workflow steps carry ids/endpoints/images; Storm's editor shows the text
 
 ## toStormNote
 
-[frontend/src/storm/StormApp.tsx:1167](../../../../../frontend/src/storm/StormApp.tsx#L1167)
+[frontend/src/storm/StormApp.tsx:1141](../../../../../frontend/src/storm/StormApp.tsx#L1141)
 
 ```typescript
 toStormNote(n: ProjectNote) => Note
@@ -646,7 +619,7 @@ toStormNote(n: ProjectNote) => Note
 
 ## toStormCred
 
-[frontend/src/storm/StormApp.tsx:1177](../../../../../frontend/src/storm/StormApp.tsx#L1177)
+[frontend/src/storm/StormApp.tsx:1151](../../../../../frontend/src/storm/StormApp.tsx#L1151)
 
 ```typescript
 toStormCred(c: ApiProjectCredential) => Cred
@@ -670,13 +643,13 @@ toStormCred(c: ApiProjectCredential) => Cred
 
 ## toStormMember
 
-[frontend/src/storm/StormApp.tsx:1189](../../../../../frontend/src/storm/StormApp.tsx#L1189)
+[frontend/src/storm/StormApp.tsx:1163](../../../../../frontend/src/storm/StormApp.tsx#L1163)
 
 ```typescript
 toStormMember(m: ApiProjectMember, idx: number) => Member
 ```
 
-В теле вызывает `initialsOf`.
+В теле вызывает `avatarLetter`.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -688,13 +661,13 @@ toStormMember(m: ApiProjectMember, idx: number) => Member
 <details>
 <summary>Прямые вызовы в теле</summary>
 
-- `initialsOf`
+- `avatarLetter`
 
 </details>
 
 ## actDetail
 
-[frontend/src/storm/StormApp.tsx:1266](../../../../../frontend/src/storm/StormApp.tsx#L1266)
+[frontend/src/storm/StormApp.tsx:1241](../../../../../frontend/src/storm/StormApp.tsx#L1241)
 
 ```typescript
 actDetail(a: ProjectActivityItem, k: string) => string
@@ -718,7 +691,7 @@ actDetail(a: ProjectActivityItem, k: string) => string
 
 ## activityLine
 
-[frontend/src/storm/StormApp.tsx:1281](../../../../../frontend/src/storm/StormApp.tsx#L1281)
+[frontend/src/storm/StormApp.tsx:1256](../../../../../frontend/src/storm/StormApp.tsx#L1256)
 
 ```typescript
 activityLine(a: ProjectActivityItem, resolve: ActivityResolver) => ActivityLine
@@ -748,7 +721,7 @@ activityLine(a: ProjectActivityItem, resolve: ActivityResolver) => ActivityLine
 
 ## activitySubject
 
-[frontend/src/storm/StormApp.tsx:1327](../../../../../frontend/src/storm/StormApp.tsx#L1327)
+[frontend/src/storm/StormApp.tsx:1302](../../../../../frontend/src/storm/StormApp.tsx#L1302)
 
 ```typescript
 activitySubject(type: string, n: number) => string
@@ -773,7 +746,7 @@ What the action applied to, straight after the verb: "3 IP addresses", "finding"
 
 ## groupActivity
 
-[frontend/src/storm/StormApp.tsx:1336](../../../../../frontend/src/storm/StormApp.tsx#L1336)
+[frontend/src/storm/StormApp.tsx:1311](../../../../../frontend/src/storm/StormApp.tsx#L1311)
 
 ```typescript
 groupActivity(items: ProjectActivityItem[], resolve: ActivityResolver = () => null) => ActivityGroup[]
@@ -799,7 +772,7 @@ groupActivity(items: ProjectActivityItem[], resolve: ActivityResolver = () => nu
 
 ## groupActivity.flush
 
-[frontend/src/storm/StormApp.tsx:1339](../../../../../frontend/src/storm/StormApp.tsx#L1339)
+[frontend/src/storm/StormApp.tsx:1314](../../../../../frontend/src/storm/StormApp.tsx#L1314)
 
 ```typescript
 flush() => void
@@ -824,7 +797,7 @@ flush() => void
 
 ## elapsedPct
 
-[frontend/src/storm/StormApp.tsx:1386](../../../../../frontend/src/storm/StormApp.tsx#L1386)
+[frontend/src/storm/StormApp.tsx:1361](../../../../../frontend/src/storm/StormApp.tsx#L1361)
 
 ```typescript
 elapsedPct(startISO: string, endISO: string) => number
@@ -853,13 +826,13 @@ Percentage of the engagement window that has elapsed (the overview progress bar)
 
 ## StormApp
 
-[frontend/src/storm/StormApp.tsx:1394](../../../../../frontend/src/storm/StormApp.tsx#L1394)
+[frontend/src/storm/StormApp.tsx:1369](../../../../../frontend/src/storm/StormApp.tsx#L1369)
 
 ```typescript
 StormApp() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
 ```
 
-В теле вызывает `(() => { const g = state.activityModalKey ? activityGroups.find((x) => x.key === state.activityModalKey) : undefined; const close = () => setState({ activityModalKey: null }); return modalShell( !!g, close, 60, 620, <> <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "var(--st-text)", letterSpacing: "-.4px" }}> {g ? `${g.actor === "System" ? t("System") : g.actor} ${t(g.verb)} ${g.subject}` : ""} </h2> {g && <div className="mono" style={{ marginTop: 6, fontSize: 11.5, color: "var(--st-text-faint)" }}>{g.time}</div>} <div style={{ marginTop: 16, background: "var(--st-code-bg)", borderRadius: 10, padding: "12px 13px", display: "flex", flexDirection: "column", gap: 6, maxHeight: 420, overflow: "auto" }}> {g?.lines.map((l) => activityLineRow(l, g.tone))} </div> <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 20 }}> <button className="clk" onClick={close} style={{ height: 40, padding: "0 20px", border: "1px solid var(--st-border)", borderRadius: 10, background: "var(--st-surface)", font: "700 13px Inter,sans-serif", color: "var(--st-text-2)", cursor: "pointer" }}>{t("Close")}</button> </div> </> ); })`, `(() => { const total = vulns.length; const pct = state.taskTrackerBulkTotal > 0 ? Math.round((state.taskTrackerBulkDone / state.taskTrackerBulkTotal) * 100) : 0; return ( <> <h2 style={{ margin: 0, fontSize: 21, fontWeight: 800, color: "var(--st-text)", letterSpacing: "-.4px" }}>{t("Export all to Task Tracker")}</h2> <div style={{ marginTop: 16 }}> {state.taskTrackerBulkFinished ? ( <div style={{ border: "1px solid var(--st-success-soft)", background: "var(--st-success-soft)", borderRadius: 12, padding: "14px 16px" }}> <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 8 }}><Icon name="check-circle" size={18} color="var(--st-success)" sw={2.2} /><span style={{ font: "700 13.5px Inter,sans-serif", color: "var(--st-text)" }}>{t("Export finished")}</span></div> <div style={{ font: "600 13px Inter,sans-serif", color: "var(--st-text-2)", lineHeight: 1.7 }}> {t("Created:")} <b>{state.taskTrackerBulkCreated}</b><br /> {t("Already linked (skipped):")} <b>{state.taskTrackerBulkSkipped}</b><br /> {t("Failed:")} <b style={{ color: state.taskTrackerBulkFailed ? "var(--st-danger)" : "var(--st-text-2)" }}>{state.taskTrackerBulkFailed}</b> </div> </div> ) : state.taskTrackerBulkRunning ? ( <div> <div style={{ font: "600 13px Inter,sans-serif", color: "var(--st-text-2)", marginBottom: 10 }}>{t("Exporting")} {state.taskTrackerBulkDone} / {state.taskTrackerBulkTotal}…</div> <div style={{ height: 8, background: "var(--st-divider)", borderRadius: 6, overflow: "hidden" }}> <div style={{ width: `${pct}%`, height: "100%", background: "var(--st-accent)", transition: "width .2s" }} /> </div> </div> ) : ( <div style={{ font: "600 13px Inter,sans-serif", color: "var(--st-text-2)", lineHeight: 1.5 }}> {t("This will create a Task Tracker issue (in To Do) for each of the")} <b style={{ color: "var(--st-text)" }}>{total}</b> {t("listed")} {total === 1 ? t("vulnerability") : t("vulnerabilities")} {t("(page filters apply). Already-linked findings are skipped.")} </div> )} </div> <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 22 }}> {state.taskTrackerBulkFinished ? ( <> {state.taskTrackerBulkProjectUrl && ( <a className="clk" href={state.taskTrackerBulkProjectUrl} target="_blank" rel="noreferrer" style={{ height: 42, padding: "0 20px", borderRadius: 11, background: "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13.5px Inter,sans-serif", display: "inline-flex", alignItems: "center", textDecoration: "none" }}>{t("Open Task Tracker")}</a> )} <button className="clk" onClick={closeBulkTaskTracker} style={{ height: 42, padding: "0 20px", border: "1px solid var(--st-border)", borderRadius: 11, background: "var(--st-surface)", font: "700 13.5px Inter,sans-serif", color: "var(--st-text-2)" }}>{t("Done")}</button> </> ) : ( <> <button className="clk" onClick={closeBulkTaskTracker} disabled={state.taskTrackerBulkRunning} style={{ height: 42, padding: "0 20px", border: "1px solid var(--st-border)", borderRadius: 11, background: "var(--st-surface)", font: "700 13.5px Inter,sans-serif", color: "var(--st-text-2)", cursor: state.taskTrackerBulkRunning ? "default" : "pointer" }}>{t("Cancel")}</button> <button className="clk" onClick={doBulkTaskTrackerExport} disabled={state.taskTrackerBulkRunning || total === 0} style={{ height: 42, padding: "0 22px", border: "none", borderRadius: 11, background: state.taskTrackerBulkRunning || total === 0 ? "var(--st-accent-muted)" : "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13.5px Inter,sans-serif", cursor: state.taskTrackerBulkRunning || total === 0 ? "default" : "pointer" }}> {state.taskTrackerBulkRunning ? t("Exporting…") : `${t("Export")} ${total}`} </button> </> )} </div> </> ); })`, `(() => { const v = state.taskTrackerExportVulnId != null ? d.vulns.find((x) => x.id === state.taskTrackerExportVulnId) : undefined; const link = state.taskTrackerExportLink; const isLinked = !!(link && link.status === "linked" && link.task_tracker_issue_key); const exportDisabled = state.taskTrackerExportBusy || state.taskTrackerExportChecking; return ( <> <h2 style={{ margin: 0, fontSize: 21, fontWeight: 800, color: "var(--st-text)", letterSpacing: "-.4px" }}>{t("Export to Task Tracker")}</h2> {v && ( <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 16, padding: "12px 14px", border: "1px solid var(--st-divider)", borderRadius: 12 }}> <span style={{ font: "700 10px Inter,sans-serif", textTransform: "uppercase", letterSpacing: ".5px", borderRadius: 7, padding: "4px 9px", background: SEV[v.sev].bg, color: SEV[v.sev].color, flex: "none" }}>{t(v.sev)}</span> <div style={{ minWidth: 0 }}> <div style={{ font: "600 14px Inter,sans-serif", color: "var(--st-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.title}</div> <div className="mono" style={{ fontSize: 12, color: "var(--st-text-3)", marginTop: 2 }}>{v.host}</div> </div> </div> )} {/* Статус-блок рендерим ТОЛЬКО когда есть что показать (проверка / уже экспортировано / ошибка). Иначе — без пустого зарезервированного пространства: карточка находки идёт сразу к кнопкам. */} {(state.taskTrackerExportChecking || isLinked || state.taskTrackerExportError) && ( <div style={{ marginTop: 16 }}> {state.taskTrackerExportChecking ? ( <div style={{ font: "600 13px Inter,sans-serif", color: "var(--st-text-3)" }}>{t("Checking status…")}</div> ) : isLinked ? ( <div style={{ display: "flex", alignItems: "center", gap: 10, border: "1px solid var(--st-success-soft)", background: "var(--st-success-soft)", borderRadius: 12, padding: "13px 15px" }}> <Icon name="check-circle" size={18} color="var(--st-success)" sw={2.2} /> <div style={{ font: "600 13.5px Inter,sans-serif", color: "var(--st-text)" }}> {t("Already exported:")}{" "} <a href={link!.task_tracker_issue_url} target="_blank" rel="noreferrer" style={{ color: "var(--st-accent)", fontWeight: 700 }}>{link!.task_tracker_issue_key}</a> </div> </div> ) : ( <div style={{ color: "var(--st-danger)", font: "600 12.5px Inter,sans-serif" }}>{state.taskTrackerExportError}</div> )} </div> )} <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 22 }}> {isLinked ? ( <> <a className="clk" href={link!.task_tracker_issue_url} target="_blank" rel="noreferrer" style={{ height: 42, padding: "0 20px", borderRadius: 11, background: "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13.5px Inter,sans-serif", display: "inline-flex", alignItems: "center", textDecoration: "none" }}>{t("Open in Task Tracker")}</a> <button className="clk" onClick={closeTaskTrackerExport} style={{ height: 42, padding: "0 20px", border: "1px solid var(--st-border)", borderRadius: 11, background: "var(--st-surface)", font: "700 13.5px Inter,sans-serif", color: "var(--st-text-2)" }}>{t("Done")}</button> </> ) : ( <> <button className="clk" onClick={closeTaskTrackerExport} style={{ height: 42, padding: "0 20px", border: "1px solid var(--st-border)", borderRadius: 11, background: "var(--st-surface)", font: "700 13.5px Inter,sans-serif", color: "var(--st-text-2)" }}>{t("Cancel")}</button> <button className="clk" onClick={doTaskTrackerExport} disabled={exportDisabled} style={{ height: 42, padding: "0 22px", border: "none", borderRadius: 11, background: exportDisabled ? "var(--st-accent-muted)" : "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13.5px Inter,sans-serif", cursor: exportDisabled ? "default" : "pointer" }}> {state.taskTrackerExportBusy ? t("Exporting…") : t("Export")} </button> </> )} </div> </> ); })`, `([ { id: "projects" as const, icon: "folder" as const, label: "Projects", onClick: selProjects }, { id: "tasks" as const, icon: "check-square" as const, label: "Tasks", onClick: () => setState({ nav: "tasks", view: "list", tasksOpenKey: null }) }, { id: "docs" as const, icon: "doc" as const, label: "Docs", onClick: () => setState({ nav: "docs", view: "list" }) }, ...(isAdmin ? [{ id: "members" as const, icon: "users" as const, label: "Members", onClick: selWSMembers }] : []), ]).map`, `(["critical", "high", "medium", "low", "info", "unrealized"] as Severity[]).map`, `(state.apiJsFiles ?? []).map`, `(state.apiMembers ?? []).some`, `(state.apiProjects ?? []).map`; полный список ниже.
+В теле вызывает `(() => { const g = state.activityModalKey ? activityGroups.find((x) => x.key === state.activityModalKey) : undefined; const close = () => setState({ activityModalKey: null }); return modalShell( !!g, close, 60, 620, <> <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "var(--st-text)", letterSpacing: "-.4px" }}> {g ? `${g.actor === "System" ? t("System") : g.actor} ${t(g.verb)} ${g.subject}` : ""} </h2> {g && <div className="mono" style={{ marginTop: 6, fontSize: 11.5, color: "var(--st-text-faint)" }}>{g.time}</div>} <div style={{ marginTop: 16, background: "var(--st-code-bg)", borderRadius: 10, padding: "12px 13px", display: "flex", flexDirection: "column", gap: 6, maxHeight: 420, overflow: "auto" }}> {g?.lines.map((l) => activityLineRow(l, g.tone))} </div> <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 20 }}> <button className="clk" onClick={close} style={{ height: 40, padding: "0 20px", border: "1px solid var(--st-border)", borderRadius: 10, background: "var(--st-surface)", font: "700 13px Inter,sans-serif", color: "var(--st-text-2)", cursor: "pointer" }}>{t("Close")}</button> </div> </> ); })`, `(() => { const total = vulns.filter((finding) => finding.sev !== "unrealized").length; const excluded = vulns.length - total; const pct = state.taskTrackerBulkTotal > 0 ? Math.round((state.taskTrackerBulkDone / state.taskTrackerBulkTotal) * 100) : 0; return ( <> <h2 style={{ margin: 0, fontSize: 21, fontWeight: 800, color: "var(--st-text)", letterSpacing: "-.4px" }}>{t("Export all to Task Tracker")}</h2> {excluded > 0 && <p style={{ color: "var(--st-text-2)", fontSize: 12 }}>{t("Unrealized findings skipped: {count}", { count: excluded })}</p>} <div style={{ marginTop: 16 }}> {state.taskTrackerBulkFinished ? ( <div style={{ border: "1px solid var(--st-success-soft)", background: "var(--st-success-soft)", borderRadius: 12, padding: "14px 16px" }}> <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 8 }}><Icon name="check-circle" size={18} color="var(--st-success)" sw={2.2} /><span style={{ font: "700 13.5px Inter,sans-serif", color: "var(--st-text)" }}>{t("Export finished")}</span></div> <div style={{ font: "600 13px Inter,sans-serif", color: "var(--st-text-2)", lineHeight: 1.7 }}> {t("Created:")} <b>{state.taskTrackerBulkCreated}</b><br /> {t("Already linked (skipped):")} <b>{state.taskTrackerBulkSkipped}</b><br /> {t("Failed:")} <b style={{ color: state.taskTrackerBulkFailed ? "var(--st-danger)" : "var(--st-text-2)" }}>{state.taskTrackerBulkFailed}</b> </div> </div> ) : state.taskTrackerBulkRunning ? ( <div> <div style={{ font: "600 13px Inter,sans-serif", color: "var(--st-text-2)", marginBottom: 10 }}>{t("Exporting")} {state.taskTrackerBulkDone} / {state.taskTrackerBulkTotal}…</div> <div style={{ height: 8, background: "var(--st-divider)", borderRadius: 6, overflow: "hidden" }}> <div style={{ width: `${pct}%`, height: "100%", background: "var(--st-accent)", transition: "width .2s" }} /> </div> </div> ) : ( <div style={{ font: "600 13px Inter,sans-serif", color: "var(--st-text-2)", lineHeight: 1.5 }}> {t("This will create a Task Tracker issue (in To Do) for each of the")} <b style={{ color: "var(--st-text)" }}>{total}</b> {t("listed")} {total === 1 ? t("vulnerability") : t("vulnerabilities")} {t("(page filters apply). Already-linked findings are skipped.")} </div> )} </div> <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 22 }}> {state.taskTrackerBulkFinished ? ( <> {state.taskTrackerBulkProjectUrl && ( <a className="clk" href={state.taskTrackerBulkProjectUrl} target="_blank" rel="noreferrer" style={{ height: 42, padding: "0 20px", borderRadius: 11, background: "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13.5px Inter,sans-serif", display: "inline-flex", alignItems: "center", textDecoration: "none" }}>{t("Open Task Tracker")}</a> )} <button className="clk" onClick={closeBulkTaskTracker} style={{ height: 42, padding: "0 20px", border: "1px solid var(--st-border)", borderRadius: 11, background: "var(--st-surface)", font: "700 13.5px Inter,sans-serif", color: "var(--st-text-2)" }}>{t("Done")}</button> </> ) : ( <> <button className="clk" onClick={closeBulkTaskTracker} disabled={state.taskTrackerBulkRunning} style={{ height: 42, padding: "0 20px", border: "1px solid var(--st-border)", borderRadius: 11, background: "var(--st-surface)", font: "700 13.5px Inter,sans-serif", color: "var(--st-text-2)", cursor: state.taskTrackerBulkRunning ? "default" : "pointer" }}>{t("Cancel")}</button> <button className="clk" onClick={doBulkTaskTrackerExport} disabled={state.taskTrackerBulkRunning || total === 0} style={{ height: 42, padding: "0 22px", border: "none", borderRadius: 11, background: state.taskTrackerBulkRunning || total === 0 ? "var(--st-accent-muted)" : "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13.5px Inter,sans-serif", cursor: state.taskTrackerBulkRunning || total === 0 ? "default" : "pointer" }}> {state.taskTrackerBulkRunning ? t("Exporting…") : `${t("Export")} ${total}`} </button> </> )} </div> </> ); })`, `(() => { const v = state.taskTrackerExportVulnId != null ? d.vulns.find((x) => x.id === state.taskTrackerExportVulnId) : undefined; const link = state.taskTrackerExportLink; const isLinked = !!(link && link.status === "linked" && link.task_tracker_issue_key); const exportDisabled = state.taskTrackerExportBusy || state.taskTrackerExportChecking; return ( <> <h2 style={{ margin: 0, fontSize: 21, fontWeight: 800, color: "var(--st-text)", letterSpacing: "-.4px" }}>{t("Export to Task Tracker")}</h2> {v && ( <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 16, padding: "12px 14px", border: "1px solid var(--st-divider)", borderRadius: 12 }}> <span style={{ font: "700 10px Inter,sans-serif", textTransform: "uppercase", letterSpacing: ".5px", borderRadius: 7, padding: "4px 9px", background: SEV[v.sev].bg, color: SEV[v.sev].color, flex: "none" }}>{t(v.sev)}</span> <div style={{ minWidth: 0 }}> <div style={{ font: "600 14px Inter,sans-serif", color: "var(--st-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.title}</div> <div className="mono" style={{ fontSize: 12, color: "var(--st-text-3)", marginTop: 2 }}>{v.host}</div> </div> </div> )} {/* Статус-блок рендерим ТОЛЬКО когда есть что показать (проверка / уже экспортировано / ошибка). Иначе — без пустого зарезервированного пространства: карточка находки идёт сразу к кнопкам. */} {(state.taskTrackerExportChecking || isLinked || state.taskTrackerExportError) && ( <div style={{ marginTop: 16 }}> {state.taskTrackerExportChecking ? ( <div style={{ font: "600 13px Inter,sans-serif", color: "var(--st-text-3)" }}>{t("Checking status…")}</div> ) : isLinked ? ( <div style={{ display: "flex", alignItems: "center", gap: 10, border: "1px solid var(--st-success-soft)", background: "var(--st-success-soft)", borderRadius: 12, padding: "13px 15px" }}> <Icon name="check-circle" size={18} color="var(--st-success)" sw={2.2} /> <div style={{ font: "600 13.5px Inter,sans-serif", color: "var(--st-text)" }}> {t("Already exported:")}{" "} <a href={link!.task_tracker_issue_url} target="_blank" rel="noreferrer" style={{ color: "var(--st-accent)", fontWeight: 700 }}>{link!.task_tracker_issue_key}</a> </div> </div> ) : ( <div style={{ color: "var(--st-danger)", font: "600 12.5px Inter,sans-serif" }}>{state.taskTrackerExportError}</div> )} </div> )} <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 22 }}> {isLinked ? ( <> <a className="clk" href={link!.task_tracker_issue_url} target="_blank" rel="noreferrer" style={{ height: 42, padding: "0 20px", borderRadius: 11, background: "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13.5px Inter,sans-serif", display: "inline-flex", alignItems: "center", textDecoration: "none" }}>{t("Open in Task Tracker")}</a> <button className="clk" onClick={closeTaskTrackerExport} style={{ height: 42, padding: "0 20px", border: "1px solid var(--st-border)", borderRadius: 11, background: "var(--st-surface)", font: "700 13.5px Inter,sans-serif", color: "var(--st-text-2)" }}>{t("Done")}</button> </> ) : ( <> <button className="clk" onClick={closeTaskTrackerExport} style={{ height: 42, padding: "0 20px", border: "1px solid var(--st-border)", borderRadius: 11, background: "var(--st-surface)", font: "700 13.5px Inter,sans-serif", color: "var(--st-text-2)" }}>{t("Cancel")}</button> <button className="clk" onClick={doTaskTrackerExport} disabled={exportDisabled} style={{ height: 42, padding: "0 22px", border: "none", borderRadius: 11, background: exportDisabled ? "var(--st-accent-muted)" : "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13.5px Inter,sans-serif", cursor: exportDisabled ? "default" : "pointer" }}> {state.taskTrackerExportBusy ? t("Exporting…") : t("Export")} </button> </> )} </div> </> ); })`, `([ { id: "projects" as const, icon: "folder" as const, label: "Projects", onClick: selProjects }, { id: "tasks" as const, icon: "check-square" as const, label: "Tasks", onClick: () => setState({ nav: "tasks", view: "list", tasksOpenKey: null }) }, { id: "docs" as const, icon: "doc" as const, label: "Docs", onClick: () => setState({ nav: "docs", view: "list" }) }, ...(isAdmin ? [{ id: "members" as const, icon: "users" as const, label: "Members", onClick: selWSMembers }] : []), ]).map`, `(["critical", "high", "medium", "low", "info", "unrealized"] as Severity[]).map`, `(state.apiJsFiles ?? []).map`, `(state.apiMembers ?? []).some`, `(state.apiProjects ?? []).map`; полный список ниже.
 
 Возвращает: `import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element`.
 
@@ -867,7 +840,7 @@ StormApp() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_mo
 <summary>Прямые вызовы в теле</summary>
 
 - `(() => { const g = state.activityModalKey ? activityGroups.find((x) => x.key === state.activityModalKey) : undefined; const close = () => setState({ activityModalKey: null }); return modalShell( !!g, close, 60, 620, <> <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "var(--st-text)", letterSpacing: "-.4px" }}> {g ? `${g.actor === "System" ? t("System") : g.actor} ${t(g.verb)} ${g.subject}` : ""} </h2> {g && <div className="mono" style={{ marginTop: 6, fontSize: 11.5, color: "var(--st-text-faint)" }}>{g.time}</div>} <div style={{ marginTop: 16, background: "var(--st-code-bg)", borderRadius: 10, padding: "12px 13px", display: "flex", flexDirection: "column", gap: 6, maxHeight: 420, overflow: "auto" }}> {g?.lines.map((l) => activityLineRow(l, g.tone))} </div> <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 20 }}> <button className="clk" onClick={close} style={{ height: 40, padding: "0 20px", border: "1px solid var(--st-border)", borderRadius: 10, background: "var(--st-surface)", font: "700 13px Inter,sans-serif", color: "var(--st-text-2)", cursor: "pointer" }}>{t("Close")}</button> </div> </> ); })`
-- `(() => { const total = vulns.length; const pct = state.taskTrackerBulkTotal > 0 ? Math.round((state.taskTrackerBulkDone / state.taskTrackerBulkTotal) * 100) : 0; return ( <> <h2 style={{ margin: 0, fontSize: 21, fontWeight: 800, color: "var(--st-text)", letterSpacing: "-.4px" }}>{t("Export all to Task Tracker")}</h2> <div style={{ marginTop: 16 }}> {state.taskTrackerBulkFinished ? ( <div style={{ border: "1px solid var(--st-success-soft)", background: "var(--st-success-soft)", borderRadius: 12, padding: "14px 16px" }}> <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 8 }}><Icon name="check-circle" size={18} color="var(--st-success)" sw={2.2} /><span style={{ font: "700 13.5px Inter,sans-serif", color: "var(--st-text)" }}>{t("Export finished")}</span></div> <div style={{ font: "600 13px Inter,sans-serif", color: "var(--st-text-2)", lineHeight: 1.7 }}> {t("Created:")} <b>{state.taskTrackerBulkCreated}</b><br /> {t("Already linked (skipped):")} <b>{state.taskTrackerBulkSkipped}</b><br /> {t("Failed:")} <b style={{ color: state.taskTrackerBulkFailed ? "var(--st-danger)" : "var(--st-text-2)" }}>{state.taskTrackerBulkFailed}</b> </div> </div> ) : state.taskTrackerBulkRunning ? ( <div> <div style={{ font: "600 13px Inter,sans-serif", color: "var(--st-text-2)", marginBottom: 10 }}>{t("Exporting")} {state.taskTrackerBulkDone} / {state.taskTrackerBulkTotal}…</div> <div style={{ height: 8, background: "var(--st-divider)", borderRadius: 6, overflow: "hidden" }}> <div style={{ width: `${pct}%`, height: "100%", background: "var(--st-accent)", transition: "width .2s" }} /> </div> </div> ) : ( <div style={{ font: "600 13px Inter,sans-serif", color: "var(--st-text-2)", lineHeight: 1.5 }}> {t("This will create a Task Tracker issue (in To Do) for each of the")} <b style={{ color: "var(--st-text)" }}>{total}</b> {t("listed")} {total === 1 ? t("vulnerability") : t("vulnerabilities")} {t("(page filters apply). Already-linked findings are skipped.")} </div> )} </div> <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 22 }}> {state.taskTrackerBulkFinished ? ( <> {state.taskTrackerBulkProjectUrl && ( <a className="clk" href={state.taskTrackerBulkProjectUrl} target="_blank" rel="noreferrer" style={{ height: 42, padding: "0 20px", borderRadius: 11, background: "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13.5px Inter,sans-serif", display: "inline-flex", alignItems: "center", textDecoration: "none" }}>{t("Open Task Tracker")}</a> )} <button className="clk" onClick={closeBulkTaskTracker} style={{ height: 42, padding: "0 20px", border: "1px solid var(--st-border)", borderRadius: 11, background: "var(--st-surface)", font: "700 13.5px Inter,sans-serif", color: "var(--st-text-2)" }}>{t("Done")}</button> </> ) : ( <> <button className="clk" onClick={closeBulkTaskTracker} disabled={state.taskTrackerBulkRunning} style={{ height: 42, padding: "0 20px", border: "1px solid var(--st-border)", borderRadius: 11, background: "var(--st-surface)", font: "700 13.5px Inter,sans-serif", color: "var(--st-text-2)", cursor: state.taskTrackerBulkRunning ? "default" : "pointer" }}>{t("Cancel")}</button> <button className="clk" onClick={doBulkTaskTrackerExport} disabled={state.taskTrackerBulkRunning || total === 0} style={{ height: 42, padding: "0 22px", border: "none", borderRadius: 11, background: state.taskTrackerBulkRunning || total === 0 ? "var(--st-accent-muted)" : "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13.5px Inter,sans-serif", cursor: state.taskTrackerBulkRunning || total === 0 ? "default" : "pointer" }}> {state.taskTrackerBulkRunning ? t("Exporting…") : `${t("Export")} ${total}`} </button> </> )} </div> </> ); })`
+- `(() => { const total = vulns.filter((finding) => finding.sev !== "unrealized").length; const excluded = vulns.length - total; const pct = state.taskTrackerBulkTotal > 0 ? Math.round((state.taskTrackerBulkDone / state.taskTrackerBulkTotal) * 100) : 0; return ( <> <h2 style={{ margin: 0, fontSize: 21, fontWeight: 800, color: "var(--st-text)", letterSpacing: "-.4px" }}>{t("Export all to Task Tracker")}</h2> {excluded > 0 && <p style={{ color: "var(--st-text-2)", fontSize: 12 }}>{t("Unrealized findings skipped: {count}", { count: excluded })}</p>} <div style={{ marginTop: 16 }}> {state.taskTrackerBulkFinished ? ( <div style={{ border: "1px solid var(--st-success-soft)", background: "var(--st-success-soft)", borderRadius: 12, padding: "14px 16px" }}> <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 8 }}><Icon name="check-circle" size={18} color="var(--st-success)" sw={2.2} /><span style={{ font: "700 13.5px Inter,sans-serif", color: "var(--st-text)" }}>{t("Export finished")}</span></div> <div style={{ font: "600 13px Inter,sans-serif", color: "var(--st-text-2)", lineHeight: 1.7 }}> {t("Created:")} <b>{state.taskTrackerBulkCreated}</b><br /> {t("Already linked (skipped):")} <b>{state.taskTrackerBulkSkipped}</b><br /> {t("Failed:")} <b style={{ color: state.taskTrackerBulkFailed ? "var(--st-danger)" : "var(--st-text-2)" }}>{state.taskTrackerBulkFailed}</b> </div> </div> ) : state.taskTrackerBulkRunning ? ( <div> <div style={{ font: "600 13px Inter,sans-serif", color: "var(--st-text-2)", marginBottom: 10 }}>{t("Exporting")} {state.taskTrackerBulkDone} / {state.taskTrackerBulkTotal}…</div> <div style={{ height: 8, background: "var(--st-divider)", borderRadius: 6, overflow: "hidden" }}> <div style={{ width: `${pct}%`, height: "100%", background: "var(--st-accent)", transition: "width .2s" }} /> </div> </div> ) : ( <div style={{ font: "600 13px Inter,sans-serif", color: "var(--st-text-2)", lineHeight: 1.5 }}> {t("This will create a Task Tracker issue (in To Do) for each of the")} <b style={{ color: "var(--st-text)" }}>{total}</b> {t("listed")} {total === 1 ? t("vulnerability") : t("vulnerabilities")} {t("(page filters apply). Already-linked findings are skipped.")} </div> )} </div> <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 22 }}> {state.taskTrackerBulkFinished ? ( <> {state.taskTrackerBulkProjectUrl && ( <a className="clk" href={state.taskTrackerBulkProjectUrl} target="_blank" rel="noreferrer" style={{ height: 42, padding: "0 20px", borderRadius: 11, background: "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13.5px Inter,sans-serif", display: "inline-flex", alignItems: "center", textDecoration: "none" }}>{t("Open Task Tracker")}</a> )} <button className="clk" onClick={closeBulkTaskTracker} style={{ height: 42, padding: "0 20px", border: "1px solid var(--st-border)", borderRadius: 11, background: "var(--st-surface)", font: "700 13.5px Inter,sans-serif", color: "var(--st-text-2)" }}>{t("Done")}</button> </> ) : ( <> <button className="clk" onClick={closeBulkTaskTracker} disabled={state.taskTrackerBulkRunning} style={{ height: 42, padding: "0 20px", border: "1px solid var(--st-border)", borderRadius: 11, background: "var(--st-surface)", font: "700 13.5px Inter,sans-serif", color: "var(--st-text-2)", cursor: state.taskTrackerBulkRunning ? "default" : "pointer" }}>{t("Cancel")}</button> <button className="clk" onClick={doBulkTaskTrackerExport} disabled={state.taskTrackerBulkRunning || total === 0} style={{ height: 42, padding: "0 22px", border: "none", borderRadius: 11, background: state.taskTrackerBulkRunning || total === 0 ? "var(--st-accent-muted)" : "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13.5px Inter,sans-serif", cursor: state.taskTrackerBulkRunning || total === 0 ? "default" : "pointer" }}> {state.taskTrackerBulkRunning ? t("Exporting…") : `${t("Export")} ${total}`} </button> </> )} </div> </> ); })`
 - `(() => { const v = state.taskTrackerExportVulnId != null ? d.vulns.find((x) => x.id === state.taskTrackerExportVulnId) : undefined; const link = state.taskTrackerExportLink; const isLinked = !!(link && link.status === "linked" && link.task_tracker_issue_key); const exportDisabled = state.taskTrackerExportBusy || state.taskTrackerExportChecking; return ( <> <h2 style={{ margin: 0, fontSize: 21, fontWeight: 800, color: "var(--st-text)", letterSpacing: "-.4px" }}>{t("Export to Task Tracker")}</h2> {v && ( <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 16, padding: "12px 14px", border: "1px solid var(--st-divider)", borderRadius: 12 }}> <span style={{ font: "700 10px Inter,sans-serif", textTransform: "uppercase", letterSpacing: ".5px", borderRadius: 7, padding: "4px 9px", background: SEV[v.sev].bg, color: SEV[v.sev].color, flex: "none" }}>{t(v.sev)}</span> <div style={{ minWidth: 0 }}> <div style={{ font: "600 14px Inter,sans-serif", color: "var(--st-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.title}</div> <div className="mono" style={{ fontSize: 12, color: "var(--st-text-3)", marginTop: 2 }}>{v.host}</div> </div> </div> )} {/* Статус-блок рендерим ТОЛЬКО когда есть что показать (проверка / уже экспортировано / ошибка). Иначе — без пустого зарезервированного пространства: карточка находки идёт сразу к кнопкам. */} {(state.taskTrackerExportChecking || isLinked || state.taskTrackerExportError) && ( <div style={{ marginTop: 16 }}> {state.taskTrackerExportChecking ? ( <div style={{ font: "600 13px Inter,sans-serif", color: "var(--st-text-3)" }}>{t("Checking status…")}</div> ) : isLinked ? ( <div style={{ display: "flex", alignItems: "center", gap: 10, border: "1px solid var(--st-success-soft)", background: "var(--st-success-soft)", borderRadius: 12, padding: "13px 15px" }}> <Icon name="check-circle" size={18} color="var(--st-success)" sw={2.2} /> <div style={{ font: "600 13.5px Inter,sans-serif", color: "var(--st-text)" }}> {t("Already exported:")}{" "} <a href={link!.task_tracker_issue_url} target="_blank" rel="noreferrer" style={{ color: "var(--st-accent)", fontWeight: 700 }}>{link!.task_tracker_issue_key}</a> </div> </div> ) : ( <div style={{ color: "var(--st-danger)", font: "600 12.5px Inter,sans-serif" }}>{state.taskTrackerExportError}</div> )} </div> )} <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 22 }}> {isLinked ? ( <> <a className="clk" href={link!.task_tracker_issue_url} target="_blank" rel="noreferrer" style={{ height: 42, padding: "0 20px", borderRadius: 11, background: "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13.5px Inter,sans-serif", display: "inline-flex", alignItems: "center", textDecoration: "none" }}>{t("Open in Task Tracker")}</a> <button className="clk" onClick={closeTaskTrackerExport} style={{ height: 42, padding: "0 20px", border: "1px solid var(--st-border)", borderRadius: 11, background: "var(--st-surface)", font: "700 13.5px Inter,sans-serif", color: "var(--st-text-2)" }}>{t("Done")}</button> </> ) : ( <> <button className="clk" onClick={closeTaskTrackerExport} style={{ height: 42, padding: "0 20px", border: "1px solid var(--st-border)", borderRadius: 11, background: "var(--st-surface)", font: "700 13.5px Inter,sans-serif", color: "var(--st-text-2)" }}>{t("Cancel")}</button> <button className="clk" onClick={doTaskTrackerExport} disabled={exportDisabled} style={{ height: 42, padding: "0 22px", border: "none", borderRadius: 11, background: exportDisabled ? "var(--st-accent-muted)" : "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13.5px Inter,sans-serif", cursor: exportDisabled ? "default" : "pointer" }}> {state.taskTrackerExportBusy ? t("Exporting…") : t("Export")} </button> </> )} </div> </> ); })`
 - `([ { id: "projects" as const, icon: "folder" as const, label: "Projects", onClick: selProjects }, { id: "tasks" as const, icon: "check-square" as const, label: "Tasks", onClick: () => setState({ nav: "tasks", view: "list", tasksOpenKey: null }) }, { id: "docs" as const, icon: "doc" as const, label: "Docs", onClick: () => setState({ nav: "docs", view: "list" }) }, ...(isAdmin ? [{ id: "members" as const, icon: "users" as const, label: "Members", onClick: selWSMembers }] : []), ]).map`
 - `(["critical", "high", "medium", "low", "info", "unrealized"] as Severity[]).map`
@@ -890,6 +863,7 @@ StormApp() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_mo
 - `allProjects .filter`
 - `allProjects .filter((p) => (state.tab === "active" ? !isArchivedStatus(p.status) : isArchivedStatus(p.status))) .filter`
 - `allProjects.filter`
+- `avatarLetter`
 - `computeCvss4`
 - `d.members.map`
 - `d.notes.find`
@@ -914,7 +888,6 @@ StormApp() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_mo
 - `hosts .map((h, idx) => ({ h, idx })) .filter`
 - `hosts.find`
 - `hosts.forEach`
-- `initialsOf`
 - `ipRowsByAddr.values`
 - `ipsRows.find`
 - `isFarmJobInFlight`
@@ -977,7 +950,7 @@ StormApp() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_mo
 
 ## StormApp.sync
 
-[frontend/src/storm/StormApp.tsx:1398](../../../../../frontend/src/storm/StormApp.tsx#L1398)
+[frontend/src/storm/StormApp.tsx:1373](../../../../../frontend/src/storm/StormApp.tsx#L1373)
 
 ```typescript
 sync() => void
@@ -996,7 +969,7 @@ sync() => void
 
 ## StormApp.setState
 
-[frontend/src/storm/StormApp.tsx:1414](../../../../../frontend/src/storm/StormApp.tsx#L1414)
+[frontend/src/storm/StormApp.tsx:1390](../../../../../frontend/src/storm/StormApp.tsx#L1390)
 
 ```typescript
 setState(patch: Partial<StormState> | ((s: StormState) => Partial<StormState>)) => void
@@ -1019,7 +992,7 @@ setState(patch: Partial<StormState> | ((s: StormState) => Partial<StormState>)) 
 
 ## StormApp.toggle
 
-[frontend/src/storm/StormApp.tsx:1416](../../../../../frontend/src/storm/StormApp.tsx#L1416)
+[frontend/src/storm/StormApp.tsx:1392](../../../../../frontend/src/storm/StormApp.tsx#L1392)
 
 ```typescript
 toggle(k: keyof StormState) => void
@@ -1042,7 +1015,7 @@ toggle(k: keyof StormState) => void
 
 ## StormApp.clearAvatarPick
 
-[frontend/src/storm/StormApp.tsx:1452](../../../../../frontend/src/storm/StormApp.tsx#L1452)
+[frontend/src/storm/StormApp.tsx:1429](../../../../../frontend/src/storm/StormApp.tsx#L1429)
 
 ```typescript
 clearAvatarPick() => void
@@ -1062,7 +1035,7 @@ clearAvatarPick() => void
 
 ## StormApp.onAvatarPick
 
-[frontend/src/storm/StormApp.tsx:1460](../../../../../frontend/src/storm/StormApp.tsx#L1460)
+[frontend/src/storm/StormApp.tsx:1437](../../../../../frontend/src/storm/StormApp.tsx#L1437)
 
 ```typescript
 onAvatarPick(e: ChangeEvent<HTMLInputElement>) => void
@@ -1089,7 +1062,7 @@ onAvatarPick(e: ChangeEvent<HTMLInputElement>) => void
 
 ## StormApp.submitAvatar
 
-[frontend/src/storm/StormApp.tsx:1479](../../../../../frontend/src/storm/StormApp.tsx#L1479)
+[frontend/src/storm/StormApp.tsx:1456](../../../../../frontend/src/storm/StormApp.tsx#L1456)
 
 ```typescript
 async submitAvatar() => Promise<void>
@@ -1114,13 +1087,13 @@ async submitAvatar() => Promise<void>
 
 ## StormApp.meAvatar
 
-[frontend/src/storm/StormApp.tsx:1495](../../../../../frontend/src/storm/StormApp.tsx#L1495)
+[frontend/src/storm/StormApp.tsx:1472](../../../../../frontend/src/storm/StormApp.tsx#L1472)
 
 ```typescript
 meAvatar(size: number, fontPx: number, text: string, src: string | null = authUser?.avatar_url ?? null) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
 ```
 
-Круг-аватар текущего пользователя: фото, если оно есть, иначе инициалы.
+Фото текущего пользователя; запасной вариант — первая буква логина.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -1133,7 +1106,7 @@ meAvatar(size: number, fontPx: number, text: string, src: string | null = authUs
 
 ## StormApp.handleProjectError
 
-[frontend/src/storm/StormApp.tsx:1522](../../../../../frontend/src/storm/StormApp.tsx#L1522)
+[frontend/src/storm/StormApp.tsx:1476](../../../../../frontend/src/storm/StormApp.tsx#L1476)
 
 ```typescript
 handleProjectError(e: unknown, fallback: string) => void
@@ -1160,7 +1133,7 @@ Any request that 403s for the open project flips the no-access screen on.
 
 ## StormApp.reloadProjects
 
-[frontend/src/storm/StormApp.tsx:1531](../../../../../frontend/src/storm/StormApp.tsx#L1531)
+[frontend/src/storm/StormApp.tsx:1485](../../../../../frontend/src/storm/StormApp.tsx#L1485)
 
 ```typescript
 reloadProjects() => void
@@ -1179,7 +1152,7 @@ reloadProjects() => void
 
 ## StormApp.reloadUsers
 
-[frontend/src/storm/StormApp.tsx:1631](../../../../../frontend/src/storm/StormApp.tsx#L1631)
+[frontend/src/storm/StormApp.tsx:1585](../../../../../frontend/src/storm/StormApp.tsx#L1585)
 
 ```typescript
 reloadUsers() => void
@@ -1198,7 +1171,7 @@ reloadUsers() => void
 
 ## StormApp.reloadHosts
 
-[frontend/src/storm/StormApp.tsx:1688](../../../../../frontend/src/storm/StormApp.tsx#L1688)
+[frontend/src/storm/StormApp.tsx:1643](../../../../../frontend/src/storm/StormApp.tsx#L1643)
 
 ```typescript
 reloadHosts() => void
@@ -1217,7 +1190,7 @@ reloadHosts() => void
 
 ## StormApp.reloadJsFiles
 
-[frontend/src/storm/StormApp.tsx:1730](../../../../../frontend/src/storm/StormApp.tsx#L1730)
+[frontend/src/storm/StormApp.tsx:1685](../../../../../frontend/src/storm/StormApp.tsx#L1685)
 
 ```typescript
 reloadJsFiles() => void
@@ -1236,7 +1209,7 @@ reloadJsFiles() => void
 
 ## StormApp.reloadJsFilesThrottled
 
-[frontend/src/storm/StormApp.tsx:1732](../../../../../frontend/src/storm/StormApp.tsx#L1732)
+[frontend/src/storm/StormApp.tsx:1687](../../../../../frontend/src/storm/StormApp.tsx#L1687)
 
 ```typescript
 reloadJsFilesThrottled() => void
@@ -1256,7 +1229,7 @@ reloadJsFilesThrottled() => void
 
 ## StormApp.hostFarmDoneToast
 
-[frontend/src/storm/StormApp.tsx:1780](../../../../../frontend/src/storm/StormApp.tsx#L1780)
+[frontend/src/storm/StormApp.tsx:1735](../../../../../frontend/src/storm/StormApp.tsx#L1735)
 
 ```typescript
 hostFarmDoneToast(r: NonNullable<ApiHostFarmJob["result"]>) => void
@@ -1280,7 +1253,7 @@ hostFarmDoneToast(r: NonNullable<ApiHostFarmJob["result"]>) => void
 
 ## StormApp.ipFarmDoneToast
 
-[frontend/src/storm/StormApp.tsx:1788](../../../../../frontend/src/storm/StormApp.tsx#L1788)
+[frontend/src/storm/StormApp.tsx:1743](../../../../../frontend/src/storm/StormApp.tsx#L1743)
 
 ```typescript
 ipFarmDoneToast(r: NonNullable<ApiIpFarmJob["result"]>) => void
@@ -1304,7 +1277,7 @@ ipFarmDoneToast(r: NonNullable<ApiIpFarmJob["result"]>) => void
 
 ## StormApp.update
 
-[frontend/src/storm/StormApp.tsx:1799](../../../../../frontend/src/storm/StormApp.tsx#L1799)
+[frontend/src/storm/StormApp.tsx:1754](../../../../../frontend/src/storm/StormApp.tsx#L1754)
 
 ```typescript
 update(next) => void
@@ -1331,7 +1304,7 @@ update(next) => void
 
 ## StormApp.retry
 
-[frontend/src/storm/StormApp.tsx:1805](../../../../../frontend/src/storm/StormApp.tsx#L1805)
+[frontend/src/storm/StormApp.tsx:1760](../../../../../frontend/src/storm/StormApp.tsx#L1760)
 
 ```typescript
 retry() => void
@@ -1350,7 +1323,7 @@ retry() => void
 
 ## StormApp.error
 
-[frontend/src/storm/StormApp.tsx:1806](../../../../../frontend/src/storm/StormApp.tsx#L1806)
+[frontend/src/storm/StormApp.tsx:1761](../../../../../frontend/src/storm/StormApp.tsx#L1761)
 
 ```typescript
 error(error) => void
@@ -1374,7 +1347,7 @@ error(error) => void
 
 ## StormApp.update
 
-[frontend/src/storm/StormApp.tsx:1811](../../../../../frontend/src/storm/StormApp.tsx#L1811)
+[frontend/src/storm/StormApp.tsx:1766](../../../../../frontend/src/storm/StormApp.tsx#L1766)
 
 ```typescript
 update(next) => void
@@ -1401,7 +1374,7 @@ update(next) => void
 
 ## StormApp.retry
 
-[frontend/src/storm/StormApp.tsx:1817](../../../../../frontend/src/storm/StormApp.tsx#L1817)
+[frontend/src/storm/StormApp.tsx:1772](../../../../../frontend/src/storm/StormApp.tsx#L1772)
 
 ```typescript
 retry() => void
@@ -1420,7 +1393,7 @@ retry() => void
 
 ## StormApp.error
 
-[frontend/src/storm/StormApp.tsx:1818](../../../../../frontend/src/storm/StormApp.tsx#L1818)
+[frontend/src/storm/StormApp.tsx:1773](../../../../../frontend/src/storm/StormApp.tsx#L1773)
 
 ```typescript
 error(error) => void
@@ -1444,7 +1417,7 @@ error(error) => void
 
 ## StormApp.update
 
-[frontend/src/storm/StormApp.tsx:1823](../../../../../frontend/src/storm/StormApp.tsx#L1823)
+[frontend/src/storm/StormApp.tsx:1778](../../../../../frontend/src/storm/StormApp.tsx#L1778)
 
 ```typescript
 update(next) => void
@@ -1472,7 +1445,7 @@ update(next) => void
 
 ## StormApp.retry
 
-[frontend/src/storm/StormApp.tsx:1829](../../../../../frontend/src/storm/StormApp.tsx#L1829)
+[frontend/src/storm/StormApp.tsx:1784](../../../../../frontend/src/storm/StormApp.tsx#L1784)
 
 ```typescript
 retry() => void
@@ -1491,7 +1464,7 @@ retry() => void
 
 ## StormApp.error
 
-[frontend/src/storm/StormApp.tsx:1830](../../../../../frontend/src/storm/StormApp.tsx#L1830)
+[frontend/src/storm/StormApp.tsx:1785](../../../../../frontend/src/storm/StormApp.tsx#L1785)
 
 ```typescript
 error(error) => void
@@ -1515,7 +1488,7 @@ error(error) => void
 
 ## StormApp.subdomainsOf
 
-[frontend/src/storm/StormApp.tsx:1839](../../../../../frontend/src/storm/StormApp.tsx#L1839)
+[frontend/src/storm/StormApp.tsx:1794](../../../../../frontend/src/storm/StormApp.tsx#L1794)
 
 ```typescript
 subdomainsOf(host: Host) => Host[]
@@ -1538,7 +1511,7 @@ subdomainsOf(host: Host) => Host[]
 
 ## StormApp.reloadMembers
 
-[frontend/src/storm/StormApp.tsx:1843](../../../../../frontend/src/storm/StormApp.tsx#L1843)
+[frontend/src/storm/StormApp.tsx:1798](../../../../../frontend/src/storm/StormApp.tsx#L1798)
 
 ```typescript
 reloadMembers() => void
@@ -1557,7 +1530,7 @@ reloadMembers() => void
 
 ## StormApp.reloadVulns
 
-[frontend/src/storm/StormApp.tsx:1873](../../../../../frontend/src/storm/StormApp.tsx#L1873)
+[frontend/src/storm/StormApp.tsx:1828](../../../../../frontend/src/storm/StormApp.tsx#L1828)
 
 ```typescript
 reloadVulns() => void
@@ -1576,7 +1549,7 @@ reloadVulns() => void
 
 ## StormApp.reloadNotes
 
-[frontend/src/storm/StormApp.tsx:1910](../../../../../frontend/src/storm/StormApp.tsx#L1910)
+[frontend/src/storm/StormApp.tsx:1865](../../../../../frontend/src/storm/StormApp.tsx#L1865)
 
 ```typescript
 reloadNotes() => void
@@ -1595,7 +1568,7 @@ reloadNotes() => void
 
 ## StormApp.reloadCreds
 
-[frontend/src/storm/StormApp.tsx:1936](../../../../../frontend/src/storm/StormApp.tsx#L1936)
+[frontend/src/storm/StormApp.tsx:1891](../../../../../frontend/src/storm/StormApp.tsx#L1891)
 
 ```typescript
 reloadCreds() => void
@@ -1612,9 +1585,48 @@ reloadCreds() => void
 
 </details>
 
+## StormApp.canExportFinding
+
+[frontend/src/storm/StormApp.tsx:1935](../../../../../frontend/src/storm/StormApp.tsx#L1935)
+
+```typescript
+canExportFinding(severity?: Severity) => boolean
+```
+
+Преобразование/вычисление в теле функции; тип результата и параметры приведены ниже, точное выражение доступно по ссылке на исходник.
+
+| Параметр | Тип | По умолчанию | Назначение |
+| --- | --- | --- | --- |
+| `severity` | `Severity` | `undefined (optional)` | Критичность находки (Enum Severity). |
+
+Возвращает: `boolean`.
+
+## StormApp.findingExportHint
+
+[frontend/src/storm/StormApp.tsx:1936](../../../../../frontend/src/storm/StormApp.tsx#L1936)
+
+```typescript
+findingExportHint(severity?: Severity) => string
+```
+
+В теле вызывает `t`.
+
+| Параметр | Тип | По умолчанию | Назначение |
+| --- | --- | --- | --- |
+| `severity` | `Severity` | `undefined (optional)` | Критичность находки (Enum Severity). |
+
+Возвращает: `string`.
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `t`
+
+</details>
+
 ## StormApp.canEditProjectRow
 
-[frontend/src/storm/StormApp.tsx:2013](../../../../../frontend/src/storm/StormApp.tsx#L2013)
+[frontend/src/storm/StormApp.tsx:1970](../../../../../frontend/src/storm/StormApp.tsx#L1970)
 
 ```typescript
 canEditProjectRow(row: ApiProjectRow) => boolean
@@ -1630,7 +1642,7 @@ canEditProjectRow(row: ApiProjectRow) => boolean
 
 ## StormApp.selProjects
 
-[frontend/src/storm/StormApp.tsx:2019](../../../../../frontend/src/storm/StormApp.tsx#L2019)
+[frontend/src/storm/StormApp.tsx:1976](../../../../../frontend/src/storm/StormApp.tsx#L1976)
 
 ```typescript
 selProjects() => void
@@ -1649,7 +1661,7 @@ selProjects() => void
 
 ## StormApp.openProject
 
-[frontend/src/storm/StormApp.tsx:2031](../../../../../frontend/src/storm/StormApp.tsx#L2031)
+[frontend/src/storm/StormApp.tsx:1988](../../../../../frontend/src/storm/StormApp.tsx#L1988)
 
 ```typescript
 openProject(id: number) => void
@@ -1672,7 +1684,7 @@ openProject(id: number) => void
 
 ## StormApp.openProfile
 
-[frontend/src/storm/StormApp.tsx:2033](../../../../../frontend/src/storm/StormApp.tsx#L2033)
+[frontend/src/storm/StormApp.tsx:1990](../../../../../frontend/src/storm/StormApp.tsx#L1990)
 
 ```typescript
 openProfile() => void
@@ -1691,7 +1703,7 @@ openProfile() => void
 
 ## StormApp.selWSMembers
 
-[frontend/src/storm/StormApp.tsx:2034](../../../../../frontend/src/storm/StormApp.tsx#L2034)
+[frontend/src/storm/StormApp.tsx:1991](../../../../../frontend/src/storm/StormApp.tsx#L1991)
 
 ```typescript
 selWSMembers() => void
@@ -1710,7 +1722,7 @@ selWSMembers() => void
 
 ## StormApp.reloadActivity
 
-[frontend/src/storm/StormApp.tsx:2037](../../../../../frontend/src/storm/StormApp.tsx#L2037)
+[frontend/src/storm/StormApp.tsx:1994](../../../../../frontend/src/storm/StormApp.tsx#L1994)
 
 ```typescript
 reloadActivity() => void
@@ -1729,7 +1741,7 @@ reloadActivity() => void
 
 ## StormApp.loadActivity
 
-[frontend/src/storm/StormApp.tsx:2038](../../../../../frontend/src/storm/StormApp.tsx#L2038)
+[frontend/src/storm/StormApp.tsx:1995](../../../../../frontend/src/storm/StormApp.tsx#L1995)
 
 ```typescript
 loadActivity(pid: number) => void
@@ -1753,7 +1765,7 @@ loadActivity(pid: number) => void
 
 ## StormApp.setSection
 
-[frontend/src/storm/StormApp.tsx:2059](../../../../../frontend/src/storm/StormApp.tsx#L2059)
+[frontend/src/storm/StormApp.tsx:2016](../../../../../frontend/src/storm/StormApp.tsx#L2016)
 
 ```typescript
 setSection(s: SectionId) => void
@@ -1776,7 +1788,7 @@ A section tab always lands on that section's list, never on a card left open in 
 
 ## StormApp.selRecon
 
-[frontend/src/storm/StormApp.tsx:2061](../../../../../frontend/src/storm/StormApp.tsx#L2061)
+[frontend/src/storm/StormApp.tsx:2018](../../../../../frontend/src/storm/StormApp.tsx#L2018)
 
 ```typescript
 selRecon(v: ReconView) => void
@@ -1797,29 +1809,54 @@ selRecon(v: ReconView) => void
 
 </details>
 
-## StormApp.reloadTasks
+## StormApp.loadTasks
 
-[frontend/src/storm/StormApp.tsx:2122](../../../../../frontend/src/storm/StormApp.tsx#L2122)
+[frontend/src/storm/StormApp.tsx:2077](../../../../../frontend/src/storm/StormApp.tsx#L2077)
 
 ```typescript
-reloadTasks() => void
+loadTasks(append = false, refresh = false) => void
 ```
 
-В теле вызывает `(async () => { try { const res = await apiGetTasks({}); setStateRaw((s) => ({ ...s, tasksRows: res.items, tasksLoading: false })); } catch (e) { setStateRaw((s) => ({ ...s, tasksRows: [], tasksLoading: false, tasksError: getApiErrorMessage(e, "Couldn't load tasks from Task Tracker") })); } })`, `setState`.
+В теле вызывает `(async () => { try { const res = await apiGetTasks({ page_number: page, category: state.tasksTab, sort: state.tasksSort, ...(state.tasksQuery.trim() ? { query: state.tasksQuery.trim() } : {}), ...(refresh ? { refresh: true } : {}) }); if (request !== tasksListRequest.current) return; setStateRaw((s) => ({ ...s, tasksRows: append ? [...new Map([...(s.tasksRows ?? []), ...res.items].map((task) => [task.key, task])).values()] : res.items, tasksNextPage: res.next_page_token, tasksTotal: res.total ?? null, tasksActiveTotal: res.active_total ?? null, tasksClosedTotal: res.closed_total ?? null, tasksLoading: false, tasksRefreshing: false })); } catch (e) { if (request !== tasksListRequest.current) return; const message = getApiErrorMessage(e, "Couldn't load tasks from Task Tracker"); if (append || hadRows) { setState({ tasksLoading: false, tasksRefreshing: false }); pushToast(message, "error"); } else setStateRaw((s) => ({ ...s, tasksRows: [], tasksNextPage: null, tasksTotal: null, tasksLoading: false, tasksRefreshing: false, tasksError: message })); } })`, `Number`, `setState`.
+
+| Параметр | Тип | По умолчанию | Назначение |
+| --- | --- | --- | --- |
+| `append` | `boolean` | `false` | Определяется именем/типом и контрактом вызывающего кода. |
+| `refresh` | `boolean` | `false` | Определяется именем/типом и контрактом вызывающего кода. |
 
 Возвращает: `void`.
 
 <details>
 <summary>Прямые вызовы в теле</summary>
 
-- `(async () => { try { const res = await apiGetTasks({}); setStateRaw((s) => ({ ...s, tasksRows: res.items, tasksLoading: false })); } catch (e) { setStateRaw((s) => ({ ...s, tasksRows: [], tasksLoading: false, tasksError: getApiErrorMessage(e, "Couldn't load tasks from Task Tracker") })); } })`
+- `(async () => { try { const res = await apiGetTasks({ page_number: page, category: state.tasksTab, sort: state.tasksSort, ...(state.tasksQuery.trim() ? { query: state.tasksQuery.trim() } : {}), ...(refresh ? { refresh: true } : {}) }); if (request !== tasksListRequest.current) return; setStateRaw((s) => ({ ...s, tasksRows: append ? [...new Map([...(s.tasksRows ?? []), ...res.items].map((task) => [task.key, task])).values()] : res.items, tasksNextPage: res.next_page_token, tasksTotal: res.total ?? null, tasksActiveTotal: res.active_total ?? null, tasksClosedTotal: res.closed_total ?? null, tasksLoading: false, tasksRefreshing: false })); } catch (e) { if (request !== tasksListRequest.current) return; const message = getApiErrorMessage(e, "Couldn't load tasks from Task Tracker"); if (append || hadRows) { setState({ tasksLoading: false, tasksRefreshing: false }); pushToast(message, "error"); } else setStateRaw((s) => ({ ...s, tasksRows: [], tasksNextPage: null, tasksTotal: null, tasksLoading: false, tasksRefreshing: false, tasksError: message })); } })`
+- `Number`
 - `setState`
+
+</details>
+
+## StormApp.reloadTasks
+
+[frontend/src/storm/StormApp.tsx:2104](../../../../../frontend/src/storm/StormApp.tsx#L2104)
+
+```typescript
+reloadTasks() => void
+```
+
+В теле вызывает `loadTasks`.
+
+Возвращает: `void`.
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `loadTasks`
 
 </details>
 
 ## StormApp.onKeyDown
 
-[frontend/src/storm/StormApp.tsx:2215](../../../../../frontend/src/storm/StormApp.tsx#L2215)
+[frontend/src/storm/StormApp.tsx:2189](../../../../../frontend/src/storm/StormApp.tsx#L2189)
 
 ```typescript
 onKeyDown(e: KeyboardEvent) => void
@@ -1846,7 +1883,7 @@ onKeyDown(e: KeyboardEvent) => void
 
 ## StormApp.datesInvalid
 
-[frontend/src/storm/StormApp.tsx:2236](../../../../../frontend/src/storm/StormApp.tsx#L2236)
+[frontend/src/storm/StormApp.tsx:2210](../../../../../frontend/src/storm/StormApp.tsx#L2210)
 
 ```typescript
 datesInvalid(startISO: string, endISO: string) => boolean
@@ -1863,7 +1900,7 @@ The backend rejects this too (422) — checked here so the form says so before s
 
 ## StormApp.emptyProjectDraft
 
-[frontend/src/storm/StormApp.tsx:2239](../../../../../frontend/src/storm/StormApp.tsx#L2239)
+[frontend/src/storm/StormApp.tsx:2213](../../../../../frontend/src/storm/StormApp.tsx#L2213)
 
 ```typescript
 emptyProjectDraft() => { newName: string; newStart: string; newEnd: string; newNameError: boolean; newAppsec: AppSecFieldsValue; }
@@ -1882,7 +1919,7 @@ emptyProjectDraft() => { newName: string; newStart: string; newEnd: string; newN
 
 ## StormApp.openNewProject
 
-[frontend/src/storm/StormApp.tsx:2240](../../../../../frontend/src/storm/StormApp.tsx#L2240)
+[frontend/src/storm/StormApp.tsx:2214](../../../../../frontend/src/storm/StormApp.tsx#L2214)
 
 ```typescript
 openNewProject() => void
@@ -1902,7 +1939,7 @@ openNewProject() => void
 
 ## StormApp.closeNewProject
 
-[frontend/src/storm/StormApp.tsx:2244](../../../../../frontend/src/storm/StormApp.tsx#L2244)
+[frontend/src/storm/StormApp.tsx:2219](../../../../../frontend/src/storm/StormApp.tsx#L2219)
 
 ```typescript
 closeNewProject() => void
@@ -1922,7 +1959,7 @@ closeNewProject() => void
 
 ## StormApp.createProject
 
-[frontend/src/storm/StormApp.tsx:2249](../../../../../frontend/src/storm/StormApp.tsx#L2249)
+[frontend/src/storm/StormApp.tsx:2224](../../../../../frontend/src/storm/StormApp.tsx#L2224)
 
 ```typescript
 async createProject() => Promise<void>
@@ -1949,7 +1986,7 @@ async createProject() => Promise<void>
 
 ## StormApp.loadProjAppsec
 
-[frontend/src/storm/StormApp.tsx:2284](../../../../../frontend/src/storm/StormApp.tsx#L2284)
+[frontend/src/storm/StormApp.tsx:2260](../../../../../frontend/src/storm/StormApp.tsx#L2260)
 
 ```typescript
 loadProjAppsec(id: number | null) => void
@@ -1974,7 +2011,7 @@ loadProjAppsec(id: number | null) => void
 
 ## StormApp.openProjEditRow
 
-[frontend/src/storm/StormApp.tsx:2305](../../../../../frontend/src/storm/StormApp.tsx#L2305)
+[frontend/src/storm/StormApp.tsx:2281](../../../../../frontend/src/storm/StormApp.tsx#L2281)
 
 ```typescript
 openProjEditRow(row: ApiProjectRow) => void
@@ -1998,7 +2035,7 @@ openProjEditRow(row: ApiProjectRow) => void
 
 ## StormApp.openProjEdit
 
-[frontend/src/storm/StormApp.tsx:2318](../../../../../frontend/src/storm/StormApp.tsx#L2318)
+[frontend/src/storm/StormApp.tsx:2294](../../../../../frontend/src/storm/StormApp.tsx#L2294)
 
 ```typescript
 openProjEdit() => void
@@ -2018,7 +2055,7 @@ openProjEdit() => void
 
 ## StormApp.closeProjEdit
 
-[frontend/src/storm/StormApp.tsx:2330](../../../../../frontend/src/storm/StormApp.tsx#L2330)
+[frontend/src/storm/StormApp.tsx:2306](../../../../../frontend/src/storm/StormApp.tsx#L2306)
 
 ```typescript
 closeProjEdit() => void
@@ -2037,7 +2074,7 @@ closeProjEdit() => void
 
 ## StormApp.saveProjEdit
 
-[frontend/src/storm/StormApp.tsx:2331](../../../../../frontend/src/storm/StormApp.tsx#L2331)
+[frontend/src/storm/StormApp.tsx:2307](../../../../../frontend/src/storm/StormApp.tsx#L2307)
 
 ```typescript
 async saveProjEdit() => Promise<void>
@@ -2063,7 +2100,7 @@ async saveProjEdit() => Promise<void>
 
 ## StormApp.askDeleteProject
 
-[frontend/src/storm/StormApp.tsx:2355](../../../../../frontend/src/storm/StormApp.tsx#L2355)
+[frontend/src/storm/StormApp.tsx:2331](../../../../../frontend/src/storm/StormApp.tsx#L2331)
 
 ```typescript
 askDeleteProject(row: ApiProjectRow) => void
@@ -2086,7 +2123,7 @@ askDeleteProject(row: ApiProjectRow) => void
 
 ## StormApp.openExportModal
 
-[frontend/src/storm/StormApp.tsx:2361](../../../../../frontend/src/storm/StormApp.tsx#L2361)
+[frontend/src/storm/StormApp.tsx:2337](../../../../../frontend/src/storm/StormApp.tsx#L2337)
 
 ```typescript
 openExportModal() => void
@@ -2105,7 +2142,7 @@ openExportModal() => void
 
 ## StormApp.closeExportModal
 
-[frontend/src/storm/StormApp.tsx:2362](../../../../../frontend/src/storm/StormApp.tsx#L2362)
+[frontend/src/storm/StormApp.tsx:2338](../../../../../frontend/src/storm/StormApp.tsx#L2338)
 
 ```typescript
 closeExportModal() => void
@@ -2124,7 +2161,7 @@ closeExportModal() => void
 
 ## StormApp.downloadText
 
-[frontend/src/storm/StormApp.tsx:2368](../../../../../frontend/src/storm/StormApp.tsx#L2368)
+[frontend/src/storm/StormApp.tsx:2344](../../../../../frontend/src/storm/StormApp.tsx#L2344)
 
 ```typescript
 downloadText(text: string, filename: string, mime = "text/plain") => void
@@ -2154,7 +2191,7 @@ downloadText(text: string, filename: string, mime = "text/plain") => void
 
 ## StormApp.slug
 
-[frontend/src/storm/StormApp.tsx:2379](../../../../../frontend/src/storm/StormApp.tsx#L2379)
+[frontend/src/storm/StormApp.tsx:2355](../../../../../frontend/src/storm/StormApp.tsx#L2355)
 
 ```typescript
 slug(s: string) => string
@@ -2179,7 +2216,7 @@ slug(s: string) => string
 
 ## StormApp.exportTextLines
 
-[frontend/src/storm/StormApp.tsx:2382](../../../../../frontend/src/storm/StormApp.tsx#L2382)
+[frontend/src/storm/StormApp.tsx:2358](../../../../../frontend/src/storm/StormApp.tsx#L2358)
 
 ```typescript
 exportTextLines(text: string) => string[]
@@ -2204,7 +2241,7 @@ Non-empty, trimmed lines of the editable pane — what actually gets written.
 
 ## StormApp.exportLinesFor
 
-[frontend/src/storm/StormApp.tsx:2388](../../../../../frontend/src/storm/StormApp.tsx#L2388)
+[frontend/src/storm/StormApp.tsx:2364](../../../../../frontend/src/storm/StormApp.tsx#L2364)
 
 ```typescript
 exportLinesFor(scope: ExportScope) => string[]
@@ -2236,7 +2273,7 @@ exportLinesFor(scope: ExportScope) => string[]
 
 ## StormApp.exportLinesFor.add
 
-[frontend/src/storm/StormApp.tsx:2422](../../../../../frontend/src/storm/StormApp.tsx#L2422)
+[frontend/src/storm/StormApp.tsx:2398](../../../../../frontend/src/storm/StormApp.tsx#L2398)
 
 ```typescript
 add(x: Host) => void
@@ -2261,7 +2298,7 @@ add(x: Host) => void
 
 ## StormApp.endpointLinesToOpenApi
 
-[frontend/src/storm/StormApp.tsx:2437](../../../../../frontend/src/storm/StormApp.tsx#L2437)
+[frontend/src/storm/StormApp.tsx:2413](../../../../../frontend/src/storm/StormApp.tsx#L2413)
 
 ```typescript
 endpointLinesToOpenApi(lines: string[]) => string
@@ -2285,7 +2322,7 @@ Rebuilds the OpenAPI doc from the edited lines, so edits reach the JSON too.
 
 ## StormApp.doReconExport
 
-[frontend/src/storm/StormApp.tsx:2467](../../../../../frontend/src/storm/StormApp.tsx#L2467)
+[frontend/src/storm/StormApp.tsx:2443](../../../../../frontend/src/storm/StormApp.tsx#L2443)
 
 ```typescript
 doReconExport() => void
@@ -2309,7 +2346,7 @@ doReconExport() => void
 
 ## StormApp.openReconExport
 
-[frontend/src/storm/StormApp.tsx:2484](../../../../../frontend/src/storm/StormApp.tsx#L2484)
+[frontend/src/storm/StormApp.tsx:2460](../../../../../frontend/src/storm/StormApp.tsx#L2460)
 
 ```typescript
 openReconExport(scope: ExportScope) => void
@@ -2334,7 +2371,7 @@ openReconExport(scope: ExportScope) => void
 
 ## StormApp.closeReconExport
 
-[frontend/src/storm/StormApp.tsx:2486](../../../../../frontend/src/storm/StormApp.tsx#L2486)
+[frontend/src/storm/StormApp.tsx:2462](../../../../../frontend/src/storm/StormApp.tsx#L2462)
 
 ```typescript
 closeReconExport() => void
@@ -2353,7 +2390,7 @@ closeReconExport() => void
 
 ## StormApp.doExport
 
-[frontend/src/storm/StormApp.tsx:2487](../../../../../frontend/src/storm/StormApp.tsx#L2487)
+[frontend/src/storm/StormApp.tsx:2463](../../../../../frontend/src/storm/StormApp.tsx#L2463)
 
 ```typescript
 async doExport() => Promise<void>
@@ -2382,7 +2419,7 @@ async doExport() => Promise<void>
 
 ## StormApp.checkProjectForSts
 
-[frontend/src/storm/StormApp.tsx:2514](../../../../../frontend/src/storm/StormApp.tsx#L2514)
+[frontend/src/storm/StormApp.tsx:2490](../../../../../frontend/src/storm/StormApp.tsx#L2490)
 
 ```typescript
 async checkProjectForSts(projectId: number) => Promise<boolean>
@@ -2413,13 +2450,13 @@ async checkProjectForSts(projectId: number) => Promise<boolean>
 
 ## StormApp.openTaskTrackerExport
 
-[frontend/src/storm/StormApp.tsx:2531](../../../../../frontend/src/storm/StormApp.tsx#L2531)
+[frontend/src/storm/StormApp.tsx:2507](../../../../../frontend/src/storm/StormApp.tsx#L2507)
 
 ```typescript
 async openTaskTrackerExport(vulnId: number) => Promise<void>
 ```
 
-В теле вызывает `apiGetVulnerabilityTaskTrackerLink`, `apiGetVulnerabilityTaskTrackerLink(pid, vulnId) .catch`, `apiGetVulnerabilityTaskTrackerLink(pid, vulnId) .catch(() => null) .then`, `checkProjectForSts`, `setState`.
+В теле вызывает `apiGetVulnerabilityTaskTrackerLink`, `apiGetVulnerabilityTaskTrackerLink(pid, vulnId) .catch`, `apiGetVulnerabilityTaskTrackerLink(pid, vulnId) .catch(() => null) .then`, `checkProjectForSts`, `d.vulns.find`, `setState`.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -2434,13 +2471,14 @@ async openTaskTrackerExport(vulnId: number) => Promise<void>
 - `apiGetVulnerabilityTaskTrackerLink(pid, vulnId) .catch`
 - `apiGetVulnerabilityTaskTrackerLink(pid, vulnId) .catch(() => null) .then`
 - `checkProjectForSts`
+- `d.vulns.find`
 - `setState`
 
 </details>
 
 ## StormApp.closeTaskTrackerExport
 
-[frontend/src/storm/StormApp.tsx:2548](../../../../../frontend/src/storm/StormApp.tsx#L2548)
+[frontend/src/storm/StormApp.tsx:2525](../../../../../frontend/src/storm/StormApp.tsx#L2525)
 
 ```typescript
 closeTaskTrackerExport() => void
@@ -2459,7 +2497,7 @@ closeTaskTrackerExport() => void
 
 ## StormApp.doTaskTrackerExport
 
-[frontend/src/storm/StormApp.tsx:2549](../../../../../frontend/src/storm/StormApp.tsx#L2549)
+[frontend/src/storm/StormApp.tsx:2526](../../../../../frontend/src/storm/StormApp.tsx#L2526)
 
 ```typescript
 async doTaskTrackerExport() => Promise<void>
@@ -2482,7 +2520,7 @@ async doTaskTrackerExport() => Promise<void>
 
 ## StormApp.openBulkTaskTracker
 
-[frontend/src/storm/StormApp.tsx:2566](../../../../../frontend/src/storm/StormApp.tsx#L2566)
+[frontend/src/storm/StormApp.tsx:2543](../../../../../frontend/src/storm/StormApp.tsx#L2543)
 
 ```typescript
 async openBulkTaskTracker() => Promise<void>
@@ -2502,7 +2540,7 @@ async openBulkTaskTracker() => Promise<void>
 
 ## StormApp.closeBulkTaskTracker
 
-[frontend/src/storm/StormApp.tsx:2582](../../../../../frontend/src/storm/StormApp.tsx#L2582)
+[frontend/src/storm/StormApp.tsx:2559](../../../../../frontend/src/storm/StormApp.tsx#L2559)
 
 ```typescript
 closeBulkTaskTracker() => void
@@ -2521,7 +2559,7 @@ closeBulkTaskTracker() => void
 
 ## StormApp.doBulkTaskTrackerExport
 
-[frontend/src/storm/StormApp.tsx:2585](../../../../../frontend/src/storm/StormApp.tsx#L2585)
+[frontend/src/storm/StormApp.tsx:2562](../../../../../frontend/src/storm/StormApp.tsx#L2562)
 
 ```typescript
 async doBulkTaskTrackerExport() => Promise<void>
@@ -2543,13 +2581,14 @@ async doBulkTaskTrackerExport() => Promise<void>
 - `rememberProjectUrl`
 - `setState`
 - `t`
-- `vulns.map`
+- `vulns.filter`
+- `vulns.filter((finding) => finding.sev !== "unrealized").map`
 
 </details>
 
 ## StormApp.doBulkTaskTrackerExport.rememberProjectUrl
 
-[frontend/src/storm/StormApp.tsx:2596](../../../../../frontend/src/storm/StormApp.tsx#L2596)
+[frontend/src/storm/StormApp.tsx:2573](../../../../../frontend/src/storm/StormApp.tsx#L2573)
 
 ```typescript
 rememberProjectUrl(issueUrl?: string) => void
@@ -2572,7 +2611,7 @@ rememberProjectUrl(issueUrl?: string) => void
 
 ## StormApp.toggleHost
 
-[frontend/src/storm/StormApp.tsx:2624](../../../../../frontend/src/storm/StormApp.tsx#L2624)
+[frontend/src/storm/StormApp.tsx:2601](../../../../../frontend/src/storm/StormApp.tsx#L2601)
 
 ```typescript
 toggleHost(id: number) => void
@@ -2595,7 +2634,7 @@ toggleHost(id: number) => void
 
 ## StormApp.openHostDetail
 
-[frontend/src/storm/StormApp.tsx:2626](../../../../../frontend/src/storm/StormApp.tsx#L2626)
+[frontend/src/storm/StormApp.tsx:2603](../../../../../frontend/src/storm/StormApp.tsx#L2603)
 
 ```typescript
 openHostDetail(id: number) => void
@@ -2618,7 +2657,7 @@ openHostDetail(id: number) => void
 
 ## StormApp.closeHostDetail
 
-[frontend/src/storm/StormApp.tsx:2627](../../../../../frontend/src/storm/StormApp.tsx#L2627)
+[frontend/src/storm/StormApp.tsx:2604](../../../../../frontend/src/storm/StormApp.tsx#L2604)
 
 ```typescript
 closeHostDetail() => void
@@ -2637,7 +2676,7 @@ closeHostDetail() => void
 
 ## StormApp.openIpDetail
 
-[frontend/src/storm/StormApp.tsx:2628](../../../../../frontend/src/storm/StormApp.tsx#L2628)
+[frontend/src/storm/StormApp.tsx:2605](../../../../../frontend/src/storm/StormApp.tsx#L2605)
 
 ```typescript
 openIpDetail(ip: string) => void
@@ -2660,7 +2699,7 @@ openIpDetail(ip: string) => void
 
 ## StormApp.closeIpDetail
 
-[frontend/src/storm/StormApp.tsx:2629](../../../../../frontend/src/storm/StormApp.tsx#L2629)
+[frontend/src/storm/StormApp.tsx:2606](../../../../../frontend/src/storm/StormApp.tsx#L2606)
 
 ```typescript
 closeIpDetail() => void
@@ -2679,7 +2718,7 @@ closeIpDetail() => void
 
 ## StormApp.toggleReconMenu
 
-[frontend/src/storm/StormApp.tsx:2630](../../../../../frontend/src/storm/StormApp.tsx#L2630)
+[frontend/src/storm/StormApp.tsx:2607](../../../../../frontend/src/storm/StormApp.tsx#L2607)
 
 ```typescript
 toggleReconMenu() => void
@@ -2698,7 +2737,7 @@ toggleReconMenu() => void
 
 ## StormApp.toggleEpGroup
 
-[frontend/src/storm/StormApp.tsx:2632](../../../../../frontend/src/storm/StormApp.tsx#L2632)
+[frontend/src/storm/StormApp.tsx:2609](../../../../../frontend/src/storm/StormApp.tsx#L2609)
 
 ```typescript
 toggleEpGroup(host: string) => void
@@ -2721,7 +2760,7 @@ toggleEpGroup(host: string) => void
 
 ## StormApp.toggleJsGroup
 
-[frontend/src/storm/StormApp.tsx:2637](../../../../../frontend/src/storm/StormApp.tsx#L2637)
+[frontend/src/storm/StormApp.tsx:2614](../../../../../frontend/src/storm/StormApp.tsx#L2614)
 
 ```typescript
 toggleJsGroup(host: string) => void
@@ -2744,7 +2783,7 @@ toggleJsGroup(host: string) => void
 
 ## StormApp.deleteJsHost
 
-[frontend/src/storm/StormApp.tsx:2642](../../../../../frontend/src/storm/StormApp.tsx#L2642)
+[frontend/src/storm/StormApp.tsx:2619](../../../../../frontend/src/storm/StormApp.tsx#L2619)
 
 ```typescript
 deleteJsHost(hostId: number | undefined, label: string) => void
@@ -2770,7 +2809,7 @@ Deletes every JS finding of one host, after confirmation.
 
 ## StormApp.submitJsScan
 
-[frontend/src/storm/StormApp.tsx:2659](../../../../../frontend/src/storm/StormApp.tsx#L2659)
+[frontend/src/storm/StormApp.tsx:2636](../../../../../frontend/src/storm/StormApp.tsx#L2636)
 
 ```typescript
 async submitJsScan() => Promise<void>
@@ -2798,7 +2837,7 @@ async submitJsScan() => Promise<void>
 
 ## StormApp.downloadJsArchive
 
-[frontend/src/storm/StormApp.tsx:2678](../../../../../frontend/src/storm/StormApp.tsx#L2678)
+[frontend/src/storm/StormApp.tsx:2655](../../../../../frontend/src/storm/StormApp.tsx#L2655)
 
 ```typescript
 async downloadJsArchive(hostId: number | undefined, label: string) => Promise<void>
@@ -2832,7 +2871,7 @@ async downloadJsArchive(hostId: number | undefined, label: string) => Promise<vo
 
 ## StormApp.formatEndpointRequest
 
-[frontend/src/storm/StormApp.tsx:2700](../../../../../frontend/src/storm/StormApp.tsx#L2700)
+[frontend/src/storm/StormApp.tsx:2677](../../../../../frontend/src/storm/StormApp.tsx#L2677)
 
 ```typescript
 formatEndpointRequest(endpoint: ApiEndpoint, host: string) => string
@@ -2862,7 +2901,7 @@ formatEndpointRequest(endpoint: ApiEndpoint, host: string) => string
 
 ## StormApp.openEndpoint
 
-[frontend/src/storm/StormApp.tsx:2709](../../../../../frontend/src/storm/StormApp.tsx#L2709)
+[frontend/src/storm/StormApp.tsx:2686](../../../../../frontend/src/storm/StormApp.tsx#L2686)
 
 ```typescript
 openEndpoint(ep: { method: Method; path: string; host: string; hostId: number; endpointId: number }, projectId = state.openProjectId) => void
@@ -2887,7 +2926,7 @@ openEndpoint(ep: { method: Method; path: string; host: string; hostId: number; e
 
 ## StormApp.closeEndpoint
 
-[frontend/src/storm/StormApp.tsx:2728](../../../../../frontend/src/storm/StormApp.tsx#L2728)
+[frontend/src/storm/StormApp.tsx:2705](../../../../../frontend/src/storm/StormApp.tsx#L2705)
 
 ```typescript
 closeEndpoint() => void
@@ -2906,7 +2945,7 @@ closeEndpoint() => void
 
 ## StormApp.saveEndpointRequest
 
-[frontend/src/storm/StormApp.tsx:2733](../../../../../frontend/src/storm/StormApp.tsx#L2733)
+[frontend/src/storm/StormApp.tsx:2710](../../../../../frontend/src/storm/StormApp.tsx#L2710)
 
 ```typescript
 async saveEndpointRequest() => Promise<void>
@@ -2935,7 +2974,7 @@ async saveEndpointRequest() => Promise<void>
 
 ## StormApp.copyText
 
-[frontend/src/storm/StormApp.tsx:2752](../../../../../frontend/src/storm/StormApp.tsx#L2752)
+[frontend/src/storm/StormApp.tsx:2729](../../../../../frontend/src/storm/StormApp.tsx#L2729)
 
 ```typescript
 async copyText(text: string, what: string) => Promise<void>
@@ -2967,7 +3006,7 @@ new Error("Clipboard unavailable")
 
 ## StormApp.copyEndpointCurl
 
-[frontend/src/storm/StormApp.tsx:2759](../../../../../frontend/src/storm/StormApp.tsx#L2759)
+[frontend/src/storm/StormApp.tsx:2736](../../../../../frontend/src/storm/StormApp.tsx#L2736)
 
 ```typescript
 copyEndpointCurl() => void
@@ -3001,7 +3040,7 @@ copyEndpointCurl() => void
 
 ## StormApp.copyEndpointCurl.quote
 
-[frontend/src/storm/StormApp.tsx:2765](../../../../../frontend/src/storm/StormApp.tsx#L2765)
+[frontend/src/storm/StormApp.tsx:2742](../../../../../frontend/src/storm/StormApp.tsx#L2742)
 
 ```typescript
 quote(value: string) => string
@@ -3024,7 +3063,7 @@ quote(value: string) => string
 
 ## StormApp.toggleCredReveal
 
-[frontend/src/storm/StormApp.tsx:2775](../../../../../frontend/src/storm/StormApp.tsx#L2775)
+[frontend/src/storm/StormApp.tsx:2752](../../../../../frontend/src/storm/StormApp.tsx#L2752)
 
 ```typescript
 toggleCredReveal(id: number) => void
@@ -3047,7 +3086,7 @@ Toggle whether one credential's secret is shown in clear text.
 
 ## StormApp.copyCurl
 
-[frontend/src/storm/StormApp.tsx:2779](../../../../../frontend/src/storm/StormApp.tsx#L2779)
+[frontend/src/storm/StormApp.tsx:2756](../../../../../frontend/src/storm/StormApp.tsx#L2756)
 
 ```typescript
 copyCurl(ep: { method: Method; path: string; host: string }) => void
@@ -3072,7 +3111,7 @@ copyCurl(ep: { method: Method; path: string; host: string }) => void
 
 ## StormApp.deleteEndpoint
 
-[frontend/src/storm/StormApp.tsx:2787](../../../../../frontend/src/storm/StormApp.tsx#L2787)
+[frontend/src/storm/StormApp.tsx:2764](../../../../../frontend/src/storm/StormApp.tsx#L2764)
 
 ```typescript
 async deleteEndpoint(hostId: number, endpointId: number) => Promise<void>
@@ -3100,7 +3139,7 @@ async deleteEndpoint(hostId: number, endpointId: number) => Promise<void>
 
 ## StormApp.updateForm
 
-[frontend/src/storm/StormApp.tsx:2800](../../../../../frontend/src/storm/StormApp.tsx#L2800)
+[frontend/src/storm/StormApp.tsx:2777](../../../../../frontend/src/storm/StormApp.tsx#L2777)
 
 ```typescript
 updateForm(k: string, v: string) => void
@@ -3124,7 +3163,7 @@ updateForm(k: string, v: string) => void
 
 ## StormApp.setTagDraft
 
-[frontend/src/storm/StormApp.tsx:2801](../../../../../frontend/src/storm/StormApp.tsx#L2801)
+[frontend/src/storm/StormApp.tsx:2778](../../../../../frontend/src/storm/StormApp.tsx#L2778)
 
 ```typescript
 setTagDraft(k: string, v: string) => void
@@ -3148,7 +3187,7 @@ setTagDraft(k: string, v: string) => void
 
 ## StormApp.addEditorTag
 
-[frontend/src/storm/StormApp.tsx:2802](../../../../../frontend/src/storm/StormApp.tsx#L2802)
+[frontend/src/storm/StormApp.tsx:2779](../../../../../frontend/src/storm/StormApp.tsx#L2779)
 
 ```typescript
 addEditorTag(k: string, val: string) => void
@@ -3173,7 +3212,7 @@ addEditorTag(k: string, val: string) => void
 
 ## StormApp.removeEditorTag
 
-[frontend/src/storm/StormApp.tsx:2811](../../../../../frontend/src/storm/StormApp.tsx#L2811)
+[frontend/src/storm/StormApp.tsx:2788](../../../../../frontend/src/storm/StormApp.tsx#L2788)
 
 ```typescript
 removeEditorTag(k: string, idx: number) => void
@@ -3197,7 +3236,7 @@ removeEditorTag(k: string, idx: number) => void
 
 ## StormApp.openEditor
 
-[frontend/src/storm/StormApp.tsx:2817](../../../../../frontend/src/storm/StormApp.tsx#L2817)
+[frontend/src/storm/StormApp.tsx:2794](../../../../../frontend/src/storm/StormApp.tsx#L2794)
 
 ```typescript
 openEditor(type: EditorType, mode: "add" | "edit", index: number) => void
@@ -3222,7 +3261,7 @@ openEditor(type: EditorType, mode: "add" | "edit", index: number) => void
 
 ## StormApp.closeEditor
 
-[frontend/src/storm/StormApp.tsx:2851](../../../../../frontend/src/storm/StormApp.tsx#L2851)
+[frontend/src/storm/StormApp.tsx:2828](../../../../../frontend/src/storm/StormApp.tsx#L2828)
 
 ```typescript
 closeEditor() => void
@@ -3241,7 +3280,7 @@ closeEditor() => void
 
 ## StormApp.normalizeHostToken
 
-[frontend/src/storm/StormApp.tsx:2859](../../../../../frontend/src/storm/StormApp.tsx#L2859)
+[frontend/src/storm/StormApp.tsx:2836](../../../../../frontend/src/storm/StormApp.tsx#L2836)
 
 ```typescript
 normalizeHostToken(token: string) => string | null
@@ -3268,7 +3307,7 @@ normalizeHostToken(token: string) => string | null
 
 ## StormApp.normalizeHostList
 
-[frontend/src/storm/StormApp.tsx:2875](../../../../../frontend/src/storm/StormApp.tsx#L2875)
+[frontend/src/storm/StormApp.tsx:2852](../../../../../frontend/src/storm/StormApp.tsx#L2852)
 
 ```typescript
 normalizeHostList(raw: string) => string
@@ -3300,7 +3339,7 @@ Raw paste → deduped, normalized host list (the "will be imported" preview).
 
 ## StormApp.isIpLiteral
 
-[frontend/src/storm/StormApp.tsx:2894](../../../../../frontend/src/storm/StormApp.tsx#L2894)
+[frontend/src/storm/StormApp.tsx:2871](../../../../../frontend/src/storm/StormApp.tsx#L2871)
 
 ```typescript
 isIpLiteral(host: string) => boolean
@@ -3329,7 +3368,7 @@ filtering here keeps the preview honest about what will actually be sent.
 
 ## StormApp.normalizeIpList
 
-[frontend/src/storm/StormApp.tsx:2899](../../../../../frontend/src/storm/StormApp.tsx#L2899)
+[frontend/src/storm/StormApp.tsx:2876](../../../../../frontend/src/storm/StormApp.tsx#L2876)
 
 ```typescript
 normalizeIpList(raw: string) => string
@@ -3355,7 +3394,7 @@ normalizeIpList(raw: string) => string
 
 ## StormApp.openHostImport
 
-[frontend/src/storm/StormApp.tsx:2911](../../../../../frontend/src/storm/StormApp.tsx#L2911)
+[frontend/src/storm/StormApp.tsx:2888](../../../../../frontend/src/storm/StormApp.tsx#L2888)
 
 ```typescript
 openHostImport() => void
@@ -3374,7 +3413,7 @@ openHostImport() => void
 
 ## StormApp.closeHostImport
 
-[frontend/src/storm/StormApp.tsx:2912](../../../../../frontend/src/storm/StormApp.tsx#L2912)
+[frontend/src/storm/StormApp.tsx:2889](../../../../../frontend/src/storm/StormApp.tsx#L2889)
 
 ```typescript
 closeHostImport() => void
@@ -3393,7 +3432,7 @@ closeHostImport() => void
 
 ## StormApp.openIpImport
 
-[frontend/src/storm/StormApp.tsx:2913](../../../../../frontend/src/storm/StormApp.tsx#L2913)
+[frontend/src/storm/StormApp.tsx:2890](../../../../../frontend/src/storm/StormApp.tsx#L2890)
 
 ```typescript
 openIpImport() => void
@@ -3412,7 +3451,7 @@ openIpImport() => void
 
 ## StormApp.closeIpImport
 
-[frontend/src/storm/StormApp.tsx:2914](../../../../../frontend/src/storm/StormApp.tsx#L2914)
+[frontend/src/storm/StormApp.tsx:2891](../../../../../frontend/src/storm/StormApp.tsx#L2891)
 
 ```typescript
 closeIpImport() => void
@@ -3431,7 +3470,7 @@ closeIpImport() => void
 
 ## StormApp.submitIpImport
 
-[frontend/src/storm/StormApp.tsx:2915](../../../../../frontend/src/storm/StormApp.tsx#L2915)
+[frontend/src/storm/StormApp.tsx:2892](../../../../../frontend/src/storm/StormApp.tsx#L2892)
 
 ```typescript
 async submitIpImport() => Promise<void>
@@ -3459,7 +3498,7 @@ async submitIpImport() => Promise<void>
 
 ## StormApp.submitHostImport
 
-[frontend/src/storm/StormApp.tsx:2944](../../../../../frontend/src/storm/StormApp.tsx#L2944)
+[frontend/src/storm/StormApp.tsx:2921](../../../../../frontend/src/storm/StormApp.tsx#L2921)
 
 ```typescript
 async submitHostImport() => Promise<void>
@@ -3487,7 +3526,7 @@ async submitHostImport() => Promise<void>
 
 ## StormApp.parseEpLine
 
-[frontend/src/storm/StormApp.tsx:2979](../../../../../frontend/src/storm/StormApp.tsx#L2979)
+[frontend/src/storm/StormApp.tsx:2956](../../../../../frontend/src/storm/StormApp.tsx#L2956)
 
 ```typescript
 parseEpLine(line: string) => { host: string; method: string; path: string; url: string } | null
@@ -3521,7 +3560,7 @@ parseEpLine(line: string) => { host: string; method: string; path: string; url: 
 
 ## StormApp.normalizeEpList
 
-[frontend/src/storm/StormApp.tsx:3005](../../../../../frontend/src/storm/StormApp.tsx#L3005)
+[frontend/src/storm/StormApp.tsx:2982](../../../../../frontend/src/storm/StormApp.tsx#L2982)
 
 ```typescript
 normalizeEpList(raw: string) => string
@@ -3549,7 +3588,7 @@ normalizeEpList(raw: string) => string
 
 ## StormApp.openEpImport
 
-[frontend/src/storm/StormApp.tsx:3019](../../../../../frontend/src/storm/StormApp.tsx#L3019)
+[frontend/src/storm/StormApp.tsx:2996](../../../../../frontend/src/storm/StormApp.tsx#L2996)
 
 ```typescript
 openEpImport() => void
@@ -3568,7 +3607,7 @@ openEpImport() => void
 
 ## StormApp.closeEpImport
 
-[frontend/src/storm/StormApp.tsx:3020](../../../../../frontend/src/storm/StormApp.tsx#L3020)
+[frontend/src/storm/StormApp.tsx:2997](../../../../../frontend/src/storm/StormApp.tsx#L2997)
 
 ```typescript
 closeEpImport() => void
@@ -3587,7 +3626,7 @@ closeEpImport() => void
 
 ## StormApp.importSwaggerEndpoints
 
-[frontend/src/storm/StormApp.tsx:3024](../../../../../frontend/src/storm/StormApp.tsx#L3024)
+[frontend/src/storm/StormApp.tsx:3001](../../../../../frontend/src/storm/StormApp.tsx#L3001)
 
 ```typescript
 importSwaggerEndpoints(lines: string[]) => void
@@ -3611,7 +3650,7 @@ importSwaggerEndpoints(lines: string[]) => void
 
 ## StormApp.submitEpImport
 
-[frontend/src/storm/StormApp.tsx:3031](../../../../../frontend/src/storm/StormApp.tsx#L3031)
+[frontend/src/storm/StormApp.tsx:3008](../../../../../frontend/src/storm/StormApp.tsx#L3008)
 
 ```typescript
 async submitEpImport() => Promise<void>
@@ -3644,7 +3683,7 @@ async submitEpImport() => Promise<void>
 
 ## StormApp.saveHostEditor
 
-[frontend/src/storm/StormApp.tsx:3075](../../../../../frontend/src/storm/StormApp.tsx#L3075)
+[frontend/src/storm/StormApp.tsx:3052](../../../../../frontend/src/storm/StormApp.tsx#L3052)
 
 ```typescript
 async saveHostEditor() => Promise<void>
@@ -3669,7 +3708,7 @@ async saveHostEditor() => Promise<void>
 
 ## StormApp.resolveProjectHost
 
-[frontend/src/storm/StormApp.tsx:3105](../../../../../frontend/src/storm/StormApp.tsx#L3105)
+[frontend/src/storm/StormApp.tsx:3082](../../../../../frontend/src/storm/StormApp.tsx#L3082)
 
 ```typescript
 resolveProjectHost(typed: string) => Host | undefined
@@ -3694,7 +3733,7 @@ resolveProjectHost(typed: string) => Host | undefined
 
 ## StormApp.saveVulnEditor
 
-[frontend/src/storm/StormApp.tsx:3110](../../../../../frontend/src/storm/StormApp.tsx#L3110)
+[frontend/src/storm/StormApp.tsx:3087](../../../../../frontend/src/storm/StormApp.tsx#L3087)
 
 ```typescript
 async saveVulnEditor() => Promise<void>
@@ -3724,7 +3763,7 @@ async saveVulnEditor() => Promise<void>
 
 ## StormApp.relinkVulnHost
 
-[frontend/src/storm/StormApp.tsx:3148](../../../../../frontend/src/storm/StormApp.tsx#L3148)
+[frontend/src/storm/StormApp.tsx:3125](../../../../../frontend/src/storm/StormApp.tsx#L3125)
 
 ```typescript
 async relinkVulnHost(pid: number, vulnId: number, hostName: string) => Promise<void>
@@ -3753,7 +3792,7 @@ async relinkVulnHost(pid: number, vulnId: number, hostName: string) => Promise<v
 
 ## StormApp.saveNoteEditorEntity
 
-[frontend/src/storm/StormApp.tsx:3158](../../../../../frontend/src/storm/StormApp.tsx#L3158)
+[frontend/src/storm/StormApp.tsx:3135](../../../../../frontend/src/storm/StormApp.tsx#L3135)
 
 ```typescript
 async saveNoteEditorEntity() => Promise<void>
@@ -3780,7 +3819,7 @@ async saveNoteEditorEntity() => Promise<void>
 
 ## StormApp.saveMemberEditor
 
-[frontend/src/storm/StormApp.tsx:3179](../../../../../frontend/src/storm/StormApp.tsx#L3179)
+[frontend/src/storm/StormApp.tsx:3156](../../../../../frontend/src/storm/StormApp.tsx#L3156)
 
 ```typescript
 async saveMemberEditor() => Promise<void>
@@ -3806,7 +3845,7 @@ async saveMemberEditor() => Promise<void>
 
 ## StormApp.saveIpEditor
 
-[frontend/src/storm/StormApp.tsx:3206](../../../../../frontend/src/storm/StormApp.tsx#L3206)
+[frontend/src/storm/StormApp.tsx:3183](../../../../../frontend/src/storm/StormApp.tsx#L3183)
 
 ```typescript
 async saveIpEditor() => Promise<void>
@@ -3839,7 +3878,7 @@ async saveIpEditor() => Promise<void>
 
 ## StormApp.saveEndpointEditor
 
-[frontend/src/storm/StormApp.tsx:3264](../../../../../frontend/src/storm/StormApp.tsx#L3264)
+[frontend/src/storm/StormApp.tsx:3241](../../../../../frontend/src/storm/StormApp.tsx#L3241)
 
 ```typescript
 async saveEndpointEditor() => Promise<void>
@@ -3865,7 +3904,7 @@ async saveEndpointEditor() => Promise<void>
 
 ## StormApp.saveCredEditor
 
-[frontend/src/storm/StormApp.tsx:3286](../../../../../frontend/src/storm/StormApp.tsx#L3286)
+[frontend/src/storm/StormApp.tsx:3263](../../../../../frontend/src/storm/StormApp.tsx#L3263)
 
 ```typescript
 async saveCredEditor() => Promise<void>
@@ -3895,7 +3934,7 @@ async saveCredEditor() => Promise<void>
 
 ## StormApp.saveEditor
 
-[frontend/src/storm/StormApp.tsx:3329](../../../../../frontend/src/storm/StormApp.tsx#L3329)
+[frontend/src/storm/StormApp.tsx:3306](../../../../../frontend/src/storm/StormApp.tsx#L3306)
 
 ```typescript
 async saveEditor() => Promise<void>
@@ -3920,7 +3959,7 @@ async saveEditor() => Promise<void>
 
 ## StormApp.askDelete
 
-[frontend/src/storm/StormApp.tsx:3340](../../../../../frontend/src/storm/StormApp.tsx#L3340)
+[frontend/src/storm/StormApp.tsx:3317](../../../../../frontend/src/storm/StormApp.tsx#L3317)
 
 ```typescript
 askDelete(type: EditorType, index: number, label: string) => void
@@ -3945,7 +3984,7 @@ askDelete(type: EditorType, index: number, label: string) => void
 
 ## StormApp.closeConfirm
 
-[frontend/src/storm/StormApp.tsx:3342](../../../../../frontend/src/storm/StormApp.tsx#L3342)
+[frontend/src/storm/StormApp.tsx:3319](../../../../../frontend/src/storm/StormApp.tsx#L3319)
 
 ```typescript
 closeConfirm() => void
@@ -3966,7 +4005,7 @@ closeConfirm() => void
 
 ## StormApp.confirmDelete
 
-[frontend/src/storm/StormApp.tsx:3347](../../../../../frontend/src/storm/StormApp.tsx#L3347)
+[frontend/src/storm/StormApp.tsx:3324](../../../../../frontend/src/storm/StormApp.tsx#L3324)
 
 ```typescript
 async confirmDelete() => Promise<void>
@@ -3995,7 +4034,7 @@ async confirmDelete() => Promise<void>
 
 ## StormApp.confirmDelete.call
 
-[frontend/src/storm/StormApp.tsx:3384](../../../../../frontend/src/storm/StormApp.tsx#L3384)
+[frontend/src/storm/StormApp.tsx:3361](../../../../../frontend/src/storm/StormApp.tsx#L3361)
 
 ```typescript
 call(id) => Promise<void>
@@ -4018,7 +4057,7 @@ call(id) => Promise<void>
 
 ## StormApp.confirmDelete.call
 
-[frontend/src/storm/StormApp.tsx:3388](../../../../../frontend/src/storm/StormApp.tsx#L3388)
+[frontend/src/storm/StormApp.tsx:3365](../../../../../frontend/src/storm/StormApp.tsx#L3365)
 
 ```typescript
 call() => Promise<void>
@@ -4037,7 +4076,7 @@ call() => Promise<void>
 
 ## StormApp.confirmDelete.call
 
-[frontend/src/storm/StormApp.tsx:3389](../../../../../frontend/src/storm/StormApp.tsx#L3389)
+[frontend/src/storm/StormApp.tsx:3366](../../../../../frontend/src/storm/StormApp.tsx#L3366)
 
 ```typescript
 call(id) => Promise<void>
@@ -4060,7 +4099,7 @@ call(id) => Promise<void>
 
 ## StormApp.confirmDelete.call
 
-[frontend/src/storm/StormApp.tsx:3390](../../../../../frontend/src/storm/StormApp.tsx#L3390)
+[frontend/src/storm/StormApp.tsx:3367](../../../../../frontend/src/storm/StormApp.tsx#L3367)
 
 ```typescript
 call(id) => Promise<void>
@@ -4083,7 +4122,7 @@ call(id) => Promise<void>
 
 ## StormApp.confirmDelete.call
 
-[frontend/src/storm/StormApp.tsx:3391](../../../../../frontend/src/storm/StormApp.tsx#L3391)
+[frontend/src/storm/StormApp.tsx:3368](../../../../../frontend/src/storm/StormApp.tsx#L3368)
 
 ```typescript
 call(id) => Promise<void>
@@ -4106,7 +4145,7 @@ call(id) => Promise<void>
 
 ## StormApp.confirmDelete.call
 
-[frontend/src/storm/StormApp.tsx:3392](../../../../../frontend/src/storm/StormApp.tsx#L3392)
+[frontend/src/storm/StormApp.tsx:3369](../../../../../frontend/src/storm/StormApp.tsx#L3369)
 
 ```typescript
 call(id) => Promise<void>
@@ -4129,7 +4168,7 @@ call(id) => Promise<void>
 
 ## StormApp.confirmDelete.call
 
-[frontend/src/storm/StormApp.tsx:3395](../../../../../frontend/src/storm/StormApp.tsx#L3395)
+[frontend/src/storm/StormApp.tsx:3372](../../../../../frontend/src/storm/StormApp.tsx#L3372)
 
 ```typescript
 call(id) => Promise<void>
@@ -4152,7 +4191,7 @@ call(id) => Promise<void>
 
 ## StormApp.confirmDelete.reload
 
-[frontend/src/storm/StormApp.tsx:3400](../../../../../frontend/src/storm/StormApp.tsx#L3400)
+[frontend/src/storm/StormApp.tsx:3377](../../../../../frontend/src/storm/StormApp.tsx#L3377)
 
 ```typescript
 reload() => void
@@ -4175,7 +4214,7 @@ reload() => void
 
 ## StormApp.openNoteEditor
 
-[frontend/src/storm/StormApp.tsx:3424](../../../../../frontend/src/storm/StormApp.tsx#L3424)
+[frontend/src/storm/StormApp.tsx:3401](../../../../../frontend/src/storm/StormApp.tsx#L3401)
 
 ```typescript
 openNoteEditor(mode: "add" | "edit", index: number) => void
@@ -4199,7 +4238,7 @@ openNoteEditor(mode: "add" | "edit", index: number) => void
 
 ## StormApp.backToNotesList
 
-[frontend/src/storm/StormApp.tsx:3439](../../../../../frontend/src/storm/StormApp.tsx#L3439)
+[frontend/src/storm/StormApp.tsx:3416](../../../../../frontend/src/storm/StormApp.tsx#L3416)
 
 ```typescript
 backToNotesList() => void
@@ -4218,7 +4257,7 @@ backToNotesList() => void
 
 ## StormApp.openNoteViewer
 
-[frontend/src/storm/StormApp.tsx:3443](../../../../../frontend/src/storm/StormApp.tsx#L3443)
+[frontend/src/storm/StormApp.tsx:3420](../../../../../frontend/src/storm/StormApp.tsx#L3420)
 
 ```typescript
 openNoteViewer(id: number) => void
@@ -4241,7 +4280,7 @@ openNoteViewer(id: number) => void
 
 ## StormApp.updateNoteForm
 
-[frontend/src/storm/StormApp.tsx:3444](../../../../../frontend/src/storm/StormApp.tsx#L3444)
+[frontend/src/storm/StormApp.tsx:3421](../../../../../frontend/src/storm/StormApp.tsx#L3421)
 
 ```typescript
 updateNoteForm(k: keyof NoteForm, v: string) => void
@@ -4265,7 +4304,7 @@ updateNoteForm(k: keyof NoteForm, v: string) => void
 
 ## StormApp.attachNoteImages
 
-[frontend/src/storm/StormApp.tsx:3448](../../../../../frontend/src/storm/StormApp.tsx#L3448)
+[frontend/src/storm/StormApp.tsx:3425](../../../../../frontend/src/storm/StormApp.tsx#L3425)
 
 ```typescript
 async attachNoteImages(files: File[]) => Promise<void>
@@ -4295,7 +4334,7 @@ note stays plain Markdown (`![name](/api/v1/projects/…/images/…/download)`).
 
 ## StormApp.saveNote
 
-[frontend/src/storm/StormApp.tsx:3467](../../../../../frontend/src/storm/StormApp.tsx#L3467)
+[frontend/src/storm/StormApp.tsx:3444](../../../../../frontend/src/storm/StormApp.tsx#L3444)
 
 ```typescript
 async saveNote() => Promise<void>
@@ -4323,7 +4362,7 @@ async saveNote() => Promise<void>
 
 ## StormApp.goToOpenVulns
 
-[frontend/src/storm/StormApp.tsx:3498](../../../../../frontend/src/storm/StormApp.tsx#L3498)
+[frontend/src/storm/StormApp.tsx:3475](../../../../../frontend/src/storm/StormApp.tsx#L3475)
 
 ```typescript
 goToOpenVulns() => void
@@ -4342,7 +4381,7 @@ The overview's "open findings" tile — everything still needing work.
 
 ## StormApp.goToMyFindings
 
-[frontend/src/storm/StormApp.tsx:3499](../../../../../frontend/src/storm/StormApp.tsx#L3499)
+[frontend/src/storm/StormApp.tsx:3476](../../../../../frontend/src/storm/StormApp.tsx#L3476)
 
 ```typescript
 goToMyFindings() => void
@@ -4361,7 +4400,7 @@ goToMyFindings() => void
 
 ## StormApp.vulnFormFrom
 
-[frontend/src/storm/StormApp.tsx:3500](../../../../../frontend/src/storm/StormApp.tsx#L3500)
+[frontend/src/storm/StormApp.tsx:3477](../../../../../frontend/src/storm/StormApp.tsx#L3477)
 
 ```typescript
 vulnFormFrom(v: Vuln) => VulnDetailForm
@@ -4385,7 +4424,7 @@ vulnFormFrom(v: Vuln) => VulnDetailForm
 
 ## StormApp.openVulnDetail
 
-[frontend/src/storm/StormApp.tsx:3517](../../../../../frontend/src/storm/StormApp.tsx#L3517)
+[frontend/src/storm/StormApp.tsx:3494](../../../../../frontend/src/storm/StormApp.tsx#L3494)
 
 ```typescript
 openVulnDetail(id: number) => void
@@ -4410,7 +4449,7 @@ openVulnDetail(id: number) => void
 
 ## StormApp.closeVulnDetail
 
-[frontend/src/storm/StormApp.tsx:3521](../../../../../frontend/src/storm/StormApp.tsx#L3521)
+[frontend/src/storm/StormApp.tsx:3498](../../../../../frontend/src/storm/StormApp.tsx#L3498)
 
 ```typescript
 closeVulnDetail() => void
@@ -4429,7 +4468,7 @@ closeVulnDetail() => void
 
 ## StormApp.uploadVulnFilesFor
 
-[frontend/src/storm/StormApp.tsx:3524](../../../../../frontend/src/storm/StormApp.tsx#L3524)
+[frontend/src/storm/StormApp.tsx:3501](../../../../../frontend/src/storm/StormApp.tsx#L3501)
 
 ```typescript
 async uploadVulnFilesFor(files: File[]) => Promise<void>
@@ -4457,7 +4496,7 @@ async uploadVulnFilesFor(files: File[]) => Promise<void>
 
 ## StormApp.removeVulnFile
 
-[frontend/src/storm/StormApp.tsx:3541](../../../../../frontend/src/storm/StormApp.tsx#L3541)
+[frontend/src/storm/StormApp.tsx:3518](../../../../../frontend/src/storm/StormApp.tsx#L3518)
 
 ```typescript
 async removeVulnFile(fileId: number) => Promise<void>
@@ -4484,7 +4523,7 @@ async removeVulnFile(fileId: number) => Promise<void>
 
 ## StormApp.updateVulnDetailForm
 
-[frontend/src/storm/StormApp.tsx:3552](../../../../../frontend/src/storm/StormApp.tsx#L3552)
+[frontend/src/storm/StormApp.tsx:3529](../../../../../frontend/src/storm/StormApp.tsx#L3529)
 
 ```typescript
 updateVulnDetailForm<K extends keyof VulnDetailForm>(k: K, v: VulnDetailForm[K]) => void
@@ -4508,7 +4547,7 @@ updateVulnDetailForm<K extends keyof VulnDetailForm>(k: K, v: VulnDetailForm[K])
 
 ## StormApp.addVdStep
 
-[frontend/src/storm/StormApp.tsx:3554](../../../../../frontend/src/storm/StormApp.tsx#L3554)
+[frontend/src/storm/StormApp.tsx:3531](../../../../../frontend/src/storm/StormApp.tsx#L3531)
 
 ```typescript
 addVdStep() => void
@@ -4527,7 +4566,7 @@ addVdStep() => void
 
 ## StormApp.removeVdStep
 
-[frontend/src/storm/StormApp.tsx:3555](../../../../../frontend/src/storm/StormApp.tsx#L3555)
+[frontend/src/storm/StormApp.tsx:3532](../../../../../frontend/src/storm/StormApp.tsx#L3532)
 
 ```typescript
 removeVdStep(i: number) => void
@@ -4550,7 +4589,7 @@ removeVdStep(i: number) => void
 
 ## StormApp.updateVdStep
 
-[frontend/src/storm/StormApp.tsx:3566](../../../../../frontend/src/storm/StormApp.tsx#L3566)
+[frontend/src/storm/StormApp.tsx:3543](../../../../../frontend/src/storm/StormApp.tsx#L3543)
 
 ```typescript
 updateVdStep(i: number, val: string) => void
@@ -4574,7 +4613,7 @@ updateVdStep(i: number, val: string) => void
 
 ## StormApp.attachVdStepImages
 
-[frontend/src/storm/StormApp.tsx:3576](../../../../../frontend/src/storm/StormApp.tsx#L3576)
+[frontend/src/storm/StormApp.tsx:3553](../../../../../frontend/src/storm/StormApp.tsx#L3553)
 
 ```typescript
 async attachVdStepImages(i: number, files: File[]) => Promise<void>
@@ -4607,7 +4646,7 @@ were client-only and never reached the report).
 
 ## StormApp.removeVdStepImage
 
-[frontend/src/storm/StormApp.tsx:3600](../../../../../frontend/src/storm/StormApp.tsx#L3600)
+[frontend/src/storm/StormApp.tsx:3577](../../../../../frontend/src/storm/StormApp.tsx#L3577)
 
 ```typescript
 removeVdStepImage(i: number, imgIdx: number) => void
@@ -4631,7 +4670,7 @@ removeVdStepImage(i: number, imgIdx: number) => void
 
 ## StormApp.saveVulnDetail
 
-[frontend/src/storm/StormApp.tsx:3606](../../../../../frontend/src/storm/StormApp.tsx#L3606)
+[frontend/src/storm/StormApp.tsx:3583](../../../../../frontend/src/storm/StormApp.tsx#L3583)
 
 ```typescript
 async saveVulnDetail() => Promise<void>
@@ -4662,7 +4701,7 @@ async saveVulnDetail() => Promise<void>
 
 ## StormApp.reloadApiKeys
 
-[frontend/src/storm/StormApp.tsx:3647](../../../../../frontend/src/storm/StormApp.tsx#L3647)
+[frontend/src/storm/StormApp.tsx:3624](../../../../../frontend/src/storm/StormApp.tsx#L3624)
 
 ```typescript
 reloadApiKeys() => void
@@ -4681,7 +4720,7 @@ reloadApiKeys() => void
 
 ## StormApp.openApiKeyModal
 
-[frontend/src/storm/StormApp.tsx:3677](../../../../../frontend/src/storm/StormApp.tsx#L3677)
+[frontend/src/storm/StormApp.tsx:3654](../../../../../frontend/src/storm/StormApp.tsx#L3654)
 
 ```typescript
 openApiKeyModal() => void
@@ -4701,7 +4740,7 @@ openApiKeyModal() => void
 
 ## StormApp.closeApiKeyModal
 
-[frontend/src/storm/StormApp.tsx:3681](../../../../../frontend/src/storm/StormApp.tsx#L3681)
+[frontend/src/storm/StormApp.tsx:3658](../../../../../frontend/src/storm/StormApp.tsx#L3658)
 
 ```typescript
 closeApiKeyModal() => void
@@ -4720,7 +4759,7 @@ closeApiKeyModal() => void
 
 ## StormApp.toggleApiScope
 
-[frontend/src/storm/StormApp.tsx:3682](../../../../../frontend/src/storm/StormApp.tsx#L3682)
+[frontend/src/storm/StormApp.tsx:3659](../../../../../frontend/src/storm/StormApp.tsx#L3659)
 
 ```typescript
 toggleApiScope(s: string) => void
@@ -4743,7 +4782,7 @@ toggleApiScope(s: string) => void
 
 ## StormApp.toggleApiProject
 
-[frontend/src/storm/StormApp.tsx:3683](../../../../../frontend/src/storm/StormApp.tsx#L3683)
+[frontend/src/storm/StormApp.tsx:3660](../../../../../frontend/src/storm/StormApp.tsx#L3660)
 
 ```typescript
 toggleApiProject(id: number) => void
@@ -4766,7 +4805,7 @@ toggleApiProject(id: number) => void
 
 ## StormApp.createApiKey
 
-[frontend/src/storm/StormApp.tsx:3689](../../../../../frontend/src/storm/StormApp.tsx#L3689)
+[frontend/src/storm/StormApp.tsx:3666](../../../../../frontend/src/storm/StormApp.tsx#L3666)
 
 ```typescript
 async createApiKey() => Promise<void>
@@ -4793,7 +4832,7 @@ async createApiKey() => Promise<void>
 
 ## StormApp.revokeApiKey
 
-[frontend/src/storm/StormApp.tsx:3720](../../../../../frontend/src/storm/StormApp.tsx#L3720)
+[frontend/src/storm/StormApp.tsx:3697](../../../../../frontend/src/storm/StormApp.tsx#L3697)
 
 ```typescript
 async revokeApiKey(id: number) => Promise<void>
@@ -4819,7 +4858,7 @@ async revokeApiKey(id: number) => Promise<void>
 
 ## StormApp.openWSUserEditor
 
-[frontend/src/storm/StormApp.tsx:3729](../../../../../frontend/src/storm/StormApp.tsx#L3729)
+[frontend/src/storm/StormApp.tsx:3706](../../../../../frontend/src/storm/StormApp.tsx#L3706)
 
 ```typescript
 openWSUserEditor(mode: "add" | "edit", index: number) => void
@@ -4843,7 +4882,7 @@ openWSUserEditor(mode: "add" | "edit", index: number) => void
 
 ## StormApp.closeWSUserEditor
 
-[frontend/src/storm/StormApp.tsx:3741](../../../../../frontend/src/storm/StormApp.tsx#L3741)
+[frontend/src/storm/StormApp.tsx:3718](../../../../../frontend/src/storm/StormApp.tsx#L3718)
 
 ```typescript
 closeWSUserEditor() => void
@@ -4862,7 +4901,7 @@ closeWSUserEditor() => void
 
 ## StormApp.saveWSUser
 
-[frontend/src/storm/StormApp.tsx:3744](../../../../../frontend/src/storm/StormApp.tsx#L3744)
+[frontend/src/storm/StormApp.tsx:3721](../../../../../frontend/src/storm/StormApp.tsx#L3721)
 
 ```typescript
 async saveWSUser() => Promise<void>
@@ -4890,7 +4929,7 @@ async saveWSUser() => Promise<void>
 
 ## StormApp.askDeleteWSUser
 
-[frontend/src/storm/StormApp.tsx:3777](../../../../../frontend/src/storm/StormApp.tsx#L3777)
+[frontend/src/storm/StormApp.tsx:3754](../../../../../frontend/src/storm/StormApp.tsx#L3754)
 
 ```typescript
 askDeleteWSUser(index: number) => void
@@ -4913,7 +4952,7 @@ askDeleteWSUser(index: number) => void
 
 ## StormApp.reactivateUser
 
-[frontend/src/storm/StormApp.tsx:3785](../../../../../frontend/src/storm/StormApp.tsx#L3785)
+[frontend/src/storm/StormApp.tsx:3760](../../../../../frontend/src/storm/StormApp.tsx#L3760)
 
 ```typescript
 async reactivateUser(index: number) => Promise<void>
@@ -4940,7 +4979,7 @@ async reactivateUser(index: number) => Promise<void>
 
 ## StormApp.resendInvite
 
-[frontend/src/storm/StormApp.tsx:3797](../../../../../frontend/src/storm/StormApp.tsx#L3797)
+[frontend/src/storm/StormApp.tsx:3771](../../../../../frontend/src/storm/StormApp.tsx#L3771)
 
 ```typescript
 async resendInvite(id: number) => Promise<void>
@@ -4968,7 +5007,7 @@ async resendInvite(id: number) => Promise<void>
 
 ## StormApp.askRevokeInvite
 
-[frontend/src/storm/StormApp.tsx:3812](../../../../../frontend/src/storm/StormApp.tsx#L3812)
+[frontend/src/storm/StormApp.tsx:3786](../../../../../frontend/src/storm/StormApp.tsx#L3786)
 
 ```typescript
 askRevokeInvite(id: number, email: string) => void
@@ -4995,7 +5034,7 @@ askRevokeInvite(id: number, email: string) => void
 
 ## StormApp.revokeInvite
 
-[frontend/src/storm/StormApp.tsx:3817](../../../../../frontend/src/storm/StormApp.tsx#L3817)
+[frontend/src/storm/StormApp.tsx:3791](../../../../../frontend/src/storm/StormApp.tsx#L3791)
 
 ```typescript
 async revokeInvite(id: number) => Promise<void>
@@ -5022,7 +5061,7 @@ async revokeInvite(id: number) => Promise<void>
 
 ## StormApp.startTwoFA
 
-[frontend/src/storm/StormApp.tsx:3827](../../../../../frontend/src/storm/StormApp.tsx#L3827)
+[frontend/src/storm/StormApp.tsx:3801](../../../../../frontend/src/storm/StormApp.tsx#L3801)
 
 ```typescript
 async startTwoFA() => Promise<void>
@@ -5044,7 +5083,7 @@ async startTwoFA() => Promise<void>
 
 ## StormApp.cancelTwoFA
 
-[frontend/src/storm/StormApp.tsx:3837](../../../../../frontend/src/storm/StormApp.tsx#L3837)
+[frontend/src/storm/StormApp.tsx:3811](../../../../../frontend/src/storm/StormApp.tsx#L3811)
 
 ```typescript
 cancelTwoFA() => void
@@ -5063,7 +5102,7 @@ cancelTwoFA() => void
 
 ## StormApp.confirmTwoFA
 
-[frontend/src/storm/StormApp.tsx:3838](../../../../../frontend/src/storm/StormApp.tsx#L3838)
+[frontend/src/storm/StormApp.tsx:3812](../../../../../frontend/src/storm/StormApp.tsx#L3812)
 
 ```typescript
 async confirmTwoFA() => Promise<void>
@@ -5088,7 +5127,7 @@ async confirmTwoFA() => Promise<void>
 
 ## StormApp.openDisableTwoFA
 
-[frontend/src/storm/StormApp.tsx:3851](../../../../../frontend/src/storm/StormApp.tsx#L3851)
+[frontend/src/storm/StormApp.tsx:3825](../../../../../frontend/src/storm/StormApp.tsx#L3825)
 
 ```typescript
 openDisableTwoFA() => void
@@ -5107,7 +5146,7 @@ openDisableTwoFA() => void
 
 ## StormApp.cancelDisableTwoFA
 
-[frontend/src/storm/StormApp.tsx:3852](../../../../../frontend/src/storm/StormApp.tsx#L3852)
+[frontend/src/storm/StormApp.tsx:3826](../../../../../frontend/src/storm/StormApp.tsx#L3826)
 
 ```typescript
 cancelDisableTwoFA() => void
@@ -5126,7 +5165,7 @@ cancelDisableTwoFA() => void
 
 ## StormApp.disableTwoFA
 
-[frontend/src/storm/StormApp.tsx:3853](../../../../../frontend/src/storm/StormApp.tsx#L3853)
+[frontend/src/storm/StormApp.tsx:3827](../../../../../frontend/src/storm/StormApp.tsx#L3827)
 
 ```typescript
 async disableTwoFA() => Promise<void>
@@ -5150,7 +5189,7 @@ async disableTwoFA() => Promise<void>
 
 ## StormApp.submitPasswordChange
 
-[frontend/src/storm/StormApp.tsx:3869](../../../../../frontend/src/storm/StormApp.tsx#L3869)
+[frontend/src/storm/StormApp.tsx:3843](../../../../../frontend/src/storm/StormApp.tsx#L3843)
 
 ```typescript
 async submitPasswordChange() => Promise<void>
@@ -5174,7 +5213,7 @@ async submitPasswordChange() => Promise<void>
 
 ## StormApp.goToNotif
 
-[frontend/src/storm/StormApp.tsx:3895](../../../../../frontend/src/storm/StormApp.tsx#L3895)
+[frontend/src/storm/StormApp.tsx:3869](../../../../../frontend/src/storm/StormApp.tsx#L3869)
 
 ```typescript
 goToNotif(n: ApiNotification) => void
@@ -5202,7 +5241,7 @@ goToNotif(n: ApiNotification) => void
 
 ## StormApp.markAllNotifsRead
 
-[frontend/src/storm/StormApp.tsx:3931](../../../../../frontend/src/storm/StormApp.tsx#L3931)
+[frontend/src/storm/StormApp.tsx:3905](../../../../../frontend/src/storm/StormApp.tsx#L3905)
 
 ```typescript
 markAllNotifsRead() => void
@@ -5223,7 +5262,7 @@ markAllNotifsRead() => void
 
 ## StormApp.isArchivedStatus
 
-[frontend/src/storm/StormApp.tsx:3941](../../../../../frontend/src/storm/StormApp.tsx#L3941)
+[frontend/src/storm/StormApp.tsx:3915](../../../../../frontend/src/storm/StormApp.tsx#L3915)
 
 ```typescript
 isArchivedStatus(s: ProjectStatus) => boolean
@@ -5239,7 +5278,7 @@ isArchivedStatus(s: ProjectStatus) => boolean
 
 ## StormApp.parseAll
 
-[frontend/src/storm/StormApp.tsx:3958](../../../../../frontend/src/storm/StormApp.tsx#L3958)
+[frontend/src/storm/StormApp.tsx:3935](../../../../../frontend/src/storm/StormApp.tsx#L3935)
 
 ```typescript
 parseAll(arr: (string | undefined)[]) => number[]
@@ -5263,7 +5302,7 @@ parseAll(arr: (string | undefined)[]) => number[]
 
 ## StormApp.projWindow
 
-[frontend/src/storm/StormApp.tsx:3960](../../../../../frontend/src/storm/StormApp.tsx#L3960)
+[frontend/src/storm/StormApp.tsx:3937](../../../../../frontend/src/storm/StormApp.tsx#L3937)
 
 ```typescript
 projWindow(rows: ApiProjectRow[]) => [number, number]
@@ -5289,7 +5328,7 @@ Combined [start, end] window across a set of projects — the sparkline's X axis
 
 ## StormApp.projCreatedTimes
 
-[frontend/src/storm/StormApp.tsx:3965](../../../../../frontend/src/storm/StormApp.tsx#L3965)
+[frontend/src/storm/StormApp.tsx:3942](../../../../../frontend/src/storm/StormApp.tsx#L3942)
 
 ```typescript
 projCreatedTimes(rows: ApiProjectRow[]) => string[]
@@ -5312,7 +5351,7 @@ projCreatedTimes(rows: ApiProjectRow[]) => string[]
 
 ## StormApp.aggHostTimes
 
-[frontend/src/storm/StormApp.tsx:3966](../../../../../frontend/src/storm/StormApp.tsx#L3966)
+[frontend/src/storm/StormApp.tsx:3943](../../../../../frontend/src/storm/StormApp.tsx#L3943)
 
 ```typescript
 aggHostTimes(rows: ApiProjectRow[]) => string[]
@@ -5335,7 +5374,7 @@ aggHostTimes(rows: ApiProjectRow[]) => string[]
 
 ## StormApp.aggOpenVulnTimes
 
-[frontend/src/storm/StormApp.tsx:3967](../../../../../frontend/src/storm/StormApp.tsx#L3967)
+[frontend/src/storm/StormApp.tsx:3944](../../../../../frontend/src/storm/StormApp.tsx#L3944)
 
 ```typescript
 aggOpenVulnTimes(rows: ApiProjectRow[]) => string[]
@@ -5358,7 +5397,7 @@ aggOpenVulnTimes(rows: ApiProjectRow[]) => string[]
 
 ## StormApp.navBg
 
-[frontend/src/storm/StormApp.tsx:3971](../../../../../frontend/src/storm/StormApp.tsx#L3971)
+[frontend/src/storm/StormApp.tsx:3948](../../../../../frontend/src/storm/StormApp.tsx#L3948)
 
 ```typescript
 navBg(id: NavId) => "var(--st-accent-soft)" | undefined
@@ -5374,7 +5413,7 @@ navBg(id: NavId) => "var(--st-accent-soft)" | undefined
 
 ## StormApp.navColor
 
-[frontend/src/storm/StormApp.tsx:3972](../../../../../frontend/src/storm/StormApp.tsx#L3972)
+[frontend/src/storm/StormApp.tsx:3949](../../../../../frontend/src/storm/StormApp.tsx#L3949)
 
 ```typescript
 navColor(id: NavId) => "var(--st-accent)" | "var(--st-text-2)"
@@ -5390,7 +5429,7 @@ navColor(id: NavId) => "var(--st-accent)" | "var(--st-text-2)"
 
 ## StormApp.onClick
 
-[frontend/src/storm/StormApp.tsx:4018](../../../../../frontend/src/storm/StormApp.tsx#L4018)
+[frontend/src/storm/StormApp.tsx:3995](../../../../../frontend/src/storm/StormApp.tsx#L3995)
 
 ```typescript
 onClick() => void
@@ -5409,7 +5448,7 @@ onClick() => void
 
 ## StormApp.secStyle
 
-[frontend/src/storm/StormApp.tsx:4028](../../../../../frontend/src/storm/StormApp.tsx#L4028)
+[frontend/src/storm/StormApp.tsx:4005](../../../../../frontend/src/storm/StormApp.tsx#L4005)
 
 ```typescript
 secStyle(k: SectionId) => { active: boolean; color: string; badgeColor: string; badgeBg: string; }
@@ -5425,7 +5464,7 @@ secStyle(k: SectionId) => { active: boolean; color: string; badgeColor: string; 
 
 ## StormApp.portPillsOf
 
-[frontend/src/storm/StormApp.tsx:4039](../../../../../frontend/src/storm/StormApp.tsx#L4039)
+[frontend/src/storm/StormApp.tsx:4016](../../../../../frontend/src/storm/StormApp.tsx#L4016)
 
 ```typescript
 portPillsOf(ports: Host["ports"]) => { bg: string; color: string; label: string; http: number | null; }[]
@@ -5448,7 +5487,7 @@ portPillsOf(ports: Host["ports"]) => { bg: string; color: string; label: string;
 
 ## StormApp.httpStatusColor
 
-[frontend/src/storm/StormApp.tsx:4041](../../../../../frontend/src/storm/StormApp.tsx#L4041)
+[frontend/src/storm/StormApp.tsx:4018](../../../../../frontend/src/storm/StormApp.tsx#L4018)
 
 ```typescript
 httpStatusColor(code: number) => string
@@ -5464,7 +5503,7 @@ Colour for an HTTP status code next to a port: 2xx green, 3xx amber, else red.
 
 ## StormApp.isNestedSubdomain
 
-[frontend/src/storm/StormApp.tsx:4046](../../../../../frontend/src/storm/StormApp.tsx#L4046)
+[frontend/src/storm/StormApp.tsx:4023](../../../../../frontend/src/storm/StormApp.tsx#L4023)
 
 ```typescript
 isNestedSubdomain(h: Host) => boolean
@@ -5487,7 +5526,7 @@ A host that is a subdomain of another host in the project (shown nested, not top
 
 ## StormApp.isIpFarmRow
 
-[frontend/src/storm/StormApp.tsx:4052](../../../../../frontend/src/storm/StormApp.tsx#L4052)
+[frontend/src/storm/StormApp.tsx:4029](../../../../../frontend/src/storm/StormApp.tsx#L4029)
 
 ```typescript
 isIpFarmRow(h: Host) => boolean
@@ -5503,7 +5542,7 @@ isIpFarmRow(h: Host) => boolean
 
 ## StormApp.matchesStatusFilters
 
-[frontend/src/storm/StormApp.tsx:4056](../../../../../frontend/src/storm/StormApp.tsx#L4056)
+[frontend/src/storm/StormApp.tsx:4033](../../../../../frontend/src/storm/StormApp.tsx#L4033)
 
 ```typescript
 matchesStatusFilters(ports: Host["ports"], status: Host["status"], filters: string[]) => boolean
@@ -5530,7 +5569,7 @@ matchesStatusFilters(ports: Host["ports"], status: Host["status"], filters: stri
 
 ## StormApp.hostMatchesFilters
 
-[frontend/src/storm/StormApp.tsx:4068](../../../../../frontend/src/storm/StormApp.tsx#L4068)
+[frontend/src/storm/StormApp.tsx:4045](../../../../../frontend/src/storm/StormApp.tsx#L4045)
 
 ```typescript
 hostMatchesFilters(h: Host) => boolean
@@ -5553,7 +5592,7 @@ hostMatchesFilters(h: Host) => boolean
 
 ## StormApp.visibleSubdomainsOf
 
-[frontend/src/storm/StormApp.tsx:4073](../../../../../frontend/src/storm/StormApp.tsx#L4073)
+[frontend/src/storm/StormApp.tsx:4050](../../../../../frontend/src/storm/StormApp.tsx#L4050)
 
 ```typescript
 visibleSubdomainsOf(h: Host) => Host[]
@@ -5577,7 +5616,7 @@ Subdomains of a host, filtered by the active pills (empty = all).
 
 ## StormApp.onClick
 
-[frontend/src/storm/StormApp.tsx:4096](../../../../../frontend/src/storm/StormApp.tsx#L4096)
+[frontend/src/storm/StormApp.tsx:4073](../../../../../frontend/src/storm/StormApp.tsx#L4073)
 
 ```typescript
 onClick() => void
@@ -5596,7 +5635,7 @@ onClick() => void
 
 ## StormApp.onOpen
 
-[frontend/src/storm/StormApp.tsx:4134](../../../../../frontend/src/storm/StormApp.tsx#L4134)
+[frontend/src/storm/StormApp.tsx:4111](../../../../../frontend/src/storm/StormApp.tsx#L4111)
 
 ```typescript
 onOpen() => void
@@ -5615,7 +5654,7 @@ onOpen() => void
 
 ## StormApp.onEdit
 
-[frontend/src/storm/StormApp.tsx:4135](../../../../../frontend/src/storm/StormApp.tsx#L4135)
+[frontend/src/storm/StormApp.tsx:4112](../../../../../frontend/src/storm/StormApp.tsx#L4112)
 
 ```typescript
 onEdit(e: ReactMouseEvent) => void
@@ -5639,7 +5678,7 @@ onEdit(e: ReactMouseEvent) => void
 
 ## StormApp.onDelete
 
-[frontend/src/storm/StormApp.tsx:4139](../../../../../frontend/src/storm/StormApp.tsx#L4139)
+[frontend/src/storm/StormApp.tsx:4116](../../../../../frontend/src/storm/StormApp.tsx#L4116)
 
 ```typescript
 onDelete(e: ReactMouseEvent) => void
@@ -5663,7 +5702,7 @@ onDelete(e: ReactMouseEvent) => void
 
 ## StormApp.vfPill
 
-[frontend/src/storm/StormApp.tsx:4146](../../../../../frontend/src/storm/StormApp.tsx#L4146)
+[frontend/src/storm/StormApp.tsx:4123](../../../../../frontend/src/storm/StormApp.tsx#L4123)
 
 ```typescript
 vfPill(on: boolean) => CSSProperties
@@ -5679,7 +5718,7 @@ Pill styling for a multi-select filter; `on` also covers the "All" pill (empty s
 
 ## StormApp.mergeBucket
 
-[frontend/src/storm/StormApp.tsx:4166](../../../../../frontend/src/storm/StormApp.tsx#L4166)
+[frontend/src/storm/StormApp.tsx:4143](../../../../../frontend/src/storm/StormApp.tsx#L4143)
 
 ```typescript
 mergeBucket(into: IpBucket | null, h: IpBucket) => IpBucket
@@ -5704,7 +5743,7 @@ mergeBucket(into: IpBucket | null, h: IpBucket) => IpBucket
 
 ## StormApp.onEdit
 
-[frontend/src/storm/StormApp.tsx:4234](../../../../../frontend/src/storm/StormApp.tsx#L4234)
+[frontend/src/storm/StormApp.tsx:4211](../../../../../frontend/src/storm/StormApp.tsx#L4211)
 
 ```typescript
 onEdit(e: ReactMouseEvent) => void
@@ -5728,7 +5767,7 @@ onEdit(e: ReactMouseEvent) => void
 
 ## StormApp.onDelete
 
-[frontend/src/storm/StormApp.tsx:4238](../../../../../frontend/src/storm/StormApp.tsx#L4238)
+[frontend/src/storm/StormApp.tsx:4215](../../../../../frontend/src/storm/StormApp.tsx#L4215)
 
 ```typescript
 onDelete(e: ReactMouseEvent) => void
@@ -5752,7 +5791,7 @@ onDelete(e: ReactMouseEvent) => void
 
 ## StormApp.askDeleteEndpoints
 
-[frontend/src/storm/StormApp.tsx:4266](../../../../../frontend/src/storm/StormApp.tsx#L4266)
+[frontend/src/storm/StormApp.tsx:4243](../../../../../frontend/src/storm/StormApp.tsx#L4243)
 
 ```typescript
 askDeleteEndpoints(group: typeof endpointGroups[number]) => void
@@ -5779,7 +5818,7 @@ askDeleteEndpoints(group: typeof endpointGroups[number]) => void
 
 ## StormApp.fileBase
 
-[frontend/src/storm/StormApp.tsx:4315](../../../../../frontend/src/storm/StormApp.tsx#L4315)
+[frontend/src/storm/StormApp.tsx:4292](../../../../../frontend/src/storm/StormApp.tsx#L4292)
 
 ```typescript
 fileBase(url: string) => string
@@ -5803,7 +5842,7 @@ File-name tail of a JS URL, and a compact byte size — shared by the JS views.
 
 ## StormApp.kb
 
-[frontend/src/storm/StormApp.tsx:4316](../../../../../frontend/src/storm/StormApp.tsx#L4316)
+[frontend/src/storm/StormApp.tsx:4293](../../../../../frontend/src/storm/StormApp.tsx#L4293)
 
 ```typescript
 kb(n: number | null) => string
@@ -5826,7 +5865,7 @@ kb(n: number | null) => string
 
 ## StormApp.openJsFile
 
-[frontend/src/storm/StormApp.tsx:4319](../../../../../frontend/src/storm/StormApp.tsx#L4319)
+[frontend/src/storm/StormApp.tsx:4296](../../../../../frontend/src/storm/StormApp.tsx#L4296)
 
 ```typescript
 openJsFile(id: number) => void
@@ -5849,7 +5888,7 @@ openJsFile(id: number) => void
 
 ## StormApp.closeJsFile
 
-[frontend/src/storm/StormApp.tsx:4320](../../../../../frontend/src/storm/StormApp.tsx#L4320)
+[frontend/src/storm/StormApp.tsx:4297](../../../../../frontend/src/storm/StormApp.tsx#L4297)
 
 ```typescript
 closeJsFile() => void
@@ -5868,7 +5907,7 @@ closeJsFile() => void
 
 ## StormApp.openJsHostDetail
 
-[frontend/src/storm/StormApp.tsx:4323](../../../../../frontend/src/storm/StormApp.tsx#L4323)
+[frontend/src/storm/StormApp.tsx:4300](../../../../../frontend/src/storm/StormApp.tsx#L4300)
 
 ```typescript
 openJsHostDetail(host: string) => void
@@ -5891,7 +5930,7 @@ openJsHostDetail(host: string) => void
 
 ## StormApp.closeJsHostDetail
 
-[frontend/src/storm/StormApp.tsx:4324](../../../../../frontend/src/storm/StormApp.tsx#L4324)
+[frontend/src/storm/StormApp.tsx:4301](../../../../../frontend/src/storm/StormApp.tsx#L4301)
 
 ```typescript
 closeJsHostDetail() => void
@@ -5910,7 +5949,7 @@ closeJsHostDetail() => void
 
 ## StormApp.jsScanDomains
 
-[frontend/src/storm/StormApp.tsx:4330](../../../../../frontend/src/storm/StormApp.tsx#L4330)
+[frontend/src/storm/StormApp.tsx:4307](../../../../../frontend/src/storm/StormApp.tsx#L4307)
 
 ```typescript
 jsScanDomains() => string[]
@@ -5935,7 +5974,7 @@ jsScanDomains() => string[]
 
 ## StormApp.jsScanDomains.add
 
-[frontend/src/storm/StormApp.tsx:4333](../../../../../frontend/src/storm/StormApp.tsx#L4333)
+[frontend/src/storm/StormApp.tsx:4310](../../../../../frontend/src/storm/StormApp.tsx#L4310)
 
 ```typescript
 add(x: Host) => void
@@ -5960,7 +5999,7 @@ add(x: Host) => void
 
 ## StormApp.openJsScanSetup
 
-[frontend/src/storm/StormApp.tsx:4352](../../../../../frontend/src/storm/StormApp.tsx#L4352)
+[frontend/src/storm/StormApp.tsx:4329](../../../../../frontend/src/storm/StormApp.tsx#L4329)
 
 ```typescript
 openJsScanSetup() => void
@@ -5981,7 +6020,7 @@ openJsScanSetup() => void
 
 ## StormApp.closeJsScanSetup
 
-[frontend/src/storm/StormApp.tsx:4353](../../../../../frontend/src/storm/StormApp.tsx#L4353)
+[frontend/src/storm/StormApp.tsx:4330](../../../../../frontend/src/storm/StormApp.tsx#L4330)
 
 ```typescript
 closeJsScanSetup() => void
@@ -6000,7 +6039,7 @@ closeJsScanSetup() => void
 
 ## StormApp.pick
 
-[frontend/src/storm/StormApp.tsx:4485](../../../../../frontend/src/storm/StormApp.tsx#L4485)
+[frontend/src/storm/StormApp.tsx:4462](../../../../../frontend/src/storm/StormApp.tsx#L4462)
 
 ```typescript
 pick(v: string) => void
@@ -6023,7 +6062,7 @@ pick(v: string) => void
 
 ## StormApp.onInput
 
-[frontend/src/storm/StormApp.tsx:4496](../../../../../frontend/src/storm/StormApp.tsx#L4496)
+[frontend/src/storm/StormApp.tsx:4473](../../../../../frontend/src/storm/StormApp.tsx#L4473)
 
 ```typescript
 onInput(e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void
@@ -6046,7 +6085,7 @@ onInput(e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElemen
 
 ## StormApp.onTagDraft
 
-[frontend/src/storm/StormApp.tsx:4498](../../../../../frontend/src/storm/StormApp.tsx#L4498)
+[frontend/src/storm/StormApp.tsx:4475](../../../../../frontend/src/storm/StormApp.tsx#L4475)
 
 ```typescript
 onTagDraft(e: ChangeEvent<HTMLInputElement>) => void
@@ -6069,7 +6108,7 @@ onTagDraft(e: ChangeEvent<HTMLInputElement>) => void
 
 ## StormApp.onTagKeyDown
 
-[frontend/src/storm/StormApp.tsx:4499](../../../../../frontend/src/storm/StormApp.tsx#L4499)
+[frontend/src/storm/StormApp.tsx:4476](../../../../../frontend/src/storm/StormApp.tsx#L4476)
 
 ```typescript
 onTagKeyDown(e: ReactKeyboardEvent<HTMLInputElement>) => void
@@ -6093,7 +6132,7 @@ onTagKeyDown(e: ReactKeyboardEvent<HTMLInputElement>) => void
 
 ## StormApp.onRemove
 
-[frontend/src/storm/StormApp.tsx:4505](../../../../../frontend/src/storm/StormApp.tsx#L4505)
+[frontend/src/storm/StormApp.tsx:4482](../../../../../frontend/src/storm/StormApp.tsx#L4482)
 
 ```typescript
 onRemove() => void
@@ -6112,7 +6151,7 @@ onRemove() => void
 
 ## StormApp.onPick
 
-[frontend/src/storm/StormApp.tsx:4508](../../../../../frontend/src/storm/StormApp.tsx#L4508)
+[frontend/src/storm/StormApp.tsx:4485](../../../../../frontend/src/storm/StormApp.tsx#L4485)
 
 ```typescript
 onPick() => void
@@ -6131,7 +6170,7 @@ onPick() => void
 
 ## StormApp.onComboInput
 
-[frontend/src/storm/StormApp.tsx:4510](../../../../../frontend/src/storm/StormApp.tsx#L4510)
+[frontend/src/storm/StormApp.tsx:4487](../../../../../frontend/src/storm/StormApp.tsx#L4487)
 
 ```typescript
 onComboInput(e: ChangeEvent<HTMLInputElement>) => void
@@ -6155,7 +6194,7 @@ onComboInput(e: ChangeEvent<HTMLInputElement>) => void
 
 ## StormApp.onComboFocus
 
-[frontend/src/storm/StormApp.tsx:4514](../../../../../frontend/src/storm/StormApp.tsx#L4514)
+[frontend/src/storm/StormApp.tsx:4491](../../../../../frontend/src/storm/StormApp.tsx#L4491)
 
 ```typescript
 onComboFocus() => void
@@ -6174,7 +6213,7 @@ onComboFocus() => void
 
 ## StormApp.onComboBlur
 
-[frontend/src/storm/StormApp.tsx:4515](../../../../../frontend/src/storm/StormApp.tsx#L4515)
+[frontend/src/storm/StormApp.tsx:4492](../../../../../frontend/src/storm/StormApp.tsx#L4492)
 
 ```typescript
 onComboBlur() => void
@@ -6193,7 +6232,7 @@ onComboBlur() => void
 
 ## StormApp.onComboKeyDown
 
-[frontend/src/storm/StormApp.tsx:4516](../../../../../frontend/src/storm/StormApp.tsx#L4516)
+[frontend/src/storm/StormApp.tsx:4493](../../../../../frontend/src/storm/StormApp.tsx#L4493)
 
 ```typescript
 onComboKeyDown(e: ReactKeyboardEvent<HTMLInputElement>) => void
@@ -6218,7 +6257,7 @@ onComboKeyDown(e: ReactKeyboardEvent<HTMLInputElement>) => void
 
 ## StormApp.pfNav
 
-[frontend/src/storm/StormApp.tsx:4550](../../../../../frontend/src/storm/StormApp.tsx#L4550)
+[frontend/src/storm/StormApp.tsx:4527](../../../../../frontend/src/storm/StormApp.tsx#L4527)
 
 ```typescript
 pfNav(tab: ProfileTab) => CSSProperties
@@ -6234,7 +6273,7 @@ pfNav(tab: ProfileTab) => CSSProperties
 
 ## StormApp.capNote
 
-[frontend/src/storm/StormApp.tsx:4556](../../../../../frontend/src/storm/StormApp.tsx#L4556)
+[frontend/src/storm/StormApp.tsx:4533](../../../../../frontend/src/storm/StormApp.tsx#L4533)
 
 ```typescript
 capNote(total: number, shown: number) => ReactNode
@@ -6258,7 +6297,7 @@ capNote(total: number, shown: number) => ReactNode
 
 ## StormApp.eyebrow
 
-[frontend/src/storm/StormApp.tsx:4563](../../../../../frontend/src/storm/StormApp.tsx#L4563)
+[frontend/src/storm/StormApp.tsx:4540](../../../../../frontend/src/storm/StormApp.tsx#L4540)
 
 ```typescript
 eyebrow(crumbs: { label: string; onClick?: () => void; muted?: boolean }[]) => ReactNode
@@ -6281,7 +6320,7 @@ eyebrow(crumbs: { label: string; onClick?: () => void; muted?: boolean }[]) => R
 
 ## StormApp.renderProjects
 
-[frontend/src/storm/StormApp.tsx:4582](../../../../../frontend/src/storm/StormApp.tsx#L4582)
+[frontend/src/storm/StormApp.tsx:4559](../../../../../frontend/src/storm/StormApp.tsx#L4559)
 
 ```typescript
 renderProjects() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -6309,7 +6348,7 @@ renderProjects() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/n
 
 ## StormApp.taskStatusVs
 
-[frontend/src/storm/StormApp.tsx:4708](../../../../../frontend/src/storm/StormApp.tsx#L4708)
+[frontend/src/storm/StormApp.tsx:4685](../../../../../frontend/src/storm/StormApp.tsx#L4685)
 
 ```typescript
 taskStatusVs(raw: string) => VStatus | null
@@ -6335,7 +6374,7 @@ taskStatusVs(raw: string) => VStatus | null
 
 ## StormApp.createProjectFromTask
 
-[frontend/src/storm/StormApp.tsx:4718](../../../../../frontend/src/storm/StormApp.tsx#L4718)
+[frontend/src/storm/StormApp.tsx:4695](../../../../../frontend/src/storm/StormApp.tsx#L4695)
 
 ```typescript
 async createProjectFromTask(task: TaskTrackerTask) => Promise<void>
@@ -6366,6 +6405,7 @@ new Error(t("Couldn't load this task"))
 - `emptyProjectDraft`
 - `getApiErrorMessage`
 - `pushToast`
+- `reloadTasks`
 - `setState`
 - `t`
 
@@ -6373,83 +6413,59 @@ new Error(t("Couldn't load this task"))
 
 ## StormApp.renderTasks
 
-[frontend/src/storm/StormApp.tsx:4741](../../../../../frontend/src/storm/StormApp.tsx#L4741)
+[frontend/src/storm/StormApp.tsx:4724](../../../../../frontend/src/storm/StormApp.tsx#L4724)
 
 ```typescript
 renderTasks() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
 ```
 
-В теле вызывает `eyebrow`, `filtered.map`, `renderTaskDetail`, `rows.filter`, `rows.some`, `searchBox`, `searched .filter`, `searched .filter((r) => (isActive ? !isDone(r) : isDone(r))) .sort`; полный список ниже.
+В теле вызывает `Math.max`, `Math.min`, `eyebrow`, `filtered.map`, `renderTaskDetail`, `rows.filter`, `rows.some`, `searchBox`; полный список ниже.
 
 Возвращает: `import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element`.
 
 <details>
 <summary>Прямые вызовы в теле</summary>
 
+- `Math.max`
+- `Math.min`
 - `eyebrow`
 - `filtered.map`
 - `renderTaskDetail`
 - `rows.filter`
 - `rows.some`
 - `searchBox`
-- `searched .filter`
-- `searched .filter((r) => (isActive ? !isDone(r) : isDone(r))) .sort`
-- `searched.filter`
-- `state.tasksQuery.trim`
-- `state.tasksQuery.trim().toLowerCase`
 - `t`
 
 </details>
 
 ## StormApp.renderTasks.isDone
 
-[frontend/src/storm/StormApp.tsx:4746](../../../../../frontend/src/storm/StormApp.tsx#L4746)
+[frontend/src/storm/StormApp.tsx:4727](../../../../../frontend/src/storm/StormApp.tsx#L4727)
 
 ```typescript
-isDone(r: TaskTrackerTask) => boolean
+isDone(task: TaskTrackerTask) => boolean
 ```
 
-В теле вызывает `taskStatusVs`.
+В теле вызывает `["paused", "на паузе"].includes`, `task.status.trim`, `task.status.trim().toLowerCase`.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
-| `r` | `TaskTrackerTask` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
+| `task` | `TaskTrackerTask` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
 
 Возвращает: `boolean`.
 
 <details>
 <summary>Прямые вызовы в теле</summary>
 
-- `taskStatusVs`
-
-</details>
-
-## StormApp.renderTasks.ts
-
-[frontend/src/storm/StormApp.tsx:4751](../../../../../frontend/src/storm/StormApp.tsx#L4751)
-
-```typescript
-ts(r: TaskTrackerTask) => number
-```
-
-В теле вызывает `Date.parse`.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `r` | `TaskTrackerTask` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-
-Возвращает: `number`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `Date.parse`
+- `["paused", "на паузе"].includes`
+- `task.status.trim`
+- `task.status.trim().toLowerCase`
 
 </details>
 
 ## StormApp.renderTaskDetail
 
-[frontend/src/storm/StormApp.tsx:4837](../../../../../frontend/src/storm/StormApp.tsx#L4837)
+[frontend/src/storm/StormApp.tsx:4820](../../../../../frontend/src/storm/StormApp.tsx#L4820)
 
 ```typescript
 renderTaskDetail() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -6474,7 +6490,7 @@ renderTaskDetail() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend
 
 ## StormApp.renderTaskDetail.sideRow
 
-[frontend/src/storm/StormApp.tsx:4844](../../../../../frontend/src/storm/StormApp.tsx#L4844)
+[frontend/src/storm/StormApp.tsx:4827](../../../../../frontend/src/storm/StormApp.tsx#L4827)
 
 ```typescript
 sideRow(label: string, value: ReactNode) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -6491,7 +6507,7 @@ sideRow(label: string, value: ReactNode) => import("/Users/nkolomiika/Cursor Pro
 
 ## StormApp.renderTaskDetail.backToTasks
 
-[frontend/src/storm/StormApp.tsx:4850](../../../../../frontend/src/storm/StormApp.tsx#L4850)
+[frontend/src/storm/StormApp.tsx:4833](../../../../../frontend/src/storm/StormApp.tsx#L4833)
 
 ```typescript
 backToTasks() => void
@@ -6510,20 +6526,20 @@ backToTasks() => void
 
 ## StormApp.renderWorkspaceMembers
 
-[frontend/src/storm/StormApp.tsx:4902](../../../../../frontend/src/storm/StormApp.tsx#L4902)
+[frontend/src/storm/StormApp.tsx:4885](../../../../../frontend/src/storm/StormApp.tsx#L4885)
 
 ```typescript
 renderWorkspaceMembers() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
 ```
 
-В теле вызывает `(() => { const wq = state.wsMemberQuery.trim().toLowerCase(); const filtered = state.workspaceUsers .map((u, idx) => ({ u, idx })) .filter( ({ u }) => // Вкладка: активные = не заблокированные, архив = деактивированные. (state.wsUserTab === "archived" ? u.locked : !u.locked) && (state.wsMemberRoles.length === 0 || state.wsMemberRoles.includes(u.role)) && (state.wsMemberProjectRoles.length === 0 || state.wsMemberProjectRoles.includes(u.projectRole)) && (!wq || u.name.toLowerCase().includes(wq)) ); if (filtered.length === 0) return ( <div style={{ padding: 44, textAlign: "center", color: "var(--st-text-faint)", fontSize: 14 }}> {state.wsUserTab === "archived" ? t("No deactivated members.") : t("No members match.")} </div> ); return ( <> {/* Column headers only make sense with rows — hide them when empty. */} <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1.4fr 168px 72px", padding: "13px 20px", borderBottom: "1px solid var(--st-divider)", font: "700 11px Inter,sans-serif", letterSpacing: ".6px", color: "var(--st-text-faint)", textTransform: "uppercase" }}> <div>{t("Name")}</div> <div>{t("Email")}</div> <div>{t("Role")}</div> <div style={{ textAlign: "right" }}>{t("Actions")}</div> </div> {filtered.map(({ u, idx }) => ( <div key={u.key + idx} className="prow" style={{ display: "grid", gridTemplateColumns: "1.2fr 1.4fr 168px 72px", alignItems: "center", padding: "14px 20px", borderBottom: "1px solid var(--st-divider)" }}> <div style={{ display: "flex", alignItems: "center", gap: 11, minWidth: 0 }}> <span className="mono" style={{ width: 32, height: 32, flex: "none", borderRadius: "50%", background: u.locked ? "var(--st-text-faint)" : "var(--st-accent)", color: "var(--st-on-accent)", display: "flex", alignItems: "center", justifyContent: "center", font: "700 13px 'JetBrains Mono',monospace" }}>{(u.name[0] || "U").toUpperCase()}</span> <span style={{ font: "600 13.5px Inter,sans-serif", color: "var(--st-text)" }}>{u.name}</span> </div> <div className="mono" style={{ fontSize: 12.5, color: "var(--st-text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.email}</div> <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}> <span style={{ font: "700 10px Inter,sans-serif", textTransform: "uppercase", letterSpacing: ".5px", borderRadius: 6, padding: "3px 9px", background: WS_ROLE[u.role].bg, color: WS_ROLE[u.role].color }}>{t(WS_ROLE_LABEL[u.role])}</span> <span style={{ font: "700 10px Inter,sans-serif", textTransform: "uppercase", letterSpacing: ".5px", borderRadius: 6, padding: "3px 9px", background: ROLE[u.projectRole].bg, color: ROLE[u.projectRole].color }}>{u.projectRole}</span> </div> <div style={{ display: "flex", justifyContent: "flex-end", gap: 2 }}> <div className="actbtn" onClick={() => openWSUserEditor("edit", idx)}><Icon name="edit" size={15} /></div> {u.locked ? ( <div className="actbtn" title={t("Reactivate user")} onClick={() => reactivateUser(idx)}><Icon name="unlock" size={15} /></div> ) : ( <div className="actbtn del" title={t("Block user")} onClick={() => askDeleteWSUser(idx)}><Icon name="trash" size={15} /></div> )} </div> </div> ))} </> ); })`, `([{ label: "Admin", v: "admin" as const }, { label: "User", v: "user" as const }]).map`, `([{ label: "Lead", v: "lead" as const }, { label: "Pentester", v: "pentester" as const }]).map`, `eyebrow`, `state.pendingInvites.map`, `state.workspaceUsers.filter`, `t`, `vfPill`.
+В теле вызывает `(() => { const wq = state.wsMemberQuery.trim().toLowerCase(); const filtered = state.workspaceUsers .map((u, idx) => ({ u, idx })) .filter( ({ u }) => // Вкладка: активные = не заблокированные, архив = деактивированные. (state.wsUserTab === "archived" ? u.locked : !u.locked) && (state.wsMemberRoles.length === 0 || state.wsMemberRoles.includes(u.role)) && (state.wsMemberProjectRoles.length === 0 || state.wsMemberProjectRoles.includes(u.projectRole)) && (!wq || u.name.toLowerCase().includes(wq)) ); if (filtered.length === 0) return ( <div style={{ padding: 44, textAlign: "center", color: "var(--st-text-faint)", fontSize: 14 }}> {state.wsUserTab === "archived" ? t("No deactivated members.") : t("No members match.")} </div> ); return ( <> {/* Column headers only make sense with rows — hide them when empty. */} <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1.4fr 168px 72px", padding: "13px 20px", borderBottom: "1px solid var(--st-divider)", font: "700 11px Inter,sans-serif", letterSpacing: ".6px", color: "var(--st-text-faint)", textTransform: "uppercase" }}> <div>{t("Name")}</div> <div>{t("Email")}</div> <div>{t("Role")}</div> <div style={{ textAlign: "right" }}>{t("Actions")}</div> </div> {filtered.map(({ u, idx }) => ( <div key={u.key + idx} className="prow" style={{ display: "grid", gridTemplateColumns: "1.2fr 1.4fr 168px 72px", alignItems: "center", padding: "14px 20px", borderBottom: "1px solid var(--st-divider)" }}> <div style={{ display: "flex", alignItems: "center", gap: 11, minWidth: 0 }}> <UserAvatar name={u.name} src={u.id === authUser?.id ? authUser.avatar_url : u.avatarUrl} initials={avatarLetter(u.name)} size={32} fontSize={13} background={u.locked ? "var(--st-text-faint)" : "var(--st-accent)"} /> <span style={{ font: "600 13.5px Inter,sans-serif", color: "var(--st-text)" }}>{u.name}</span> </div> <div className="mono" style={{ fontSize: 12.5, color: "var(--st-text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.email}</div> <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}> <span style={{ font: "700 10px Inter,sans-serif", textTransform: "uppercase", letterSpacing: ".5px", borderRadius: 6, padding: "3px 9px", background: WS_ROLE[u.role].bg, color: WS_ROLE[u.role].color }}>{t(WS_ROLE_LABEL[u.role])}</span> <span style={{ font: "700 10px Inter,sans-serif", textTransform: "uppercase", letterSpacing: ".5px", borderRadius: 6, padding: "3px 9px", background: ROLE[u.projectRole].bg, color: ROLE[u.projectRole].color }}>{u.projectRole}</span> </div> <div style={{ display: "flex", justifyContent: "flex-end", gap: 2 }}> <Tip label={t("Edit")}><div className="actbtn" onClick={() => openWSUserEditor("edit", idx)}><Icon name="edit" size={15} /></div></Tip> {u.locked ? ( <Tip label={t("Reactivate user")}><div className="actbtn" title={t("Reactivate user")} onClick={() => reactivateUser(idx)}><Icon name="unlock" size={15} /></div></Tip> ) : ( <Tip label={t("Block user")}><div className="actbtn del" title={t("Block user")} onClick={() => askDeleteWSUser(idx)}><Icon name="trash" size={15} /></div></Tip> )} </div> </div> ))} </> ); })`, `([{ label: "Admin", v: "admin" as const }, { label: "User", v: "user" as const }]).map`, `([{ label: "Lead", v: "lead" as const }, { label: "Pentester", v: "pentester" as const }]).map`, `eyebrow`, `state.pendingInvites.map`, `state.workspaceUsers.filter`, `t`, `vfPill`.
 
 Возвращает: `import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element`.
 
 <details>
 <summary>Прямые вызовы в теле</summary>
 
-- `(() => { const wq = state.wsMemberQuery.trim().toLowerCase(); const filtered = state.workspaceUsers .map((u, idx) => ({ u, idx })) .filter( ({ u }) => // Вкладка: активные = не заблокированные, архив = деактивированные. (state.wsUserTab === "archived" ? u.locked : !u.locked) && (state.wsMemberRoles.length === 0 || state.wsMemberRoles.includes(u.role)) && (state.wsMemberProjectRoles.length === 0 || state.wsMemberProjectRoles.includes(u.projectRole)) && (!wq || u.name.toLowerCase().includes(wq)) ); if (filtered.length === 0) return ( <div style={{ padding: 44, textAlign: "center", color: "var(--st-text-faint)", fontSize: 14 }}> {state.wsUserTab === "archived" ? t("No deactivated members.") : t("No members match.")} </div> ); return ( <> {/* Column headers only make sense with rows — hide them when empty. */} <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1.4fr 168px 72px", padding: "13px 20px", borderBottom: "1px solid var(--st-divider)", font: "700 11px Inter,sans-serif", letterSpacing: ".6px", color: "var(--st-text-faint)", textTransform: "uppercase" }}> <div>{t("Name")}</div> <div>{t("Email")}</div> <div>{t("Role")}</div> <div style={{ textAlign: "right" }}>{t("Actions")}</div> </div> {filtered.map(({ u, idx }) => ( <div key={u.key + idx} className="prow" style={{ display: "grid", gridTemplateColumns: "1.2fr 1.4fr 168px 72px", alignItems: "center", padding: "14px 20px", borderBottom: "1px solid var(--st-divider)" }}> <div style={{ display: "flex", alignItems: "center", gap: 11, minWidth: 0 }}> <span className="mono" style={{ width: 32, height: 32, flex: "none", borderRadius: "50%", background: u.locked ? "var(--st-text-faint)" : "var(--st-accent)", color: "var(--st-on-accent)", display: "flex", alignItems: "center", justifyContent: "center", font: "700 13px 'JetBrains Mono',monospace" }}>{(u.name[0] || "U").toUpperCase()}</span> <span style={{ font: "600 13.5px Inter,sans-serif", color: "var(--st-text)" }}>{u.name}</span> </div> <div className="mono" style={{ fontSize: 12.5, color: "var(--st-text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.email}</div> <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}> <span style={{ font: "700 10px Inter,sans-serif", textTransform: "uppercase", letterSpacing: ".5px", borderRadius: 6, padding: "3px 9px", background: WS_ROLE[u.role].bg, color: WS_ROLE[u.role].color }}>{t(WS_ROLE_LABEL[u.role])}</span> <span style={{ font: "700 10px Inter,sans-serif", textTransform: "uppercase", letterSpacing: ".5px", borderRadius: 6, padding: "3px 9px", background: ROLE[u.projectRole].bg, color: ROLE[u.projectRole].color }}>{u.projectRole}</span> </div> <div style={{ display: "flex", justifyContent: "flex-end", gap: 2 }}> <div className="actbtn" onClick={() => openWSUserEditor("edit", idx)}><Icon name="edit" size={15} /></div> {u.locked ? ( <div className="actbtn" title={t("Reactivate user")} onClick={() => reactivateUser(idx)}><Icon name="unlock" size={15} /></div> ) : ( <div className="actbtn del" title={t("Block user")} onClick={() => askDeleteWSUser(idx)}><Icon name="trash" size={15} /></div> )} </div> </div> ))} </> ); })`
+- `(() => { const wq = state.wsMemberQuery.trim().toLowerCase(); const filtered = state.workspaceUsers .map((u, idx) => ({ u, idx })) .filter( ({ u }) => // Вкладка: активные = не заблокированные, архив = деактивированные. (state.wsUserTab === "archived" ? u.locked : !u.locked) && (state.wsMemberRoles.length === 0 || state.wsMemberRoles.includes(u.role)) && (state.wsMemberProjectRoles.length === 0 || state.wsMemberProjectRoles.includes(u.projectRole)) && (!wq || u.name.toLowerCase().includes(wq)) ); if (filtered.length === 0) return ( <div style={{ padding: 44, textAlign: "center", color: "var(--st-text-faint)", fontSize: 14 }}> {state.wsUserTab === "archived" ? t("No deactivated members.") : t("No members match.")} </div> ); return ( <> {/* Column headers only make sense with rows — hide them when empty. */} <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1.4fr 168px 72px", padding: "13px 20px", borderBottom: "1px solid var(--st-divider)", font: "700 11px Inter,sans-serif", letterSpacing: ".6px", color: "var(--st-text-faint)", textTransform: "uppercase" }}> <div>{t("Name")}</div> <div>{t("Email")}</div> <div>{t("Role")}</div> <div style={{ textAlign: "right" }}>{t("Actions")}</div> </div> {filtered.map(({ u, idx }) => ( <div key={u.key + idx} className="prow" style={{ display: "grid", gridTemplateColumns: "1.2fr 1.4fr 168px 72px", alignItems: "center", padding: "14px 20px", borderBottom: "1px solid var(--st-divider)" }}> <div style={{ display: "flex", alignItems: "center", gap: 11, minWidth: 0 }}> <UserAvatar name={u.name} src={u.id === authUser?.id ? authUser.avatar_url : u.avatarUrl} initials={avatarLetter(u.name)} size={32} fontSize={13} background={u.locked ? "var(--st-text-faint)" : "var(--st-accent)"} /> <span style={{ font: "600 13.5px Inter,sans-serif", color: "var(--st-text)" }}>{u.name}</span> </div> <div className="mono" style={{ fontSize: 12.5, color: "var(--st-text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.email}</div> <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}> <span style={{ font: "700 10px Inter,sans-serif", textTransform: "uppercase", letterSpacing: ".5px", borderRadius: 6, padding: "3px 9px", background: WS_ROLE[u.role].bg, color: WS_ROLE[u.role].color }}>{t(WS_ROLE_LABEL[u.role])}</span> <span style={{ font: "700 10px Inter,sans-serif", textTransform: "uppercase", letterSpacing: ".5px", borderRadius: 6, padding: "3px 9px", background: ROLE[u.projectRole].bg, color: ROLE[u.projectRole].color }}>{u.projectRole}</span> </div> <div style={{ display: "flex", justifyContent: "flex-end", gap: 2 }}> <Tip label={t("Edit")}><div className="actbtn" onClick={() => openWSUserEditor("edit", idx)}><Icon name="edit" size={15} /></div></Tip> {u.locked ? ( <Tip label={t("Reactivate user")}><div className="actbtn" title={t("Reactivate user")} onClick={() => reactivateUser(idx)}><Icon name="unlock" size={15} /></div></Tip> ) : ( <Tip label={t("Block user")}><div className="actbtn del" title={t("Block user")} onClick={() => askDeleteWSUser(idx)}><Icon name="trash" size={15} /></div></Tip> )} </div> </div> ))} </> ); })`
 - `([{ label: "Admin", v: "admin" as const }, { label: "User", v: "user" as const }]).map`
 - `([{ label: "Lead", v: "lead" as const }, { label: "Pentester", v: "pentester" as const }]).map`
 - `eyebrow`
@@ -6536,7 +6552,7 @@ renderWorkspaceMembers() => import("/Users/nkolomiika/Cursor Projects/SberPCF/fr
 
 ## StormApp.tabItem
 
-[frontend/src/storm/StormApp.tsx:5033](../../../../../frontend/src/storm/StormApp.tsx#L5033)
+[frontend/src/storm/StormApp.tsx:5016](../../../../../frontend/src/storm/StormApp.tsx#L5016)
 
 ```typescript
 tabItem(label: string, icon: Parameters<typeof Icon>[0]["name"], st: { active: boolean }, onClick: () => void, badge?: { text: string; color: string; bg: string }, extra?: ReactNode) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -6557,13 +6573,13 @@ tabItem(label: string, icon: Parameters<typeof Icon>[0]["name"], st: { active: b
 
 ## StormApp.renderDetail
 
-[frontend/src/storm/StormApp.tsx:5042](../../../../../frontend/src/storm/StormApp.tsx#L5042)
+[frontend/src/storm/StormApp.tsx:5025](../../../../../frontend/src/storm/StormApp.tsx#L5025)
 
 ```typescript
 renderDetail() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
 ```
 
-В теле вызывает `([ { v: "hosts" as const, icon: "server" as const, label: "Hosts", count: hosts.length }, { v: "ips" as const, icon: "card" as const, label: "IPs", count: ipsRows.length }, { v: "endpoints" as const, icon: "link" as const, label: "Endpoints", count: endpointTotal }, { v: "js" as const, icon: "doc" as const, label: "JS", count: jsFiles.length }, ]).map`, `String`, `crumbLeaf.split`, `crumbLeaf.split(" / ").map`, `isFarmJobInFlight`, `renderActivity`, `renderCreds`, `renderMembers`; полный список ниже.
+В теле вызывает `([ { v: "hosts" as const, icon: "server" as const, label: "Hosts", count: hosts.length }, { v: "ips" as const, icon: "card" as const, label: "IPs", count: ipsRows.length }, { v: "endpoints" as const, icon: "link" as const, label: "Endpoints", count: endpointTotal }, { v: "js" as const, icon: "doc" as const, label: "JS", count: jsFiles.length }, ]).map`, `String`, `canExportFinding`, `crumbLeaf.split`, `crumbLeaf.split(" / ").map`, `d.vulns.find`, `findingExportHint`, `isFarmJobInFlight`; полный список ниже.
 
 Возвращает: `import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element`.
 
@@ -6572,8 +6588,11 @@ renderDetail() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/nod
 
 - `([ { v: "hosts" as const, icon: "server" as const, label: "Hosts", count: hosts.length }, { v: "ips" as const, icon: "card" as const, label: "IPs", count: ipsRows.length }, { v: "endpoints" as const, icon: "link" as const, label: "Endpoints", count: endpointTotal }, { v: "js" as const, icon: "doc" as const, label: "JS", count: jsFiles.length }, ]).map`
 - `String`
+- `canExportFinding`
 - `crumbLeaf.split`
 - `crumbLeaf.split(" / ").map`
+- `d.vulns.find`
+- `findingExportHint`
 - `isFarmJobInFlight`
 - `renderActivity`
 - `renderCreds`
@@ -6592,7 +6611,7 @@ renderDetail() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/nod
 
 ## StormApp.renderNoAccess
 
-[frontend/src/storm/StormApp.tsx:5255](../../../../../frontend/src/storm/StormApp.tsx#L5255)
+[frontend/src/storm/StormApp.tsx:5238](../../../../../frontend/src/storm/StormApp.tsx#L5238)
 
 ```typescript
 renderNoAccess(message: string) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -6615,7 +6634,7 @@ renderNoAccess(message: string) => import("/Users/nkolomiika/Cursor Projects/Sbe
 
 ## StormApp.renderNoAccessPage
 
-[frontend/src/storm/StormApp.tsx:5270](../../../../../frontend/src/storm/StormApp.tsx#L5270)
+[frontend/src/storm/StormApp.tsx:5253](../../../../../frontend/src/storm/StormApp.tsx#L5253)
 
 ```typescript
 renderNoAccessPage(message: string = NO_ACCESS_PROJECT) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -6638,7 +6657,7 @@ renderNoAccessPage(message: string = NO_ACCESS_PROJECT) => import("/Users/nkolom
 
 ## StormApp.renderOverview
 
-[frontend/src/storm/StormApp.tsx:5289](../../../../../frontend/src/storm/StormApp.tsx#L5289)
+[frontend/src/storm/StormApp.tsx:5272](../../../../../frontend/src/storm/StormApp.tsx#L5272)
 
 ```typescript
 renderOverview() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -6661,7 +6680,7 @@ renderOverview() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/n
 
 ## StormApp.renderOverview.onClick
 
-[frontend/src/storm/StormApp.tsx:5316](../../../../../frontend/src/storm/StormApp.tsx#L5316)
+[frontend/src/storm/StormApp.tsx:5299](../../../../../frontend/src/storm/StormApp.tsx#L5299)
 
 ```typescript
 onClick() => void
@@ -6680,7 +6699,7 @@ onClick() => void
 
 ## StormApp.portPills
 
-[frontend/src/storm/StormApp.tsx:5376](../../../../../frontend/src/storm/StormApp.tsx#L5376)
+[frontend/src/storm/StormApp.tsx:5359](../../../../../frontend/src/storm/StormApp.tsx#L5359)
 
 ```typescript
 portPills(ports: Host["ports"], hostDown = false) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -6706,7 +6725,7 @@ portPills(ports: Host["ports"], hostDown = false) => import("/Users/nkolomiika/C
 
 ## StormApp.hostnamePills
 
-[frontend/src/storm/StormApp.tsx:5404](../../../../../frontend/src/storm/StormApp.tsx#L5404)
+[frontend/src/storm/StormApp.tsx:5387](../../../../../frontend/src/storm/StormApp.tsx#L5387)
 
 ```typescript
 hostnamePills(names: { hostname: string; source: string; confirmed: boolean }[]) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -6729,7 +6748,7 @@ hostnamePills(names: { hostname: string; source: string; confirmed: boolean }[])
 
 ## StormApp.renderImportPage
 
-[frontend/src/storm/StormApp.tsx:5437](../../../../../frontend/src/storm/StormApp.tsx#L5437)
+[frontend/src/storm/StormApp.tsx:5420](../../../../../frontend/src/storm/StormApp.tsx#L5420)
 
 ```typescript
 renderImportPage(cfg: { title: string; pasteLabel: string; placeholder: string; previewPlaceholder: string; raw: string; preview: string; busy: boolean; submitLabel?: string; busyLabel?: string; onRaw: (v: string) => void; onPreview: (v: string) => void; onCancel: () => void; onSubmit: () => void; }) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -6754,7 +6773,7 @@ renderImportPage(cfg: { title: string; pasteLabel: string; placeholder: string; 
 
 ## StormApp.renderHostImport
 
-[frontend/src/storm/StormApp.tsx:5482](../../../../../frontend/src/storm/StormApp.tsx#L5482)
+[frontend/src/storm/StormApp.tsx:5465](../../../../../frontend/src/storm/StormApp.tsx#L5465)
 
 ```typescript
 renderHostImport() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -6774,7 +6793,7 @@ renderHostImport() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend
 
 ## StormApp.renderHostImport.onRaw
 
-[frontend/src/storm/StormApp.tsx:5491](../../../../../frontend/src/storm/StormApp.tsx#L5491)
+[frontend/src/storm/StormApp.tsx:5474](../../../../../frontend/src/storm/StormApp.tsx#L5474)
 
 ```typescript
 onRaw(v) => void
@@ -6798,7 +6817,7 @@ onRaw(v) => void
 
 ## StormApp.renderHostImport.onPreview
 
-[frontend/src/storm/StormApp.tsx:5492](../../../../../frontend/src/storm/StormApp.tsx#L5492)
+[frontend/src/storm/StormApp.tsx:5475](../../../../../frontend/src/storm/StormApp.tsx#L5475)
 
 ```typescript
 onPreview(v) => void
@@ -6821,7 +6840,7 @@ onPreview(v) => void
 
 ## StormApp.renderIpImport
 
-[frontend/src/storm/StormApp.tsx:5497](../../../../../frontend/src/storm/StormApp.tsx#L5497)
+[frontend/src/storm/StormApp.tsx:5480](../../../../../frontend/src/storm/StormApp.tsx#L5480)
 
 ```typescript
 renderIpImport() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -6841,7 +6860,7 @@ renderIpImport() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/n
 
 ## StormApp.renderIpImport.onRaw
 
-[frontend/src/storm/StormApp.tsx:5506](../../../../../frontend/src/storm/StormApp.tsx#L5506)
+[frontend/src/storm/StormApp.tsx:5489](../../../../../frontend/src/storm/StormApp.tsx#L5489)
 
 ```typescript
 onRaw(v) => void
@@ -6865,7 +6884,7 @@ onRaw(v) => void
 
 ## StormApp.renderIpImport.onPreview
 
-[frontend/src/storm/StormApp.tsx:5507](../../../../../frontend/src/storm/StormApp.tsx#L5507)
+[frontend/src/storm/StormApp.tsx:5490](../../../../../frontend/src/storm/StormApp.tsx#L5490)
 
 ```typescript
 onPreview(v) => void
@@ -6888,7 +6907,7 @@ onPreview(v) => void
 
 ## StormApp.renderEpImport
 
-[frontend/src/storm/StormApp.tsx:5512](../../../../../frontend/src/storm/StormApp.tsx#L5512)
+[frontend/src/storm/StormApp.tsx:5495](../../../../../frontend/src/storm/StormApp.tsx#L5495)
 
 ```typescript
 renderEpImport() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -6908,7 +6927,7 @@ renderEpImport() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/n
 
 ## StormApp.renderEpImport.onRaw
 
-[frontend/src/storm/StormApp.tsx:5523](../../../../../frontend/src/storm/StormApp.tsx#L5523)
+[frontend/src/storm/StormApp.tsx:5506](../../../../../frontend/src/storm/StormApp.tsx#L5506)
 
 ```typescript
 onRaw(v) => void
@@ -6932,7 +6951,7 @@ onRaw(v) => void
 
 ## StormApp.renderEpImport.onPreview
 
-[frontend/src/storm/StormApp.tsx:5524](../../../../../frontend/src/storm/StormApp.tsx#L5524)
+[frontend/src/storm/StormApp.tsx:5507](../../../../../frontend/src/storm/StormApp.tsx#L5507)
 
 ```typescript
 onPreview(v) => void
@@ -6955,7 +6974,7 @@ onPreview(v) => void
 
 ## StormApp.searchBox
 
-[frontend/src/storm/StormApp.tsx:5529](../../../../../frontend/src/storm/StormApp.tsx#L5529)
+[frontend/src/storm/StormApp.tsx:5512](../../../../../frontend/src/storm/StormApp.tsx#L5512)
 
 ```typescript
 searchBox(placeholder: string, value: string, onChange: (v: string) => void, width: number | string = 280) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -6974,7 +6993,7 @@ searchBox(placeholder: string, value: string, onChange: (v: string) => void, wid
 
 ## StormApp.filterPill
 
-[frontend/src/storm/StormApp.tsx:5536](../../../../../frontend/src/storm/StormApp.tsx#L5536)
+[frontend/src/storm/StormApp.tsx:5519](../../../../../frontend/src/storm/StormApp.tsx#L5519)
 
 ```typescript
 filterPill(label: string, on: boolean, onClick: () => void) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -6999,7 +7018,7 @@ filterPill(label: string, on: boolean, onClick: () => void) => import("/Users/nk
 
 ## StormApp.reconFilterRow
 
-[frontend/src/storm/StormApp.tsx:5543](../../../../../frontend/src/storm/StormApp.tsx#L5543)
+[frontend/src/storm/StormApp.tsx:5526](../../../../../frontend/src/storm/StormApp.tsx#L5526)
 
 ```typescript
 reconFilterRow(view: ReconView) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7026,7 +7045,7 @@ reconFilterRow(view: ReconView) => import("/Users/nkolomiika/Cursor Projects/Sbe
 
 ## StormApp.renderExport
 
-[frontend/src/storm/StormApp.tsx:5609](../../../../../frontend/src/storm/StormApp.tsx#L5609)
+[frontend/src/storm/StormApp.tsx:5592](../../../../../frontend/src/storm/StormApp.tsx#L5592)
 
 ```typescript
 renderExport() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7052,7 +7071,7 @@ renderExport() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/nod
 
 ## StormApp.renderJsScanSetup
 
-[frontend/src/storm/StormApp.tsx:5671](../../../../../frontend/src/storm/StormApp.tsx#L5671)
+[frontend/src/storm/StormApp.tsx:5654](../../../../../frontend/src/storm/StormApp.tsx#L5654)
 
 ```typescript
 renderJsScanSetup() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7076,7 +7095,7 @@ renderJsScanSetup() => import("/Users/nkolomiika/Cursor Projects/SberPCF/fronten
 
 ## StormApp.renderJsHostDetail
 
-[frontend/src/storm/StormApp.tsx:5716](../../../../../frontend/src/storm/StormApp.tsx#L5716)
+[frontend/src/storm/StormApp.tsx:5699](../../../../../frontend/src/storm/StormApp.tsx#L5699)
 
 ```typescript
 renderJsHostDetail(host: string) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7107,7 +7126,7 @@ renderJsHostDetail(host: string) => import("/Users/nkolomiika/Cursor Projects/Sb
 
 ## StormApp.renderJsFileDetail
 
-[frontend/src/storm/StormApp.tsx:5805](../../../../../frontend/src/storm/StormApp.tsx#L5805)
+[frontend/src/storm/StormApp.tsx:5788](../../../../../frontend/src/storm/StormApp.tsx#L5788)
 
 ```typescript
 renderJsFileDetail(f: JsFileEntry) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7134,7 +7153,7 @@ One JS file's card — its secrets table and paths list, with Export.
 
 ## StormApp.renderRecon
 
-[frontend/src/storm/StormApp.tsx:5869](../../../../../frontend/src/storm/StormApp.tsx#L5869)
+[frontend/src/storm/StormApp.tsx:5852](../../../../../frontend/src/storm/StormApp.tsx#L5852)
 
 ```typescript
 renderRecon() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7173,7 +7192,7 @@ renderRecon() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node
 
 ## StormApp.renderHostDetail
 
-[frontend/src/storm/StormApp.tsx:6101](../../../../../frontend/src/storm/StormApp.tsx#L6101)
+[frontend/src/storm/StormApp.tsx:6084](../../../../../frontend/src/storm/StormApp.tsx#L6084)
 
 ```typescript
 renderHostDetail(h: Host) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7200,7 +7219,7 @@ renderHostDetail(h: Host) => import("/Users/nkolomiika/Cursor Projects/SberPCF/f
 
 ## StormApp.renderIpDetail
 
-[frontend/src/storm/StormApp.tsx:6181](../../../../../frontend/src/storm/StormApp.tsx#L6181)
+[frontend/src/storm/StormApp.tsx:6164](../../../../../frontend/src/storm/StormApp.tsx#L6164)
 
 ```typescript
 renderIpDetail(row: (typeof ipsRows)[number]) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7227,7 +7246,7 @@ renderIpDetail(row: (typeof ipsRows)[number]) => import("/Users/nkolomiika/Curso
 
 ## StormApp.renderVulns
 
-[frontend/src/storm/StormApp.tsx:6236](../../../../../frontend/src/storm/StormApp.tsx#L6236)
+[frontend/src/storm/StormApp.tsx:6219](../../../../../frontend/src/storm/StormApp.tsx#L6219)
 
 ```typescript
 renderVulns() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7255,7 +7274,7 @@ renderVulns() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node
 
 ## StormApp.renderVulnDetail
 
-[frontend/src/storm/StormApp.tsx:6297](../../../../../frontend/src/storm/StormApp.tsx#L6297)
+[frontend/src/storm/StormApp.tsx:6280](../../../../../frontend/src/storm/StormApp.tsx#L6280)
 
 ```typescript
 renderVulnDetail() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7289,7 +7308,7 @@ renderVulnDetail() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend
 
 ## StormApp.renderVulnDetail.vdHostPick
 
-[frontend/src/storm/StormApp.tsx:6315](../../../../../frontend/src/storm/StormApp.tsx#L6315)
+[frontend/src/storm/StormApp.tsx:6298](../../../../../frontend/src/storm/StormApp.tsx#L6298)
 
 ```typescript
 vdHostPick(v: string) => void
@@ -7312,7 +7331,7 @@ vdHostPick(v: string) => void
 
 ## StormApp.notePreview
 
-[frontend/src/storm/StormApp.tsx:6497](../../../../../frontend/src/storm/StormApp.tsx#L6497)
+[frontend/src/storm/StormApp.tsx:6480](../../../../../frontend/src/storm/StormApp.tsx#L6480)
 
 ```typescript
 notePreview(md: string) => string
@@ -7344,7 +7363,7 @@ First non-empty line of the body, with Markdown syntax stripped — the card pre
 
 ## StormApp.renderCreds
 
-[frontend/src/storm/StormApp.tsx:6519](../../../../../frontend/src/storm/StormApp.tsx#L6519)
+[frontend/src/storm/StormApp.tsx:6502](../../../../../frontend/src/storm/StormApp.tsx#L6502)
 
 ```typescript
 renderCreds() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7364,7 +7383,7 @@ renderCreds() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node
 
 ## StormApp.renderNotes
 
-[frontend/src/storm/StormApp.tsx:6579](../../../../../frontend/src/storm/StormApp.tsx#L6579)
+[frontend/src/storm/StormApp.tsx:6562](../../../../../frontend/src/storm/StormApp.tsx#L6562)
 
 ```typescript
 renderNotes() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7384,7 +7403,7 @@ renderNotes() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node
 
 ## StormApp.renderNoteViewer
 
-[frontend/src/storm/StormApp.tsx:6607](../../../../../frontend/src/storm/StormApp.tsx#L6607)
+[frontend/src/storm/StormApp.tsx:6590](../../../../../frontend/src/storm/StormApp.tsx#L6590)
 
 ```typescript
 renderNoteViewer() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7406,7 +7425,7 @@ renderNoteViewer() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend
 
 ## StormApp.renderNoteEditor
 
-[frontend/src/storm/StormApp.tsx:6653](../../../../../frontend/src/storm/StormApp.tsx#L6653)
+[frontend/src/storm/StormApp.tsx:6636](../../../../../frontend/src/storm/StormApp.tsx#L6636)
 
 ```typescript
 renderNoteEditor() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7426,7 +7445,7 @@ renderNoteEditor() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend
 
 ## StormApp.renderMembers
 
-[frontend/src/storm/StormApp.tsx:6695](../../../../../frontend/src/storm/StormApp.tsx#L6695)
+[frontend/src/storm/StormApp.tsx:6678](../../../../../frontend/src/storm/StormApp.tsx#L6678)
 
 ```typescript
 renderMembers() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7452,7 +7471,7 @@ renderMembers() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/no
 
 ## StormApp.resolveActivityName
 
-[frontend/src/storm/StormApp.tsx:6742](../../../../../frontend/src/storm/StormApp.tsx#L6742)
+[frontend/src/storm/StormApp.tsx:6725](../../../../../frontend/src/storm/StormApp.tsx#L6725)
 
 ```typescript
 resolveActivityName(type, id) => string | null
@@ -7479,7 +7498,7 @@ resolveActivityName(type, id) => string | null
 
 ## StormApp.activityLineRow
 
-[frontend/src/storm/StormApp.tsx:6763](../../../../../frontend/src/storm/StormApp.tsx#L6763)
+[frontend/src/storm/StormApp.tsx:6746](../../../../../frontend/src/storm/StormApp.tsx#L6746)
 
 ```typescript
 activityLineRow(l: ActivityLine, tone: ActTone) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7496,7 +7515,7 @@ One line of the dark event panel: + text [SEVERITY].
 
 ## StormApp.renderActivity
 
-[frontend/src/storm/StormApp.tsx:6785](../../../../../frontend/src/storm/StormApp.tsx#L6785)
+[frontend/src/storm/StormApp.tsx:6768](../../../../../frontend/src/storm/StormApp.tsx#L6768)
 
 ```typescript
 renderActivity() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7517,7 +7536,7 @@ renderActivity() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/n
 
 ## StormApp.renderProfile
 
-[frontend/src/storm/StormApp.tsx:6846](../../../../../frontend/src/storm/StormApp.tsx#L6846)
+[frontend/src/storm/StormApp.tsx:6829](../../../../../frontend/src/storm/StormApp.tsx#L6829)
 
 ```typescript
 renderProfile() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7543,7 +7562,7 @@ renderProfile() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/no
 
 ## StormApp.cardHeader
 
-[frontend/src/storm/StormApp.tsx:6882](../../../../../frontend/src/storm/StormApp.tsx#L6882)
+[frontend/src/storm/StormApp.tsx:6865](../../../../../frontend/src/storm/StormApp.tsx#L6865)
 
 ```typescript
 cardHeader(icon: Parameters<typeof Icon>[0]["name"], title: string, sub: string, right?: ReactNode) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7569,7 +7588,7 @@ cardHeader(icon: Parameters<typeof Icon>[0]["name"], title: string, sub: string,
 
 ## StormApp.renderProfileAccount
 
-[frontend/src/storm/StormApp.tsx:6892](../../../../../frontend/src/storm/StormApp.tsx#L6892)
+[frontend/src/storm/StormApp.tsx:6875](../../../../../frontend/src/storm/StormApp.tsx#L6875)
 
 ```typescript
 renderProfileAccount() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7592,7 +7611,7 @@ renderProfileAccount() => import("/Users/nkolomiika/Cursor Projects/SberPCF/fron
 
 ## StormApp.renderProfileCustomizing
 
-[frontend/src/storm/StormApp.tsx:6937](../../../../../frontend/src/storm/StormApp.tsx#L6937)
+[frontend/src/storm/StormApp.tsx:6920](../../../../../frontend/src/storm/StormApp.tsx#L6920)
 
 ```typescript
 renderProfileCustomizing() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7613,7 +7632,7 @@ renderProfileCustomizing() => import("/Users/nkolomiika/Cursor Projects/SberPCF/
 
 ## StormApp.renderProfileCustomizing.tile
 
-[frontend/src/storm/StormApp.tsx:6939](../../../../../frontend/src/storm/StormApp.tsx#L6939)
+[frontend/src/storm/StormApp.tsx:6922](../../../../../frontend/src/storm/StormApp.tsx#L6922)
 
 ```typescript
 tile(key: string, active: boolean, onClick: () => void, icon: Parameters<typeof Icon>[0]["name"], title: string, desc: string) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7634,7 +7653,7 @@ tile(key: string, active: boolean, onClick: () => void, icon: Parameters<typeof 
 
 ## StormApp.renderProfileSecurity
 
-[frontend/src/storm/StormApp.tsx:6991](../../../../../frontend/src/storm/StormApp.tsx#L6991)
+[frontend/src/storm/StormApp.tsx:6974](../../../../../frontend/src/storm/StormApp.tsx#L6974)
 
 ```typescript
 renderProfileSecurity() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7655,7 +7674,7 @@ renderProfileSecurity() => import("/Users/nkolomiika/Cursor Projects/SberPCF/fro
 
 ## StormApp.renderProfileApi
 
-[frontend/src/storm/StormApp.tsx:7064](../../../../../frontend/src/storm/StormApp.tsx#L7064)
+[frontend/src/storm/StormApp.tsx:7047](../../../../../frontend/src/storm/StormApp.tsx#L7047)
 
 ```typescript
 renderProfileApi() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7675,7 +7694,7 @@ renderProfileApi() => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend
 
 ## StormApp.modalShell
 
-[frontend/src/storm/StormApp.tsx:7095](../../../../../frontend/src/storm/StormApp.tsx#L7095)
+[frontend/src/storm/StormApp.tsx:7078](../../../../../frontend/src/storm/StormApp.tsx#L7078)
 
 ```typescript
 modalShell(open: boolean, onClose: () => void, zIndex: number, width: number, children: ReactNode, align: "center" | "flex-start" = "center", pad = "24px") => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7697,7 +7716,7 @@ modalShell(open: boolean, onClose: () => void, zIndex: number, width: number, ch
 
 ## StormApp.modalFooter
 
-[frontend/src/storm/StormApp.tsx:7103](../../../../../frontend/src/storm/StormApp.tsx#L7103)
+[frontend/src/storm/StormApp.tsx:7086](../../../../../frontend/src/storm/StormApp.tsx#L7086)
 
 ```typescript
 modalFooter(onCancel: () => void, onSave: () => void, saveLabel: string, saveBg = "var(--st-accent-2)", disabled = false) => import("/Users/nkolomiika/Cursor Projects/SberPCF/frontend/node_modules/@types/react/index").JSX.Element
@@ -7724,7 +7743,7 @@ modalFooter(onCancel: () => void, onSave: () => void, saveLabel: string, saveBg 
 
 ## StormApp.onClick
 
-[frontend/src/storm/StormApp.tsx:7163](../../../../../frontend/src/storm/StormApp.tsx#L7163)
+[frontend/src/storm/StormApp.tsx:7146](../../../../../frontend/src/storm/StormApp.tsx#L7146)
 
 ```typescript
 onClick() => void
@@ -7743,7 +7762,7 @@ onClick() => void
 
 ## StormApp.onClick
 
-[frontend/src/storm/StormApp.tsx:7164](../../../../../frontend/src/storm/StormApp.tsx#L7164)
+[frontend/src/storm/StormApp.tsx:7147](../../../../../frontend/src/storm/StormApp.tsx#L7147)
 
 ```typescript
 onClick() => void
@@ -7762,7 +7781,7 @@ onClick() => void
 
 ## StormApp.close
 
-[frontend/src/storm/StormApp.tsx:7373](../../../../../frontend/src/storm/StormApp.tsx#L7373)
+[frontend/src/storm/StormApp.tsx:7356](../../../../../frontend/src/storm/StormApp.tsx#L7356)
 
 ```typescript
 close() => void

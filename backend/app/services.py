@@ -90,7 +90,6 @@ from app.models import (
 from app.mail import (
     build_invitation_email,
     build_password_reset_email,
-    build_reactivation_email,
     build_temporary_password_email,
 )
 from app.messaging import publish_mail_job
@@ -115,7 +114,6 @@ from app.security import (
     encrypt_secret,
     generate_invitation_token,
     generate_password_reset_token,
-    generate_reactivation_token,
     generate_totp_secret,
     hash_agent_token,
     hash_invitation_token,
@@ -216,7 +214,7 @@ class AgentTokenService:
     # Полный набор прав, которые распознаёт /api/v2 (см. require_agent_scope).
     # Токен не может нести право вне этого набора — это единственный источник
     # истины по scopes и для бэкенда, и для фронта.
-    ALLOWED_SCOPES = ["projects:read", "assets:read", "vulns:read", "vulns:write", "notes:read", "notes:write"]
+    ALLOWED_SCOPES = ["projects:read", "assets:read", "assets:write", "credentials:read", "vulns:read", "vulns:write", "notes:read", "notes:write"]
 
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
@@ -354,6 +352,25 @@ class WorksService:
 
     async def _find_reference(self, kind: Literal['components', 'versions', 'product_codes'], q: str) -> list[dict[str, str]]:
         """Отделяет отказ внешнего справочника от ошибки пользовательских полей."""
+        if settings.works_tasks_demo_file:
+            from app.task_tracker import TaskTrackerService
+            from app.tracker_metadata import affected_versions, component_references, unit_attributes
+            from app.works import _extract_items
+            payload = await TaskTrackerService()._request()
+            references = {}
+            for unit in _extract_items(payload):
+                attributes = {**unit_attributes(unit.get('attrs')), **unit_attributes(unit.get('attributes'))}
+                if kind == 'versions':
+                    items = affected_versions(attributes)
+                elif kind == 'components':
+                    items = component_references(attributes.get(settings.works_appsec_component_attribute))
+                else:
+                    value = attributes.get(settings.works_appsec_product_code_attribute)
+                    items = [value] if isinstance(value, dict) and value.get('code') and value.get('name') else []
+                for item in items:
+                    references[item['code']] = {'code': item['code'], 'name': item['name']}
+            needle = q.casefold()
+            return [item for item in references.values() if needle in (item['name']+' '+item['code']).casefold()][:50]
         if not settings.works_configured:
             raise ServiceUnavailableError('Подключение к Task Tracker пока не настроено.', 'task_tracker_not_configured')
         try:
@@ -364,12 +381,7 @@ class WorksService:
             raise tracker_service_error(exc) from exc
 
     async def find_versions(self, q: str = "") -> list[dict[str, str]]:
-        if settings.works_tasks_demo_file:
-            from app.task_tracker import TaskTrackerService
-            tasks = await TaskTrackerService().list_tasks()
-            versions = {version['code']: version for task in tasks['items'] for version in task['affected_versions']}
-            needle = q.casefold()
-            return [version for version in versions.values() if needle in (version['name'] + ' ' + version['code']).casefold()][:50]
+        """Версии формы проекта из реального TT либо явно включённого локального демо."""
         return await self._find_reference('versions', q)
 
     async def get_link(self, project_id: int, vulnerability_id: int) -> WorksIssueLink | None:
@@ -438,10 +450,12 @@ class WorksService:
             raise ValidationError('Заполните данные по проекту. Не заполнено: ' + ', '.join(missing))
         if not settings.works_configured:
             raise ValidationError("Интеграция с Works не настроена или отключена")
-        finding_id = await self.db.scalar(select(Vulnerability.id).where(
+        finding = await self.db.scalar(select(Vulnerability).where(
             Vulnerability.id == vuln_id, Vulnerability.project_id == project_id).with_for_update())
-        if finding_id is None:
+        if finding is None:
             raise NotFoundError('Уязвимость не найдена')
+        if finding.severity == Severity.UNREALIZED:
+            raise ValidationError('Находки Unrealized не экспортируются в Task Tracker')
         existing = await self.db.scalar(select(WorksIssueLink).where(WorksIssueLink.vulnerability_id == vuln_id))
         if existing is not None:
             logging.getLogger('storm.works').info('sts_export_reused project_id=%s vulnerability_id=%s actor_id=%s', project_id, vuln_id, user.id)
@@ -1203,67 +1217,23 @@ class UserService:
         )
         return user
 
-    # ------------------------------------------------------------------
-    # Возврат деактивированного пользователя (мягкое удаление -> is_locked).
-    # Админ жмёт «вернуть» -> письмо со ссылкой; пользователь переходит по ней
-    # -> аккаунт разблокируется и сразу выдаётся сессия (см. auth-роутер).
-    # ------------------------------------------------------------------
-    async def _enqueue_reactivation_mail(self, *, user: User, raw_token: str) -> MailJob:
-        reactivate_url = f"{settings.app_base_url.rstrip('/')}/reactivate?token={raw_token}"
-        subject, body, html = build_reactivation_email(
-            username=user.full_name or user.username,
-            reactivate_url=reactivate_url,
-            expire_hours=settings.reactivation_expire_hours,
-        )
-        job = MailJob(
-            user_id=user.id,
-            created_by=None,
-            recipient_email=user.email,
-            subject=subject,
-            template="reactivation",
-            payload={"reactivate_url": reactivate_url, "body": body, "html": html},
-            status="pending",
-        )
-        self.db.add(job)
-        await self.db.flush()
-        return job
-
-    async def request_reactivation(self, user_id: int, actor_id: int, ip_address: str | None = None) -> MailJob:
-        """Админ возвращает деактивированного пользователя: шлём ссылку-возврат.
-
-        Аккаунт остаётся заблокированным — доступ вернётся, только когда пользователь
-        сам перейдёт по ссылке из письма (там же сразу выдаётся сессия).
-        """
-        self._ensure_mail_delivery_enabled()
+    async def reactivate_user(self, user_id: int, actor_id: int, ip_address: str | None = None) -> User:
+        """Сразу разблокирует пользователя без письма и гасит прежние ссылки возврата."""
         user = await self.get_user(user_id)
-        if not user.is_locked:
+        if not user.is_locked and user.is_active:
             raise ValidationError("The user is not deactivated")
-        # Прежние неиспользованные ссылки гасим: активной остаётся только последняя.
         await self.db.execute(
             update(AccountReactivationToken)
             .where(and_(AccountReactivationToken.user_id == user.id, AccountReactivationToken.used_at.is_(None)))
             .values(used_at=datetime.now(UTC))
         )
-        raw_token = generate_reactivation_token()
-        self.db.add(
-            AccountReactivationToken(
-                user_id=user.id,
-                token_hash=hash_reactivation_token(raw_token),
-                expires_at=datetime.now(UTC) + timedelta(hours=settings.reactivation_expire_hours),
-            )
-        )
-        mail_job = await self._enqueue_reactivation_mail(user=user, raw_token=raw_token)
+        user.is_locked = False
+        user.is_active = True
         await self.db.flush()
-        await self.audit.log(
-            "UPDATE",
-            user_id=actor_id,
-            entity_type="user_reactivation_requested",
-            entity_id=user.id,
-            details={"email": user.email},
-            ip_address=ip_address,
-        )
-        await self._publish_mail_job(mail_job)
-        return mail_job
+        await self.db.refresh(user)
+        await self.audit.log("UPDATE", user_id=actor_id, entity_type="user_reactivated",
+                             entity_id=user.id, ip_address=ip_address)
+        return user
 
     async def _load_reactivation_token(self, raw_token: str, *, for_update: bool = False) -> AccountReactivationToken | None:
         query = select(AccountReactivationToken).where(AccountReactivationToken.token_hash == hash_reactivation_token(raw_token))
@@ -1571,12 +1541,24 @@ class ProjectService:
         """Читает проект через общую проверку существования; авторизацию выполняет API."""
         return await get_project(self.db, project_id)
 
+    async def _ensure_ticket_available(self, key: str | None, project_id: int | None = None) -> None:
+        """Запрещает повторную привязку APPSEC, в том числе при параллельном создании."""
+        if not key:
+            return
+        await self.db.execute(select(func.pg_advisory_xact_lock(func.hashtextextended('storm.project-ticket:'+key, 0))))
+        query = select(Project.id).where(Project.appsec_ticket_key == key)
+        if project_id is not None:
+            query = query.where(Project.id != project_id)
+        if await self.db.scalar(query.limit(1)) is not None:
+            raise ConflictError("По этому APPSEC-тикету уже создан проект")
+
     async def create_project(self, payload: dict, actor_id: int, ip_address: str | None = None) -> Project:
         """Создаёт проект и членство его автора одной транзакцией с аудитом."""
         if "description" in payload:
             raise ValidationError("Поле description проекта удалено")
         self._validate_project_dates(payload.get("start_date"), payload.get("end_date"))
         normalize_project_ticket(payload)
+        await self._ensure_ticket_available(payload.get('appsec_ticket_key'))
         normalize_project_versions(payload)
         normalize_project_components(payload)
         payload["folder"] = self._normalize_project_folder(payload.get("folder"))
@@ -1598,6 +1580,7 @@ class ProjectService:
             raise ValidationError("Поле description проекта удалено")
         project = await self.get_project(project_id)
         normalize_project_ticket(payload)
+        await self._ensure_ticket_available(payload.get('appsec_ticket_key'), project_id)
         if 'appsec_versions' not in payload and 'appsec_version_name' in payload and 'appsec_version_code' not in payload:
             payload['appsec_version_code'] = project.appsec_version_code
         normalize_project_versions(payload)
@@ -1761,6 +1744,7 @@ class ProjectService:
                 "user_id": user.id,
                 "username": user.username,
                 "email": user.email,
+                "avatar_url": user.avatar_url,
                 "role": user.role,
                 "project_role": user.project_role,
                 "added_at": member.added_at,
@@ -2814,6 +2798,79 @@ class AssetService:
     async def list_endpoints(self, project_id: int, host_id: int) -> list[Endpoint]:
         await self._ensure_host(project_id, host_id)
         return list((await self.db.scalars(select(Endpoint).where(Endpoint.host_id == host_id).order_by(Endpoint.created_at.desc()))).all())
+
+    async def get_endpoint(self, project_id: int, host_id: int, endpoint_id: int) -> Endpoint:
+        """Читает эндпоинт только внутри указанного хоста и проекта."""
+        await self._ensure_host(project_id, host_id)
+        endpoint = await self.db.scalar(select(Endpoint).where(Endpoint.id == endpoint_id, Endpoint.host_id == host_id))
+        if endpoint is None:
+            raise NotFoundError("Эндпоинт не найден")
+        return endpoint
+
+    async def list_ip_addresses(
+        self, project_id: int, page: int, size: int, host_id: int | None = None,
+    ) -> tuple[list[HostIpAddress], int]:
+        """Страница IP проекта; один адрес у разных хостов — разные привязки."""
+        if host_id is not None:
+            await self._ensure_host(project_id, host_id)
+        query = select(HostIpAddress).join(Host).where(Host.project_id == project_id)
+        if host_id is not None:
+            query = query.where(HostIpAddress.host_id == host_id)
+        total = await self.db.scalar(select(func.count()).select_from(query.subquery())) or 0
+        rows = await self.db.scalars(
+            query.options(selectinload(HostIpAddress.ports).selectinload(Port.services))
+            .order_by(HostIpAddress.created_at.desc(), HostIpAddress.id.desc())
+            .offset((page - 1) * size).limit(size)
+        )
+        return list(rows), total
+
+    async def get_ip_address(self, project_id: int, ip_id: int) -> HostIpAddress:
+        """Читает IP с портами и сервисами, проверяя проект родительского хоста."""
+        row = await self.db.scalar(
+            select(HostIpAddress).join(Host).where(Host.project_id == project_id, HostIpAddress.id == ip_id)
+            .options(selectinload(HostIpAddress.ports).selectinload(Port.services))
+        )
+        if row is None:
+            raise NotFoundError("IP-адрес не найден")
+        return row
+
+    async def create_ip_address(self, project_id: int, payload: dict, actor_id: int) -> HostIpAddress:
+        """Сохраняет IP без сетевых обращений; повторная привязка не меняет данные.
+
+        Без host_id создаёт служебный хост origin=ip. Блокировка родителя
+        сериализует добавления адресов и выбор primary у существующего хоста.
+        """
+        host_id = payload.get("host_id")
+        if host_id is None:
+            host = Host(project_id=project_id, origin="ip", ip_address=payload["ip_address"])
+            self.db.add(host)
+            await self.db.flush()
+            host_id = host.id
+            primary = True
+        else:
+            host = await self.db.scalar(select(Host).where(Host.id == host_id, Host.project_id == project_id).with_for_update())
+            if host is None:
+                raise NotFoundError("Хост не найден")
+            existing = await self.db.scalar(select(HostIpAddress).where(
+                HostIpAddress.host_id == host_id, HostIpAddress.ip_address == payload["ip_address"],
+            ))
+            if existing is not None:
+                return await self.get_ip_address(project_id, existing.id)
+            primary = bool(payload.get("is_primary")) or not await self.db.scalar(
+                select(HostIpAddress.id).where(HostIpAddress.host_id == host_id).limit(1)
+            )
+        if primary:
+            await self.db.execute(update(HostIpAddress).where(HostIpAddress.host_id == host_id).values(is_primary=False))
+            host.ip_address = payload["ip_address"]
+        row = HostIpAddress(host_id=host_id, ip_address=payload["ip_address"], label=payload.get("label"), is_primary=primary)
+        self.db.add(row)
+        await self.db.flush()
+        row_id = row.id
+        await self.audit.log("CREATE", user_id=actor_id, entity_type="host_ip_address", entity_id=row_id,
+                             details={"project_id": str(project_id), "host_id": str(host_id),
+                                      "ip_address": row.ip_address, "label": row.label})
+        await ws_manager.broadcast(project_id, {"event": "created", "entity": "host", "project_id": str(project_id), "data": {"id": str(host_id)}})
+        return await self.get_ip_address(project_id, row_id)
 
     async def list_js_files(
         self, project_id: int, offset: int = 0, limit: int = 200
@@ -4299,6 +4356,10 @@ class ProjectCredentialService:
             .order_by(ProjectCredential.created_at.asc(), ProjectCredential.id.asc())
         )
         return [self._serialize(row) for row in rows.all()]
+
+    async def get_credential(self, project_id: int, credential_id: int) -> dict:
+        """Возвращает одну учётную запись, проверяя её принадлежность проекту."""
+        return self._serialize(await self._get_credential(project_id, credential_id))
 
     async def create_credential(self, project_id: int, payload: dict, actor_id: int) -> dict:
         await self._ensure_project(project_id)

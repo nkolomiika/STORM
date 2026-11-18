@@ -50,7 +50,7 @@ describe("localized surfaces", () => {
   it("keeps an open article in Russian when the interface language changes", () => {
     useLangStore.getState().setLang("en");
     render(<StormDocs isAdmin={false} />);
-    fireEvent.click(screen.getByText("Getting started"));
+    fireEvent.click(screen.getByText("Начало работы"));
     expect(screen.getByRole("heading", { name: "Вход в систему" })).toBeInTheDocument();
     act(() => useLangStore.getState().setLang("ru"));
     act(() => useLangStore.getState().setLang("en"));

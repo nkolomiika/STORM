@@ -6,7 +6,7 @@
 
 ## me
 
-[backend/app/routers/users.py:33](../../../../../backend/app/routers/users.py#L33)
+[backend/app/routers/users.py:32](../../../../../backend/app/routers/users.py#L32)
 
 ```python
 async def me(current_user: User=Depends(get_current_user)) -> User
@@ -30,7 +30,7 @@ router.get('/me', response_model=UserOut)
 
 ## my_profile
 
-[backend/app/routers/users.py:39](../../../../../backend/app/routers/users.py#L39)
+[backend/app/routers/users.py:38](../../../../../backend/app/routers/users.py#L38)
 
 ```python
 async def my_profile(current_user: User=Depends(get_current_user)) -> User
@@ -54,7 +54,7 @@ router.get('/me/profile', response_model=UserOut)
 
 ## update_my_profile
 
-[backend/app/routers/users.py:45](../../../../../backend/app/routers/users.py#L45)
+[backend/app/routers/users.py:44](../../../../../backend/app/routers/users.py#L44)
 
 ```python
 async def update_my_profile(payload: UserProfileUpdate, request: Request, _: None=Depends(enforce_csrf), current_user: User=Depends(get_current_user), db: AsyncSession=Depends(get_db)) -> UserOut
@@ -93,7 +93,7 @@ router.patch('/me', response_model=UserOut)
 
 ## change_my_password
 
-[backend/app/routers/users.py:58](../../../../../backend/app/routers/users.py#L58)
+[backend/app/routers/users.py:57](../../../../../backend/app/routers/users.py#L57)
 
 ```python
 async def change_my_password(payload: OwnPasswordChangeRequest, request: Request, _: None=Depends(enforce_csrf), current_user: User=Depends(get_current_user), db: AsyncSession=Depends(get_db)) -> UserOut
@@ -131,7 +131,7 @@ router.patch('/me/password', response_model=UserOut)
 
 ## setup_my_2fa
 
-[backend/app/routers/users.py:76](../../../../../backend/app/routers/users.py#L76)
+[backend/app/routers/users.py:75](../../../../../backend/app/routers/users.py#L75)
 
 ```python
 async def setup_my_2fa(request: Request, _: None=Depends(enforce_csrf), current_user: User=Depends(get_current_user), db: AsyncSession=Depends(get_db)) -> TwoFASetupResponse
@@ -168,7 +168,7 @@ router.post('/me/2fa/setup', response_model=TwoFASetupResponse)
 
 ## confirm_my_2fa
 
-[backend/app/routers/users.py:88](../../../../../backend/app/routers/users.py#L88)
+[backend/app/routers/users.py:87](../../../../../backend/app/routers/users.py#L87)
 
 ```python
 async def confirm_my_2fa(payload: TwoFAConfirmRequest, request: Request, _: None=Depends(enforce_csrf), current_user: User=Depends(get_current_user), db: AsyncSession=Depends(get_db)) -> UserOut
@@ -206,7 +206,7 @@ router.post('/me/2fa/confirm', response_model=UserOut)
 
 ## disable_my_2fa
 
-[backend/app/routers/users.py:101](../../../../../backend/app/routers/users.py#L101)
+[backend/app/routers/users.py:100](../../../../../backend/app/routers/users.py#L100)
 
 ```python
 async def disable_my_2fa(payload: TwoFADisableRequest, request: Request, _: None=Depends(enforce_csrf), current_user: User=Depends(get_current_user), db: AsyncSession=Depends(get_db)) -> UserOut
@@ -244,7 +244,7 @@ router.post('/me/2fa/disable', response_model=UserOut)
 
 ## upload_my_avatar
 
-[backend/app/routers/users.py:114](../../../../../backend/app/routers/users.py#L114)
+[backend/app/routers/users.py:113](../../../../../backend/app/routers/users.py#L113)
 
 ```python
 async def upload_my_avatar(request: Request, avatar: UploadFile=FastAPIFile(...), _: None=Depends(enforce_csrf), current_user: User=Depends(get_current_user), db: AsyncSession=Depends(get_db)) -> UserOut
@@ -282,7 +282,7 @@ router.post('/me/avatar', response_model=UserOut)
 
 ## list_users
 
-[backend/app/routers/users.py:127](../../../../../backend/app/routers/users.py#L127)
+[backend/app/routers/users.py:126](../../../../../backend/app/routers/users.py#L126)
 
 ```python
 async def list_users(page: int=Query(1, ge=1), size: int=Query(20, ge=1, le=200), _admin: User=Depends(require_admin), db: AsyncSession=Depends(get_db)) -> dict
@@ -321,7 +321,7 @@ router.get('', response_model=dict)
 
 ## _activation_url
 
-[backend/app/routers/users.py:138](../../../../../backend/app/routers/users.py#L138)
+[backend/app/routers/users.py:137](../../../../../backend/app/routers/users.py#L137)
 
 ```python
 def _activation_url(job) -> str | None
@@ -345,7 +345,7 @@ def _activation_url(job) -> str | None
 
 ## _mail_preview_url
 
-[backend/app/routers/users.py:145](../../../../../backend/app/routers/users.py#L145)
+[backend/app/routers/users.py:144](../../../../../backend/app/routers/users.py#L144)
 
 ```python
 def _mail_preview_url() -> str | None
@@ -357,7 +357,7 @@ URL веб-интерфейса для просмотра письма (MAIL_PRE
 
 ## create_invitation
 
-[backend/app/routers/users.py:151](../../../../../backend/app/routers/users.py#L151)
+[backend/app/routers/users.py:150](../../../../../backend/app/routers/users.py#L150)
 
 ```python
 async def create_invitation(payload: InvitationCreate, request: Request, _: None=Depends(enforce_csrf), admin: User=Depends(require_admin), db: AsyncSession=Depends(get_db)) -> InvitationSentOut
@@ -399,7 +399,7 @@ router.post('/invitations', response_model=InvitationSentOut, status_code=status
 
 ## list_invitations
 
-[backend/app/routers/users.py:169](../../../../../backend/app/routers/users.py#L169)
+[backend/app/routers/users.py:168](../../../../../backend/app/routers/users.py#L168)
 
 ```python
 async def list_invitations(_admin: User=Depends(require_admin), db: AsyncSession=Depends(get_db)) -> list[InvitationOut]
@@ -436,7 +436,7 @@ router.get('/invitations', response_model=list[InvitationOut])
 
 ## resend_invitation
 
-[backend/app/routers/users.py:181](../../../../../backend/app/routers/users.py#L181)
+[backend/app/routers/users.py:180](../../../../../backend/app/routers/users.py#L180)
 
 ```python
 async def resend_invitation(invitation_id: int, request: Request, _: None=Depends(enforce_csrf), admin: User=Depends(require_admin), db: AsyncSession=Depends(get_db)) -> InvitationSentOut
@@ -477,7 +477,7 @@ router.post('/invitations/{invitation_id}/resend', response_model=InvitationSent
 
 ## revoke_invitation
 
-[backend/app/routers/users.py:199](../../../../../backend/app/routers/users.py#L199)
+[backend/app/routers/users.py:198](../../../../../backend/app/routers/users.py#L198)
 
 ```python
 async def revoke_invitation(invitation_id: int, request: Request, _: None=Depends(enforce_csrf), admin: User=Depends(require_admin), db: AsyncSession=Depends(get_db)) -> None
@@ -514,7 +514,7 @@ router.delete('/invitations/{invitation_id}', status_code=status.HTTP_204_NO_CON
 
 ## search_users
 
-[backend/app/routers/users.py:211](../../../../../backend/app/routers/users.py#L211)
+[backend/app/routers/users.py:210](../../../../../backend/app/routers/users.py#L210)
 
 ```python
 async def search_users(q: str=Query('', max_length=100), limit: int=Query(10, ge=1, le=25), _: User=Depends(get_current_user), db: AsyncSession=Depends(get_db)) -> list[UserSearchOut]
@@ -552,7 +552,7 @@ router.get('/search', response_model=list[UserSearchOut])
 
 ## get_user
 
-[backend/app/routers/users.py:227](../../../../../backend/app/routers/users.py#L227)
+[backend/app/routers/users.py:226](../../../../../backend/app/routers/users.py#L226)
 
 ```python
 async def get_user(user_id: int, _admin: User=Depends(require_admin), db: AsyncSession=Depends(get_db)) -> UserOut
@@ -587,7 +587,7 @@ router.get('/{user_id}', response_model=UserOut)
 
 ## get_user_avatar
 
-[backend/app/routers/users.py:238](../../../../../backend/app/routers/users.py#L238)
+[backend/app/routers/users.py:237](../../../../../backend/app/routers/users.py#L237)
 
 ```python
 async def get_user_avatar(user_id: int, current_user: User=Depends(get_current_user), db: AsyncSession=Depends(get_db)) -> Response
@@ -623,7 +623,7 @@ router.get('/{user_id}/avatar')
 
 ## update_user
 
-[backend/app/routers/users.py:251](../../../../../backend/app/routers/users.py#L251)
+[backend/app/routers/users.py:250](../../../../../backend/app/routers/users.py#L250)
 
 ```python
 async def update_user(user_id: int, payload: UserUpdate, request: Request, _: None=Depends(enforce_csrf), admin: User=Depends(require_admin), db: AsyncSession=Depends(get_db)) -> UserOut
@@ -663,7 +663,7 @@ router.put('/{user_id}', response_model=UserOut)
 
 ## delete_user
 
-[backend/app/routers/users.py:265](../../../../../backend/app/routers/users.py#L265)
+[backend/app/routers/users.py:264](../../../../../backend/app/routers/users.py#L264)
 
 ```python
 async def delete_user(user_id: int, request: Request, _: None=Depends(enforce_csrf), admin: User=Depends(require_admin), db: AsyncSession=Depends(get_db)) -> None
@@ -700,16 +700,13 @@ router.delete('/{user_id}', status_code=status.HTTP_204_NO_CONTENT)
 
 ## reactivate_user
 
-[backend/app/routers/users.py:277](../../../../../backend/app/routers/users.py#L277)
+[backend/app/routers/users.py:276](../../../../../backend/app/routers/users.py#L276)
 
 ```python
-async def reactivate_user(user_id: int, request: Request, _: None=Depends(enforce_csrf), admin: User=Depends(require_admin), db: AsyncSession=Depends(get_db)) -> ReactivationRequestOut
+async def reactivate_user(user_id: int, request: Request, _: None=Depends(enforce_csrf), admin: User=Depends(require_admin), db: AsyncSession=Depends(get_db)) -> UserOut
 ```
 
-Возвращает деактивированного пользователя: шлёт ему письмо-возврат со ссылкой.
-
-Аккаунт разблокируется не здесь, а когда пользователь сам перейдёт по ссылке
-(там же сразу выдаётся сессия — см. /auth/reactivate).
+Сразу возвращает пользователю доступ; письмо и SMTP не используются.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -719,29 +716,29 @@ async def reactivate_user(user_id: int, request: Request, _: None=Depends(enforc
 | `admin` | `User` | `Depends(require_admin)` | Определяется именем/типом и контрактом вызывающего кода. |
 | `db` | `AsyncSession` | `Depends(get_db)` | Асинхронная SQLAlchemy-сессия текущего запроса. |
 
-Возвращает: `ReactivationRequestOut`.
+Возвращает: `UserOut`.
 
 Dependencies: `enforce_csrf`, `require_admin`, `get_db`.
 
 Маршруты:
 
 ```python
-router.post('/{user_id}/reactivate', response_model=ReactivationRequestOut, status_code=status.HTTP_200_OK)
+router.post('/{user_id}/reactivate', response_model=UserOut, status_code=status.HTTP_200_OK)
 ```
 
 <details>
 <summary>Прямые вызовы в теле</summary>
 
-- `ReactivationRequestOut`
+- `UserOut.model_validate`
 - `UserService`
-- `UserService(db).request_reactivation`
+- `UserService(db).reactivate_user`
 - `get_client_ip`
 
 </details>
 
 ## reset_password
 
-[backend/app/routers/users.py:295](../../../../../backend/app/routers/users.py#L295)
+[backend/app/routers/users.py:289](../../../../../backend/app/routers/users.py#L289)
 
 ```python
 async def reset_password(user_id: int, request: Request, _: None=Depends(enforce_csrf), admin: User=Depends(require_admin), db: AsyncSession=Depends(get_db)) -> PasswordResetOut
@@ -779,7 +776,7 @@ router.patch('/{user_id}/password', response_model=PasswordResetOut, status_code
 
 ## reset_2fa
 
-[backend/app/routers/users.py:309](../../../../../backend/app/routers/users.py#L309)
+[backend/app/routers/users.py:303](../../../../../backend/app/routers/users.py#L303)
 
 ```python
 async def reset_2fa(user_id: int, request: Request, _: None=Depends(enforce_csrf), admin: User=Depends(require_admin), db: AsyncSession=Depends(get_db)) -> UserOut

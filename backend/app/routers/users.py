@@ -14,7 +14,6 @@ from app.schemas import (
     InvitationSentOut,
     OwnPasswordChangeRequest,
     PasswordResetOut,
-    ReactivationRequestOut,
     TwoFAConfirmRequest,
     TwoFADisableRequest,
     TwoFASetupResponse,
@@ -273,22 +272,17 @@ async def delete_user(
     await UserService(db).delete_user(user_id, admin.id, get_client_ip(request))
 
 
-@router.post("/{user_id}/reactivate", response_model=ReactivationRequestOut, status_code=status.HTTP_200_OK)
+@router.post("/{user_id}/reactivate", response_model=UserOut, status_code=status.HTTP_200_OK)
 async def reactivate_user(
     user_id: int,
     request: Request,
     _: None = Depends(enforce_csrf),
     admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
-) -> ReactivationRequestOut:
-    """Возвращает деактивированного пользователя: шлёт ему письмо-возврат со ссылкой.
-
-    Аккаунт разблокируется не здесь, а когда пользователь сам перейдёт по ссылке
-    (там же сразу выдаётся сессия — см. /auth/reactivate).
-    """
-    mail_job = await UserService(db).request_reactivation(user_id, admin.id, get_client_ip(request))
-    preview_url = settings.mail_preview_url if settings.smtp_host == "mailpit" else None
-    return ReactivationRequestOut(email_sent_to=mail_job.recipient_email, mail_preview_url=preview_url)
+) -> UserOut:
+    """Сразу возвращает пользователю доступ; письмо и SMTP не используются."""
+    user = await UserService(db).reactivate_user(user_id, admin.id, get_client_ip(request))
+    return UserOut.model_validate(user)
 
 
 @router.patch("/{user_id}/password", response_model=PasswordResetOut, status_code=status.HTTP_200_OK)

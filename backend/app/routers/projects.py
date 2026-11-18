@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.enums import ProjectStatus
-from app.dependencies import enforce_csrf, get_client_ip, get_current_user, require_admin, require_project_access
+from app.dependencies import enforce_csrf, get_client_ip, get_current_user, require_admin, require_project_access, require_project_creator
 from app.models import User
 from app.pagination import PageParams, to_paginated_response
 from app.schemas import (
@@ -42,11 +42,11 @@ async def create_project(
     payload: ProjectCreate,
     request: Request,
     _: None = Depends(enforce_csrf),
-    admin: User = Depends(require_admin),
+    creator: User = Depends(require_project_creator),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectOut:
-    """Создаёт проект."""
-    project = await ProjectService(db).create_project(payload.model_dump(exclude_unset=True), admin.id, get_client_ip(request))
+    """Создаёт проект от имени admin/lead и добавляет автора в участники."""
+    project = await ProjectService(db).create_project(payload.model_dump(exclude_unset=True), creator.id, get_client_ip(request))
     return ProjectOut.model_validate(project)
 
 
@@ -144,11 +144,13 @@ async def delete_project(
     project_id: int,
     request: Request,
     _: None = Depends(enforce_csrf),
-    admin: User = Depends(require_admin),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
-    """Удаляет проект."""
-    await ProjectService(db).delete_project(project_id, admin.id, get_client_ip(request))
+    """Удаляет проект, если инициатор — admin, создатель или lead-участник."""
+    service = ProjectService(db)
+    await service.ensure_can_manage_members(project_id, current_user)
+    await service.delete_project(project_id, current_user.id, get_client_ip(request))
 
 
 @router.get("/{project_id}/members", response_model=list[ProjectMemberOut])

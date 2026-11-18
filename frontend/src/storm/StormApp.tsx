@@ -26,6 +26,8 @@ import { EndpointDiscussion } from "./EndpointDiscussion";
 import { buildHostIndex } from "./hostIndex";
 import { SwaggerEndpointImport } from "./SwaggerEndpointImport";
 import StormMarkdown from "./StormMarkdown";
+import { UserAvatar } from "./UserAvatar";
+import { Tip } from "./Tip";
 import { ENDPOINT_METHODS } from "./swaggerEndpoints";
 
 /* TipTap/ProseMirror is ~460 kB — more than the rest of the app put together, and
@@ -472,6 +474,11 @@ interface StormState {
      статуса применяются на клиенте (как у списка уязвимостей). */
   tasksRows: TaskTrackerTask[] | null;
   tasksLoading: boolean;
+  tasksRefreshing: boolean;
+  tasksNextPage: string | null;
+  tasksTotal: number | null;
+  tasksActiveTotal: number | null;
+  tasksClosedTotal: number | null;
   tasksError: string | null;
   tasksQuery: string;
   tasksTab: "active" | "closed";
@@ -682,6 +689,11 @@ const initialState: StormState = {
   vulnFilterHost: "",
   tasksRows: null,
   tasksLoading: false,
+  tasksRefreshing: false,
+  tasksNextPage: null,
+  tasksTotal: null,
+  tasksActiveTotal: null,
+  tasksClosedTotal: null,
   tasksError: null,
   tasksQuery: "",
   tasksTab: "active",
@@ -815,42 +827,6 @@ function FilePreview({ file, onClose }: { file: ApiVulnFile; onClose: () => void
   );
 }
 
-function Tip({ label, children }: { label: string; children: ReactNode }) {
-  const [box, setBox] = useState<DOMRect | null>(null);
-  return (
-    <span
-      style={{ display: "inline-flex" }}
-      onMouseEnter={(e) => setBox(e.currentTarget.getBoundingClientRect())}
-      onMouseLeave={() => setBox(null)}
-      onClickCapture={() => setBox(null)}
-    >
-      {children}
-      {box != null &&
-        createPortal(
-          <div
-            style={{
-              position: "fixed",
-              left: box.left + box.width / 2,
-              top: box.top - 9,
-              transform: "translate(-50%, -100%)",
-              padding: "5px 9px",
-              borderRadius: 7,
-              background: "var(--st-text)",
-              color: "var(--st-surface)",
-              font: "600 11.5px Inter, sans-serif",
-              whiteSpace: "nowrap",
-              pointerEvents: "none",
-              boxShadow: "0 8px 24px rgba(15,27,45,.22)",
-              zIndex: 200,
-            }}
-          >
-            {label}
-          </div>,
-          document.body,
-        )}
-    </span>
-  );
-}
 /** Multi-select filter toggle: add the value if absent, drop it if already held. */
 const toggleIn = <T,>(arr: T[], v: T): T[] => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
 /** Coerce an editor-form value (string or tag-array) to a plain string. */
@@ -984,10 +960,8 @@ interface ApiProjectRow {
   stsMissing: string[];
 }
 
-function initialsOf(name: string): string {
-  const parts = name.trim().split(/[^A-Za-zА-Яа-яЁё0-9]+/).filter(Boolean);
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-  return (parts[0] || "U").slice(0, 2).toUpperCase();
+function avatarLetter(username: string): string {
+  return (Array.from(username.trim())[0] || "U").toUpperCase();
 }
 
 /** CVSS 4.0 scorer.
@@ -1189,11 +1163,12 @@ function toStormCred(c: ApiProjectCredential): Cred {
 function toStormMember(m: ApiProjectMember, idx: number): Member {
   return {
     id: m.user_id,
-    initials: initialsOf(m.username),
+    initials: avatarLetter(m.username),
     name: m.username,
     email: m.email,
     role: m.project_role,
     color: MEMBER_COLORS[idx % MEMBER_COLORS.length],
+    avatarUrl: m.avatar_url,
   };
 }
 
@@ -1401,6 +1376,7 @@ export function StormApp() {
   }, []);
   const sidebarCollapsed = state.sidebarCollapsed;
   const taskProjectRequest = useRef(0);
+  const tasksListRequest = useRef(0);
   useEffect(() => {
     setStateRaw((s) => s.tasksCreatingKey ? { ...s, tasksCreatingKey: null } : s);
     return () => { taskProjectRequest.current += 1; };
@@ -1435,11 +1411,12 @@ export function StormApp() {
   const me = realUsername;
   const meWsRole: WsRole = realIsAdmin ? "admin" : "user";
   const isAdmin = meWsRole === "admin";
+  const canCreateProjects = isAdmin || authUser?.project_role === "lead";
   const meEmail = authUser?.email || "";
   const meDisplay = authUser?.full_name || realUsername;
   const meRoleLabel = meWsRole === "admin" ? t("Administrator") : t("User");
   const meId = String(authUser?.id ?? "");
-  const meInitials = initialsOf(authUser?.full_name || realUsername || "U");
+  const meInitials = avatarLetter(realUsername || "U");
 
   // ================= avatar upload =================
   /* Mirrors the backend limits (UserService.upload_avatar): ≤5 MB, image only. */
@@ -1491,32 +1468,9 @@ export function StormApp() {
     }
   };
 
-  /** Круг-аватар текущего пользователя: фото, если оно есть, иначе инициалы. */
+  /** Фото текущего пользователя; запасной вариант — первая буква логина. */
   const meAvatar = (size: number, fontPx: number, text: string, src: string | null = authUser?.avatar_url ?? null) =>
-    src ? (
-      <img
-        src={src}
-        alt={meDisplay}
-        style={{ width: size, height: size, flex: "none", borderRadius: "50%", objectFit: "cover", display: "block" }}
-      />
-    ) : (
-      <div
-        style={{
-          width: size,
-          height: size,
-          flex: "none",
-          borderRadius: "50%",
-          background: "var(--st-accent)",
-          color: "var(--st-on-accent)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          font: `700 ${fontPx}px 'JetBrains Mono',monospace`,
-        }}
-      >
-        {text}
-      </div>
-    );
+    <UserAvatar name={meDisplay} src={src} initials={text} size={size} fontSize={fontPx} />;
 
   /** Any request that 403s for the open project flips the no-access screen on. */
   const handleProjectError = (e: unknown, fallback: string) => {
@@ -1665,6 +1619,7 @@ export function StormApp() {
           role: u.role === "admin" ? "admin" : "user",
           projectRole: u.project_role,
           locked: u.is_locked,
+          avatarUrl: u.avatar_url,
         }));
         if (!cancelled) setStateRaw((s) => ({ ...s, workspaceUsers: rows, pendingInvites: invites }));
       } catch (e) {
@@ -1977,6 +1932,8 @@ export function StormApp() {
   const stsMissing = projRow?.stsMissing ?? ["AppSec ticket", "Assignee", "Affected versions", "Product code", "Component"];
   const canExportSts = projRow != null && stsMissing.length === 0;
   const stsExportHint = canExportSts ? t("Export to Task Tracker") : t("Complete project details to export. Missing: {fields}", { fields: stsMissing.map((field) => t(field)).join(", ") });
+  const canExportFinding = (severity?: Severity) => canExportSts && severity != null && severity !== "unrealized";
+  const findingExportHint = (severity?: Severity) => severity === "unrealized" ? t("Unrealized findings are not exported to Task Tracker") : stsExportHint;
   const d: ProjectDetail = {
     status: projRow && (projRow.status === "archived" || projRow.status === "completed") ? "archived" : "active",
     start: toDispDate(projRow?.startISO),
@@ -2115,25 +2072,42 @@ export function StormApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.view, state.nav, state.openProjectId, state.section, state.reconView, state.profileTab, state.openVulnId, state.openNoteId, state.openHostId, state.openIp, state.openJsFileId, state.tasksOpenKey, location.pathname]);
 
-  /* ── Раздел Tasks (Task Tracker пространство APPSEC) ──────────────────────────────────────
-     Список грузится один раз при входе в раздел (кэшируется в state); кнопка
-     «Refresh» перезапрашивает. Поиск по имени и фильтр по категории статуса —
-     на клиенте, как у списка уязвимостей. */
-  const reloadTasks = () => {
-    setState({ tasksLoading: true, tasksError: null });
+  /* Tasks: сортировка/фильтры запрашивают новую порцию, сохраняя текущую таблицу
+     до ответа. Загрузчик заменяет строки только при первом открытии страницы. */
+  const loadTasks = (append = false, refresh = false) => {
+    if (append && (state.tasksLoading || !state.tasksNextPage)) return;
+    const request = ++tasksListRequest.current;
+    const page = append ? Number(state.tasksNextPage) : 0;
+    const hadRows = state.tasksRows !== null;
+    setState({ tasksLoading: true, tasksRefreshing: refresh, tasksError: null });
     void (async () => {
       try {
-        const res = await apiGetTasks({});
-        setStateRaw((s) => ({ ...s, tasksRows: res.items, tasksLoading: false }));
+        const res = await apiGetTasks({ page_number: page, category: state.tasksTab, sort: state.tasksSort,
+          ...(state.tasksQuery.trim() ? { query: state.tasksQuery.trim() } : {}), ...(refresh ? { refresh: true } : {}) });
+        if (request !== tasksListRequest.current) return;
+        setStateRaw((s) => ({ ...s,
+          tasksRows: append ? [...new Map([...(s.tasksRows ?? []), ...res.items].map((task) => [task.key, task])).values()] : res.items,
+          tasksNextPage: res.next_page_token, tasksTotal: res.total ?? null,
+          tasksActiveTotal: res.active_total ?? null, tasksClosedTotal: res.closed_total ?? null,
+          tasksLoading: false, tasksRefreshing: false }));
       } catch (e) {
-        setStateRaw((s) => ({ ...s, tasksRows: [], tasksLoading: false, tasksError: getApiErrorMessage(e, "Couldn't load tasks from Task Tracker") }));
+        if (request !== tasksListRequest.current) return;
+        const message = getApiErrorMessage(e, "Couldn't load tasks from Task Tracker");
+        if (append || hadRows) {
+          setState({ tasksLoading: false, tasksRefreshing: false });
+          pushToast(message, "error");
+        } else setStateRaw((s) => ({ ...s, tasksRows: [], tasksNextPage: null, tasksTotal: null,
+          tasksLoading: false, tasksRefreshing: false, tasksError: message }));
       }
     })();
   };
+  const reloadTasks = () => loadTasks(false, true);
   useEffect(() => {
-    if (state.view === "list" && state.nav === "tasks" && !state.tasksOpenKey && state.tasksRows === null && !state.tasksLoading) reloadTasks();
+    if (!(state.view === "list" && state.nav === "tasks" && !state.tasksOpenKey)) return;
+    const timer = window.setTimeout(() => loadTasks(), state.tasksQuery.trim() ? 250 : 0);
+    return () => { window.clearTimeout(timer); tasksListRequest.current += 1; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.view, state.nav, state.tasksOpenKey]);
+  }, [state.view, state.nav, state.tasksOpenKey, state.tasksTab, state.tasksSort, state.tasksQuery]);
   // Карточка задачи: грузим полную инфу по открытому ключу (deep-linkable).
   useEffect(() => {
     if (!(state.view === "list" && state.nav === "tasks" && state.tasksOpenKey)) return;
@@ -2238,6 +2212,7 @@ export function StormApp() {
 
   const emptyProjectDraft = () => ({ newName: "", newStart: "", newEnd: "", newNameError: false, newAppsec: emptyAppsecFields() });
   const openNewProject = () => {
+    if (!canCreateProjects) return;
     taskProjectRequest.current += 1;
     setState({ ...emptyProjectDraft(), modalOpen: true });
   };
@@ -2247,6 +2222,7 @@ export function StormApp() {
   };
 
   const createProject = async () => {
+    if (!canCreateProjects) return;
     const name = state.newName.trim();
     if (!name) {
       // Не закрываем модалку — подсвечиваем обязательное поле красным.
@@ -2494,7 +2470,7 @@ export function StormApp() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${projName || "report"}_${kind}.docx`;
+      a.download = blob instanceof File ? blob.name : `${projName || "report"}_${kind}.docx`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -2531,6 +2507,7 @@ export function StormApp() {
   const openTaskTrackerExport = async (vulnId: number) => {
     const pid = state.openProjectId;
     if (pid == null) return;
+    if (d.vulns.find((finding) => finding.id === vulnId)?.sev === "unrealized") return;
     if (!await checkProjectForSts(pid)) return;
     setState({
       taskTrackerExportOpen: true,
@@ -2586,7 +2563,7 @@ export function StormApp() {
     const pid = state.openProjectId;
     if (pid == null) return;
     if (!await checkProjectForSts(pid)) return;
-    const ids = vulns.map((v) => v.id);
+    const ids = vulns.filter((finding) => finding.sev !== "unrealized").map((v) => v.id);
     setState({ taskTrackerBulkRunning: true, taskTrackerBulkFinished: false, taskTrackerBulkTotal: ids.length, taskTrackerBulkDone: 0, taskTrackerBulkCreated: 0, taskTrackerBulkSkipped: 0, taskTrackerBulkFailed: 0 });
     let created = 0;
     let skipped = 0;
@@ -3779,19 +3756,16 @@ export function StormApp() {
     if (!u) return;
     setState({ confirmOpen: true, confirmType: null, confirmIndex: -1, confirmLabel: u.name, confirmProjectId: null, confirmUserId: u.id });
   };
-  /* Возврат деактивированного пользователя: не разблокируем напрямую, а шлём ему
-     письмо-возврат. Доступ вернётся, когда он сам перейдёт по ссылке (там же сразу
-     выдаётся сессия). Строка остаётся в архиве до перехода по ссылке. */
+  /* Администратор сразу возвращает доступ без письма и ожидания перехода по ссылке. */
   const reactivateUser = async (index: number) => {
     const u = state.workspaceUsers[index];
     if (!u) return;
     try {
-      const res = await apiReactivateUser(u.id);
-      const preview = res.mail_preview_url ? t(" (email preview: {url})", { url: res.mail_preview_url }) : "";
-      pushToast(`${t("Reactivation link queued for")} ${res.email_sent_to}${preview}`, "success");
+      await apiReactivateUser(u.id);
+      pushToast(t("User reactivated"), "success");
       reloadUsers();
     } catch (e) {
-      pushToast(getApiErrorMessage(e, "Couldn't send the reactivation link"), "error");
+      pushToast(getApiErrorMessage(e, "Couldn't reactivate the user"), "error");
     }
   };
   const resendInvite = async (id: number) => {
@@ -3945,7 +3919,10 @@ export function StormApp() {
   // Newest first by default ("Last updated") — a just-added project lands at the
   // top, not buried at the end; "First updated" flips to oldest-first. id is a
   // monotonic proxy for creation order (safe: projRows is a fresh filtered array).
-  projRows.sort((a, b) => (state.projSort === "first" ? a.id - b.id : b.id - a.id));
+  projRows.sort((a, b) => {
+    const difference = (Date.parse(a.updated || "") || 0) - (Date.parse(b.updated || "") || 0) || a.id-b.id;
+    return state.projSort === "first" ? difference : -difference;
+  });
 
   const activeCount = allProjects.filter((p) => !isArchivedStatus(p.status)).length;
   const archivedCount = allProjects.filter((p) => isArchivedStatus(p.status)).length;
@@ -4007,7 +3984,7 @@ export function StormApp() {
     }
     return {
       key: n.id,
-      initials: initialsOf(who),
+      initials: avatarLetter(who),
       avBg: NOTIF_AVATAR_COLORS[n.id % NOTIF_AVATAR_COLORS.length],
       user: who === "System" ? t("System") : `@${who}`,
       action: row.action,
@@ -4588,10 +4565,10 @@ export function StormApp() {
             {isActive ? `${t("Showing active projects")} · ${activeCount} ${t("active")}` : `${t("Showing archived projects")} · ${archivedCount} ${t("archived")}`}
           </div>
         </div>
-        <button className="clk" onClick={openNewProject} style={{ display: "flex", alignItems: "center", gap: 9, height: 46, padding: "0 22px", border: "none", borderRadius: 13, background: "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 14px Inter,sans-serif" }}>
+        {canCreateProjects && <button className="clk" onClick={openNewProject} style={{ display: "flex", alignItems: "center", gap: 9, height: 46, padding: "0 22px", border: "none", borderRadius: 13, background: "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 14px Inter,sans-serif" }}>
           <Icon name="plus" size={17} sw={2.4} />
           {t("New project")}
-        </button>
+        </button>}
       </div>
 
       {/* stat cards */}
@@ -4622,12 +4599,12 @@ export function StormApp() {
       {/* controls */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
         <div style={{ display: "flex", gap: 8 }}>
-          <div className="tab" onClick={() => setState({ tab: "active" })} style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 15px", borderRadius: 11, font: "700 13.5px Inter,sans-serif", background: isActive ? "var(--st-surface)" : undefined, border: `1px solid ${isActive ? "var(--st-border)" : "transparent"}`, color: isActive ? "var(--st-text)" : "var(--st-text-3)" }}>
+          <div className={`tab${isActive ? " on" : ""}`} onClick={() => setState({ tab: "active" })} style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 15px", borderRadius: 11, font: "700 13.5px Inter,sans-serif" }}>
             <Icon name="trend-up" size={15} sw={2.2} />
             {t("Active")}
             <span className="mono" style={{ minWidth: 20, height: 20, padding: "0 5px", borderRadius: 6, background: isActive ? "var(--st-accent-2)" : "var(--st-accent-soft)", color: isActive ? "var(--st-on-accent)" : "var(--st-accent-2)", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{activeCount}</span>
           </div>
-          <div className="tab" onClick={() => setState({ tab: "archived" })} style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 15px", borderRadius: 11, font: "700 13.5px Inter,sans-serif", background: !isActive ? "var(--st-surface)" : undefined, border: `1px solid ${!isActive ? "var(--st-border)" : "transparent"}`, color: !isActive ? "var(--st-text)" : "var(--st-text-3)" }}>
+          <div className={`tab${!isActive ? " on" : ""}`} onClick={() => setState({ tab: "archived" })} style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 15px", borderRadius: 11, font: "700 13.5px Inter,sans-serif" }}>
             <Icon name="archive" size={15} />
             {t("Archived")}
             <span className="mono" style={{ minWidth: 20, height: 20, padding: "0 5px", borderRadius: 6, background: !isActive ? "var(--st-accent-2)" : "var(--st-accent-soft)", color: !isActive ? "var(--st-on-accent)" : "var(--st-accent-2)", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{archivedCount}</span>
@@ -4674,13 +4651,13 @@ export function StormApp() {
                 </span>
               </div>
               <div style={{ fontSize: 13, color: "var(--st-text-3)" }}>{relTime(r.updated)}</div>
-              {/* Edit: admin / creator / lead. Delete: admin only — both mirror the backend. */}
+              {/* Правки и удаление: admin / создатель / lead-участник. */}
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 4 }}>
                 {canEditProjectRow(r) && (
-                  <div className="actbtn" onClick={(e) => { e.stopPropagation(); openProjEditRow(r); }}><Icon name="edit" size={15} /></div>
+                  <Tip label={t("Edit")}><div className="actbtn" onClick={(e) => { e.stopPropagation(); openProjEditRow(r); }}><Icon name="edit" size={15} /></div></Tip>
                 )}
-                {isAdmin && (
-                  <div className="actbtn del" onClick={(e) => { e.stopPropagation(); askDeleteProject(r); }}><Icon name="trash" size={15} /></div>
+                {canEditProjectRow(r) && (
+                  <Tip label={t("Delete")}><div className="actbtn del" onClick={(e) => { e.stopPropagation(); askDeleteProject(r); }}><Icon name="trash" size={15} /></div></Tip>
                 )}
               </div>
             </div>
@@ -4709,13 +4686,14 @@ export function StormApp() {
     const k = (raw || "").trim().toLowerCase().replace(/\s+/g, "_");
     return (VSTATUS_ORDER as string[]).includes(k) ? (k as VStatus) : null;
   };
-  const TASK_COLS = "110px minmax(0,2fr) minmax(0,150px) 90px minmax(0,140px) minmax(0,170px) 120px 64px";
+  const TASK_COLS = "110px minmax(0,2fr) minmax(0,150px) 90px minmax(0,140px) 120px 64px";
 
   /** Загружает полную карточку APPSEC и открывает чистый черновик проекта.
    * Переносит логин исполнителя и все версии. Поздние ответы после навигации
    * игнорируются; ошибка оставляет форму закрытой и показывает уведомление.
    */
   const createProjectFromTask = async (task: TaskTrackerTask) => {
+    if (!canCreateProjects) return;
     const request = ++taskProjectRequest.current;
     setState({ tasksCreatingKey: task.key });
     try {
@@ -4723,6 +4701,11 @@ export function StormApp() {
       const detail = await apiGetTask(task.key);
       if (request !== taskProjectRequest.current) return;
       if (detail.key !== task.key) throw new Error(t("Couldn't load this task"));
+      if (detail.project_exists) {
+        pushToast(t("A project already exists for this ticket"), "error");
+        reloadTasks();
+        return;
+      }
       setState({ ...emptyProjectDraft(), newName: detail.summary.slice(0, 255), modalOpen: true, newAppsec: {
         ...EMPTY_APPSEC,
         appsec_ticket_url: detail.url || task.url,
@@ -4741,17 +4724,12 @@ export function StormApp() {
   const renderTasks = () => {
     if (state.tasksOpenKey) return renderTaskDetail();
     const rows = state.tasksRows ?? [];
-    const q = state.tasksQuery.trim().toLowerCase();
-    // «Закрытые» = завершённые статусы + на паузе (по просьбе — paused тоже в Closed).
-    const isDone = (r: TaskTrackerTask) => r.status_category === "done" || taskStatusVs(r.status) === "paused";
-    const searched = rows.filter((r) => q === "" || r.summary.toLowerCase().includes(q) || r.key.toLowerCase().includes(q));
-    const activeCount = searched.filter((r) => !isDone(r)).length;
-    const closedCount = searched.filter((r) => isDone(r)).length;
+    const isDone = (task: TaskTrackerTask) => task.status_category === "done" || ["paused", "на паузе"].includes(task.status.trim().toLowerCase());
+    const activeCount = state.tasksActiveTotal ?? rows.filter((task) => !isDone(task)).length;
+    const closedCount = state.tasksClosedTotal ?? rows.filter(isDone).length;
     const isActive = state.tasksTab === "active";
-    const ts = (r: TaskTrackerTask) => Date.parse(r.updated || "") || 0;
-    const filtered = searched
-      .filter((r) => (isActive ? !isDone(r) : isDone(r)))
-      .sort((a, b) => (state.tasksSort === "first" ? ts(a) - ts(b) : ts(b) - ts(a)));
+    // Категория, поиск и сортировка применяются на сервере до лимита 20.
+    const filtered = rows;
     const firstLoad = state.tasksLoading && state.tasksRows === null;
     return (
       <div className="route" style={{ padding: "40px 48px 36px", width: "100%" }}>
@@ -4764,8 +4742,8 @@ export function StormApp() {
           <button
             className="clk"
             onClick={reloadTasks}
-            disabled={state.tasksLoading}
-            style={{ display: "inline-flex", alignItems: "center", gap: 8, height: 40, padding: "0 18px", border: "none", borderRadius: 10, background: "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13px Inter,sans-serif", cursor: state.tasksLoading ? "default" : "pointer", opacity: state.tasksLoading ? 0.6 : 1 }}
+            disabled={state.tasksRefreshing || firstLoad}
+            style={{ display: "inline-flex", alignItems: "center", gap: 8, height: 40, padding: "0 18px", border: "none", borderRadius: 10, background: "var(--st-accent-2)", color: "var(--st-on-accent)", font: "700 13px Inter,sans-serif", cursor: state.tasksRefreshing || firstLoad ? "default" : "pointer", opacity: state.tasksRefreshing || firstLoad ? 0.6 : 1 }}
           >
             <Icon name="refresh" size={15} sw={2.2} />{t("Refresh")}
           </button>
@@ -4773,11 +4751,11 @@ export function StormApp() {
         {/* Вкладки Active/Closed (closed = завершённые статусы) + поиск + сортировка по дате (как в Projects). */}
         <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "24px 0 16px", flexWrap: "wrap" }}>
           <div style={{ display: "flex", gap: 8 }}>
-            <div className="tab" onClick={() => setState({ tasksTab: "active" })} style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 15px", borderRadius: 11, font: "700 13.5px Inter,sans-serif", background: isActive ? "var(--st-surface)" : undefined, border: `1px solid ${isActive ? "var(--st-border)" : "transparent"}`, color: isActive ? "var(--st-text)" : "var(--st-text-3)" }}>
+            <div className={`tab${isActive ? " on" : ""}`} onClick={() => setState({ tasksTab: "active" })} style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 15px", borderRadius: 11, font: "700 13.5px Inter,sans-serif" }}>
               <Icon name="trend-up" size={15} sw={2.2} />{t("Active")}
               <span className="mono" style={{ minWidth: 20, height: 20, padding: "0 5px", borderRadius: 6, background: isActive ? "var(--st-accent-2)" : "var(--st-accent-soft)", color: isActive ? "var(--st-on-accent)" : "var(--st-accent-2)", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{activeCount}</span>
             </div>
-            <div className="tab" onClick={() => setState({ tasksTab: "closed" })} style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 15px", borderRadius: 11, font: "700 13.5px Inter,sans-serif", background: !isActive ? "var(--st-surface)" : undefined, border: `1px solid ${!isActive ? "var(--st-border)" : "transparent"}`, color: !isActive ? "var(--st-text)" : "var(--st-text-3)" }}>
+            <div className={`tab${!isActive ? " on" : ""}`} onClick={() => setState({ tasksTab: "closed" })} style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 15px", borderRadius: 11, font: "700 13.5px Inter,sans-serif" }}>
               <Icon name="archive" size={15} />{t("Closed")}
               <span className="mono" style={{ minWidth: 20, height: 20, padding: "0 5px", borderRadius: 6, background: !isActive ? "var(--st-accent-2)" : "var(--st-accent-soft)", color: !isActive ? "var(--st-on-accent)" : "var(--st-accent-2)", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{closedCount}</span>
             </div>
@@ -4788,10 +4766,10 @@ export function StormApp() {
             <Icon name={state.tasksSort === "first" ? "sort-asc" : "sort-desc"} size={16} />{state.tasksSort === "first" ? t("First updated") : t("Last updated")}
           </button>
         </div>
-        <div style={{ ...CARD, overflow: "hidden" }}>
+        <div className="task-list" aria-busy={state.tasksLoading} style={{ ...CARD, overflow: "hidden" }}>
           {filtered.length > 0 && (
             <div style={{ display: "grid", gridTemplateColumns: TASK_COLS, gap: 10, padding: "13px 20px", borderBottom: "1px solid var(--st-divider)", font: "700 11px Inter,sans-serif", letterSpacing: ".5px", color: "var(--st-text-faint)", textTransform: "uppercase" }}>
-              <div>{t("Key")}</div><div>{t("Summary")}</div><div>{t("Status")}</div><div>{t("Priority")}</div><div>{t("Assignee")}</div><div>{t("Affected versions")}</div><div>{t("Updated")}</div><div style={{ textAlign: "center" }}>{t("Actions")}</div>
+              <div>{t("Key")}</div><div>{t("Summary")}</div><div>{t("Status")}</div><div>{t("Priority")}</div><div>{t("Assignee")}</div><div>{t("Updated")}</div><div style={{ textAlign: "center" }}>{t("Actions")}</div>
             </div>
           )}
           {firstLoad && <div style={{ padding: 52, textAlign: "center", color: "var(--st-text-faint)", fontSize: 14 }}>{t("Loading tasks…")}</div>}
@@ -4805,20 +4783,21 @@ export function StormApp() {
             const stText = tvs ? t(VSTATUS_LABEL[tvs]) : task.status;
             // Уже есть проект с этим тикетом? Тогда вместо «+» — ссылка на проект.
             const linkedProject = allProjects.find((p) => p.appsec_ticket_key === task.key);
+            const projectExists = task.project_exists ?? Boolean(linkedProject);
+            const projectId = task.project_exists !== undefined ? task.project_id : linkedProject?.id;
             return (
               <div key={task.key} className="prow clk" onClick={() => setState({ tasksOpenKey: task.key })} style={{ display: "grid", gridTemplateColumns: TASK_COLS, alignItems: "center", gap: 10, padding: "14px 20px", borderBottom: "1px solid var(--st-divider)" }}>
-                <a className="clk mono keylink" href={task.url ?? "#"} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} title={t("Open in Task Tracker")} style={{ fontSize: 12.5, color: "var(--st-accent-2)", fontWeight: 700, textDecoration: "none", justifySelf: "start" }}>{task.key}</a>
+                <a className="clk mono keylink" href={task.url ?? "#"} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} title={t("Open in Task Tracker")} style={{ fontSize: 12.5, color: "var(--st-accent-2)", fontWeight: 700, justifySelf: "start" }}>{task.key}</a>
                 <div style={{ font: "600 14px Inter,sans-serif", color: "var(--st-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{task.summary}</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 7, font: "600 12px Inter,sans-serif", color: stColor, overflow: "hidden" }}><span style={{ width: 6, height: 6, flex: "none", borderRadius: "50%", background: stColor }} /><span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{stText}</span></div>
                 <div style={{ fontSize: 12.5, color: "var(--st-text-2)" }}>{task.priority || "—"}</div>
-                <div style={{ fontSize: 12.5, color: "var(--st-text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{task.assignee || "—"}</div>
-                <div title={(task.affected_versions ?? []).map((version) => version.name).join(", ")} style={{ fontSize: 12.5, color: "var(--st-text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{(task.affected_versions ?? []).map((version) => version.name).join(", ") || "—"}</div>
+                <div style={{ fontSize: 12.5, color: "var(--st-text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{task.assignee?.trim().split(/\s+/).slice(0, 2).join(" ") || "—"}</div>
                 <div className="mono" style={{ fontSize: 11.5, color: "var(--st-text-faint)" }}>{relTime(task.updated)}</div>
-                <div style={{ display: "flex", justifyContent: "center" }}>
-                  {linkedProject ? (
-                    <Tip label={`${t("Open linked project")}: ${linkedProject.name}`}><button type="button" className="actbtn" aria-label={`${t("Open linked project")}: ${linkedProject.name}`} onClick={(e) => { e.stopPropagation(); setState({ nav: "projects", view: "detail", openProjectId: linkedProject.id, section: "overview", expanded: [], openVulnId: null, openNoteId: null, accessDenied: false }); }}><Icon name="folder" size={15} color="var(--st-accent-2)" /></button></Tip>
+                <div onClick={(event) => event.stopPropagation()} style={{ display: "flex", justifyContent: "center" }}>
+                  {projectExists ? (
+                    <Tip label={t(projectId != null ? "Open linked project" : "No access to linked project")}><button type="button" className="actbtn" aria-label={t(projectId != null ? "Open linked project" : "No access to linked project")} disabled={projectId == null} onClick={(e) => { e.stopPropagation(); if (projectId != null) setState({ nav: "projects", view: "detail", openProjectId: projectId, section: "overview", expanded: [], openVulnId: null, openNoteId: null, accessDenied: false }); }}><Icon name="folder" size={15} /></button></Tip>
                   ) : (
-                    <Tip label={t("Create project from this ticket")}><button type="button" className="actbtn" aria-label={t("Create project from this ticket")} disabled={Boolean(state.tasksCreatingKey)} aria-busy={state.tasksCreatingKey === task.key} onClick={(e) => { e.stopPropagation(); void createProjectFromTask(task); }}><Icon name="plus" size={15} /></button></Tip>
+                    <Tip label={t(canCreateProjects ? "Create project from this ticket" : "Only lead or admin can create projects")}><button type="button" className="actbtn" aria-label={t("Create project from this ticket")} disabled={!canCreateProjects || Boolean(state.tasksCreatingKey)} aria-busy={state.tasksCreatingKey === task.key} onClick={(e) => { e.stopPropagation(); void createProjectFromTask(task); }}><Icon name="plus" size={15} /></button></Tip>
                   )}
                 </div>
               </div>
@@ -4829,6 +4808,10 @@ export function StormApp() {
               {rows.length === 0 ? t("No tasks in the AppSec space yet.") : t("No tasks match these filters.")}
             </div>
           )}
+          {!firstLoad && !state.tasksError && <div className="tasks-pagination">
+            {state.tasksNextPage && <button type="button" className="clk tasks-load-more" disabled={state.tasksLoading} onClick={() => loadTasks(true)}>{state.tasksLoading ? t("Loading tasks…") : t("Show {count} more", { count: Math.min(20, Math.max(0, (state.tasksTotal ?? rows.length+20)-rows.length)) })}</button>}
+            <span className="tasks-pagination-count">{state.tasksTotal != null ? t("Showing {shown} of {total}", { shown: filtered.length, total: state.tasksTotal }) : t("Showing {shown}", { shown: filtered.length })}</span>
+          </div>}
         </div>
       </div>
     );
@@ -4876,7 +4859,7 @@ export function StormApp() {
               <div style={{ padding: "26px 30px", minWidth: 0 }}>
                 <h1 style={{ margin: "0 0 22px", fontSize: 25, fontWeight: 800, letterSpacing: "-.5px", color: "var(--st-text)", lineHeight: 1.2 }}>{d.summary}</h1>
                 <div className="mono" style={{ fontSize: 10.5, letterSpacing: 1, color: "var(--st-text-faint)", fontWeight: 700, textTransform: "uppercase" }}>{t("Description")}</div>
-                <div style={{ marginTop: 10, whiteSpace: "pre-wrap", font: "400 14px/1.7 Inter,sans-serif", color: "var(--st-text-2)", wordBreak: "break-word" }}>{(d.description || "").trim() || t("No description.")}</div>
+                <div style={{ marginTop: 10, whiteSpace: "pre-wrap", font: "400 14px/1.7 Inter,sans-serif", color: "var(--st-text)", wordBreak: "break-word" }}>{(d.description || "").trim() || t("No description.")}</div>
               </div>
               {/* Сайдбар деталей (как в TaskTracker — справа). */}
               <div className="task-detail-side" style={{ borderLeft: "1px solid var(--st-divider)", background: "var(--st-elevated)", padding: "24px" }}>
@@ -4914,12 +4897,12 @@ export function StormApp() {
       {/* Одна строка управления: вкладки активные/заблокированные — слева (там,
           где раньше был поиск по пользователям), поиск и фильтры — справа. */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 22, flexWrap: "wrap" }}>
-        <div className="tab" onClick={() => setState({ wsUserTab: "active" })} style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 15px", borderRadius: 11, font: "700 13.5px Inter,sans-serif", background: state.wsUserTab === "active" ? "var(--st-surface)" : undefined, border: `1px solid ${state.wsUserTab === "active" ? "var(--st-border)" : "transparent"}`, color: state.wsUserTab === "active" ? "var(--st-text)" : "var(--st-text-3)" }}>
+        <div className={`tab${state.wsUserTab === "active" ? " on" : ""}`} onClick={() => setState({ wsUserTab: "active" })} style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 15px", borderRadius: 11, font: "700 13.5px Inter,sans-serif" }}>
           <Icon name="unlock" size={15} sw={2.2} />
           {lang === "ru" ? "Активные" : t("Active")}
           <span className="mono" style={{ minWidth: 20, height: 20, padding: "0 5px", borderRadius: 6, background: state.wsUserTab === "active" ? "var(--st-accent-2)" : "var(--st-accent-soft)", color: state.wsUserTab === "active" ? "var(--st-on-accent)" : "var(--st-accent-2)", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{state.workspaceUsers.filter((u) => !u.locked).length}</span>
         </div>
-        <div className="tab" onClick={() => setState({ wsUserTab: "archived" })} style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 15px", borderRadius: 11, font: "700 13.5px Inter,sans-serif", background: state.wsUserTab === "archived" ? "var(--st-surface)" : undefined, border: `1px solid ${state.wsUserTab === "archived" ? "var(--st-border)" : "transparent"}`, color: state.wsUserTab === "archived" ? "var(--st-text)" : "var(--st-text-3)" }}>
+        <div className={`tab${state.wsUserTab === "archived" ? " on" : ""}`} onClick={() => setState({ wsUserTab: "archived" })} style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 15px", borderRadius: 11, font: "700 13.5px Inter,sans-serif" }}>
           <Icon name="lock" size={15} sw={2.2} />
           {lang === "ru" ? "Заблокированные" : t("Blocked")}
           <span className="mono" style={{ minWidth: 20, height: 20, padding: "0 5px", borderRadius: 6, background: state.wsUserTab === "archived" ? "var(--st-accent-2)" : "var(--st-accent-soft)", color: state.wsUserTab === "archived" ? "var(--st-on-accent)" : "var(--st-accent-2)", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{state.workspaceUsers.filter((u) => u.locked).length}</span>
@@ -4967,7 +4950,7 @@ export function StormApp() {
               </div>
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
                 <button className="clk" onClick={() => resendInvite(inv.id)} style={{ height: 30, padding: "0 12px", border: "1px solid var(--st-border-strong)", borderRadius: 8, background: "var(--st-surface)", color: "var(--st-accent)", font: "600 12px Inter,sans-serif", cursor: "pointer" }}>{t("Resend")}</button>
-                <div className="actbtn del" onClick={() => askRevokeInvite(inv.id, inv.email)} title={t("Revoke invitation")}><Icon name="trash" size={15} /></div>
+                <Tip label={t("Revoke invitation")}><div className="actbtn del" onClick={() => askRevokeInvite(inv.id, inv.email)} title={t("Revoke invitation")}><Icon name="trash" size={15} /></div></Tip>
               </div>
             </div>
           ))}
@@ -5004,7 +4987,7 @@ export function StormApp() {
               {filtered.map(({ u, idx }) => (
             <div key={u.key + idx} className="prow" style={{ display: "grid", gridTemplateColumns: "1.2fr 1.4fr 168px 72px", alignItems: "center", padding: "14px 20px", borderBottom: "1px solid var(--st-divider)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 11, minWidth: 0 }}>
-                <span className="mono" style={{ width: 32, height: 32, flex: "none", borderRadius: "50%", background: u.locked ? "var(--st-text-faint)" : "var(--st-accent)", color: "var(--st-on-accent)", display: "flex", alignItems: "center", justifyContent: "center", font: "700 13px 'JetBrains Mono',monospace" }}>{(u.name[0] || "U").toUpperCase()}</span>
+                <UserAvatar name={u.name} src={u.id === authUser?.id ? authUser.avatar_url : u.avatarUrl} initials={avatarLetter(u.name)} size={32} fontSize={13} background={u.locked ? "var(--st-text-faint)" : "var(--st-accent)"} />
                 <span style={{ font: "600 13.5px Inter,sans-serif", color: "var(--st-text)" }}>{u.name}</span>
               </div>
               <div className="mono" style={{ fontSize: 12.5, color: "var(--st-text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.email}</div>
@@ -5013,11 +4996,11 @@ export function StormApp() {
                 <span style={{ font: "700 10px Inter,sans-serif", textTransform: "uppercase", letterSpacing: ".5px", borderRadius: 6, padding: "3px 9px", background: ROLE[u.projectRole].bg, color: ROLE[u.projectRole].color }}>{u.projectRole}</span>
               </div>
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
-                <div className="actbtn" onClick={() => openWSUserEditor("edit", idx)}><Icon name="edit" size={15} /></div>
+                <Tip label={t("Edit")}><div className="actbtn" onClick={() => openWSUserEditor("edit", idx)}><Icon name="edit" size={15} /></div></Tip>
                 {u.locked ? (
-                  <div className="actbtn" title={t("Reactivate user")} onClick={() => reactivateUser(idx)}><Icon name="unlock" size={15} /></div>
+                  <Tip label={t("Reactivate user")}><div className="actbtn" title={t("Reactivate user")} onClick={() => reactivateUser(idx)}><Icon name="unlock" size={15} /></div></Tip>
                 ) : (
-                  <div className="actbtn del" title={t("Block user")} onClick={() => askDeleteWSUser(idx)}><Icon name="trash" size={15} /></div>
+                  <Tip label={t("Block user")}><div className="actbtn del" title={t("Block user")} onClick={() => askDeleteWSUser(idx)}><Icon name="trash" size={15} /></div></Tip>
                 )}
               </div>
             </div>
@@ -5202,9 +5185,9 @@ export function StormApp() {
               )}
               {sec === "vulns" && state.openVulnId == null && (
                 <>
-                  <span className="export-availability" title={stsExportHint}><button className="clk" disabled={!canExportSts} title={stsExportHint} onClick={openBulkTaskTracker} style={{ height: 42, padding: "0 16px", border: "1px solid var(--st-border)", borderRadius: 10, background: "var(--st-surface)", font: "700 13px Inter,sans-serif", color: "var(--st-accent-2)", display: "inline-flex", alignItems: "center", gap: 7 }}>
+                  <Tip label={stsExportHint}><span className="export-availability" title={stsExportHint}><button className="clk" disabled={!canExportSts} title={stsExportHint} onClick={openBulkTaskTracker} style={{ height: 42, padding: "0 16px", border: "1px solid var(--st-border)", borderRadius: 10, background: "var(--st-surface)", font: "700 13px Inter,sans-serif", color: "var(--st-accent-2)", display: "inline-flex", alignItems: "center", gap: 7 }}>
                     <Icon name="upload" size={15} sw={2.2} color="var(--st-accent-2)" />{t("Export all to Task Tracker")}
-                  </button></span>
+                  </button></span></Tip>
                   <button className="addbtn clk" onClick={() => openEditor("vuln", "add", -1)} style={{ height: 42 }}><Icon name="plus" size={15} color="var(--st-on-accent)" sw={2.6} />{t("Add issue")}</button>
                 </>
               )}
@@ -5216,11 +5199,11 @@ export function StormApp() {
                       <Icon name="check-circle" size={15} color="var(--st-success)" sw={2.2} />{state.vulnWorksLink.works_key}{state.vulnWorksLink.works_status ? ` · ${state.vulnWorksLink.works_status}` : ""}
                     </a>
                   )}
-                  <span className="export-availability" title={stsExportHint}>
-                    <button className="addbtn clk" disabled={!canExportSts} onClick={() => state.openVulnId != null && openTaskTrackerExport(state.openVulnId)} style={{ height: 42 }}>
+                  <Tip label={findingExportHint(d.vulns.find((finding) => finding.id === state.openVulnId)?.sev)}><span className="export-availability" title={findingExportHint(d.vulns.find((finding) => finding.id === state.openVulnId)?.sev)}>
+                    <button className="addbtn clk" disabled={!canExportFinding(d.vulns.find((finding) => finding.id === state.openVulnId)?.sev)} onClick={() => state.openVulnId != null && openTaskTrackerExport(state.openVulnId)} style={{ height: 42 }}>
                       <Icon name="upload" size={15} color="currentColor" sw={2.4} />{t("Export to Task Tracker")}
                     </button>
-                  </span>
+                  </span></Tip>
                 </>
               )}
               {sec === "notes" && (
@@ -5359,7 +5342,7 @@ export function StormApp() {
           </div>
           {d.members.map((m, i) => (
             <div key={m.name + i} className="listitem" style={{ display: "flex", alignItems: "center", gap: 11, padding: "7px 0", borderTop: "1px solid var(--st-divider)" }}>
-              <span className="mono" style={{ width: 30, height: 30, flex: "none", borderRadius: "50%", background: m.color, color: "var(--st-on-accent)", display: "flex", alignItems: "center", justifyContent: "center", font: "700 11px 'JetBrains Mono',monospace" }}>{m.initials}</span>
+              <UserAvatar name={m.name} src={m.id === authUser?.id ? authUser.avatar_url : m.avatarUrl} initials={m.initials} size={30} fontSize={11} background={m.color} />
               <div style={{ minWidth: 0 }}>
                 <div style={{ font: "600 13px Inter,sans-serif", color: "var(--st-text)" }}>{m.name}</div>
                 <div className="mono" style={{ fontSize: 11, color: "var(--st-text-faint)" }}>{m.role}</div>
@@ -5896,8 +5879,8 @@ export function StormApp() {
                 <div style={{ minWidth: 0 }} title={i.names.map((n) => n.hostname).join(", ")}>{hostnamePills(i.names)}</div>
                 <div style={{ minWidth: 0 }}>{portPills(i.ports, i.status === "down")}</div>
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
-                  <button type="button" className="actbtn" title={t("Edit IP")} aria-label={`${t("Edit IP")}: ${i.ip}`} onClick={i.onEdit}><Icon name="edit" size={15} /></button>
-                  <div className="actbtn del" onClick={i.onDelete}><Icon name="trash" size={15} /></div>
+                  <Tip label={t("Edit IP")}><button type="button" className="actbtn" title={t("Edit IP")} aria-label={`${t("Edit IP")}: ${i.ip}`} onClick={i.onEdit}><Icon name="edit" size={15} /></button></Tip>
+                  <Tip label={t("Delete")}><div className="actbtn del" onClick={i.onDelete}><Icon name="trash" size={15} /></div></Tip>
                 </div>
               </div>
             ))}
@@ -5921,8 +5904,8 @@ export function StormApp() {
                   <span className="mono" style={{ font: "700 14px 'JetBrains Mono',monospace", color: "var(--st-text)", flex: 1 }}>{g.host}</span>
                   <span className="mono" style={{ fontSize: 11.5, fontWeight: 700, color: "var(--st-text-2)", background: "var(--st-hover)", borderRadius: 7, padding: "3px 9px" }}>{g.count}</span>
                   {canEditProject && <div className="endpoint-actions">
-                    <button type="button" className="actbtn" aria-label={`${t("Edit host")}: ${g.host}`} title={t("Edit host")} onClick={(event) => { event.stopPropagation(); openEditor("host", "edit", hosts.findIndex((host) => host.id === g.hostId)); }}><Icon name="edit" size={15} /></button>
-                    <button type="button" className="actbtn del" aria-label={`${t("Delete endpoints")}: ${g.host}`} title={t("Delete endpoints")} disabled={deletingEndpointHosts.includes(g.hostId)} onClick={(event) => { event.stopPropagation(); askDeleteEndpoints(g); }}><Icon name="trash" size={15} /></button>
+                    <Tip label={`${t("Edit host")}: ${g.host}`}><button type="button" className="actbtn" aria-label={`${t("Edit host")}: ${g.host}`} title={t("Edit host")} onClick={(event) => { event.stopPropagation(); openEditor("host", "edit", hosts.findIndex((host) => host.id === g.hostId)); }}><Icon name="edit" size={15} /></button></Tip>
+                    <Tip label={`${t("Delete endpoints")}: ${g.host}`}><button type="button" className="actbtn del" aria-label={`${t("Delete endpoints")}: ${g.host}`} title={t("Delete endpoints")} disabled={deletingEndpointHosts.includes(g.hostId)} onClick={(event) => { event.stopPropagation(); askDeleteEndpoints(g); }}><Icon name="trash" size={15} /></button></Tip>
                   </div>}
                 </div>
                 <Collapse open={g.expanded}>
@@ -6062,8 +6045,8 @@ export function StormApp() {
                   </div>
                   <div style={{ minWidth: 0 }}>{portPills(h.ports, h.status === "down")}</div>
                   <div style={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
-                    <div className="actbtn" onClick={(ev) => { ev.stopPropagation(); openEditor("host", "edit", idx); }}><Icon name="edit" size={15} /></div>
-                    <div className="actbtn del" onClick={(ev) => { ev.stopPropagation(); askDelete("host", idx, h.host); }}><Icon name="trash" size={15} /></div>
+                    <Tip label={t("Edit")}><div className="actbtn" onClick={(ev) => { ev.stopPropagation(); openEditor("host", "edit", idx); }}><Icon name="edit" size={15} /></div></Tip>
+                    <Tip label={t("Delete")}><div className="actbtn del" onClick={(ev) => { ev.stopPropagation(); askDelete("host", idx, h.host); }}><Icon name="trash" size={15} /></div></Tip>
                   </div>
                 </div>
                 {/* Expanding a host lists its subdomains — the addresses live in the IPs view. */}
@@ -6077,8 +6060,8 @@ export function StormApp() {
                         </div>
                         <div style={{ minWidth: 0 }}>{portPills(sub.ports, sub.status === "down")}</div>
                         <div style={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
-                          <div className="actbtn" onClick={(ev) => { ev.stopPropagation(); openEditor("host", "edit", hosts.findIndex((x) => x.id === sub.id)); }}><Icon name="edit" size={15} /></div>
-                          <div className="actbtn del" onClick={(ev) => { ev.stopPropagation(); askDelete("host", hosts.findIndex((x) => x.id === sub.id), sub.host); }}><Icon name="trash" size={15} /></div>
+                          <Tip label={t("Edit")}><div className="actbtn" onClick={(ev) => { ev.stopPropagation(); openEditor("host", "edit", hosts.findIndex((x) => x.id === sub.id)); }}><Icon name="edit" size={15} /></div></Tip>
+                          <Tip label={t("Delete")}><div className="actbtn del" onClick={(ev) => { ev.stopPropagation(); askDelete("host", hosts.findIndex((x) => x.id === sub.id), sub.host); }}><Icon name="trash" size={15} /></div></Tip>
                         </div>
                       </div>
                     ))}
@@ -6282,8 +6265,8 @@ export function StormApp() {
               <div className="mono" style={{ fontSize: 12, color: "var(--st-text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.author}</div>
               <div className="mono" style={{ fontSize: 11.5, color: "var(--st-text-faint)" }}>{relTime(v.updated)}</div>
               <div style={{ display: "flex", justifyContent: "center", gap: 2 }}>
-                <span className="export-availability" title={stsExportHint}><button type="button" className="actbtn" aria-label={t("Export to Task Tracker")} disabled={!canExportSts} onClick={(e) => { e.stopPropagation(); openTaskTrackerExport(v.id); }}><Icon name="upload" size={15} /></button></span>
-                <div className="actbtn del" onClick={v.onDelete}><Icon name="trash" size={15} /></div>
+                <Tip label={findingExportHint(v.sev)}><span className="export-availability" title={findingExportHint(v.sev)}><button type="button" className="actbtn" aria-label={t("Export to Task Tracker")} disabled={!canExportFinding(v.sev)} onClick={(e) => { e.stopPropagation(); openTaskTrackerExport(v.id); }}><Icon name="upload" size={15} /></button></span></Tip>
+                <Tip label={t("Delete")}><div className="actbtn del" onClick={v.onDelete}><Icon name="trash" size={15} /></div></Tip>
               </div>
             </div>
           ))}
@@ -6417,7 +6400,7 @@ export function StormApp() {
                         </Suspense>
                       </div>
                       <div style={{ flex: "none", height: 49, display: "flex", alignItems: "center" }}>
-                        <div className="actbtn del" onClick={() => removeVdStep(i)}><Icon name="trash" size={15} /></div>
+                        <Tip label={t("Delete")}><div className="actbtn del" onClick={() => removeVdStep(i)}><Icon name="trash" size={15} /></div></Tip>
                       </div>
                     </div>
                     {imgs.length > 0 && (
@@ -6462,8 +6445,8 @@ export function StormApp() {
                     <Icon name="doc" size={15} color="var(--st-text-3)" />
                     <span className="mono clk" title={t("Click to preview")} onClick={() => setState({ filePreview: f })} style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: "var(--st-accent-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer" }}>{f.original_name}</span>
                     <span className="mono" style={{ flex: "none", fontSize: 11, color: "var(--st-text-faint)" }}>{kb(f.size_bytes)}</span>
-                    <a href={`/api/v1/files/${f.id}/download`} download={f.original_name} className="actbtn clk" title={t("Download")} style={{ cursor: "pointer", textDecoration: "none" }} onClick={(e) => e.stopPropagation()}><Icon name="download" size={14} color="var(--st-text-3)" /></a>
-                    <div className="actbtn del clk" title={t("Delete file")} onClick={() => void removeVulnFile(f.id)} style={{ cursor: "pointer" }}><Icon name="trash" size={14} color="var(--st-danger)" /></div>
+                    <Tip label={t("Download")}><a href={`/api/v1/files/${f.id}/download`} download={f.original_name} className="actbtn clk" title={t("Download")} style={{ cursor: "pointer", textDecoration: "none" }} onClick={(e) => e.stopPropagation()}><Icon name="download" size={14} color="var(--st-text-3)" /></a></Tip>
+                    <Tip label={t("Delete file")}><div className="actbtn del clk" title={t("Delete file")} onClick={() => void removeVulnFile(f.id)} style={{ cursor: "pointer" }}><Icon name="trash" size={14} color="var(--st-danger)" /></div></Tip>
                   </div>
                 ))}
               </div>
@@ -6543,26 +6526,26 @@ export function StormApp() {
               {/* username + copy — one line */}
               <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
                 <span style={{ ...monoCell, fontSize: 14, fontWeight: 700, flex: "0 1 auto" }}>{c.username || <span style={{ color: "var(--st-text-faint)" }}>—</span>}</span>
-                {c.username && <div className="actbtn" title={t("Copy username")} onClick={() => copyText(c.username, "Username")}><Icon name="copy" size={14} /></div>}
+                {c.username && <Tip label={t("Copy username")}><div className="actbtn" title={t("Copy username")} onClick={() => copyText(c.username, "Username")}><Icon name="copy" size={14} /></div></Tip>}
               </div>
               {/* password (masked) + reveal + copy — the value box is a fixed width so
                   revealing never shifts the icons */}
               <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
                 {c.passwordAvailable === false ? <span style={{ ...monoCell, flex: '0 1 auto', color: 'var(--st-text-faint)' }} title={t('Ask an administrator to restore the encryption key, or set a new password.')}>{t('Password unavailable')}</span> : <>
                 <span style={{ ...monoCell, flex: "0 1 18ch" }}>{revealed ? c.password : CRED_MASK}</span>
-                <div className="actbtn" title={revealed ? t("Hide password") : t("Reveal password")} onClick={() => toggleCredReveal(c.id)}><Icon name={revealed ? "lock" : "eye"} size={14} /></div>
-                <div className="actbtn" title={t("Copy password")} onClick={() => copyText(c.password, "Password")}><Icon name="copy" size={14} /></div>
+                <Tip label={revealed ? t("Hide password") : t("Reveal password")}><div className="actbtn" title={revealed ? t("Hide password") : t("Reveal password")} onClick={() => toggleCredReveal(c.id)}><Icon name={revealed ? "lock" : "eye"} size={14} /></div></Tip>
+                <Tip label={t("Copy password")}><div className="actbtn" title={t("Copy password")} onClick={() => copyText(c.password, "Password")}><Icon name="copy" size={14} /></div></Tip>
                 </>}
               </div>
               {/* host — which host these creds belong to */}
               <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
                 <span style={{ ...monoCell, flex: "0 1 auto" }}>{c.host || <span style={{ color: "var(--st-text-faint)" }}>—</span>}</span>
-                {c.host && <div className="actbtn" title={t("Copy host")} onClick={() => copyText(c.host, "Host")}><Icon name="copy" size={14} /></div>}
+                {c.host && <Tip label={t("Copy host")}><div className="actbtn" title={t("Copy host")} onClick={() => copyText(c.host, "Host")}><Icon name="copy" size={14} /></div></Tip>}
               </div>
               {/* row actions */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 2 }}>
-                <div className="actbtn" title={t("Edit")} onClick={() => openEditor("cred", "edit", idx)}><Icon name="edit" size={15} /></div>
-                <div className="actbtn del" title={t("Delete")} onClick={() => askDelete("cred", idx, c.username || "credential")}><Icon name="trash" size={15} /></div>
+                <Tip label={t("Edit")}><div className="actbtn" title={t("Edit")} onClick={() => openEditor("cred", "edit", idx)}><Icon name="edit" size={15} /></div></Tip>
+                <Tip label={t("Delete")}><div className="actbtn del" title={t("Delete")} onClick={() => askDelete("cred", idx, c.username || "credential")}><Icon name="trash" size={15} /></div></Tip>
               </div>
             </div>
           );
@@ -6588,7 +6571,7 @@ export function StormApp() {
               <div style={{ font: "700 15px Inter,sans-serif", color: "var(--st-text)" }}>{n.title}</div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, flex: "none" }}>
                 {mine && (
-                  <div className="actbtn del" onClick={(e) => { e.stopPropagation(); askDelete("note", idx, n.title); }}><Icon name="trash" size={15} /></div>
+                  <Tip label={t("Delete")}><div className="actbtn del" onClick={(e) => { e.stopPropagation(); askDelete("note", idx, n.title); }}><Icon name="trash" size={15} /></div></Tip>
                 )}
                 <span className="mono" style={{ fontSize: 11.5, color: "var(--st-text-faint)" }}>{n.when}</span>
               </div>
@@ -6716,7 +6699,7 @@ export function StormApp() {
         <div style={{ ...CARD, overflow: "hidden" }}>
           {filtered.map(({ m, idx }) => (
             <div key={m.name + idx} className="prow" style={{ display: "flex", alignItems: "center", gap: 13, padding: "15px 20px", borderBottom: "1px solid var(--st-divider)" }}>
-              <span className="mono" style={{ width: 38, height: 38, flex: "none", borderRadius: "50%", background: m.color, color: "var(--st-on-accent)", display: "flex", alignItems: "center", justifyContent: "center", font: "700 13px 'JetBrains Mono',monospace" }}>{m.initials}</span>
+              <UserAvatar name={m.name} src={m.id === authUser?.id ? authUser.avatar_url : m.avatarUrl} initials={m.initials} size={38} fontSize={13} background={m.color} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={{ font: "600 14px Inter,sans-serif", color: "var(--st-text)" }}>{m.name}</span>
@@ -6726,7 +6709,7 @@ export function StormApp() {
               </div>
               {canManageMembers && (
                 <div style={{ display: "flex", gap: 2 }}>
-                  <div className="actbtn del" onClick={() => askDelete("member", idx, m.name)}><Icon name="trash" size={15} /></div>
+                  <Tip label={t("Delete")}><div className="actbtn del" onClick={() => askDelete("member", idx, m.name)}><Icon name="trash" size={15} /></div></Tip>
                 </div>
               )}
             </div>
@@ -6801,7 +6784,7 @@ export function StormApp() {
                 className="mono"
                 style={{ width: 32, height: 32, flex: "none", borderRadius: "50%", background: g.actor === "System" ? "var(--st-accent-soft)" : "var(--st-accent)", color: g.actor === "System" ? "var(--st-accent-2)" : "var(--st-on-accent)", display: "flex", alignItems: "center", justifyContent: "center", font: "700 11px 'JetBrains Mono',monospace" }}
               >
-                {g.actor === "System" ? <Icon name="clock2" size={15} /> : initialsOf(g.actor)}
+                {g.actor === "System" ? <Icon name="clock2" size={15} /> : avatarLetter(g.actor)}
               </span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 {/* The count reads inline — "admin added 3 IP addresses" — rather
@@ -7083,7 +7066,7 @@ export function StormApp() {
               {k.scopes.map((sc) => <span key={sc} className="mono" style={{ fontSize: 10, fontWeight: 700, color: "var(--st-accent)", background: "var(--st-accent-soft)", borderRadius: 6, padding: "3px 8px" }}>{sc}</span>)}
             </div>
             <div className="mono" style={{ fontSize: 11.5, color: "var(--st-text-faint)", width: 80, textAlign: "right" }}>{k.created}</div>
-            <div className="actbtn del" onClick={() => revokeApiKey(k.id)} style={{ flex: "none" }}><Icon name="trash" size={15} /></div>
+            <Tip label={t("Delete")}><div className="actbtn del" onClick={() => revokeApiKey(k.id)} style={{ flex: "none" }}><Icon name="trash" size={15} /></div></Tip>
           </div>
         ))}
         {state.apiKeys.length === 0 && <div style={{ padding: "22px 16px", textAlign: "center", color: "var(--st-text-faint)", fontSize: 13 }}>{t("No API keys yet.")}</div>}
@@ -7134,7 +7117,7 @@ export function StormApp() {
       {state.userMenuOpen && <div onClick={() => setState({ userMenuOpen: false })} style={{ position: "absolute", inset: 0, zIndex: 40 }} />}
       <div className={`menu ${state.userMenuOpen ? "open" : ""}`} style={{ position: "absolute", top: 56, right: 16, width: 270, background: "var(--st-surface)", border: "1px solid var(--st-border-light)", borderRadius: 16, boxShadow: "0 20px 54px rgba(15,27,45,.18)", zIndex: 50, overflow: "hidden" }}>
         <div style={{ padding: "22px 20px 16px", textAlign: "center", borderBottom: "1px solid var(--st-elevated)" }}>
-          <div style={{ width: 60, height: 60, margin: "0 auto 12px", borderRadius: "50%", border: "1px solid var(--st-border-light)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}><SberMark size={34} /></div>
+          <div style={{ width: 60, height: 60, margin: "0 auto 12px", borderRadius: "50%", border: "1px solid var(--st-border-light)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>{meAvatar(60, 24, meInitials)}</div>
           <div style={{ fontWeight: 700, fontSize: 16, color: "var(--st-text)" }}>{meDisplay}</div>
           <div className="mono" style={{ fontSize: 12, color: "var(--st-text-faint)", marginTop: 3 }}>{meEmail}</div>
         </div>
@@ -7502,11 +7485,13 @@ export function StormApp() {
         60,
         460,
         (() => {
-          const total = vulns.length;
+          const total = vulns.filter((finding) => finding.sev !== "unrealized").length;
+          const excluded = vulns.length - total;
           const pct = state.taskTrackerBulkTotal > 0 ? Math.round((state.taskTrackerBulkDone / state.taskTrackerBulkTotal) * 100) : 0;
           return (
             <>
               <h2 style={{ margin: 0, fontSize: 21, fontWeight: 800, color: "var(--st-text)", letterSpacing: "-.4px" }}>{t("Export all to Task Tracker")}</h2>
+              {excluded > 0 && <p style={{ color: "var(--st-text-2)", fontSize: 12 }}>{t("Unrealized findings skipped: {count}", { count: excluded })}</p>}
 
               <div style={{ marginTop: 16 }}>
                 {state.taskTrackerBulkFinished ? (
@@ -7675,7 +7660,7 @@ export function StormApp() {
             <span className="mono" style={{ font: "700 15px 'JetBrains Mono',monospace", color: "var(--st-text)" }}>{state.epData.path}</span>
             <span className="mono" style={{ fontSize: 12, color: "var(--st-text-3)", background: "var(--st-hover)", borderRadius: 6, padding: "3px 9px" }}>{state.epData.host}</span>
             <div style={{ flex: 1 }} />
-            <div className="clk actbtn" onClick={closeEndpoint}><Icon name="close" size={18} /></div>
+            <Tip label={t("Close")}><div className="clk actbtn" onClick={closeEndpoint}><Icon name="close" size={18} /></div></Tip>
           </div>
           {/* Full-width request box (the response scratchpad was removed). The copy
               control builds a ready cURL for this endpoint; the raw request below is

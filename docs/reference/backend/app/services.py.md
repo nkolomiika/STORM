@@ -2,11 +2,11 @@
 
 Сгенерировано из объявлений кода. [Правила чтения](../../../METHODS.md).
 
-Методов и именованных функций: **247**.
+Методов и именованных функций: **252**.
 
 ## _sanitize_filename
 
-[backend/app/services.py:162](../../../../backend/app/services.py#L162)
+[backend/app/services.py:160](../../../../backend/app/services.py#L160)
 
 ```python
 def _sanitize_filename(raw: str | None, fallback: str='file.bin') -> str
@@ -36,7 +36,7 @@ def _sanitize_filename(raw: str | None, fallback: str='file.bin') -> str
 
 ## AuditService.__init__
 
-[backend/app/services.py:177](../../../../backend/app/services.py#L177)
+[backend/app/services.py:175](../../../../backend/app/services.py#L175)
 
 ```python
 def __init__(self, db: AsyncSession) -> None
@@ -52,13 +52,13 @@ def __init__(self, db: AsyncSession) -> None
 
 ## AuditService.log
 
-[backend/app/services.py:180](../../../../backend/app/services.py#L180)
+[backend/app/services.py:178](../../../../backend/app/services.py#L178)
 
 ```python
 async def log(self, action: str, *, user_id: int | None=None, entity_type: str | None=None, entity_id: int | None=None, details: dict | None=None, ip_address: str | None=None, commit: bool=True) -> None
 ```
 
-Добавляет запись аудита и самостоятельно выполняет commit текущей сессии. В большинстве вызывающих методов сущность уже сохранена отдельно; отказ аудита может оставить сохранённое изменение при HTTP 500. Политика транзакций ожидает решения владельца.
+Добавляет запись аудита в текущую транзакцию. По умолчанию выполняет commit; commit=False ограничивается flush и позволяет сохранить несколько изменений и записей аудита одним внешним commit.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -89,7 +89,7 @@ async def log(self, action: str, *, user_id: int | None=None, entity_type: str |
 
 ## AgentTokenService.__init__
 
-[backend/app/services.py:221](../../../../backend/app/services.py#L221)
+[backend/app/services.py:219](../../../../backend/app/services.py#L219)
 
 ```python
 def __init__(self, db: AsyncSession) -> None
@@ -112,7 +112,7 @@ def __init__(self, db: AsyncSession) -> None
 
 ## AgentTokenService._member_project_ids
 
-[backend/app/services.py:225](../../../../backend/app/services.py#L225)
+[backend/app/services.py:223](../../../../backend/app/services.py#L223)
 
 ```python
 async def _member_project_ids(self, user_id: int) -> set[int]
@@ -141,7 +141,7 @@ async def _member_project_ids(self, user_id: int) -> set[int]
 
 ## AgentTokenService._project_ids_for_token
 
-[backend/app/services.py:230](../../../../backend/app/services.py#L230)
+[backend/app/services.py:228](../../../../backend/app/services.py#L228)
 
 ```python
 async def _project_ids_for_token(self, token_id: int) -> list[int]
@@ -170,7 +170,7 @@ async def _project_ids_for_token(self, token_id: int) -> list[int]
 
 ## AgentTokenService._serialize_token
 
-[backend/app/services.py:237](../../../../backend/app/services.py#L237)
+[backend/app/services.py:235](../../../../backend/app/services.py#L235)
 
 ```python
 def _serialize_token(token: AgentApiToken, project_ids: list[int]) -> dict
@@ -187,7 +187,7 @@ def _serialize_token(token: AgentApiToken, project_ids: list[int]) -> dict
 
 ## AgentTokenService.list_tokens
 
-[backend/app/services.py:254](../../../../backend/app/services.py#L254)
+[backend/app/services.py:252](../../../../backend/app/services.py#L252)
 
 ```python
 async def list_tokens(self, actor_id: int) -> list[dict]
@@ -220,7 +220,7 @@ async def list_tokens(self, actor_id: int) -> list[dict]
 
 ## AgentTokenService.create_token
 
-[backend/app/services.py:268](../../../../backend/app/services.py#L268)
+[backend/app/services.py:266](../../../../backend/app/services.py#L266)
 
 ```python
 async def create_token(self, payload: dict, actor: User) -> tuple[dict, str]
@@ -281,7 +281,7 @@ ValidationError(f"Неизвестные scope: {', '.join(unknown)}")
 
 ## AgentTokenService.revoke_token
 
-[backend/app/services.py:322](../../../../backend/app/services.py#L322)
+[backend/app/services.py:320](../../../../backend/app/services.py#L320)
 
 ```python
 async def revoke_token(self, token_id: int, actor: User) -> None
@@ -321,7 +321,7 @@ NotFoundError('Agent API token не найден')
 
 ## WorksService.__init__
 
-[backend/app/services.py:343](../../../../backend/app/services.py#L343)
+[backend/app/services.py:341](../../../../backend/app/services.py#L341)
 
 ```python
 def __init__(self, db: AsyncSession) -> None
@@ -344,7 +344,7 @@ def __init__(self, db: AsyncSession) -> None
 
 ## WorksService.find_components
 
-[backend/app/services.py:347](../../../../backend/app/services.py#L347)
+[backend/app/services.py:345](../../../../backend/app/services.py#L345)
 
 ```python
 async def find_components(self, q: str='') -> list[dict[str, str]]
@@ -367,7 +367,7 @@ async def find_components(self, q: str='') -> list[dict[str, str]]
 
 ## WorksService.find_product_codes
 
-[backend/app/services.py:351](../../../../backend/app/services.py#L351)
+[backend/app/services.py:349](../../../../backend/app/services.py#L349)
 
 ```python
 async def find_product_codes(self, q: str='') -> list[dict[str, str]]
@@ -390,7 +390,7 @@ async def find_product_codes(self, q: str='') -> list[dict[str, str]]
 
 ## WorksService._find_reference
 
-[backend/app/services.py:355](../../../../backend/app/services.py#L355)
+[backend/app/services.py:353](../../../../backend/app/services.py#L353)
 
 ```python
 async def _find_reference(self, kind: Literal['components', 'versions', 'product_codes'], q: str) -> list[dict[str, str]]
@@ -415,25 +415,38 @@ tracker_service_error(exc)
 <details>
 <summary>Прямые вызовы в теле</summary>
 
+- `(item['name'] + ' ' + item['code']).casefold`
 - `ServiceUnavailableError`
+- `TaskTrackerService`
+- `TaskTrackerService()._request`
 - `WorksClient`
+- `_extract_items`
+- `affected_versions`
+- `attributes.get`
+- `component_references`
 - `getattr`
 - `getattr(wc, 'find_' + kind)`
+- `isinstance`
 - `logging.getLogger`
 - `logging.getLogger('storm.works').warning`
+- `q.casefold`
+- `references.values`
 - `tracker_service_error`
+- `unit.get`
+- `unit_attributes`
+- `value.get`
 
 </details>
 
 ## WorksService.find_versions
 
-[backend/app/services.py:366](../../../../backend/app/services.py#L366)
+[backend/app/services.py:383](../../../../backend/app/services.py#L383)
 
 ```python
 async def find_versions(self, q: str='') -> list[dict[str, str]]
 ```
 
-В теле вызывает `(version['name'] + ' ' + version['code']).casefold`, `TaskTrackerService`, `TaskTrackerService().list_tasks`, `q.casefold`, `self._find_reference`, `versions.values`.
+Версии формы проекта из реального TT либо явно включённого локального демо.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -444,18 +457,13 @@ async def find_versions(self, q: str='') -> list[dict[str, str]]
 <details>
 <summary>Прямые вызовы в теле</summary>
 
-- `(version['name'] + ' ' + version['code']).casefold`
-- `TaskTrackerService`
-- `TaskTrackerService().list_tasks`
-- `q.casefold`
 - `self._find_reference`
-- `versions.values`
 
 </details>
 
 ## WorksService.get_link
 
-[backend/app/services.py:375](../../../../backend/app/services.py#L375)
+[backend/app/services.py:387](../../../../backend/app/services.py#L387)
 
 ```python
 async def get_link(self, project_id: int, vulnerability_id: int) -> WorksIssueLink | None
@@ -491,7 +499,7 @@ async def get_link(self, project_id: int, vulnerability_id: int) -> WorksIssueLi
 
 ## WorksService._extract_key
 
-[backend/app/services.py:399](../../../../backend/app/services.py#L399)
+[backend/app/services.py:411](../../../../backend/app/services.py#L411)
 
 ```python
 def _extract_key(response: Any) -> str
@@ -518,7 +526,7 @@ def _extract_key(response: Any) -> str
 
 ## WorksService.export_vulnerability
 
-[backend/app/services.py:414](../../../../backend/app/services.py#L414)
+[backend/app/services.py:426](../../../../backend/app/services.py#L426)
 
 ```python
 async def export_vulnerability(self, project_id: int, vuln_id: int, user: User, assignee: str | None) -> WorksIssueLink
@@ -548,6 +556,7 @@ NotFoundError('Проект не найден')
 NotFoundError('Уязвимость не найдена')
 ValidationError('Заполните данные по проекту. Не заполнено: ' + ', '.join(missing))
 ValidationError('Интеграция с Works не настроена или отключена')
+ValidationError('Находки Unrealized не экспортируются в Task Tracker')
 ValidationError('Не указан исполнитель (assignee) для экспорта в AppSec')
 ValidationError(exc.message)
 WorksError('Task Tracker не вернул корректный ключ созданного STS-тикета.')
@@ -581,8 +590,8 @@ WorksError('Task Tracker не вернул корректный ключ соз�
 - `priority_for_severity`
 - `select`
 - `select(Project).where`
-- `select(Vulnerability.id).where`
-- `select(Vulnerability.id).where(Vulnerability.id == vuln_id, Vulnerability.project_id == project_id).with_for_update`
+- `select(Vulnerability).where`
+- `select(Vulnerability).where(Vulnerability.id == vuln_id, Vulnerability.project_id == project_id).with_for_update`
 - `select(WorksIssueLink).where`
 - `self._extract_key`
 - `self.audit.log`
@@ -601,7 +610,7 @@ WorksError('Task Tracker не вернул корректный ключ соз�
 
 ## AuthService.__init__
 
-[backend/app/services.py:577](../../../../backend/app/services.py#L577)
+[backend/app/services.py:591](../../../../backend/app/services.py#L591)
 
 ```python
 def __init__(self, db: AsyncSession) -> None
@@ -624,7 +633,7 @@ def __init__(self, db: AsyncSession) -> None
 
 ## AuthService._issue_session
 
-[backend/app/services.py:581](../../../../backend/app/services.py#L581)
+[backend/app/services.py:595](../../../../backend/app/services.py#L595)
 
 ```python
 async def _issue_session(self, user_id: int) -> tuple[str, str]
@@ -656,7 +665,7 @@ async def _issue_session(self, user_id: int) -> tuple[str, str]
 
 ## AuthService.issue_session_for_user
 
-[backend/app/services.py:591](../../../../backend/app/services.py#L591)
+[backend/app/services.py:605](../../../../backend/app/services.py#L605)
 
 ```python
 async def issue_session_for_user(self, user_id: int) -> tuple[str, str]
@@ -682,7 +691,7 @@ async def issue_session_for_user(self, user_id: int) -> tuple[str, str]
 
 ## AuthService.login_via_sso
 
-[backend/app/services.py:597](../../../../backend/app/services.py#L597)
+[backend/app/services.py:611](../../../../backend/app/services.py#L611)
 
 ```python
 async def login_via_sso(self, identity: 'OidcIdentity', ip_address: str | None=None) -> tuple[str, str, User]
@@ -736,7 +745,7 @@ UnauthorizedError('Пользователь не найден. Обратите�
 
 ## AuthService._provision_sso_user
 
-[backend/app/services.py:633](../../../../backend/app/services.py#L633)
+[backend/app/services.py:647](../../../../backend/app/services.py#L647)
 
 ```python
 async def _provision_sso_user(self, *, email: str, username: str | None, full_name: str | None) -> User
@@ -775,7 +784,7 @@ async def _provision_sso_user(self, *, email: str, username: str | None, full_na
 
 ## AuthService._unique_username
 
-[backend/app/services.py:656](../../../../backend/app/services.py#L656)
+[backend/app/services.py:670](../../../../backend/app/services.py#L670)
 
 ```python
 async def _unique_username(self, base: str) -> str
@@ -804,7 +813,7 @@ async def _unique_username(self, base: str) -> str
 
 ## AuthService.login
 
-[backend/app/services.py:667](../../../../backend/app/services.py#L667)
+[backend/app/services.py:681](../../../../backend/app/services.py#L681)
 
 ```python
 async def login(self, username: str, password: str, ip_address: str | None=None) -> LoginOutcome
@@ -846,7 +855,7 @@ UnauthorizedError('Пользователь деактивирован')
 
 ## AuthService.verify_2fa
 
-[backend/app/services.py:684](../../../../backend/app/services.py#L684)
+[backend/app/services.py:698](../../../../backend/app/services.py#L698)
 
 ```python
 async def verify_2fa(self, pending_token: str | None, code: str, ip_address: str | None=None) -> tuple[str, str, User]
@@ -892,7 +901,7 @@ UnauthorizedError('Сессия подтверждения истекла — в
 
 ## AuthService.refresh
 
-[backend/app/services.py:705](../../../../backend/app/services.py#L705)
+[backend/app/services.py:719](../../../../backend/app/services.py#L719)
 
 ```python
 async def refresh(self, refresh_token: str | None, ip_address: str | None=None) -> tuple[str, str]
@@ -952,7 +961,7 @@ UnauthorizedError('Пользователь деактивирован')
 
 ## AuthService.logout
 
-[backend/app/services.py:748](../../../../backend/app/services.py#L748)
+[backend/app/services.py:762](../../../../backend/app/services.py#L762)
 
 ```python
 async def logout(self, user_id: int, ip_address: str | None=None) -> None
@@ -986,7 +995,7 @@ async def logout(self, user_id: int, ip_address: str | None=None) -> None
 
 ## UserService.__init__
 
-[backend/app/services.py:762](../../../../backend/app/services.py#L762)
+[backend/app/services.py:776](../../../../backend/app/services.py#L776)
 
 ```python
 def __init__(self, db: AsyncSession) -> None
@@ -1010,7 +1019,7 @@ def __init__(self, db: AsyncSession) -> None
 
 ## UserService._normalized_admin_email
 
-[backend/app/services.py:768](../../../../backend/app/services.py#L768)
+[backend/app/services.py:782](../../../../backend/app/services.py#L782)
 
 ```python
 def _normalized_admin_email() -> str
@@ -1029,7 +1038,7 @@ def _normalized_admin_email() -> str
 
 ## UserService._generate_temporary_password
 
-[backend/app/services.py:775](../../../../backend/app/services.py#L775)
+[backend/app/services.py:789](../../../../backend/app/services.py#L789)
 
 ```python
 def _generate_temporary_password() -> str
@@ -1048,7 +1057,7 @@ def _generate_temporary_password() -> str
 
 ## UserService._ensure_mail_delivery_enabled
 
-[backend/app/services.py:779](../../../../backend/app/services.py#L779)
+[backend/app/services.py:793](../../../../backend/app/services.py#L793)
 
 ```python
 def _ensure_mail_delivery_enabled() -> None
@@ -1077,7 +1086,7 @@ ServiceUnavailableError('Отправка писем пока не настро�
 
 ## UserService.ensure_can_view_avatar
 
-[backend/app/services.py:786](../../../../backend/app/services.py#L786)
+[backend/app/services.py:800](../../../../backend/app/services.py#L800)
 
 ```python
 def ensure_can_view_avatar(requester: User, target_user_id: int) -> None
@@ -1107,7 +1116,7 @@ ForbiddenError('Недостаточно прав для просмотра чу
 
 ## UserService._ensure_unique_identity
 
-[backend/app/services.py:790](../../../../backend/app/services.py#L790)
+[backend/app/services.py:804](../../../../backend/app/services.py#L804)
 
 ```python
 async def _ensure_unique_identity(self, *, username: str | None=None, email: str | None=None, exclude_user_id: int | None=None) -> None
@@ -1146,7 +1155,7 @@ ConflictError('Username or email is already taken')
 
 ## UserService._enqueue_temporary_password_mail
 
-[backend/app/services.py:811](../../../../backend/app/services.py#L811)
+[backend/app/services.py:825](../../../../backend/app/services.py#L825)
 
 ```python
 async def _enqueue_temporary_password_mail(self, *, user: User, temporary_password: str, actor_id: int | None) -> MailJob
@@ -1176,7 +1185,7 @@ async def _enqueue_temporary_password_mail(self, *, user: User, temporary_passwo
 
 ## UserService._publish_mail_job
 
-[backend/app/services.py:834](../../../../backend/app/services.py#L834)
+[backend/app/services.py:848](../../../../backend/app/services.py#L848)
 
 ```python
 async def _publish_mail_job(self, job: MailJob) -> None
@@ -1208,7 +1217,7 @@ async def _publish_mail_job(self, job: MailJob) -> None
 
 ## UserService.bootstrap_admin
 
-[backend/app/services.py:851](../../../../backend/app/services.py#L851)
+[backend/app/services.py:865](../../../../backend/app/services.py#L865)
 
 ```python
 async def bootstrap_admin(self) -> None
@@ -1241,7 +1250,7 @@ async def bootstrap_admin(self) -> None
 
 ## UserService.list_users
 
-[backend/app/services.py:881](../../../../backend/app/services.py#L881)
+[backend/app/services.py:895](../../../../backend/app/services.py#L895)
 
 ```python
 async def list_users(self, page: int, size: int) -> tuple[list[User], int]
@@ -1278,7 +1287,7 @@ async def list_users(self, page: int, size: int) -> tuple[list[User], int]
 
 ## UserService.search_users
 
-[backend/app/services.py:889](../../../../backend/app/services.py#L889)
+[backend/app/services.py:903](../../../../backend/app/services.py#L903)
 
 ```python
 async def search_users(self, q: str, limit: int=10) -> list[User]
@@ -1322,7 +1331,7 @@ async def search_users(self, q: str, limit: int=10) -> list[User]
 
 ## UserService.get_user
 
-[backend/app/services.py:902](../../../../backend/app/services.py#L902)
+[backend/app/services.py:916](../../../../backend/app/services.py#L916)
 
 ```python
 async def get_user(self, user_id: int) -> User
@@ -1356,7 +1365,7 @@ NotFoundError('User not found')
 
 ## UserService._enqueue_invitation_mail
 
-[backend/app/services.py:915](../../../../backend/app/services.py#L915)
+[backend/app/services.py:929](../../../../backend/app/services.py#L929)
 
 ```python
 async def _enqueue_invitation_mail(self, *, invitation: Invitation, raw_token: str, actor_id: int | None) -> MailJob
@@ -1387,7 +1396,7 @@ async def _enqueue_invitation_mail(self, *, invitation: Invitation, raw_token: s
 
 ## UserService.create_invitation
 
-[backend/app/services.py:935](../../../../backend/app/services.py#L935)
+[backend/app/services.py:949](../../../../backend/app/services.py#L949)
 
 ```python
 async def create_invitation(self, payload: dict, actor_id: int, ip_address: str | None=None) -> tuple[Invitation, MailJob]
@@ -1439,7 +1448,7 @@ ConflictError('Приглашение для этого email уже отпра�
 
 ## UserService.list_invitations
 
-[backend/app/services.py:977](../../../../backend/app/services.py#L977)
+[backend/app/services.py:991](../../../../backend/app/services.py#L991)
 
 ```python
 async def list_invitations(self) -> list[Invitation]
@@ -1466,7 +1475,7 @@ async def list_invitations(self) -> list[Invitation]
 
 ## UserService._get_invitation
 
-[backend/app/services.py:986](../../../../backend/app/services.py#L986)
+[backend/app/services.py:1000](../../../../backend/app/services.py#L1000)
 
 ```python
 async def _get_invitation(self, invitation_id: int) -> Invitation
@@ -1500,7 +1509,7 @@ NotFoundError('Приглашение не найдено')
 
 ## UserService.resend_invitation
 
-[backend/app/services.py:992](../../../../backend/app/services.py#L992)
+[backend/app/services.py:1006](../../../../backend/app/services.py#L1006)
 
 ```python
 async def resend_invitation(self, invitation_id: int, actor_id: int, ip_address: str | None=None) -> tuple[Invitation, MailJob]
@@ -1544,7 +1553,7 @@ ConflictError('Приглашение уже принято')
 
 ## UserService.revoke_invitation
 
-[backend/app/services.py:1016](../../../../backend/app/services.py#L1016)
+[backend/app/services.py:1030](../../../../backend/app/services.py#L1030)
 
 ```python
 async def revoke_invitation(self, invitation_id: int, actor_id: int, ip_address: str | None=None) -> None
@@ -1580,7 +1589,7 @@ ConflictError('Приглашение уже принято — отозвать
 
 ## UserService._load_invitation_by_token
 
-[backend/app/services.py:1032](../../../../backend/app/services.py#L1032)
+[backend/app/services.py:1046](../../../../backend/app/services.py#L1046)
 
 ```python
 async def _load_invitation_by_token(self, raw_token: str, *, for_update: bool=False) -> Invitation | None
@@ -1610,7 +1619,7 @@ async def _load_invitation_by_token(self, raw_token: str, *, for_update: bool=Fa
 
 ## UserService.get_invitation_info
 
-[backend/app/services.py:1036](../../../../backend/app/services.py#L1036)
+[backend/app/services.py:1050](../../../../backend/app/services.py#L1050)
 
 ```python
 async def get_invitation_info(self, raw_token: str) -> dict
@@ -1633,7 +1642,7 @@ async def get_invitation_info(self, raw_token: str) -> dict
 
 ## UserService.check_invitation_username_available
 
-[backend/app/services.py:1048](../../../../backend/app/services.py#L1048)
+[backend/app/services.py:1062](../../../../backend/app/services.py#L1062)
 
 ```python
 async def check_invitation_username_available(self, raw_token: str, username: str) -> bool
@@ -1669,7 +1678,7 @@ UnauthorizedError('Приглашение недействительно или 
 
 ## UserService.accept_invitation
 
-[backend/app/services.py:1056](../../../../backend/app/services.py#L1056)
+[backend/app/services.py:1070](../../../../backend/app/services.py#L1070)
 
 ```python
 async def accept_invitation(self, raw_token: str, username: str, password: str, ip_address: str | None=None) -> User
@@ -1712,7 +1721,7 @@ UnauthorizedError('Приглашение недействительно или 
 
 ## UserService._enqueue_password_reset_mail
 
-[backend/app/services.py:1095](../../../../backend/app/services.py#L1095)
+[backend/app/services.py:1109](../../../../backend/app/services.py#L1109)
 
 ```python
 async def _enqueue_password_reset_mail(self, *, user: User, raw_token: str) -> MailJob
@@ -1742,7 +1751,7 @@ async def _enqueue_password_reset_mail(self, *, user: User, raw_token: str) -> M
 
 ## UserService.request_password_reset
 
-[backend/app/services.py:1115](../../../../backend/app/services.py#L1115)
+[backend/app/services.py:1129](../../../../backend/app/services.py#L1129)
 
 ```python
 async def request_password_reset(self, email: str, ip_address: str | None=None) -> None
@@ -1790,7 +1799,7 @@ async def request_password_reset(self, email: str, ip_address: str | None=None) 
 
 ## UserService._load_reset_token
 
-[backend/app/services.py:1158](../../../../backend/app/services.py#L1158)
+[backend/app/services.py:1172](../../../../backend/app/services.py#L1172)
 
 ```python
 async def _load_reset_token(self, raw_token: str, *, for_update: bool=False) -> PasswordResetToken | None
@@ -1820,7 +1829,7 @@ async def _load_reset_token(self, raw_token: str, *, for_update: bool=False) -> 
 
 ## UserService.get_password_reset_info
 
-[backend/app/services.py:1162](../../../../backend/app/services.py#L1162)
+[backend/app/services.py:1176](../../../../backend/app/services.py#L1176)
 
 ```python
 async def get_password_reset_info(self, raw_token: str) -> dict
@@ -1848,7 +1857,7 @@ async def get_password_reset_info(self, raw_token: str) -> dict
 
 ## UserService.confirm_password_reset
 
-[backend/app/services.py:1176](../../../../backend/app/services.py#L1176)
+[backend/app/services.py:1190](../../../../backend/app/services.py#L1190)
 
 ```python
 async def confirm_password_reset(self, raw_token: str, new_password: str, ip_address: str | None=None) -> User
@@ -1894,48 +1903,15 @@ UnauthorizedError('Ссылка недействительна или истек
 
 </details>
 
-## UserService._enqueue_reactivation_mail
+## UserService.reactivate_user
 
-[backend/app/services.py:1211](../../../../backend/app/services.py#L1211)
-
-```python
-async def _enqueue_reactivation_mail(self, *, user: User, raw_token: str) -> MailJob
-```
-
-В теле вызывает `MailJob`, `build_reactivation_email`, `self.db.add`, `self.db.flush`, `settings.app_base_url.rstrip`.
-
-| Параметр | Тип | По умолчанию | Назначение |
-| --- | --- | --- | --- |
-| `user` | `User` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-| `raw_token` | `str` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
-
-Возвращает: `MailJob`.
-
-Прямые операции с БД: `self.db.add`, `self.db.flush`.
-
-<details>
-<summary>Прямые вызовы в теле</summary>
-
-- `MailJob`
-- `build_reactivation_email`
-- `self.db.add`
-- `self.db.flush`
-- `settings.app_base_url.rstrip`
-
-</details>
-
-## UserService.request_reactivation
-
-[backend/app/services.py:1231](../../../../backend/app/services.py#L1231)
+[backend/app/services.py:1220](../../../../backend/app/services.py#L1220)
 
 ```python
-async def request_reactivation(self, user_id: int, actor_id: int, ip_address: str | None=None) -> MailJob
+async def reactivate_user(self, user_id: int, actor_id: int, ip_address: str | None=None) -> User
 ```
 
-Админ возвращает деактивированного пользователя: шлём ссылку-возврат.
-
-Аккаунт остаётся заблокированным — доступ вернётся, только когда пользователь
-сам перейдёт по ссылке из письма (там же сразу выдаётся сессия).
+Сразу разблокирует пользователя без письма и гасит прежние ссылки возврата.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -1943,9 +1919,9 @@ async def request_reactivation(self, user_id: int, actor_id: int, ip_address: st
 | `actor_id` | `int` | `обязательный` | ID инициатора для аудита и уведомлений. |
 | `ip_address` | `str \| None` | `None` | IP-адрес; в AuditService — адрес клиента. |
 
-Возвращает: `MailJob`.
+Возвращает: `User`.
 
-Прямые операции с БД: `self.db.add`, `self.db.execute`, `self.db.flush`.
+Прямые операции с БД: `self.db.execute`, `self.db.flush`, `self.db.refresh`.
 
 Явные raise в теле (исключения вызываемых методов могут добавляться):
 
@@ -1956,22 +1932,15 @@ ValidationError('The user is not deactivated')
 <details>
 <summary>Прямые вызовы в теле</summary>
 
-- `AccountReactivationToken`
 - `AccountReactivationToken.used_at.is_`
 - `ValidationError`
 - `and_`
 - `datetime.now`
-- `generate_reactivation_token`
-- `hash_reactivation_token`
-- `self._enqueue_reactivation_mail`
-- `self._ensure_mail_delivery_enabled`
-- `self._publish_mail_job`
 - `self.audit.log`
-- `self.db.add`
 - `self.db.execute`
 - `self.db.flush`
+- `self.db.refresh`
 - `self.get_user`
-- `timedelta`
 - `update`
 - `update(AccountReactivationToken).where`
 - `update(AccountReactivationToken).where(and_(AccountReactivationToken.user_id == user.id, AccountReactivationToken.used_at.is_(None))).values`
@@ -1980,7 +1949,7 @@ ValidationError('The user is not deactivated')
 
 ## UserService._load_reactivation_token
 
-[backend/app/services.py:1268](../../../../backend/app/services.py#L1268)
+[backend/app/services.py:1238](../../../../backend/app/services.py#L1238)
 
 ```python
 async def _load_reactivation_token(self, raw_token: str, *, for_update: bool=False) -> AccountReactivationToken | None
@@ -2010,7 +1979,7 @@ async def _load_reactivation_token(self, raw_token: str, *, for_update: bool=Fal
 
 ## UserService.get_reactivation_info
 
-[backend/app/services.py:1272](../../../../backend/app/services.py#L1272)
+[backend/app/services.py:1242](../../../../backend/app/services.py#L1242)
 
 ```python
 async def get_reactivation_info(self, raw_token: str) -> dict
@@ -2038,7 +2007,7 @@ async def get_reactivation_info(self, raw_token: str) -> dict
 
 ## UserService.complete_reactivation
 
-[backend/app/services.py:1287](../../../../backend/app/services.py#L1287)
+[backend/app/services.py:1257](../../../../backend/app/services.py#L1257)
 
 ```python
 async def complete_reactivation(self, raw_token: str, ip_address: str | None=None) -> User
@@ -2079,7 +2048,7 @@ UnauthorizedError('Ссылка недействительна или истек
 
 ## UserService.update_user
 
-[backend/app/services.py:1309](../../../../backend/app/services.py#L1309)
+[backend/app/services.py:1279](../../../../backend/app/services.py#L1279)
 
 ```python
 async def update_user(self, user_id: int, payload: dict, actor_id: int, ip_address: str | None=None) -> User
@@ -2122,7 +2091,7 @@ ValidationError("The username can't be changed — it's tied to the user")
 
 ## UserService.update_own_profile
 
-[backend/app/services.py:1329](../../../../backend/app/services.py#L1329)
+[backend/app/services.py:1299](../../../../backend/app/services.py#L1299)
 
 ```python
 async def update_own_profile(self, user_id: int, payload: dict, ip_address: str | None=None) -> User
@@ -2156,7 +2125,7 @@ async def update_own_profile(self, user_id: int, payload: dict, ip_address: str 
 
 ## UserService.delete_user
 
-[backend/app/services.py:1342](../../../../backend/app/services.py#L1342)
+[backend/app/services.py:1312](../../../../backend/app/services.py#L1312)
 
 ```python
 async def delete_user(self, user_id: int, actor_id: int, ip_address: str | None=None) -> None
@@ -2205,7 +2174,7 @@ ValidationError("You can't block yourself")
 
 ## UserService.reset_password
 
-[backend/app/services.py:1363](../../../../backend/app/services.py#L1363)
+[backend/app/services.py:1333](../../../../backend/app/services.py#L1333)
 
 ```python
 async def reset_password(self, user_id: int, actor_id: int, ip_address: str | None=None) -> User
@@ -2246,7 +2215,7 @@ async def reset_password(self, user_id: int, actor_id: int, ip_address: str | No
 
 ## UserService.change_own_password
 
-[backend/app/services.py:1388](../../../../backend/app/services.py#L1388)
+[backend/app/services.py:1358](../../../../backend/app/services.py#L1358)
 
 ```python
 async def change_own_password(self, user_id: int, *, current_password: str, new_password: str, ip_address: str | None=None) -> User
@@ -2293,7 +2262,7 @@ UnauthorizedError('Текущий пароль указан неверно')
 
 ## UserService.setup_2fa
 
-[backend/app/services.py:1411](../../../../backend/app/services.py#L1411)
+[backend/app/services.py:1381](../../../../backend/app/services.py#L1381)
 
 ```python
 async def setup_2fa(self, user_id: int, ip_address: str | None=None) -> tuple[str, str, str]
@@ -2332,7 +2301,7 @@ ValidationError('Двухфакторная аутентификация уже 
 
 ## UserService.confirm_2fa
 
-[backend/app/services.py:1424](../../../../backend/app/services.py#L1424)
+[backend/app/services.py:1394](../../../../backend/app/services.py#L1394)
 
 ```python
 async def confirm_2fa(self, user_id: int, code: str, ip_address: str | None=None) -> User
@@ -2376,7 +2345,7 @@ ValidationError('Сначала запросите настройку 2FA')
 
 ## UserService.disable_2fa
 
-[backend/app/services.py:1444](../../../../backend/app/services.py#L1444)
+[backend/app/services.py:1414](../../../../backend/app/services.py#L1414)
 
 ```python
 async def disable_2fa(self, user_id: int, password: str, ip_address: str | None=None) -> User
@@ -2415,7 +2384,7 @@ UnauthorizedError('Пароль указан неверно')
 
 ## UserService.admin_reset_2fa
 
-[backend/app/services.py:1458](../../../../backend/app/services.py#L1458)
+[backend/app/services.py:1428](../../../../backend/app/services.py#L1428)
 
 ```python
 async def admin_reset_2fa(self, user_id: int, actor_id: int, ip_address: str | None=None) -> User
@@ -2452,7 +2421,7 @@ async def admin_reset_2fa(self, user_id: int, actor_id: int, ip_address: str | N
 
 ## UserService.upload_avatar
 
-[backend/app/services.py:1474](../../../../backend/app/services.py#L1474)
+[backend/app/services.py:1444](../../../../backend/app/services.py#L1444)
 
 ```python
 async def upload_avatar(self, user_id: int, upload: UploadFile, ip_address: str | None=None) -> User
@@ -2507,7 +2476,7 @@ ValueError('Unsupported avatar')
 
 ## UserService.download_avatar
 
-[backend/app/services.py:1517](../../../../backend/app/services.py#L1517)
+[backend/app/services.py:1487](../../../../backend/app/services.py#L1487)
 
 ```python
 async def download_avatar(self, user_id: int) -> tuple[User, bytes]
@@ -2540,7 +2509,7 @@ ServiceUnavailableError('Хранилище аватаров временно н
 
 ## ProjectService.__init__
 
-[backend/app/services.py:1535](../../../../backend/app/services.py#L1535)
+[backend/app/services.py:1505](../../../../backend/app/services.py#L1505)
 
 ```python
 def __init__(self, db: AsyncSession) -> None
@@ -2563,7 +2532,7 @@ def __init__(self, db: AsyncSession) -> None
 
 ## ProjectService._validate_project_dates
 
-[backend/app/services.py:1540](../../../../backend/app/services.py#L1540)
+[backend/app/services.py:1510](../../../../backend/app/services.py#L1510)
 
 ```python
 def _validate_project_dates(start_date: date | None, end_date: date | None) -> None
@@ -2593,7 +2562,7 @@ ValidationError('Дата окончания проекта не может бы
 
 ## ProjectService._normalize_project_folder
 
-[backend/app/services.py:1545](../../../../backend/app/services.py#L1545)
+[backend/app/services.py:1515](../../../../backend/app/services.py#L1515)
 
 ```python
 def _normalize_project_folder(folder: str | None) -> str
@@ -2616,7 +2585,7 @@ def _normalize_project_folder(folder: str | None) -> str
 
 ## ProjectService._normalize_folder_segment
 
-[backend/app/services.py:1550](../../../../backend/app/services.py#L1550)
+[backend/app/services.py:1520](../../../../backend/app/services.py#L1520)
 
 ```python
 def _normalize_folder_segment(name: str) -> str
@@ -2648,7 +2617,7 @@ ValidationError('Название папки не может быть пусты
 
 ## ProjectService.list_projects
 
-[backend/app/services.py:1558](../../../../backend/app/services.py#L1558)
+[backend/app/services.py:1528](../../../../backend/app/services.py#L1528)
 
 ```python
 async def list_projects(self, current_user: User, page: int, size: int, status: str | None=None) -> tuple[list[Project], int]
@@ -2690,7 +2659,7 @@ async def list_projects(self, current_user: User, page: int, size: int, status: 
 
 ## ProjectService.get_project
 
-[backend/app/services.py:1570](../../../../backend/app/services.py#L1570)
+[backend/app/services.py:1540](../../../../backend/app/services.py#L1540)
 
 ```python
 async def get_project(self, project_id: int) -> Project
@@ -2711,9 +2680,49 @@ async def get_project(self, project_id: int) -> Project
 
 </details>
 
+## ProjectService._ensure_ticket_available
+
+[backend/app/services.py:1544](../../../../backend/app/services.py#L1544)
+
+```python
+async def _ensure_ticket_available(self, key: str | None, project_id: int | None=None) -> None
+```
+
+Запрещает повторную привязку APPSEC, в том числе при параллельном создании.
+
+| Параметр | Тип | По умолчанию | Назначение |
+| --- | --- | --- | --- |
+| `key` | `str \| None` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
+| `project_id` | `int \| None` | `None` | ID проекта; доступ проверяет dependency маршрута, принадлежность ресурса — сервис. |
+
+Возвращает: `None`.
+
+Прямые операции с БД: `self.db.execute`, `self.db.scalar`.
+
+Явные raise в теле (исключения вызываемых методов могут добавляться):
+
+```python
+ConflictError('По этому APPSEC-тикету уже создан проект')
+```
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `ConflictError`
+- `func.hashtextextended`
+- `func.pg_advisory_xact_lock`
+- `query.limit`
+- `query.where`
+- `select`
+- `select(Project.id).where`
+- `self.db.execute`
+- `self.db.scalar`
+
+</details>
+
 ## ProjectService.create_project
 
-[backend/app/services.py:1574](../../../../backend/app/services.py#L1574)
+[backend/app/services.py:1555](../../../../backend/app/services.py#L1555)
 
 ```python
 async def create_project(self, payload: dict, actor_id: int, ip_address: str | None=None) -> Project
@@ -2747,6 +2756,7 @@ ValidationError('Поле description проекта удалено')
 - `normalize_project_ticket`
 - `normalize_project_versions`
 - `payload.get`
+- `self._ensure_ticket_available`
 - `self._normalize_project_folder`
 - `self._validate_project_dates`
 - `self.audit.log`
@@ -2760,7 +2770,7 @@ ValidationError('Поле description проекта удалено')
 
 ## ProjectService.update_project
 
-[backend/app/services.py:1595](../../../../backend/app/services.py#L1595)
+[backend/app/services.py:1577](../../../../backend/app/services.py#L1577)
 
 ```python
 async def update_project(self, project_id: int, payload: dict, actor_id: int, ip_address: str | None=None) -> Project
@@ -2796,6 +2806,7 @@ ValidationError('Поле description проекта удалено')
 - `normalize_project_versions`
 - `payload.get`
 - `payload.items`
+- `self._ensure_ticket_available`
 - `self._normalize_project_folder`
 - `self._notify_project_status_changed`
 - `self._validate_project_dates`
@@ -2813,7 +2824,7 @@ ValidationError('Поле description проекта удалено')
 
 ## ProjectService._notify_project_status_changed
 
-[backend/app/services.py:1648](../../../../backend/app/services.py#L1648)
+[backend/app/services.py:1631](../../../../backend/app/services.py#L1631)
 
 ```python
 async def _notify_project_status_changed(self, project: Project, actor_id: int) -> None
@@ -2851,7 +2862,7 @@ async def _notify_project_status_changed(self, project: Project, actor_id: int) 
 
 ## ProjectService.delete_project
 
-[backend/app/services.py:1687](../../../../backend/app/services.py#L1687)
+[backend/app/services.py:1670](../../../../backend/app/services.py#L1670)
 
 ```python
 async def delete_project(self, project_id: int, actor_id: int, ip_address: str | None=None) -> None
@@ -2884,7 +2895,7 @@ async def delete_project(self, project_id: int, actor_id: int, ip_address: str |
 
 ## ProjectService.list_project_stats
 
-[backend/app/services.py:1698](../../../../backend/app/services.py#L1698)
+[backend/app/services.py:1681](../../../../backend/app/services.py#L1681)
 
 ```python
 async def list_project_stats(self, current_user: User) -> list[dict]
@@ -2933,7 +2944,7 @@ UI мог агрегировать по вкладке (активные/арх�
 
 ## ProjectService.list_members
 
-[backend/app/services.py:1749](../../../../backend/app/services.py#L1749)
+[backend/app/services.py:1732](../../../../backend/app/services.py#L1732)
 
 ```python
 async def list_members(self, project_id: int) -> list[dict]
@@ -2964,7 +2975,7 @@ async def list_members(self, project_id: int) -> list[dict]
 
 ## ProjectService._is_project_manager
 
-[backend/app/services.py:1771](../../../../backend/app/services.py#L1771)
+[backend/app/services.py:1755](../../../../backend/app/services.py#L1755)
 
 ```python
 async def _is_project_manager(self, project: Project, actor: User) -> bool
@@ -2996,7 +3007,7 @@ async def _is_project_manager(self, project: Project, actor: User) -> bool
 
 ## ProjectService.ensure_can_manage_members
 
-[backend/app/services.py:1788](../../../../backend/app/services.py#L1788)
+[backend/app/services.py:1772](../../../../backend/app/services.py#L1772)
 
 ```python
 async def ensure_can_manage_members(self, project_id: int, actor: User) -> Project
@@ -3028,7 +3039,7 @@ ForbiddenError('Управлять участниками может админ,
 
 ## ProjectService.ensure_can_edit_project
 
-[backend/app/services.py:1795](../../../../backend/app/services.py#L1795)
+[backend/app/services.py:1779](../../../../backend/app/services.py#L1779)
 
 ```python
 async def ensure_can_edit_project(self, project_id: int, actor: User) -> Project
@@ -3062,7 +3073,7 @@ ForbiddenError('Изменять проект может админ, лид пр
 
 ## ProjectService.add_member
 
-[backend/app/services.py:1805](../../../../backend/app/services.py#L1805)
+[backend/app/services.py:1789](../../../../backend/app/services.py#L1789)
 
 ```python
 async def add_member(self, project_id: int, user_id: int, actor_id: int, ip_address: str | None=None) -> dict
@@ -3112,7 +3123,7 @@ NotFoundError('User not found')
 
 ## ProjectService.remove_member
 
-[backend/app/services.py:1856](../../../../backend/app/services.py#L1856)
+[backend/app/services.py:1840](../../../../backend/app/services.py#L1840)
 
 ```python
 async def remove_member(self, project_id: int, user_id: int, actor_id: int, ip_address: str | None=None) -> None
@@ -3155,7 +3166,7 @@ NotFoundError('Участник не найден')
 
 ## ProjectService.list_project_activity
 
-[backend/app/services.py:1878](../../../../backend/app/services.py#L1878)
+[backend/app/services.py:1862](../../../../backend/app/services.py#L1862)
 
 ```python
 async def list_project_activity(self, project_id: int, limit: int=50) -> list[dict]
@@ -3218,7 +3229,7 @@ entity_id каждой сущности проекта + fallback на details.p
 
 ## ProjectService.list_folders
 
-[backend/app/services.py:1943](../../../../backend/app/services.py#L1943)
+[backend/app/services.py:1927](../../../../backend/app/services.py#L1927)
 
 ```python
 async def list_folders(self) -> list[ProjectFolder]
@@ -3244,7 +3255,7 @@ async def list_folders(self) -> list[ProjectFolder]
 
 ## ProjectService.create_folder
 
-[backend/app/services.py:1948](../../../../backend/app/services.py#L1948)
+[backend/app/services.py:1932](../../../../backend/app/services.py#L1932)
 
 ```python
 async def create_folder(self, name: str, parent_id: int | None, actor_id: int, ip_address: str | None=None) -> ProjectFolder
@@ -3291,7 +3302,7 @@ NotFoundError('Родительская папка не найдена')
 
 ## ProjectService.move_folder
 
-[backend/app/services.py:1970](../../../../backend/app/services.py#L1970)
+[backend/app/services.py:1954](../../../../backend/app/services.py#L1954)
 
 ```python
 async def move_folder(self, folder_id: int, new_parent_id: int | None, actor_id: int, ip_address: str | None=None) -> ProjectFolder
@@ -3349,7 +3360,7 @@ ValidationError('Нельзя переместить папку в саму се
 
 ## ProjectService.delete_folder
 
-[backend/app/services.py:2043](../../../../backend/app/services.py#L2043)
+[backend/app/services.py:2027](../../../../backend/app/services.py#L2027)
 
 ```python
 async def delete_folder(self, folder_id: int, actor_id: int, ip_address: str | None=None) -> dict
@@ -3407,7 +3418,7 @@ NotFoundError('Папка не найдена')
 
 ## AssetService.__init__
 
-[backend/app/services.py:2099](../../../../backend/app/services.py#L2099)
+[backend/app/services.py:2083](../../../../backend/app/services.py#L2083)
 
 ```python
 def __init__(self, db: AsyncSession) -> None
@@ -3430,7 +3441,7 @@ def __init__(self, db: AsyncSession) -> None
 
 ## AssetService._normalize_endpoint_query_params
 
-[backend/app/services.py:2104](../../../../backend/app/services.py#L2104)
+[backend/app/services.py:2088](../../../../backend/app/services.py#L2088)
 
 ```python
 def _normalize_endpoint_query_params(raw_params: list[dict] | None) -> list[dict]
@@ -3459,7 +3470,7 @@ def _normalize_endpoint_query_params(raw_params: list[dict] | None) -> list[dict
 
 ## AssetService._normalize_endpoint_path
 
-[backend/app/services.py:2149](../../../../backend/app/services.py#L2149)
+[backend/app/services.py:2133](../../../../backend/app/services.py#L2133)
 
 ```python
 def _normalize_endpoint_path(path_value: str | None) -> str | None
@@ -3490,7 +3501,7 @@ def _normalize_endpoint_path(path_value: str | None) -> str | None
 
 ## AssetService._normalize_endpoint_headers
 
-[backend/app/services.py:2165](../../../../backend/app/services.py#L2165)
+[backend/app/services.py:2149](../../../../backend/app/services.py#L2149)
 
 ```python
 def _normalize_endpoint_headers(raw_headers: list[dict] | None) -> list[dict]
@@ -3517,7 +3528,7 @@ def _normalize_endpoint_headers(raw_headers: list[dict] | None) -> list[dict]
 
 ## AssetService._sanitize_parsed_header_pairs
 
-[backend/app/services.py:2178](../../../../backend/app/services.py#L2178)
+[backend/app/services.py:2162](../../../../backend/app/services.py#L2162)
 
 ```python
 def _sanitize_parsed_header_pairs(pairs: list[tuple[str, str]]) -> list[dict]
@@ -3543,7 +3554,7 @@ Strip noisy/sensitive headers; Cookie/Authorization placeholders.
 
 ## AssetService._sanitize_stored_header_items
 
-[backend/app/services.py:2200](../../../../backend/app/services.py#L2200)
+[backend/app/services.py:2184](../../../../backend/app/services.py#L2184)
 
 ```python
 def _sanitize_stored_header_items(raw: list[dict] | None) -> list[dict]
@@ -3571,7 +3582,7 @@ def _sanitize_stored_header_items(raw: list[dict] | None) -> list[dict]
 
 ## AssetService._parse_request_target_token
 
-[backend/app/services.py:2213](../../../../backend/app/services.py#L2213)
+[backend/app/services.py:2197](../../../../backend/app/services.py#L2197)
 
 ```python
 def _parse_request_target_token(path_token: str) -> tuple[str, list[tuple[str, str]]]
@@ -3598,7 +3609,7 @@ def _parse_request_target_token(path_token: str) -> tuple[str, list[tuple[str, s
 
 ## AssetService._apply_structured_request_payload
 
-[backend/app/services.py:2223](../../../../backend/app/services.py#L2223)
+[backend/app/services.py:2207](../../../../backend/app/services.py#L2207)
 
 ```python
 def _apply_structured_request_payload(payload: dict) -> dict
@@ -3628,7 +3639,7 @@ def _apply_structured_request_payload(payload: dict) -> dict
 
 ## AssetService._apply_raw_request_payload
 
-[backend/app/services.py:2240](../../../../backend/app/services.py#L2240)
+[backend/app/services.py:2224](../../../../backend/app/services.py#L2224)
 
 ```python
 def _apply_raw_request_payload(payload: dict) -> dict
@@ -3682,7 +3693,7 @@ ValidationError('request_raw содержит неподдерживаемый H
 
 ## AssetService._ensure_host
 
-[backend/app/services.py:2293](../../../../backend/app/services.py#L2293)
+[backend/app/services.py:2277](../../../../backend/app/services.py#L2277)
 
 ```python
 async def _ensure_host(self, project_id: int, host_id: int) -> None
@@ -3717,7 +3728,7 @@ NotFoundError('Хост не найден')
 
 ## AssetService._get_host
 
-[backend/app/services.py:2298](../../../../backend/app/services.py#L2298)
+[backend/app/services.py:2282](../../../../backend/app/services.py#L2282)
 
 ```python
 async def _get_host(self, project_id: int, host_id: int) -> Host
@@ -3757,7 +3768,7 @@ NotFoundError('Хост не найден')
 
 ## AssetService._normalize_host_ip_entries
 
-[backend/app/services.py:2312](../../../../backend/app/services.py#L2312)
+[backend/app/services.py:2296](../../../../backend/app/services.py#L2296)
 
 ```python
 def _normalize_host_ip_entries(primary_ip: str | None, raw_entries: list[str | dict] | None) -> list[dict]
@@ -3787,7 +3798,7 @@ def _normalize_host_ip_entries(primary_ip: str | None, raw_entries: list[str | d
 
 ## AssetService._normalize_host_ip_entries.add_entry
 
-[backend/app/services.py:2319](../../../../backend/app/services.py#L2319)
+[backend/app/services.py:2303](../../../../backend/app/services.py#L2303)
 
 ```python
 def add_entry(ip_address: str | None, label: str | None=None, is_primary: bool=False) -> None
@@ -3814,7 +3825,7 @@ def add_entry(ip_address: str | None, label: str | None=None, is_primary: bool=F
 
 ## AssetService._replace_host_ip_addresses
 
-[backend/app/services.py:2354](../../../../backend/app/services.py#L2354)
+[backend/app/services.py:2338](../../../../backend/app/services.py#L2338)
 
 ```python
 async def _replace_host_ip_addresses(self, host: Host, entries: list[dict]) -> None
@@ -3850,7 +3861,7 @@ async def _replace_host_ip_addresses(self, host: Host, entries: list[dict]) -> N
 
 ## AssetService._get_port
 
-[backend/app/services.py:2392](../../../../backend/app/services.py#L2392)
+[backend/app/services.py:2376](../../../../backend/app/services.py#L2376)
 
 ```python
 async def _get_port(self, host_id: int, port_id: int) -> Port
@@ -3888,7 +3899,7 @@ NotFoundError('Порт не найден')
 
 ## AssetService.list_host_creation_times
 
-[backend/app/services.py:2398](../../../../backend/app/services.py#L2398)
+[backend/app/services.py:2382](../../../../backend/app/services.py#L2382)
 
 ```python
 async def list_host_creation_times(self, project_id: int) -> list[datetime]
@@ -3923,7 +3934,7 @@ async def list_host_creation_times(self, project_id: int) -> list[datetime]
 
 ## AssetService.list_hosts
 
-[backend/app/services.py:2409](../../../../backend/app/services.py#L2409)
+[backend/app/services.py:2393](../../../../backend/app/services.py#L2393)
 
 ```python
 async def list_hosts(self, project_id: int, page: int, size: int, status: str | None, origin: str='host') -> tuple[list[Host], int]
@@ -3969,7 +3980,7 @@ async def list_hosts(self, project_id: int, page: int, size: int, status: str | 
 
 ## AssetService.create_host
 
-[backend/app/services.py:2434](../../../../backend/app/services.py#L2434)
+[backend/app/services.py:2418](../../../../backend/app/services.py#L2418)
 
 ```python
 async def create_host(self, project_id: int, payload: dict, actor_id: int) -> Host
@@ -4008,7 +4019,7 @@ async def create_host(self, project_id: int, payload: dict, actor_id: int) -> Ho
 
 ## AssetService.get_host
 
-[backend/app/services.py:2451](../../../../backend/app/services.py#L2451)
+[backend/app/services.py:2435](../../../../backend/app/services.py#L2435)
 
 ```python
 async def get_host(self, project_id: int, host_id: int) -> dict
@@ -4039,7 +4050,7 @@ async def get_host(self, project_id: int, host_id: int) -> dict
 
 ## AssetService.update_host
 
-[backend/app/services.py:2522](../../../../backend/app/services.py#L2522)
+[backend/app/services.py:2506](../../../../backend/app/services.py#L2506)
 
 ```python
 async def update_host(self, project_id: int, host_id: int, payload: dict, actor_id: int) -> Host
@@ -4086,7 +4097,7 @@ ValidationError('Нужно указать хотя бы один IP-адрес 
 
 ## AssetService.change_ip_address
 
-[backend/app/services.py:2543](../../../../backend/app/services.py#L2543)
+[backend/app/services.py:2527](../../../../backend/app/services.py#L2527)
 
 ```python
 async def change_ip_address(self, project_id: int, old_ip: str, new_ip: str, actor_id: int) -> dict
@@ -4179,7 +4190,7 @@ ValidationError(str(exc))
 
 ## AssetService.delete_host
 
-[backend/app/services.py:2624](../../../../backend/app/services.py#L2624)
+[backend/app/services.py:2608](../../../../backend/app/services.py#L2608)
 
 ```python
 async def delete_host(self, project_id: int, host_id: int, actor_id: int) -> None
@@ -4211,7 +4222,7 @@ async def delete_host(self, project_id: int, host_id: int, actor_id: int) -> Non
 
 ## AssetService.list_hidden_ips
 
-[backend/app/services.py:2639](../../../../backend/app/services.py#L2639)
+[backend/app/services.py:2623](../../../../backend/app/services.py#L2623)
 
 ```python
 async def list_hidden_ips(self, project_id: int) -> list[str]
@@ -4240,7 +4251,7 @@ async def list_hidden_ips(self, project_id: int) -> list[str]
 
 ## AssetService.hide_ip
 
-[backend/app/services.py:2645](../../../../backend/app/services.py#L2645)
+[backend/app/services.py:2629](../../../../backend/app/services.py#L2629)
 
 ```python
 async def hide_ip(self, project_id: int, ip_address: str, actor_id: int) -> None
@@ -4292,7 +4303,7 @@ ValidationError('Не указан IP-адрес')
 
 ## AssetService.unhide_ip
 
-[backend/app/services.py:2674](../../../../backend/app/services.py#L2674)
+[backend/app/services.py:2658](../../../../backend/app/services.py#L2658)
 
 ```python
 async def unhide_ip(self, project_id: int, ip_address: str, actor_id: int) -> None
@@ -4328,7 +4339,7 @@ async def unhide_ip(self, project_id: int, ip_address: str, actor_id: int) -> No
 
 ## AssetService.list_ports
 
-[backend/app/services.py:2689](../../../../backend/app/services.py#L2689)
+[backend/app/services.py:2673](../../../../backend/app/services.py#L2673)
 
 ```python
 async def list_ports(self, project_id: int, host_id: int, ip_address_id: int | None=None) -> list[Port]
@@ -4364,7 +4375,7 @@ async def list_ports(self, project_id: int, host_id: int, ip_address_id: int | N
 
 ## AssetService._get_host_ip
 
-[backend/app/services.py:2696](../../../../backend/app/services.py#L2696)
+[backend/app/services.py:2680](../../../../backend/app/services.py#L2680)
 
 ```python
 async def _get_host_ip(self, host_id: int, ip_address_id: int) -> HostIpAddress
@@ -4400,7 +4411,7 @@ ValidationError('IP-адрес не принадлежит указанному 
 
 ## AssetService.create_port
 
-[backend/app/services.py:2706](../../../../backend/app/services.py#L2706)
+[backend/app/services.py:2690](../../../../backend/app/services.py#L2690)
 
 ```python
 async def create_port(self, project_id: int, host_id: int, payload: dict, actor_id: int) -> Port
@@ -4448,7 +4459,7 @@ ConflictError('Порт с таким номером и протоколом у�
 
 ## AssetService.get_port
 
-[backend/app/services.py:2729](../../../../backend/app/services.py#L2729)
+[backend/app/services.py:2713](../../../../backend/app/services.py#L2713)
 
 ```python
 async def get_port(self, project_id: int, host_id: int, port_id: int) -> Port
@@ -4474,7 +4485,7 @@ async def get_port(self, project_id: int, host_id: int, port_id: int) -> Port
 
 ## AssetService.update_port
 
-[backend/app/services.py:2733](../../../../backend/app/services.py#L2733)
+[backend/app/services.py:2717](../../../../backend/app/services.py#L2717)
 
 ```python
 async def update_port(self, project_id: int, host_id: int, port_id: int, payload: dict, actor_id: int) -> Port
@@ -4524,7 +4535,7 @@ ConflictError('Порт с таким номером и протоколом у�
 
 ## AssetService.delete_port
 
-[backend/app/services.py:2762](../../../../backend/app/services.py#L2762)
+[backend/app/services.py:2746](../../../../backend/app/services.py#L2746)
 
 ```python
 async def delete_port(self, project_id: int, host_id: int, port_id: int, actor_id: int) -> None
@@ -4558,7 +4569,7 @@ async def delete_port(self, project_id: int, host_id: int, port_id: int, actor_i
 
 ## AssetService.list_services
 
-[backend/app/services.py:2770](../../../../backend/app/services.py#L2770)
+[backend/app/services.py:2754](../../../../backend/app/services.py#L2754)
 
 ```python
 async def list_services(self, project_id: int, host_id: int, port_id: int) -> list[Service]
@@ -4593,7 +4604,7 @@ async def list_services(self, project_id: int, host_id: int, port_id: int) -> li
 
 ## AssetService.create_service
 
-[backend/app/services.py:2775](../../../../backend/app/services.py#L2775)
+[backend/app/services.py:2759](../../../../backend/app/services.py#L2759)
 
 ```python
 async def create_service(self, project_id: int, host_id: int, port_id: int, payload: dict, actor_id: int) -> Service
@@ -4630,7 +4641,7 @@ async def create_service(self, project_id: int, host_id: int, port_id: int, payl
 
 ## AssetService.update_service
 
-[backend/app/services.py:2786](../../../../backend/app/services.py#L2786)
+[backend/app/services.py:2770](../../../../backend/app/services.py#L2770)
 
 ```python
 async def update_service(self, project_id: int, host_id: int, port_id: int, service_id: int, payload: dict, actor_id: int) -> Service
@@ -4679,7 +4690,7 @@ NotFoundError('Сервис не найден')
 
 ## AssetService.delete_service
 
-[backend/app/services.py:2803](../../../../backend/app/services.py#L2803)
+[backend/app/services.py:2787](../../../../backend/app/services.py#L2787)
 
 ```python
 async def delete_service(self, project_id: int, host_id: int, port_id: int, service_id: int, actor_id: int) -> None
@@ -4725,7 +4736,7 @@ NotFoundError('Сервис не найден')
 
 ## AssetService.list_endpoints
 
-[backend/app/services.py:2814](../../../../backend/app/services.py#L2814)
+[backend/app/services.py:2798](../../../../backend/app/services.py#L2798)
 
 ```python
 async def list_endpoints(self, project_id: int, host_id: int) -> list[Endpoint]
@@ -4756,9 +4767,188 @@ async def list_endpoints(self, project_id: int, host_id: int) -> list[Endpoint]
 
 </details>
 
+## AssetService.get_endpoint
+
+[backend/app/services.py:2802](../../../../backend/app/services.py#L2802)
+
+```python
+async def get_endpoint(self, project_id: int, host_id: int, endpoint_id: int) -> Endpoint
+```
+
+Читает эндпоинт только внутри указанного хоста и проекта.
+
+| Параметр | Тип | По умолчанию | Назначение |
+| --- | --- | --- | --- |
+| `project_id` | `int` | `обязательный` | ID проекта; доступ проверяет dependency маршрута, принадлежность ресурса — сервис. |
+| `host_id` | `int` | `обязательный` | ID родительского хоста. |
+| `endpoint_id` | `int` | `обязательный` | ID эндпоинта. |
+
+Возвращает: `Endpoint`.
+
+Прямые операции с БД: `self.db.scalar`.
+
+Явные raise в теле (исключения вызываемых методов могут добавляться):
+
+```python
+NotFoundError('Эндпоинт не найден')
+```
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `NotFoundError`
+- `select`
+- `select(Endpoint).where`
+- `self._ensure_host`
+- `self.db.scalar`
+
+</details>
+
+## AssetService.list_ip_addresses
+
+[backend/app/services.py:2810](../../../../backend/app/services.py#L2810)
+
+```python
+async def list_ip_addresses(self, project_id: int, page: int, size: int, host_id: int | None=None) -> tuple[list[HostIpAddress], int]
+```
+
+Страница IP проекта; один адрес у разных хостов — разные привязки.
+
+| Параметр | Тип | По умолчанию | Назначение |
+| --- | --- | --- | --- |
+| `project_id` | `int` | `обязательный` | ID проекта; доступ проверяет dependency маршрута, принадлежность ресурса — сервис. |
+| `page` | `int` | `обязательный` | Номер страницы, начиная с 1. |
+| `size` | `int` | `обязательный` | Число элементов страницы; верхняя граница задаётся маршрутом. |
+| `host_id` | `int \| None` | `None` | ID родительского хоста. |
+
+Возвращает: `tuple[list[HostIpAddress], int]`.
+
+Прямые операции с БД: `self.db.scalar`, `self.db.scalars`.
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `HostIpAddress.created_at.desc`
+- `HostIpAddress.id.desc`
+- `func.count`
+- `list`
+- `query.options`
+- `query.options(selectinload(HostIpAddress.ports).selectinload(Port.services)).order_by`
+- `query.options(selectinload(HostIpAddress.ports).selectinload(Port.services)).order_by(HostIpAddress.created_at.desc(), HostIpAddress.id.desc()).offset`
+- `query.options(selectinload(HostIpAddress.ports).selectinload(Port.services)).order_by(HostIpAddress.created_at.desc(), HostIpAddress.id.desc()).offset((page - 1) * size).limit`
+- `query.subquery`
+- `query.where`
+- `select`
+- `select(HostIpAddress).join`
+- `select(HostIpAddress).join(Host).where`
+- `select(func.count()).select_from`
+- `selectinload`
+- `selectinload(HostIpAddress.ports).selectinload`
+- `self._ensure_host`
+- `self.db.scalar`
+- `self.db.scalars`
+
+</details>
+
+## AssetService.get_ip_address
+
+[backend/app/services.py:2827](../../../../backend/app/services.py#L2827)
+
+```python
+async def get_ip_address(self, project_id: int, ip_id: int) -> HostIpAddress
+```
+
+Читает IP с портами и сервисами, проверяя проект родительского хоста.
+
+| Параметр | Тип | По умолчанию | Назначение |
+| --- | --- | --- | --- |
+| `project_id` | `int` | `обязательный` | ID проекта; доступ проверяет dependency маршрута, принадлежность ресурса — сервис. |
+| `ip_id` | `int` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
+
+Возвращает: `HostIpAddress`.
+
+Прямые операции с БД: `self.db.scalar`.
+
+Явные raise в теле (исключения вызываемых методов могут добавляться):
+
+```python
+NotFoundError('IP-адрес не найден')
+```
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `NotFoundError`
+- `select`
+- `select(HostIpAddress).join`
+- `select(HostIpAddress).join(Host).where`
+- `select(HostIpAddress).join(Host).where(Host.project_id == project_id, HostIpAddress.id == ip_id).options`
+- `selectinload`
+- `selectinload(HostIpAddress.ports).selectinload`
+- `self.db.scalar`
+
+</details>
+
+## AssetService.create_ip_address
+
+[backend/app/services.py:2837](../../../../backend/app/services.py#L2837)
+
+```python
+async def create_ip_address(self, project_id: int, payload: dict, actor_id: int) -> HostIpAddress
+```
+
+Сохраняет IP без сетевых обращений; повторная привязка не меняет данные.
+
+Без host_id создаёт служебный хост origin=ip. Блокировка родителя
+сериализует добавления адресов и выбор primary у существующего хоста.
+
+| Параметр | Тип | По умолчанию | Назначение |
+| --- | --- | --- | --- |
+| `project_id` | `int` | `обязательный` | ID проекта; доступ проверяет dependency маршрута, принадлежность ресурса — сервис. |
+| `payload` | `dict` | `обязательный` | Данные операции; для HTTP структура определена Pydantic request-схемой. |
+| `actor_id` | `int` | `обязательный` | ID инициатора для аудита и уведомлений. |
+
+Возвращает: `HostIpAddress`.
+
+Прямые операции с БД: `self.db.add`, `self.db.execute`, `self.db.flush`, `self.db.scalar`.
+
+Явные raise в теле (исключения вызываемых методов могут добавляться):
+
+```python
+NotFoundError('Хост не найден')
+```
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `Host`
+- `HostIpAddress`
+- `NotFoundError`
+- `bool`
+- `payload.get`
+- `select`
+- `select(Host).where`
+- `select(Host).where(Host.id == host_id, Host.project_id == project_id).with_for_update`
+- `select(HostIpAddress).where`
+- `select(HostIpAddress.id).where`
+- `select(HostIpAddress.id).where(HostIpAddress.host_id == host_id).limit`
+- `self.audit.log`
+- `self.db.add`
+- `self.db.execute`
+- `self.db.flush`
+- `self.db.scalar`
+- `self.get_ip_address`
+- `str`
+- `update`
+- `update(HostIpAddress).where`
+- `update(HostIpAddress).where(HostIpAddress.host_id == host_id).values`
+- `ws_manager.broadcast`
+
+</details>
+
 ## AssetService.list_js_files
 
-[backend/app/services.py:2818](../../../../backend/app/services.py#L2818)
+[backend/app/services.py:2875](../../../../backend/app/services.py#L2875)
 
 ```python
 async def list_js_files(self, project_id: int, offset: int=0, limit: int=200) -> tuple[list[dict], int]
@@ -4804,7 +4994,7 @@ async def list_js_files(self, project_id: int, offset: int=0, limit: int=200) ->
 
 ## AssetService._delete_js_where
 
-[backend/app/services.py:2875](../../../../backend/app/services.py#L2875)
+[backend/app/services.py:2932](../../../../backend/app/services.py#L2932)
 
 ```python
 async def _delete_js_where(self, project_id: int, extra) -> int
@@ -4843,7 +5033,7 @@ js_secrets по подзапросу, затем сами файлы. Возвр
 
 ## AssetService.delete_js_for_host
 
-[backend/app/services.py:2889](../../../../backend/app/services.py#L2889)
+[backend/app/services.py:2946](../../../../backend/app/services.py#L2946)
 
 ```python
 async def delete_js_for_host(self, project_id: int, host_id: int, actor_id: int) -> int
@@ -4871,7 +5061,7 @@ async def delete_js_for_host(self, project_id: int, host_id: int, actor_id: int)
 
 ## AssetService.bulk_delete_js_files
 
-[backend/app/services.py:2906](../../../../backend/app/services.py#L2906)
+[backend/app/services.py:2963](../../../../backend/app/services.py#L2963)
 
 ```python
 async def bulk_delete_js_files(self, project_id: int, ids: list[int], actor_id: int) -> int
@@ -4907,7 +5097,7 @@ async def bulk_delete_js_files(self, project_id: int, ids: list[int], actor_id: 
 
 ## AssetService.create_endpoint
 
-[backend/app/services.py:2929](../../../../backend/app/services.py#L2929)
+[backend/app/services.py:2986](../../../../backend/app/services.py#L2986)
 
 ```python
 async def create_endpoint(self, project_id: int, host_id: int, payload: dict, actor_id: int) -> Endpoint
@@ -4953,7 +5143,7 @@ async def create_endpoint(self, project_id: int, host_id: int, payload: dict, ac
 
 ## AssetService.update_endpoint
 
-[backend/app/services.py:2963](../../../../backend/app/services.py#L2963)
+[backend/app/services.py:3020](../../../../backend/app/services.py#L3020)
 
 ```python
 async def update_endpoint(self, project_id: int, host_id: int, endpoint_id: int, payload: dict, actor_id: int) -> Endpoint
@@ -5008,7 +5198,7 @@ NotFoundError('Endpoint не найден')
 
 ## AssetService.delete_endpoint
 
-[backend/app/services.py:2995](../../../../backend/app/services.py#L2995)
+[backend/app/services.py:3052](../../../../backend/app/services.py#L3052)
 
 ```python
 async def delete_endpoint(self, project_id: int, host_id: int, endpoint_id: int, actor_id: int) -> None
@@ -5053,7 +5243,7 @@ NotFoundError('Endpoint не найден')
 
 ## VulnerabilityService.__init__
 
-[backend/app/services.py:3010](../../../../backend/app/services.py#L3010)
+[backend/app/services.py:3067](../../../../backend/app/services.py#L3067)
 
 ```python
 def __init__(self, db: AsyncSession) -> None
@@ -5076,7 +5266,7 @@ def __init__(self, db: AsyncSession) -> None
 
 ## VulnerabilityService._get_vuln
 
-[backend/app/services.py:3014](../../../../backend/app/services.py#L3014)
+[backend/app/services.py:3071](../../../../backend/app/services.py#L3071)
 
 ```python
 async def _get_vuln(self, project_id: int, vuln_id: int) -> Vulnerability
@@ -5113,7 +5303,7 @@ NotFoundError('Уязвимость не найдена')
 
 ## VulnerabilityService._split_steps_text
 
-[backend/app/services.py:3025](../../../../backend/app/services.py#L3025)
+[backend/app/services.py:3082](../../../../backend/app/services.py#L3082)
 
 ```python
 def _split_steps_text(text: str) -> list[str]
@@ -5145,7 +5335,7 @@ def _split_steps_text(text: str) -> list[str]
 
 ## VulnerabilityService._hydrate_workflow_steps
 
-[backend/app/services.py:3048](../../../../backend/app/services.py#L3048)
+[backend/app/services.py:3105](../../../../backend/app/services.py#L3105)
 
 ```python
 def _hydrate_workflow_steps(vuln: Vulnerability) -> None
@@ -5175,7 +5365,7 @@ def _hydrate_workflow_steps(vuln: Vulnerability) -> None
 
 ## VulnerabilityService._normalize_workflow_steps
 
-[backend/app/services.py:3066](../../../../backend/app/services.py#L3066)
+[backend/app/services.py:3123](../../../../backend/app/services.py#L3123)
 
 ```python
 def _normalize_workflow_steps(steps: list[dict] | None) -> list[dict]
@@ -5204,7 +5394,7 @@ def _normalize_workflow_steps(steps: list[dict] | None) -> list[dict]
 
 ## VulnerabilityService._workflow_steps_to_text
 
-[backend/app/services.py:3088](../../../../backend/app/services.py#L3088)
+[backend/app/services.py:3145](../../../../backend/app/services.py#L3145)
 
 ```python
 def _workflow_steps_to_text(steps: list[dict]) -> str | None
@@ -5233,7 +5423,7 @@ def _workflow_steps_to_text(steps: list[dict]) -> str | None
 
 ## VulnerabilityService._normalize_cvss_vector
 
-[backend/app/services.py:3105](../../../../backend/app/services.py#L3105)
+[backend/app/services.py:3162](../../../../backend/app/services.py#L3162)
 
 ```python
 def _normalize_cvss_vector(version: str | None, vector: str | None) -> str | None
@@ -5261,7 +5451,7 @@ def _normalize_cvss_vector(version: str | None, vector: str | None) -> str | Non
 
 ## VulnerabilityService._calculate_cvss_score
 
-[backend/app/services.py:3118](../../../../backend/app/services.py#L3118)
+[backend/app/services.py:3175](../../../../backend/app/services.py#L3175)
 
 ```python
 def _calculate_cvss_score(version: str | None, vector: str | None) -> tuple[str | None, float | None]
@@ -5297,7 +5487,7 @@ ValidationError(f'Некорректный CVSS вектор: {exc}')
 
 ## VulnerabilityService._apply_calculated_cvss_fields
 
-[backend/app/services.py:3133](../../../../backend/app/services.py#L3133)
+[backend/app/services.py:3190](../../../../backend/app/services.py#L3190)
 
 ```python
 def _apply_calculated_cvss_fields(payload: dict, *, current_version: str | None=None, current_vector: str | None=None) -> None
@@ -5333,7 +5523,7 @@ ValidationError('Для расчёта CVSS укажите корректный 
 
 ## VulnerabilityService._severity_from_cvss_score
 
-[backend/app/services.py:3162](../../../../backend/app/services.py#L3162)
+[backend/app/services.py:3219](../../../../backend/app/services.py#L3219)
 
 ```python
 def _severity_from_cvss_score(score: float | None) -> Severity
@@ -5349,7 +5539,7 @@ def _severity_from_cvss_score(score: float | None) -> Severity
 
 ## VulnerabilityService._resolve_workflow_step_endpoints
 
-[backend/app/services.py:3176](../../../../backend/app/services.py#L3176)
+[backend/app/services.py:3233](../../../../backend/app/services.py#L3233)
 
 ```python
 async def _resolve_workflow_step_endpoints(self, project_id: int, host_id: int, steps: list[dict]) -> list[dict]
@@ -5391,7 +5581,7 @@ async def _resolve_workflow_step_endpoints(self, project_id: int, host_id: int, 
 
 ## VulnerabilityService._get_primary_host_id
 
-[backend/app/services.py:3225](../../../../backend/app/services.py#L3225)
+[backend/app/services.py:3282](../../../../backend/app/services.py#L3282)
 
 ```python
 async def _get_primary_host_id(self, vuln_id: int) -> int
@@ -5427,7 +5617,7 @@ ValidationError('Уязвимость должна быть привязана �
 
 ## VulnerabilityService._validate_workflow_step_images
 
-[backend/app/services.py:3235](../../../../backend/app/services.py#L3235)
+[backend/app/services.py:3292](../../../../backend/app/services.py#L3292)
 
 ```python
 async def _validate_workflow_step_images(self, vulnerability_id: int | None, steps: list[dict] | None) -> None
@@ -5473,7 +5663,7 @@ ValidationError(f"workflow_steps.image_file_ids содержат файлы, н�
 
 ## VulnerabilityService.list
 
-[backend/app/services.py:3259](../../../../backend/app/services.py#L3259)
+[backend/app/services.py:3316](../../../../backend/app/services.py#L3316)
 
 ```python
 async def list(self, project_id: int, page: int, size: int, severity: str | None, status: str | None) -> tuple[list[Vulnerability], int]
@@ -5517,7 +5707,7 @@ async def list(self, project_id: int, page: int, size: int, severity: str | None
 
 ## VulnerabilityService.host_links_for_page
 
-[backend/app/services.py:3271](../../../../backend/app/services.py#L3271)
+[backend/app/services.py:3328](../../../../backend/app/services.py#L3328)
 
 ```python
 async def host_links_for_page(self, items: list[Vulnerability]) -> dict[int, int]
@@ -5548,7 +5738,7 @@ async def host_links_for_page(self, items: list[Vulnerability]) -> dict[int, int
 
 ## VulnerabilityService.list_for_host
 
-[backend/app/services.py:3286](../../../../backend/app/services.py#L3286)
+[backend/app/services.py:3343](../../../../backend/app/services.py#L3343)
 
 ```python
 async def list_for_host(self, project_id: int, host_id: int, page: int, size: int, severity: str | None, status: str | None) -> tuple[list[Vulnerability], int]
@@ -5603,7 +5793,7 @@ NotFoundError('Хост не найден')
 
 ## VulnerabilityService.create
 
-[backend/app/services.py:3314](../../../../backend/app/services.py#L3314)
+[backend/app/services.py:3371](../../../../backend/app/services.py#L3371)
 
 ```python
 async def create(self, project_id: int, payload: dict, actor_id: int) -> Vulnerability
@@ -5657,7 +5847,7 @@ ValidationError('Уязвимость должна быть привязана �
 
 ## VulnerabilityService.get
 
-[backend/app/services.py:3345](../../../../backend/app/services.py#L3345)
+[backend/app/services.py:3402](../../../../backend/app/services.py#L3402)
 
 ```python
 async def get(self, project_id: int, vuln_id: int) -> dict
@@ -5694,7 +5884,7 @@ async def get(self, project_id: int, vuln_id: int) -> dict
 
 ## VulnerabilityService.update
 
-[backend/app/services.py:3352](../../../../backend/app/services.py#L3352)
+[backend/app/services.py:3409](../../../../backend/app/services.py#L3409)
 
 ```python
 async def update(self, project_id: int, vuln_id: int, payload: dict, actor_id: int) -> Vulnerability
@@ -5742,7 +5932,7 @@ async def update(self, project_id: int, vuln_id: int, payload: dict, actor_id: i
 
 ## VulnerabilityService.patch_status
 
-[backend/app/services.py:3388](../../../../backend/app/services.py#L3388)
+[backend/app/services.py:3445](../../../../backend/app/services.py#L3445)
 
 ```python
 async def patch_status(self, project_id: int, vuln_id: int, status: str, actor_id: int) -> Vulnerability
@@ -5776,7 +5966,7 @@ async def patch_status(self, project_id: int, vuln_id: int, status: str, actor_i
 
 ## VulnerabilityService._notify_vuln_status_changed
 
-[backend/app/services.py:3406](../../../../backend/app/services.py#L3406)
+[backend/app/services.py:3463](../../../../backend/app/services.py#L3463)
 
 ```python
 async def _notify_vuln_status_changed(self, vuln: Vulnerability, actor_id: int) -> None
@@ -5809,7 +5999,7 @@ async def _notify_vuln_status_changed(self, vuln: Vulnerability, actor_id: int) 
 
 ## VulnerabilityService.delete
 
-[backend/app/services.py:3441](../../../../backend/app/services.py#L3441)
+[backend/app/services.py:3498](../../../../backend/app/services.py#L3498)
 
 ```python
 async def delete(self, project_id: int, vuln_id: int, actor_id: int) -> None
@@ -5841,7 +6031,7 @@ async def delete(self, project_id: int, vuln_id: int, actor_id: int) -> None
 
 ## VulnerabilityService.list_assets
 
-[backend/app/services.py:3449](../../../../backend/app/services.py#L3449)
+[backend/app/services.py:3506](../../../../backend/app/services.py#L3506)
 
 ```python
 async def list_assets(self, project_id: int, vuln_id: int) -> list[VulnerabilityAsset]
@@ -5872,7 +6062,7 @@ async def list_assets(self, project_id: int, vuln_id: int) -> list[Vulnerability
 
 ## VulnerabilityService._assert_asset_in_project
 
-[backend/app/services.py:3453](../../../../backend/app/services.py#L3453)
+[backend/app/services.py:3510](../../../../backend/app/services.py#L3510)
 
 ```python
 async def _assert_asset_in_project(self, project_id: int, asset_type: AssetType, asset_id: int) -> None
@@ -5916,7 +6106,7 @@ ValidationError('Актив не найден или принадлежит др
 
 ## VulnerabilityService.add_asset
 
-[backend/app/services.py:3474](../../../../backend/app/services.py#L3474)
+[backend/app/services.py:3531](../../../../backend/app/services.py#L3531)
 
 ```python
 async def add_asset(self, project_id: int, vuln_id: int, asset_type: AssetType, asset_id: int, actor_id: int) -> VulnerabilityAsset
@@ -5964,7 +6154,7 @@ ConflictError('Связь уже существует')
 
 ## VulnerabilityService.delete_asset
 
-[backend/app/services.py:3504](../../../../backend/app/services.py#L3504)
+[backend/app/services.py:3561](../../../../backend/app/services.py#L3561)
 
 ```python
 async def delete_asset(self, project_id: int, vuln_id: int, link_id: int, actor_id: int) -> None
@@ -6013,7 +6203,7 @@ ValidationError('Уязвимость должна оставаться прив
 
 ## FileService.__init__
 
-[backend/app/services.py:3536](../../../../backend/app/services.py#L3536)
+[backend/app/services.py:3593](../../../../backend/app/services.py#L3593)
 
 ```python
 def __init__(self, db: AsyncSession, storage: MinioStorage | None=None) -> None
@@ -6038,7 +6228,7 @@ def __init__(self, db: AsyncSession, storage: MinioStorage | None=None) -> None
 
 ## FileService._ensure_vuln
 
-[backend/app/services.py:3541](../../../../backend/app/services.py#L3541)
+[backend/app/services.py:3598](../../../../backend/app/services.py#L3598)
 
 ```python
 async def _ensure_vuln(self, project_id: int, vuln_id: int) -> Vulnerability
@@ -6062,7 +6252,7 @@ async def _ensure_vuln(self, project_id: int, vuln_id: int) -> Vulnerability
 
 ## FileService.list
 
-[backend/app/services.py:3545](../../../../backend/app/services.py#L3545)
+[backend/app/services.py:3602](../../../../backend/app/services.py#L3602)
 
 ```python
 async def list(self, project_id: int, vuln_id: int) -> list[File]
@@ -6095,7 +6285,7 @@ async def list(self, project_id: int, vuln_id: int) -> list[File]
 
 ## FileService.upload
 
-[backend/app/services.py:3549](../../../../backend/app/services.py#L3549)
+[backend/app/services.py:3606](../../../../backend/app/services.py#L3606)
 
 ```python
 async def upload(self, project_id: int, vuln_id: int, upload: UploadFile, actor_id: int) -> File
@@ -6143,7 +6333,7 @@ ValidationError('Размер файла превышает 50 МБ')
 
 ## FileService.download
 
-[backend/app/services.py:3576](../../../../backend/app/services.py#L3576)
+[backend/app/services.py:3633](../../../../backend/app/services.py#L3633)
 
 ```python
 async def download(self, file_id: int, current_user: User) -> tuple[File, bytes]
@@ -6185,7 +6375,7 @@ NotFoundError('Файл не найден')
 
 ## FileService.delete
 
-[backend/app/services.py:3594](../../../../backend/app/services.py#L3594)
+[backend/app/services.py:3651](../../../../backend/app/services.py#L3651)
 
 ```python
 async def delete(self, project_id: int, vuln_id: int, file_id: int, actor_id: int) -> None
@@ -6230,7 +6420,7 @@ NotFoundError('Файл не найден')
 
 ## CommentService.__init__
 
-[backend/app/services.py:3611](../../../../backend/app/services.py#L3611)
+[backend/app/services.py:3668](../../../../backend/app/services.py#L3668)
 
 ```python
 def __init__(self, db: AsyncSession) -> None
@@ -6253,7 +6443,7 @@ def __init__(self, db: AsyncSession) -> None
 
 ## CommentService._ensure_vuln
 
-[backend/app/services.py:3615](../../../../backend/app/services.py#L3615)
+[backend/app/services.py:3672](../../../../backend/app/services.py#L3672)
 
 ```python
 async def _ensure_vuln(self, project_id: int, vuln_id: int) -> Vulnerability
@@ -6277,7 +6467,7 @@ async def _ensure_vuln(self, project_id: int, vuln_id: int) -> Vulnerability
 
 ## CommentService._extract_mentions
 
-[backend/app/services.py:3619](../../../../backend/app/services.py#L3619)
+[backend/app/services.py:3676](../../../../backend/app/services.py#L3676)
 
 ```python
 async def _extract_mentions(self, project_id: int, content: str) -> list[User]
@@ -6301,7 +6491,7 @@ async def _extract_mentions(self, project_id: int, content: str) -> list[User]
 
 ## CommentService.list
 
-[backend/app/services.py:3622](../../../../backend/app/services.py#L3622)
+[backend/app/services.py:3679](../../../../backend/app/services.py#L3679)
 
 ```python
 async def list(self, project_id: int, vuln_id: int, page: int, size: int) -> tuple[list[CommentOut], int]
@@ -6352,7 +6542,7 @@ async def list(self, project_id: int, vuln_id: int, page: int, size: int) -> tup
 
 ## CommentService.create
 
-[backend/app/services.py:3663](../../../../backend/app/services.py#L3663)
+[backend/app/services.py:3720](../../../../backend/app/services.py#L3720)
 
 ```python
 async def create(self, project_id: int, vuln_id: int, content: str, actor: User) -> CommentOut
@@ -6394,7 +6584,7 @@ async def create(self, project_id: int, vuln_id: int, content: str, actor: User)
 
 ## CommentService.update
 
-[backend/app/services.py:3720](../../../../backend/app/services.py#L3720)
+[backend/app/services.py:3777](../../../../backend/app/services.py#L3777)
 
 ```python
 async def update(self, project_id: int, vuln_id: int, comment_id: int, content: str, actor: User) -> CommentOut
@@ -6452,7 +6642,7 @@ NotFoundError('Комментарий не найден')
 
 ## CommentService.delete
 
-[backend/app/services.py:3755](../../../../backend/app/services.py#L3755)
+[backend/app/services.py:3812](../../../../backend/app/services.py#L3812)
 
 ```python
 async def delete(self, project_id: int, vuln_id: int, comment_id: int, actor: User) -> None
@@ -6498,7 +6688,7 @@ NotFoundError('Комментарий не найден')
 
 ## ProjectNoteService.__init__
 
-[backend/app/services.py:3773](../../../../backend/app/services.py#L3773)
+[backend/app/services.py:3830](../../../../backend/app/services.py#L3830)
 
 ```python
 def __init__(self, db: AsyncSession) -> None
@@ -6521,7 +6711,7 @@ def __init__(self, db: AsyncSession) -> None
 
 ## ProjectNoteService._lock_tree
 
-[backend/app/services.py:3777](../../../../backend/app/services.py#L3777)
+[backend/app/services.py:3834](../../../../backend/app/services.py#L3834)
 
 ```python
 async def _lock_tree(self, project_id: int) -> None
@@ -6549,7 +6739,7 @@ async def _lock_tree(self, project_id: int) -> None
 
 ## ProjectNoteService._ensure_project
 
-[backend/app/services.py:3781](../../../../backend/app/services.py#L3781)
+[backend/app/services.py:3838](../../../../backend/app/services.py#L3838)
 
 ```python
 async def _ensure_project(self, project_id: int) -> Project
@@ -6572,7 +6762,7 @@ async def _ensure_project(self, project_id: int) -> Project
 
 ## ProjectNoteService._get_note
 
-[backend/app/services.py:3785](../../../../backend/app/services.py#L3785)
+[backend/app/services.py:3842](../../../../backend/app/services.py#L3842)
 
 ```python
 async def _get_note(self, project_id: int, note_id: int) -> ProjectNote
@@ -6608,7 +6798,7 @@ NotFoundError('Страница заметки не найдена')
 
 ## ProjectNoteService._ensure_parent
 
-[backend/app/services.py:3791](../../../../backend/app/services.py#L3791)
+[backend/app/services.py:3848](../../../../backend/app/services.py#L3848)
 
 ```python
 async def _ensure_parent(self, project_id: int, parent_id: int | None) -> ProjectNote | None
@@ -6644,7 +6834,7 @@ NotFoundError('Родительская страница не найдена')
 
 ## ProjectNoteService._ensure_unique_title
 
-[backend/app/services.py:3801](../../../../backend/app/services.py#L3801)
+[backend/app/services.py:3858](../../../../backend/app/services.py#L3858)
 
 ```python
 async def _ensure_unique_title(self, project_id: int, parent_id: int | None, title: str, *, exclude_note_id: int | None=None) -> None
@@ -6684,7 +6874,7 @@ ConflictError('В этом разделе уже есть страница с т
 
 ## ProjectNoteService._next_sort_order
 
-[backend/app/services.py:3822](../../../../backend/app/services.py#L3822)
+[backend/app/services.py:3879](../../../../backend/app/services.py#L3879)
 
 ```python
 async def _next_sort_order(self, project_id: int, parent_id: int | None) -> int
@@ -6716,7 +6906,7 @@ async def _next_sort_order(self, project_id: int, parent_id: int | None) -> int
 
 ## ProjectNoteService._ensure_not_descendant_move
 
-[backend/app/services.py:3833](../../../../backend/app/services.py#L3833)
+[backend/app/services.py:3890](../../../../backend/app/services.py#L3890)
 
 ```python
 async def _ensure_not_descendant_move(self, project_id: int, note_id: int, new_parent_id: int | None) -> None
@@ -6756,7 +6946,7 @@ ValidationError('Обнаружен цикл в дереве заметок')
 
 ## ProjectNoteService.list_notes
 
-[backend/app/services.py:3847](../../../../backend/app/services.py#L3847)
+[backend/app/services.py:3904](../../../../backend/app/services.py#L3904)
 
 ```python
 async def list_notes(self, project_id: int) -> list[ProjectNote]
@@ -6791,7 +6981,7 @@ async def list_notes(self, project_id: int) -> list[ProjectNote]
 
 ## ProjectNoteService.list_activity
 
-[backend/app/services.py:3856](../../../../backend/app/services.py#L3856)
+[backend/app/services.py:3913](../../../../backend/app/services.py#L3913)
 
 ```python
 async def list_activity(self, project_id: int, limit: int=30) -> list[dict]
@@ -6847,7 +7037,7 @@ Username — через outer join к users (может быть NULL для у�
 
 ## ProjectNoteService.get_note
 
-[backend/app/services.py:3906](../../../../backend/app/services.py#L3906)
+[backend/app/services.py:3963](../../../../backend/app/services.py#L3963)
 
 ```python
 async def get_note(self, project_id: int, note_id: int) -> ProjectNote
@@ -6871,7 +7061,7 @@ async def get_note(self, project_id: int, note_id: int) -> ProjectNote
 
 ## ProjectNoteService.create_note
 
-[backend/app/services.py:3909](../../../../backend/app/services.py#L3909)
+[backend/app/services.py:3966](../../../../backend/app/services.py#L3966)
 
 ```python
 async def create_note(self, project_id: int, payload: dict, actor_id: int) -> ProjectNote
@@ -6914,7 +7104,7 @@ async def create_note(self, project_id: int, payload: dict, actor_id: int) -> Pr
 
 ## ProjectNoteService.update_note
 
-[backend/app/services.py:3946](../../../../backend/app/services.py#L3946)
+[backend/app/services.py:4003](../../../../backend/app/services.py#L4003)
 
 ```python
 async def update_note(self, project_id: int, note_id: int, payload: dict, actor_id: int) -> ProjectNote
@@ -6954,7 +7144,7 @@ async def update_note(self, project_id: int, note_id: int, payload: dict, actor_
 
 ## ProjectNoteService.move_note
 
-[backend/app/services.py:3976](../../../../backend/app/services.py#L3976)
+[backend/app/services.py:4033](../../../../backend/app/services.py#L4033)
 
 ```python
 async def move_note(self, project_id: int, note_id: int, parent_id: int | None, actor_id: int) -> ProjectNote
@@ -6999,7 +7189,7 @@ ValidationError('Нельзя переместить страницу в сам�
 
 ## ProjectNoteService.reorder_notes
 
-[backend/app/services.py:3996](../../../../backend/app/services.py#L3996)
+[backend/app/services.py:4053](../../../../backend/app/services.py#L4053)
 
 ```python
 async def reorder_notes(self, project_id: int, parent_id: int | None, items: list[dict], actor_id: int) -> list[ProjectNote]
@@ -7053,7 +7243,7 @@ ValidationError('Для ручной сортировки нужно перед�
 
 ## ProjectNoteService.delete_note
 
-[backend/app/services.py:4037](../../../../backend/app/services.py#L4037)
+[backend/app/services.py:4094](../../../../backend/app/services.py#L4094)
 
 ```python
 async def delete_note(self, project_id: int, note_id: int, actor_id: int) -> None
@@ -7104,7 +7294,7 @@ ConflictError('Нельзя удалить страницу: после пере
 
 ## ProjectNoteService._get_comment
 
-[backend/app/services.py:4074](../../../../backend/app/services.py#L4074)
+[backend/app/services.py:4131](../../../../backend/app/services.py#L4131)
 
 ```python
 async def _get_comment(self, project_id: int, note_id: int, comment_id: int) -> ProjectNoteComment
@@ -7141,7 +7331,7 @@ NotFoundError('Комментарий не найден')
 
 ## ProjectNoteService.list_comments
 
-[backend/app/services.py:4088](../../../../backend/app/services.py#L4088)
+[backend/app/services.py:4145](../../../../backend/app/services.py#L4145)
 
 ```python
 async def list_comments(self, project_id: int, note_id: int, page: int, size: int) -> tuple[list[ProjectNoteCommentOut], int]
@@ -7185,7 +7375,7 @@ async def list_comments(self, project_id: int, note_id: int, page: int, size: in
 
 ## ProjectNoteService.create_comment
 
-[backend/app/services.py:4123](../../../../backend/app/services.py#L4123)
+[backend/app/services.py:4180](../../../../backend/app/services.py#L4180)
 
 ```python
 async def create_comment(self, project_id: int, note_id: int, content: str, actor: User) -> ProjectNoteCommentOut
@@ -7225,7 +7415,7 @@ async def create_comment(self, project_id: int, note_id: int, content: str, acto
 
 ## ProjectNoteService.update_comment
 
-[backend/app/services.py:4184](../../../../backend/app/services.py#L4184)
+[backend/app/services.py:4241](../../../../backend/app/services.py#L4241)
 
 ```python
 async def update_comment(self, project_id: int, note_id: int, comment_id: int, content: str, actor: User) -> ProjectNoteCommentOut
@@ -7269,7 +7459,7 @@ ForbiddenError('Можно редактировать только свой ко
 
 ## ProjectNoteService.delete_comment
 
-[backend/app/services.py:4223](../../../../backend/app/services.py#L4223)
+[backend/app/services.py:4280](../../../../backend/app/services.py#L4280)
 
 ```python
 async def delete_comment(self, project_id: int, note_id: int, comment_id: int, actor: User) -> None
@@ -7309,7 +7499,7 @@ ForbiddenError('Можно удалить только свой коммента
 
 ## ProjectCredentialService.__init__
 
-[backend/app/services.py:4249](../../../../backend/app/services.py#L4249)
+[backend/app/services.py:4306](../../../../backend/app/services.py#L4306)
 
 ```python
 def __init__(self, db: AsyncSession) -> None
@@ -7332,7 +7522,7 @@ def __init__(self, db: AsyncSession) -> None
 
 ## ProjectCredentialService._ensure_project
 
-[backend/app/services.py:4253](../../../../backend/app/services.py#L4253)
+[backend/app/services.py:4310](../../../../backend/app/services.py#L4310)
 
 ```python
 async def _ensure_project(self, project_id: int) -> Project
@@ -7355,7 +7545,7 @@ async def _ensure_project(self, project_id: int) -> Project
 
 ## ProjectCredentialService._get_credential
 
-[backend/app/services.py:4257](../../../../backend/app/services.py#L4257)
+[backend/app/services.py:4314](../../../../backend/app/services.py#L4314)
 
 ```python
 async def _get_credential(self, project_id: int, credential_id: int) -> ProjectCredential
@@ -7391,7 +7581,7 @@ NotFoundError('Учётные данные не найдены')
 
 ## ProjectCredentialService._read_password
 
-[backend/app/services.py:4268](../../../../backend/app/services.py#L4268)
+[backend/app/services.py:4325](../../../../backend/app/services.py#L4325)
 
 ```python
 def _read_password(credential: ProjectCredential) -> str | None
@@ -7416,7 +7606,7 @@ def _read_password(credential: ProjectCredential) -> str | None
 
 ## ProjectCredentialService._serialize
 
-[backend/app/services.py:4278](../../../../backend/app/services.py#L4278)
+[backend/app/services.py:4335](../../../../backend/app/services.py#L4335)
 
 ```python
 def _serialize(credential: ProjectCredential) -> dict
@@ -7439,7 +7629,7 @@ def _serialize(credential: ProjectCredential) -> dict
 
 ## ProjectCredentialService.list_credentials
 
-[backend/app/services.py:4294](../../../../backend/app/services.py#L4294)
+[backend/app/services.py:4351](../../../../backend/app/services.py#L4351)
 
 ```python
 async def list_credentials(self, project_id: int) -> list[dict]
@@ -7470,9 +7660,34 @@ async def list_credentials(self, project_id: int) -> list[dict]
 
 </details>
 
+## ProjectCredentialService.get_credential
+
+[backend/app/services.py:4360](../../../../backend/app/services.py#L4360)
+
+```python
+async def get_credential(self, project_id: int, credential_id: int) -> dict
+```
+
+Возвращает одну учётную запись, проверяя её принадлежность проекту.
+
+| Параметр | Тип | По умолчанию | Назначение |
+| --- | --- | --- | --- |
+| `project_id` | `int` | `обязательный` | ID проекта; доступ проверяет dependency маршрута, принадлежность ресурса — сервис. |
+| `credential_id` | `int` | `обязательный` | Определяется именем/типом и контрактом вызывающего кода. |
+
+Возвращает: `dict`.
+
+<details>
+<summary>Прямые вызовы в теле</summary>
+
+- `self._get_credential`
+- `self._serialize`
+
+</details>
+
 ## ProjectCredentialService.create_credential
 
-[backend/app/services.py:4303](../../../../backend/app/services.py#L4303)
+[backend/app/services.py:4364](../../../../backend/app/services.py#L4364)
 
 ```python
 async def create_credential(self, project_id: int, payload: dict, actor_id: int) -> dict
@@ -7508,7 +7723,7 @@ async def create_credential(self, project_id: int, payload: dict, actor_id: int)
 
 ## ProjectCredentialService.update_credential
 
-[backend/app/services.py:4326](../../../../backend/app/services.py#L4326)
+[backend/app/services.py:4387](../../../../backend/app/services.py#L4387)
 
 ```python
 async def update_credential(self, project_id: int, credential_id: int, payload: dict, actor_id: int) -> dict
@@ -7543,7 +7758,7 @@ async def update_credential(self, project_id: int, credential_id: int, payload: 
 
 ## ProjectCredentialService.delete_credential
 
-[backend/app/services.py:4347](../../../../backend/app/services.py#L4347)
+[backend/app/services.py:4408](../../../../backend/app/services.py#L4408)
 
 ```python
 async def delete_credential(self, project_id: int, credential_id: int, actor_id: int) -> None
@@ -7574,7 +7789,7 @@ async def delete_credential(self, project_id: int, credential_id: int, actor_id:
 
 ## NotificationService.__init__
 
-[backend/app/services.py:4365](../../../../backend/app/services.py#L4365)
+[backend/app/services.py:4426](../../../../backend/app/services.py#L4426)
 
 ```python
 def __init__(self, db: AsyncSession) -> None
@@ -7590,7 +7805,7 @@ def __init__(self, db: AsyncSession) -> None
 
 ## NotificationService._contexts
 
-[backend/app/services.py:4368](../../../../backend/app/services.py#L4368)
+[backend/app/services.py:4429](../../../../backend/app/services.py#L4429)
 
 ```python
 async def _contexts(self, notifications: list[Notification]) -> dict[int, NotificationContext]
@@ -7641,7 +7856,7 @@ async def _contexts(self, notifications: list[Notification]) -> dict[int, Notifi
 
 ## NotificationService.list
 
-[backend/app/services.py:4441](../../../../backend/app/services.py#L4441)
+[backend/app/services.py:4502](../../../../backend/app/services.py#L4502)
 
 ```python
 async def list(self, user_id: int, page: int, size: int, is_read: bool | None) -> tuple[list[NotificationOut], int]
@@ -7685,7 +7900,7 @@ async def list(self, user_id: int, page: int, size: int, is_read: bool | None) -
 
 ## NotificationService.unread_count
 
-[backend/app/services.py:4466](../../../../backend/app/services.py#L4466)
+[backend/app/services.py:4527](../../../../backend/app/services.py#L4527)
 
 ```python
 async def unread_count(self, user_id: int) -> int
@@ -7716,7 +7931,7 @@ async def unread_count(self, user_id: int) -> int
 
 ## NotificationService.mark_read
 
-[backend/app/services.py:4471](../../../../backend/app/services.py#L4471)
+[backend/app/services.py:4532](../../../../backend/app/services.py#L4532)
 
 ```python
 async def mark_read(self, notification_id: int, user_id: int) -> Notification
@@ -7754,7 +7969,7 @@ NotFoundError('Уведомление не найдено')
 
 ## NotificationService.mark_all_read
 
-[backend/app/services.py:4482](../../../../backend/app/services.py#L4482)
+[backend/app/services.py:4543](../../../../backend/app/services.py#L4543)
 
 ```python
 async def mark_all_read(self, user_id: int) -> None
@@ -7783,7 +7998,7 @@ async def mark_all_read(self, user_id: int) -> None
 
 ## ImportService.__init__
 
-[backend/app/services.py:4490](../../../../backend/app/services.py#L4490)
+[backend/app/services.py:4551](../../../../backend/app/services.py#L4551)
 
 ```python
 def __init__(self, db: AsyncSession) -> None
@@ -7799,7 +8014,7 @@ def __init__(self, db: AsyncSession) -> None
 
 ## ImportService._find_matching_host
 
-[backend/app/services.py:4493](../../../../backend/app/services.py#L4493)
+[backend/app/services.py:4554](../../../../backend/app/services.py#L4554)
 
 ```python
 async def _find_matching_host(self, project_id: int, host_data) -> Host | None
@@ -7840,7 +8055,7 @@ ValidationError(f"Найдено несколько host для ip/hostname ({ho
 
 ## ImportService._merge_host_fields
 
-[backend/app/services.py:4522](../../../../backend/app/services.py#L4522)
+[backend/app/services.py:4583](../../../../backend/app/services.py#L4583)
 
 ```python
 def _merge_host_fields(host: Host, host_data) -> None
@@ -7857,7 +8072,7 @@ def _merge_host_fields(host: Host, host_data) -> None
 
 ## ImportService._merge_service_fields
 
-[backend/app/services.py:4533](../../../../backend/app/services.py#L4533)
+[backend/app/services.py:4594](../../../../backend/app/services.py#L4594)
 
 ```python
 def _merge_service_fields(service: Service, service_data) -> None
@@ -7874,7 +8089,7 @@ def _merge_service_fields(service: Service, service_data) -> None
 
 ## ImportService._decode_text_payload
 
-[backend/app/services.py:4541](../../../../backend/app/services.py#L4541)
+[backend/app/services.py:4602](../../../../backend/app/services.py#L4602)
 
 ```python
 def _decode_text_payload(payload: bytes) -> str
@@ -7904,7 +8119,7 @@ ValidationError('Файл должен быть в кодировке UTF-8')
 
 ## ImportService._validate_openapi_payload
 
-[backend/app/services.py:4548](../../../../backend/app/services.py#L4548)
+[backend/app/services.py:4609](../../../../backend/app/services.py#L4609)
 
 ```python
 def _validate_openapi_payload(payload: bytes) -> None
@@ -7935,7 +8150,7 @@ ValidationError('Swagger/OpenAPI файл пуст')
 
 ## ImportService._parse_relaxed_openapi_scalar
 
-[backend/app/services.py:4555](../../../../backend/app/services.py#L4555)
+[backend/app/services.py:4616](../../../../backend/app/services.py#L4616)
 
 ```python
 def _parse_relaxed_openapi_scalar(raw_value: str) -> object
@@ -7963,7 +8178,7 @@ def _parse_relaxed_openapi_scalar(raw_value: str) -> object
 
 ## ImportService._parse_relaxed_openapi_object
 
-[backend/app/services.py:4572](../../../../backend/app/services.py#L4572)
+[backend/app/services.py:4633](../../../../backend/app/services.py#L4633)
 
 ```python
 def _parse_relaxed_openapi_object(cls, lines: list[str], index: int) -> tuple[dict, int]
@@ -7997,7 +8212,7 @@ def _parse_relaxed_openapi_object(cls, lines: list[str], index: int) -> tuple[di
 
 ## ImportService._parse_relaxed_openapi_array
 
-[backend/app/services.py:4605](../../../../backend/app/services.py#L4605)
+[backend/app/services.py:4666](../../../../backend/app/services.py#L4666)
 
 ```python
 def _parse_relaxed_openapi_array(cls, lines: list[str], index: int) -> tuple[list[object], int]
@@ -8028,7 +8243,7 @@ def _parse_relaxed_openapi_array(cls, lines: list[str], index: int) -> tuple[lis
 
 ## ImportService._normalize_relaxed_openapi_mime
 
-[backend/app/services.py:4628](../../../../backend/app/services.py#L4628)
+[backend/app/services.py:4689](../../../../backend/app/services.py#L4689)
 
 ```python
 def _normalize_relaxed_openapi_mime(value: str) -> str
@@ -8053,7 +8268,7 @@ def _normalize_relaxed_openapi_mime(value: str) -> str
 
 ## ImportService._normalize_relaxed_openapi_ref
 
-[backend/app/services.py:4638](../../../../backend/app/services.py#L4638)
+[backend/app/services.py:4699](../../../../backend/app/services.py#L4699)
 
 ```python
 def _normalize_relaxed_openapi_ref(value: str) -> str
@@ -8079,7 +8294,7 @@ def _normalize_relaxed_openapi_ref(value: str) -> str
 
 ## ImportService._normalize_relaxed_openapi_path_key
 
-[backend/app/services.py:4649](../../../../backend/app/services.py#L4649)
+[backend/app/services.py:4710](../../../../backend/app/services.py#L4710)
 
 ```python
 def _normalize_relaxed_openapi_path_key(cls, raw_path: str, path_item: object) -> str
@@ -8117,7 +8332,7 @@ def _normalize_relaxed_openapi_path_key(cls, raw_path: str, path_item: object) -
 
 ## ImportService._normalize_relaxed_openapi_document
 
-[backend/app/services.py:4677](../../../../backend/app/services.py#L4677)
+[backend/app/services.py:4738](../../../../backend/app/services.py#L4738)
 
 ```python
 def _normalize_relaxed_openapi_document(cls, value: object, key: str | None=None) -> object
@@ -8150,7 +8365,7 @@ def _normalize_relaxed_openapi_document(cls, value: object, key: str | None=None
 
 ## ImportService._load_relaxed_openapi_document
 
-[backend/app/services.py:4701](../../../../backend/app/services.py#L4701)
+[backend/app/services.py:4762](../../../../backend/app/services.py#L4762)
 
 ```python
 def _load_relaxed_openapi_document(cls, raw_text: str) -> dict
@@ -8187,7 +8402,7 @@ ValidationError('Swagger/OpenAPI файл должен быть валидным
 
 ## ImportService._load_json_or_yaml_document
 
-[backend/app/services.py:4718](../../../../backend/app/services.py#L4718)
+[backend/app/services.py:4779](../../../../backend/app/services.py#L4779)
 
 ```python
 def _load_json_or_yaml_document(cls, raw_text: str) -> dict
@@ -8229,7 +8444,7 @@ ValidationError(str(exc))
 
 ## ImportService._resolve_json_pointer
 
-[backend/app/services.py:4744](../../../../backend/app/services.py#L4744)
+[backend/app/services.py:4805](../../../../backend/app/services.py#L4805)
 
 ```python
 def _resolve_json_pointer(document: dict, ref: str) -> object
@@ -8265,7 +8480,7 @@ ValidationError(f'Swagger/OpenAPI содержит битую ссылку $ref:
 
 ## ImportService._resolve_openapi_ref
 
-[backend/app/services.py:4756](../../../../backend/app/services.py#L4756)
+[backend/app/services.py:4817](../../../../backend/app/services.py#L4817)
 
 ```python
 def _resolve_openapi_ref(cls, document: dict, value: object, depth: int=0) -> object
@@ -8304,7 +8519,7 @@ ValidationError('Некорректный $ref в Swagger/OpenAPI докумен
 
 ## ImportService._normalize_openapi_path
 
-[backend/app/services.py:4772](../../../../backend/app/services.py#L4772)
+[backend/app/services.py:4833](../../../../backend/app/services.py#L4833)
 
 ```python
 def _normalize_openapi_path(path_value: str, prefix: str) -> str
@@ -8330,7 +8545,7 @@ def _normalize_openapi_path(path_value: str, prefix: str) -> str
 
 ## ImportService._extract_openapi_host
 
-[backend/app/services.py:4777](../../../../backend/app/services.py#L4777)
+[backend/app/services.py:4838](../../../../backend/app/services.py#L4838)
 
 ```python
 def _extract_openapi_host(document: dict) -> str | None
@@ -8361,7 +8576,7 @@ def _extract_openapi_host(document: dict) -> str | None
 
 ## ImportService._extract_openapi_path_prefix
 
-[backend/app/services.py:4796](../../../../backend/app/services.py#L4796)
+[backend/app/services.py:4857](../../../../backend/app/services.py#L4857)
 
 ```python
 def _extract_openapi_path_prefix(document: dict) -> str
@@ -8390,7 +8605,7 @@ def _extract_openapi_path_prefix(document: dict) -> str
 
 ## ImportService._serialize_openapi_example
 
-[backend/app/services.py:4815](../../../../backend/app/services.py#L4815)
+[backend/app/services.py:4876](../../../../backend/app/services.py#L4876)
 
 ```python
 def _serialize_openapi_example(value: object) -> str | None
@@ -8416,7 +8631,7 @@ def _serialize_openapi_example(value: object) -> str | None
 
 ## ImportService._build_openapi_example_from_schema
 
-[backend/app/services.py:4828](../../../../backend/app/services.py#L4828)
+[backend/app/services.py:4889](../../../../backend/app/services.py#L4889)
 
 ```python
 def _build_openapi_example_from_schema(cls, document: dict, schema: object, depth: int=0) -> object
@@ -8448,7 +8663,7 @@ def _build_openapi_example_from_schema(cls, document: dict, schema: object, dept
 
 ## ImportService._extract_openapi_query_params
 
-[backend/app/services.py:4871](../../../../backend/app/services.py#L4871)
+[backend/app/services.py:4932](../../../../backend/app/services.py#L4932)
 
 ```python
 def _extract_openapi_query_params(cls, document: dict, path_item: dict, operation: dict) -> list[dict]
@@ -8487,7 +8702,7 @@ def _extract_openapi_query_params(cls, document: dict, path_item: dict, operatio
 
 ## ImportService._collect_openapi_form_params
 
-[backend/app/services.py:4908](../../../../backend/app/services.py#L4908)
+[backend/app/services.py:4969](../../../../backend/app/services.py#L4969)
 
 ```python
 def _collect_openapi_form_params(cls, document: dict, path_item: dict, operation: dict) -> list[dict]
@@ -8519,7 +8734,7 @@ def _collect_openapi_form_params(cls, document: dict, path_item: dict, operation
 
 ## ImportService._extract_openapi_request_details
 
-[backend/app/services.py:4926](../../../../backend/app/services.py#L4926)
+[backend/app/services.py:4987](../../../../backend/app/services.py#L4987)
 
 ```python
 def _extract_openapi_request_details(cls, document: dict, path_item: dict, operation: dict) -> tuple[str | None, str | None]
@@ -8566,7 +8781,7 @@ def _extract_openapi_request_details(cls, document: dict, path_item: dict, opera
 
 ## ImportService.import_openapi
 
-[backend/app/services.py:4989](../../../../backend/app/services.py#L4989)
+[backend/app/services.py:5050](../../../../backend/app/services.py#L5050)
 
 ```python
 async def import_openapi(self, project_id: int, host_id: int, payload: bytes, actor_id: int) -> OpenApiImportResult
@@ -8647,7 +8862,7 @@ ValidationError('В Swagger/OpenAPI документе отсутствует о
 
 ## ImportService.export_openapi
 
-[backend/app/services.py:5108](../../../../backend/app/services.py#L5108)
+[backend/app/services.py:5169](../../../../backend/app/services.py#L5169)
 
 ```python
 async def export_openapi(self, project_id: int, host_id: int) -> dict
@@ -8707,7 +8922,7 @@ NotFoundError('Хост не найден')
 
 ## ImportService.import_json
 
-[backend/app/services.py:5196](../../../../backend/app/services.py#L5196)
+[backend/app/services.py:5257](../../../../backend/app/services.py#L5257)
 
 ```python
 async def import_json(self, project_id: int, payload: bytes, actor_id: int) -> ImportResult
@@ -8781,7 +8996,7 @@ ValidationError(f'JSON импорта не соответствует схеме
 
 ## ReportService.__init__
 
-[backend/app/services.py:5348](../../../../backend/app/services.py#L5348)
+[backend/app/services.py:5409](../../../../backend/app/services.py#L5409)
 
 ```python
 def __init__(self, db: AsyncSession) -> None
@@ -8804,7 +9019,7 @@ def __init__(self, db: AsyncSession) -> None
 
 ## ReportService._collect_project_data
 
-[backend/app/services.py:5352](../../../../backend/app/services.py#L5352)
+[backend/app/services.py:5413](../../../../backend/app/services.py#L5413)
 
 ```python
 async def _collect_project_data(self, project_id: int) -> dict
@@ -8866,7 +9081,7 @@ ServiceUnavailableError('Не удалось расшифровать сохра
 
 ## ReportService._build_report_indexes
 
-[backend/app/services.py:5413](../../../../backend/app/services.py#L5413)
+[backend/app/services.py:5474](../../../../backend/app/services.py#L5474)
 
 ```python
 def _build_report_indexes(data: dict) -> dict
@@ -8896,7 +9111,7 @@ def _build_report_indexes(data: dict) -> dict
 
 ## ReportService._resolve_step_files
 
-[backend/app/services.py:5445](../../../../backend/app/services.py#L5445)
+[backend/app/services.py:5506](../../../../backend/app/services.py#L5506)
 
 ```python
 def _resolve_step_files(step: dict, files_by_id: dict[int, File]) -> list[File]
@@ -8923,7 +9138,7 @@ def _resolve_step_files(step: dict, files_by_id: dict[int, File]) -> list[File]
 
 ## ReportService._is_image_file
 
-[backend/app/services.py:5458](../../../../backend/app/services.py#L5458)
+[backend/app/services.py:5519](../../../../backend/app/services.py#L5519)
 
 ```python
 def _is_image_file(file_meta: File) -> bool
@@ -8946,7 +9161,7 @@ def _is_image_file(file_meta: File) -> bool
 
 ## ReportService._normalize_report_image_bytes
 
-[backend/app/services.py:5462](../../../../backend/app/services.py#L5462)
+[backend/app/services.py:5523](../../../../backend/app/services.py#L5523)
 
 ```python
 def _normalize_report_image_bytes(image_bytes: bytes) -> bytes | None
@@ -8976,7 +9191,7 @@ def _normalize_report_image_bytes(image_bytes: bytes) -> bytes | None
 
 ## ReportService._download_report_images
 
-[backend/app/services.py:5478](../../../../backend/app/services.py#L5478)
+[backend/app/services.py:5539](../../../../backend/app/services.py#L5539)
 
 ```python
 async def _download_report_images(self, files: list[File]) -> dict[int, bytes]
@@ -9000,7 +9215,7 @@ async def _download_report_images(self, files: list[File]) -> dict[int, bytes]
 
 ## ReportService.generate
 
-[backend/app/services.py:5492](../../../../backend/app/services.py#L5492)
+[backend/app/services.py:5553](../../../../backend/app/services.py#L5553)
 
 ```python
 async def generate(self, project_id: int, kind: Literal['szi', 'pp']) -> bytes

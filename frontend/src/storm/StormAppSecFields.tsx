@@ -1,3 +1,4 @@
+import { Tip } from "./Tip";
 /* AppSec-поля проекта: тикет Task Tracker, исполнитель, компонент и версия.
  *
  * Тикет и исполнитель показываются всегда (нужны для отчёта и для поля
@@ -359,7 +360,7 @@ export function StormAppSecFields({
       {value.appsec_versions.length > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: -6 }}>
         {value.appsec_versions.map((version) => <span key={version.code} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 6px 4px 10px", borderRadius: 9, background: "var(--st-accent-soft)", color: "var(--st-text-2)", fontSize: 12 }}>
           {version.name}
-          <button type="button" className="actbtn del" title={`${t("Remove version")}: ${version.name}`} aria-label={`${t("Remove version")}: ${version.name}`} onClick={() => onChange({ appsec_versions: value.appsec_versions.filter((item) => item.code !== version.code) })}>×</button>
+          <Tip label={`${t("Remove version")}: ${version.name}`}><button type="button" className="actbtn del" title={`${t("Remove version")}: ${version.name}`} aria-label={`${t("Remove version")}: ${version.name}`} onClick={() => onChange({ appsec_versions: value.appsec_versions.filter((item) => item.code !== version.code) })}>×</button></Tip>
         </span>)}
       </div>}
       {works && (<>
@@ -380,10 +381,10 @@ export function StormAppSecFields({
       {value.appsec_components.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
         {value.appsec_components.map((component) => <span key={component.code} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 6px 4px 10px', borderRadius: 9, background: 'var(--st-accent-soft)', color: 'var(--st-text-2)', fontSize: 12 }}>
           {component.name}
-          <button type="button" className="actbtn del" aria-label={`${t('Remove component')}: ${component.name}`} onClick={() => {
+          <Tip label={`${t('Remove component')}: ${component.name}`}><button type="button" className="actbtn del" aria-label={`${t('Remove component')}: ${component.name}`} onClick={() => {
             const components = value.appsec_components.filter((item) => item.code !== component.code);
             onChange({ appsec_components: components, appsec_component_code: components[0]?.code ?? null, appsec_component_name: components[0]?.name ?? null });
-          }}>×</button>
+          }}>×</button></Tip>
         </span>)}
       </div>}
       </>)}

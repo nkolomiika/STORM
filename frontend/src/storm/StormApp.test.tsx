@@ -139,6 +139,8 @@ vi.mock("../api", async (importOriginal) => {
     ...actual,
     getWorksConfig: vi.fn(async () => null),
     getVulnerabilityWorksLink: vi.fn(async () => null),
+    getVulnerabilityTaskTrackerLink: vi.fn(async () => null),
+    exportVulnerabilityToTaskTracker: vi.fn(async (_projectId: number, vulnerabilityId: number) => ({ id: vulnerabilityId, vulnerability_id: vulnerabilityId, task_tracker_issue_key: 'STS-1', task_tracker_issue_url: 'https://tracker.example/STS-1', status: 'linked' as const, last_error: null, ...ts })),
     getHiddenIps: vi.fn(async () => []),
     listVulnerabilityFiles: vi.fn(async () => []),
     getProject: vi.fn(async (_id: number) => projects.find((p) => p.id === _id)!),
@@ -202,6 +204,7 @@ vi.mock("../api", async (importOriginal) => {
     listNotifications: vi.fn(async () => ({ items: [], total: 0, page: 1, size: 20, pages: 1 })),
     markNotificationRead: vi.fn(async () => undefined),
     listAgentTokens: vi.fn(async () => [mkToken(1, "CI pipeline", "storm_ci"), mkToken(2, "Slack alerts bot", "storm_sl")]),
+    createAgentToken: vi.fn(async () => ({ ...mkToken(3, "Inventory agent", "storm_agent"), token: "test-only-agent-token" })),
     createProject: vi.fn(async () => projects[0]),
     updateProject: vi.fn(async () => projects[0]),
     deleteProject: vi.fn(async () => undefined),
@@ -670,6 +673,175 @@ describe("StormApp (design prototype port)", () => {
     reporter: "admin", description: "Native card body", labels: [], is_demo: true,
   });
 
+  it.each(['pentester', 'lead'] as const)('shows project creation only for lead/admin (%s)', async (projectRole) => {
+    const user = useAuthStore.getState().user!;
+    useAuthStore.setState({ user: { ...user, role: 'pentester', project_role: projectRole } });
+    render(<MemoryRouter initialEntries={['/projects']}><StormApp /></MemoryRouter>);
+    await screen.findByText('Acme Corp — External Perimeter');
+    expect(Boolean(screen.queryByRole('button', { name: 'New project' }))).toBe(projectRole === 'lead');
+  });
+
+  it('shows a grey plus or eye to a pentester and opens only an accessible project', async () => {
+    const user = useAuthStore.getState().user!;
+    useAuthStore.setState({ user: { ...user, role: 'pentester', project_role: 'pentester' } });
+    vi.mocked(api.getTasks).mockResolvedValue({ items: [
+      { ...trackerCard(), key: 'APPSEC-1', project_exists: false, project_id: null },
+      { ...trackerCard(), key: 'APPSEC-2', project_exists: true, project_id: null },
+      { ...trackerCard(), key: 'APPSEC-3', project_exists: true, project_id: 2 },
+    ], next_page_token: null, is_last: true, total: 3 });
+    render(<MemoryRouter initialEntries={['/tasks']}><StormApp /></MemoryRouter>);
+    const plus = await screen.findByRole('button', { name: 'Create project from this ticket' });
+    expect(plus).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'No access to linked project' })).toBeDisabled();
+    fireEvent.click(plus);
+    expect(api.getTask).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Open linked project' }));
+    await screen.findByRole('heading', { name: 'Northwind API' });
+    expect(api.createProject).not.toHaveBeenCalled();
+  });
+
+  it('loads twenty more tickets below the list, updates the count and removes the versions column', async () => {
+    const tasks = Array.from({ length: 40 }, (_, i) => ({ ...trackerCard(), key: `APPSEC-${i+1}`, summary: `Assessment ${i+1}` }));
+    vi.mocked(api.getTasks)
+      .mockResolvedValueOnce({ items: tasks.slice(0, 20), next_page_token: '1', is_last: false, total: 40 })
+      .mockResolvedValueOnce({ items: tasks.slice(20), next_page_token: null, is_last: true, total: 40 });
+    render(<MemoryRouter initialEntries={['/tasks']}><StormApp /></MemoryRouter>);
+    expect(await screen.findByText('Showing 20 of 40')).toBeInTheDocument();
+    expect(screen.queryAllByText('Affected versions').every((node) => Boolean(node.closest('.modalback:not(.open)')))).toBe(true);
+    expect(screen.queryByText('Platform 1.0')).not.toBeInTheDocument();
+    const more = screen.getByRole('button', { name: 'Show 20 more' });
+    expect(more.closest('.tasks-pagination')).toContainElement(screen.getByText('Showing 20 of 40'));
+    fireEvent.click(more);
+    await screen.findByText('Showing 40 of 40');
+    expect(api.getTasks).toHaveBeenNthCalledWith(1, { page_number: 0, category: 'active', sort: 'last' });
+    expect(api.getTasks).toHaveBeenNthCalledWith(2, { page_number: 1, category: 'active', sort: 'last' });
+    expect(screen.queryByRole('button', { name: 'Show 20 more' })).not.toBeInTheDocument();
+    expect(screen.getAllByText(/^Assessment \d+$/)).toHaveLength(40);
+  });
+
+  it('keeps loaded tickets and permits retry after the next page fails', async () => {
+    vi.mocked(api.getTasks)
+      .mockResolvedValueOnce({ items: [trackerCard()], next_page_token: '1', is_last: false, total: 21 })
+      .mockRejectedValueOnce(new Error('Network failure'))
+      .mockResolvedValueOnce({ items: [{ ...trackerCard(), key: 'APPSEC-702', summary: 'Next assessment' }], next_page_token: null, is_last: true, total: 21 });
+    render(<MemoryRouter initialEntries={['/tasks']}><StormApp /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole('button', { name: 'Show 20 more' }));
+    await waitFor(() => expect(api.getTasks).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Show 20 more' })).toBeEnabled());
+    expect(screen.getByText('Native APPSEC assessment')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Show 20 more' }));
+    await screen.findByText('Next assessment');
+    expect(api.getTasks).toHaveBeenNthCalledWith(3, { page_number: 1, category: 'active', sort: 'last' });
+  });
+
+  it('counts and paginates each tab separately and labels only the remaining number', async () => {
+    vi.mocked(api.getTasks).mockImplementation(async (params = {}) => {
+      const closed = params.category === 'closed';
+      const total = closed ? 25 : 45;
+      const page = params.page_number ?? 0;
+      return { items: Array.from({ length: Math.min(20, total-page*20) }, (_, i) => ({ ...trackerCard(),
+        key: `APPSEC-${(closed ? 100 : 0)+page*20+i+1}`, summary: `${closed ? 'Closed' : 'Active'} assessment ${page*20+i+1}`,
+        status: closed ? 'Resolved' : 'Open', status_category: closed ? 'done' as const : 'todo' as const,
+      })), total, active_total: 45, closed_total: 25, is_last: (page+1)*20 >= total,
+      next_page_token: (page+1)*20 < total ? String(page+1) : null };
+    });
+    render(<MemoryRouter initialEntries={['/tasks']}><StormApp /></MemoryRouter>);
+    await screen.findByText('Showing 20 of 45');
+    fireEvent.click(screen.getByRole('button', { name: 'Show 20 more' }));
+    await screen.findByText('Showing 40 of 45');
+    fireEvent.click(screen.getByRole('button', { name: 'Show 5 more' }));
+    await screen.findByText('Showing 45 of 45');
+    expect(screen.queryByRole('button', { name: /Show \d+ more/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('Closed', { selector: '.tab' }));
+    await screen.findByText('Showing 20 of 25');
+    expect(screen.queryByText('Active assessment 1')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Show 5 more' }));
+    await screen.findByText('Showing 25 of 25');
+    expect(screen.getAllByText(/^Closed assessment \d+$/)).toHaveLength(25);
+  });
+
+  it('shows surname and first name in the task table while retaining the full name in details', async () => {
+    const detail = { ...trackerCard(), assignee: 'Петров Иван Сергеевич' };
+    vi.mocked(api.getTasks).mockResolvedValue({ items: [detail], is_last: true, next_page_token: null });
+    vi.mocked(api.getTask).mockResolvedValue(detail);
+    render(<MemoryRouter initialEntries={['/tasks']}><StormApp /></MemoryRouter>);
+    await screen.findByText('Петров Иван');
+    expect(screen.queryByText('Петров Иван Сергеевич')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText(detail.summary));
+    await screen.findByText('Петров Иван Сергеевич');
+  });
+
+  it('keeps the table and surrounding controls mounted while the new task sort is loading', async () => {
+    const tasks = [{ ...trackerCard(), key: 'APPSEC-1', summary: 'First assessment', is_demo: true },
+      { ...trackerCard(), key: 'APPSEC-2', summary: 'Second assessment', is_demo: true }];
+    let finish!: (value: { items: typeof tasks; is_last: boolean; next_page_token: null; total: number }) => void;
+    vi.mocked(api.getTasks)
+      .mockResolvedValueOnce({ items: tasks, is_last: true, next_page_token: null, total: 2 })
+      .mockReturnValueOnce(new Promise((resolve) => { finish = resolve; }));
+    render(<MemoryRouter initialEntries={['/tasks']}><StormApp /></MemoryRouter>);
+    await screen.findByText('First assessment');
+    const table = document.querySelector('.task-list')!;
+    const header = screen.getByRole('heading', { name: 'Tasks' });
+    const demo = screen.getByText('Demo data');
+    const filter = screen.getByPlaceholderText('Filter tasks by title…');
+    const refresh = screen.getByRole('button', { name: 'Refresh' });
+    const row = screen.getByText('First assessment').closest('.prow');
+    const projectsCalls = vi.mocked(api.getProjects).mock.calls.length;
+    fireEvent.click(screen.getByRole('button', { name: 'Last updated' }));
+    await waitFor(() => expect(api.getTasks).toHaveBeenCalledTimes(2));
+    expect(table).toHaveAttribute('aria-busy', 'true');
+    expect(screen.getByText('First assessment').closest('.prow')).toBe(row);
+    expect(screen.queryByText('Loading tasks…')).not.toBeInTheDocument();
+    expect(screen.getByText('Demo data')).toBe(demo);
+    expect(screen.getByRole('heading', { name: 'Tasks' })).toBe(header);
+    expect(screen.getByPlaceholderText('Filter tasks by title…')).toBe(filter);
+    expect(refresh).toBeEnabled();
+    await act(async () => finish({ items: [...tasks].reverse(), is_last: true, next_page_token: null, total: 2 }));
+    await waitFor(() => expect(table).toHaveAttribute('aria-busy', 'false'));
+    expect(Array.from(table.querySelectorAll('.prow')).map((node) => node.textContent)).toEqual([
+      expect.stringContaining('Second assessment'), expect.stringContaining('First assessment'),
+    ]);
+    expect(api.getProjects).toHaveBeenCalledTimes(projectsCalls);
+  });
+
+  it('sorts projects by their update date without reloading the page data', async () => {
+    const current = await api.getProjects();
+    vi.mocked(api.getProjects).mockResolvedValueOnce({ ...current, items: current.items.map((project) => ({
+      ...project, updated_at: project.id === 1 ? '2026-07-20T00:00:00Z' : '2026-07-01T00:00:00Z',
+    })) });
+    render(<MemoryRouter initialEntries={['/projects']}><StormApp /></MemoryRouter>);
+    await screen.findByText('Acme Corp — External Perimeter');
+    const before = document.querySelector('.route .prow');
+    expect(before).toHaveTextContent('Acme Corp — External Perimeter');
+    const heading = screen.getByRole('heading', { name: 'Projects' });
+    const calls = vi.mocked(api.getProjects).mock.calls.length;
+    fireEvent.click(screen.getByRole('button', { name: 'Last updated' }));
+    expect(document.querySelector('.route .prow')).toHaveTextContent('Northwind API');
+    expect(screen.getByRole('heading', { name: 'Projects' })).toBe(heading);
+    expect(api.getProjects).toHaveBeenCalledTimes(calls);
+  });
+
+  it('uses the current user avatar in the profile dropdown as well as the header', async () => {
+    const user = useAuthStore.getState().user!;
+    useAuthStore.setState({ user: { ...user, avatar_url: '/api/v1/users/1/avatar?v=2' } });
+    render(<MemoryRouter><StormApp /></MemoryRouter>);
+    const header = document.querySelector('header')!;
+    const image = within(header).getByRole('img', { name: 'admin' });
+    fireEvent.click(image.closest('.clk')!);
+    const menu = document.querySelector('.menu.open') as HTMLElement;
+    expect(within(menu).getByRole('img', { name: 'admin' })).toHaveAttribute('src', '/api/v1/users/1/avatar?v=2');
+  });
+
+  it('renders saved avatars in the workspace list and uses the username letter in the header', async () => {
+    const users = await api.getUsers();
+    vi.mocked(api.getUsers).mockResolvedValueOnce({ ...users, items: users.items.map((user) => user.id === 2 ? { ...user, avatar_url: '/api/v1/users/2/avatar?v=1' } : user) });
+    const user = useAuthStore.getState().user!;
+    useAuthStore.setState({ user: { ...user, username: 'admin', full_name: 'Иван Петров' } });
+    render(<MemoryRouter initialEntries={['/members']}><StormApp /></MemoryRouter>);
+    expect(await screen.findByRole('img', { name: 'alice' })).toHaveAttribute('src', '/api/v1/users/2/avatar?v=1');
+    expect(document.querySelector('header .user-avatar')?.textContent).toBe('A');
+  });
+
   it("creates a project with the assignee login and all versions from the full task card", async () => {
     const detail = trackerCard();
     vi.mocked(api.getTasks).mockResolvedValue({ items: [{ ...detail, assignee: "Stale row", affected_versions: [] }], next_page_token: null, is_last: true });
@@ -760,6 +932,44 @@ describe("StormApp (design prototype port)", () => {
     expect(button.closest('.export-availability')).not.toHaveAttribute('title', expect.stringContaining('Missing:'));
   });
 
+  const withExportMetadata = async () => {
+    const current = await api.getProjects();
+    const project = { ...current.items.find((item) => item.id === 2)!, appsec_ticket_key: 'APPSEC-123',
+      appsec_assignee: 'Pentester.A', appsec_product_code: 'evp',
+      appsec_versions: [{ code: 'v1', name: 'Product 1.0' }], appsec_components: [{ code: 'c1', name: 'EVPC' }] };
+    vi.mocked(api.getProjects).mockResolvedValueOnce({ ...current, items: current.items.map((item) => item.id === 2 ? project : item) });
+    vi.mocked(api.getProject).mockResolvedValueOnce(project).mockResolvedValueOnce(project);
+  };
+
+  it('exports Info in bulk and skips Unrealized without sending it to the API', async () => {
+    await withExportMetadata();
+    const current = await api.getVulnerabilities(2);
+    vi.mocked(api.getVulnerabilities).mockResolvedValueOnce({ ...current, items: [
+      { ...current.items[0], severity: 'info' }, { ...current.items[1], severity: 'unrealized' },
+    ], total: 2 });
+    render(<MemoryRouter initialEntries={['/projects/2/vulns']}><StormApp /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole('button', { name: 'Export all to Task Tracker' }));
+    const dialog = screen.getByRole('heading', { name: 'Export all to Task Tracker' }).closest('.modalcard') as HTMLElement;
+    await waitFor(() => expect(dialog.closest('.modalback')).toHaveClass('open'));
+    expect(within(dialog).getByText('Unrealized findings skipped: 1')).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Export 1' }));
+    await within(dialog).findByText('Export finished');
+    expect(api.exportVulnerabilityToTaskTracker).toHaveBeenCalledExactlyOnceWith(2, 71);
+    expect(api.getVulnerabilityTaskTrackerLink).not.toHaveBeenCalledWith(2, 72);
+  });
+
+  it('disables Unrealized export even when all project metadata is complete', async () => {
+    await withExportMetadata();
+    const current = await api.getVulnerabilities(2);
+    vi.mocked(api.getVulnerabilities).mockResolvedValueOnce({ ...current, items: current.items.map((finding) => finding.id === 72 ? { ...finding, severity: 'unrealized' } : finding) });
+    render(<MemoryRouter initialEntries={['/projects/2/vulns/72']}><StormApp /></MemoryRouter>);
+    const button = await screen.findByRole('button', { name: 'Export to Task Tracker' });
+    await waitFor(() => expect(button.closest('.export-availability')).toHaveAttribute('title', 'Unrealized findings are not exported to Task Tracker'));
+    expect(button).toBeDisabled();
+    fireEvent.click(button);
+    expect(api.exportVulnerabilityToTaskTracker).not.toHaveBeenCalled();
+  });
+
   it("shows a task loading error without opening a partially populated project form", async () => {
     vi.mocked(api.getTasks).mockResolvedValue({ items: [trackerCard()], next_page_token: null, is_last: true });
     vi.mocked(api.getTask).mockRejectedValue(new Error("Tracker offline"));
@@ -829,6 +1039,20 @@ describe("StormApp (design prototype port)", () => {
     expect(await screen.findByText("CI pipeline")).toBeInTheDocument();
     expect(screen.getByText("Slack alerts bot")).toBeInTheDocument();
     expect(vi.mocked(api.listAgentTokens)).toHaveBeenCalled();
+  });
+
+  it("issues agent asset creation and credential access only when explicitly selected", async () => {
+    render(<MemoryRouter><StormApp /></MemoryRouter>);
+    fireEvent.click(screen.getByText("Profile"));
+    fireEvent.click(screen.getByText("API & Automation"));
+    fireEvent.click(screen.getByText("Generate new key"));
+    fireEvent.change(screen.getByPlaceholderText("e.g. CI pipeline"), { target: { value: "Inventory agent" } });
+    fireEvent.click(screen.getByText("Assets (hosts/IPs/endpoints) — create"));
+    fireEvent.click(screen.getByText("Credentials (including passwords) — read"));
+    fireEvent.click(screen.getByText("Generate key"));
+    await waitFor(() => expect(api.createAgentToken).toHaveBeenCalledWith(expect.objectContaining({
+      name: "Inventory agent", scopes: ["assets:write", "credentials:read"], all_projects: true,
+    })));
   });
 
   it("opens the workspace Members admin page with users from the backend", async () => {
@@ -1036,10 +1260,12 @@ describe("StormApp (design prototype port)", () => {
     await screen.findByText("api.northwind.test", { selector: ".hostname" });
     fireEvent.click(screen.getAllByText("Endpoints").find((n) => n.closest(".menu")) as HTMLElement);
     const button = screen.getByRole("button", { name: "Delete endpoints: api.northwind.test" });
-    expect(button.previousElementSibling).toHaveAccessibleName("Edit host: api.northwind.test");
-    expect(button.parentElement?.previousElementSibling).toHaveTextContent("1");
+    const actions = button.closest('.endpoint-actions') as HTMLElement;
+    const edit = within(actions).getByRole('button', { name: 'Edit host: api.northwind.test' });
+    expect(edit.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(actions.previousElementSibling).toHaveTextContent("1");
     expect(screen.queryByRole("button", { name: "Delete endpoints" })).not.toBeInTheDocument();
-    expect(button.parentElement).toHaveClass("endpoint-actions");
+    expect(actions).toHaveClass("endpoint-actions");
     fireEvent.click(button);
     expect(api.deleteEndpoint).not.toHaveBeenCalled();
     let dialog = document.querySelector(".modalback.open") as HTMLElement;

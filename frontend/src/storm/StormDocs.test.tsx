@@ -1,11 +1,22 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { StormDocs } from "./StormDocs";
 import { useLangStore } from "./i18n";
+import { DOC_CHAPTERS, DOC_GROUPS } from './docs';
 
 beforeEach(() => useLangStore.getState().setLang("ru"));
 afterEach(() => useLangStore.getState().setLang("en"));
 
 describe("StormDocs — раздел /docs", () => {
+  it('сохраняет русские названия всех разделов и глав при английском интерфейсе', () => {
+    useLangStore.getState().setLang('en');
+    expect([...DOC_GROUPS, ...DOC_CHAPTERS].every((item) => /[А-Яа-яЁё]/.test(item.title))).toBe(true);
+    render(<StormDocs isAdmin={true} />);
+    expect(screen.getAllByText('Пользователь').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Администратор').length).toBeGreaterThan(0);
+    expect(screen.getByText('Начало работы')).toBeInTheDocument();
+    expect(screen.queryByText('Getting started')).not.toBeInTheDocument();
+    expect(useLangStore.getState().lang).toBe('en');
+  });
   it("лендинг: заголовок Docs и карточки категорий по роли (обычный пользователь)", () => {
     render(<StormDocs isAdmin={false} />);
     // раздел называется Docs (в шапке сайдбара и в заголовке лендинга)

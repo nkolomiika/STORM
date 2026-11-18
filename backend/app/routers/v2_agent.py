@@ -1,5 +1,5 @@
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -8,9 +8,13 @@ from app.dependencies import AgentTokenContext, require_agent_project_access, re
 from app.enums import AssetType
 from app.exceptions import NotFoundError
 from app.models import AgentApiTokenProjectGrant, Host, Project
-from app.pagination import PageParams, to_paginated_response
-from app.schemas import HostOut, ProjectNoteCreate, ProjectNoteOut, ProjectNoteUpdate, ProjectOut, VulnerabilityCreate, VulnerabilityOut, VulnerabilityUpdate
-from app.services import AssetService, ProjectNoteService, VulnerabilityService
+from app.pagination import PageParams, PaginatedResponse, to_paginated_response
+from app.schemas import (
+    AgentIpAddressCreate, EndpointCreate, EndpointOut, HostCreate, HostIpAddressOut, HostOut,
+    ProjectCredentialOut, ProjectNoteCreate, ProjectNoteOut, ProjectNoteUpdate, ProjectOut,
+    VulnerabilityCreate, VulnerabilityOut, VulnerabilityUpdate,
+)
+from app.services import AssetService, ProjectCredentialService, ProjectNoteService, VulnerabilityService
 
 router = APIRouter(tags=["agent-v2"])
 
@@ -48,11 +52,12 @@ async def list_agent_hosts(
     project_id: int,
     page: int = Query(1, ge=1),
     size: int = Query(100, ge=1, le=200),
+    origin: str = Query("host", pattern="^(host|ip|all)$"),
     _scope: AgentTokenContext = Depends(require_agent_scope("assets:read")),
     _project: Project = Depends(require_agent_project_access),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    items, total = await AssetService(db).list_hosts(project_id, page, size, None)
+    items, total = await AssetService(db).list_hosts(project_id, page, size, None, origin)
     return to_paginated_response([HostOut.model_validate(item) for item in items], total, PageParams(page=page, size=size)).model_dump()
 
 
@@ -65,6 +70,126 @@ async def get_agent_host(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     return await AssetService(db).get_host(project_id, host_id)
+
+
+@router.post("/projects/{project_id}/hosts", response_model=HostOut, status_code=status.HTTP_201_CREATED)
+async def create_agent_host(
+    project_id: int,
+    payload: HostCreate,
+    context: AgentTokenContext = Depends(require_agent_scope("assets:write")),
+    _project: Project = Depends(require_agent_project_access),
+    db: AsyncSession = Depends(get_db),
+) -> HostOut:
+    """Создаёт хост с IP-адресами без запуска сканеров или DNS-запросов."""
+    host = await AssetService(db).create_host(project_id, payload.model_dump(), context.created_by)
+    return HostOut.model_validate(host)
+
+
+@router.get("/projects/{project_id}/hosts/{host_id}/endpoints", response_model=list[EndpointOut])
+async def list_agent_endpoints(
+    project_id: int,
+    host_id: int,
+    _scope: AgentTokenContext = Depends(require_agent_scope("assets:read")),
+    _project: Project = Depends(require_agent_project_access),
+    db: AsyncSession = Depends(get_db),
+) -> list[EndpointOut]:
+    """Читает эндпоинты хоста, принадлежащего доступному проекту."""
+    rows = await AssetService(db).list_endpoints(project_id, host_id)
+    return [EndpointOut.model_validate(row) for row in rows]
+
+
+@router.get("/projects/{project_id}/hosts/{host_id}/endpoints/{endpoint_id}", response_model=EndpointOut)
+async def get_agent_endpoint(
+    project_id: int,
+    host_id: int,
+    endpoint_id: int,
+    _scope: AgentTokenContext = Depends(require_agent_scope("assets:read")),
+    _project: Project = Depends(require_agent_project_access),
+    db: AsyncSession = Depends(get_db),
+) -> EndpointOut:
+    """Читает один эндпоинт с проверкой всей цепочки проект → хост → эндпоинт."""
+    return EndpointOut.model_validate(await AssetService(db).get_endpoint(project_id, host_id, endpoint_id))
+
+
+@router.post("/projects/{project_id}/hosts/{host_id}/endpoints", response_model=EndpointOut, status_code=status.HTTP_201_CREATED)
+async def create_agent_endpoint(
+    project_id: int,
+    host_id: int,
+    payload: EndpointCreate,
+    context: AgentTokenContext = Depends(require_agent_scope("assets:write")),
+    _project: Project = Depends(require_agent_project_access),
+    db: AsyncSession = Depends(get_db),
+) -> EndpointOut:
+    """Сохраняет разобранный запрос эндпоинта; сам HTTP-запрос не отправляется."""
+    row = await AssetService(db).create_endpoint(project_id, host_id, payload.model_dump(), context.created_by)
+    return EndpointOut.model_validate(row)
+
+
+@router.get("/projects/{project_id}/ip-addresses", response_model=PaginatedResponse[HostIpAddressOut])
+async def list_agent_ip_addresses(
+    project_id: int,
+    page: int = Query(1, ge=1),
+    size: int = Query(100, ge=1, le=200),
+    host_id: int | None = Query(None, ge=1),
+    _scope: AgentTokenContext = Depends(require_agent_scope("assets:read")),
+    _project: Project = Depends(require_agent_project_access),
+    db: AsyncSession = Depends(get_db),
+) -> PaginatedResponse[HostIpAddressOut]:
+    """Читает страницу всех привязок IP проекта, при необходимости по одному хосту."""
+    rows, total = await AssetService(db).list_ip_addresses(project_id, page, size, host_id)
+    return to_paginated_response([HostIpAddressOut.model_validate(row) for row in rows], total, PageParams(page=page, size=size))
+
+
+@router.get("/projects/{project_id}/ip-addresses/{ip_id}", response_model=HostIpAddressOut)
+async def get_agent_ip_address(
+    project_id: int,
+    ip_id: int,
+    _scope: AgentTokenContext = Depends(require_agent_scope("assets:read")),
+    _project: Project = Depends(require_agent_project_access),
+    db: AsyncSession = Depends(get_db),
+) -> HostIpAddressOut:
+    """Читает IP проекта с портами и сервисами без обращения к самому адресу."""
+    return HostIpAddressOut.model_validate(await AssetService(db).get_ip_address(project_id, ip_id))
+
+
+@router.post("/projects/{project_id}/ip-addresses", response_model=HostIpAddressOut, status_code=status.HTTP_201_CREATED)
+async def create_agent_ip_address(
+    project_id: int,
+    payload: AgentIpAddressCreate,
+    context: AgentTokenContext = Depends(require_agent_scope("assets:write")),
+    _project: Project = Depends(require_agent_project_access),
+    db: AsyncSession = Depends(get_db),
+) -> HostIpAddressOut:
+    """Добавляет IPv4/IPv6 к хосту либо отдельным активом, не запуская разведку."""
+    row = await AssetService(db).create_ip_address(project_id, payload.model_dump(), context.created_by)
+    return HostIpAddressOut.model_validate(row)
+
+
+@router.get("/projects/{project_id}/credentials", response_model=list[ProjectCredentialOut])
+async def list_agent_credentials(
+    project_id: int,
+    response: Response,
+    _scope: AgentTokenContext = Depends(require_agent_scope("credentials:read")),
+    _project: Project = Depends(require_agent_project_access),
+    db: AsyncSession = Depends(get_db),
+) -> list[ProjectCredentialOut]:
+    """Читает креды только с отдельным scope; запрещает кэширование ответа с паролями."""
+    response.headers["Cache-Control"] = "no-store"
+    return [ProjectCredentialOut.model_validate(row) for row in await ProjectCredentialService(db).list_credentials(project_id)]
+
+
+@router.get("/projects/{project_id}/credentials/{credential_id}", response_model=ProjectCredentialOut)
+async def get_agent_credential(
+    project_id: int,
+    credential_id: int,
+    response: Response,
+    _scope: AgentTokenContext = Depends(require_agent_scope("credentials:read")),
+    _project: Project = Depends(require_agent_project_access),
+    db: AsyncSession = Depends(get_db),
+) -> ProjectCredentialOut:
+    """Читает одну учётную запись проекта; ответ с паролем не кэшируется."""
+    response.headers["Cache-Control"] = "no-store"
+    return ProjectCredentialOut.model_validate(await ProjectCredentialService(db).get_credential(project_id, credential_id))
 
 
 @router.get("/projects/{project_id}/notes", response_model=list[ProjectNoteOut])

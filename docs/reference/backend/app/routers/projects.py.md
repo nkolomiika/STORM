@@ -49,22 +49,22 @@ router.get('', response_model=dict)
 [backend/app/routers/projects.py:41](../../../../../backend/app/routers/projects.py#L41)
 
 ```python
-async def create_project(payload: ProjectCreate, request: Request, _: None=Depends(enforce_csrf), admin: User=Depends(require_admin), db: AsyncSession=Depends(get_db)) -> ProjectOut
+async def create_project(payload: ProjectCreate, request: Request, _: None=Depends(enforce_csrf), creator: User=Depends(require_project_creator), db: AsyncSession=Depends(get_db)) -> ProjectOut
 ```
 
-Создаёт проект.
+Создаёт проект от имени admin/lead и добавляет автора в участники.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
 | `payload` | `ProjectCreate` | `обязательный` | Данные операции; для HTTP структура определена Pydantic request-схемой. |
 | `request` | `Request` | `обязательный` | HTTP-запрос Starlette/FastAPI. |
 | `_` | `None` | `Depends(enforce_csrf)` | Определяется именем/типом и контрактом вызывающего кода. |
-| `admin` | `User` | `Depends(require_admin)` | Определяется именем/типом и контрактом вызывающего кода. |
+| `creator` | `User` | `Depends(require_project_creator)` | Определяется именем/типом и контрактом вызывающего кода. |
 | `db` | `AsyncSession` | `Depends(get_db)` | Асинхронная SQLAlchemy-сессия текущего запроса. |
 
 Возвращает: `ProjectOut`.
 
-Dependencies: `enforce_csrf`, `require_admin`, `get_db`.
+Dependencies: `enforce_csrf`, `require_project_creator`, `get_db`.
 
 Маршруты:
 
@@ -347,22 +347,22 @@ router.put('/{project_id}', response_model=ProjectOut)
 [backend/app/routers/projects.py:143](../../../../../backend/app/routers/projects.py#L143)
 
 ```python
-async def delete_project(project_id: int, request: Request, _: None=Depends(enforce_csrf), admin: User=Depends(require_admin), db: AsyncSession=Depends(get_db)) -> None
+async def delete_project(project_id: int, request: Request, _: None=Depends(enforce_csrf), current_user: User=Depends(get_current_user), db: AsyncSession=Depends(get_db)) -> None
 ```
 
-Удаляет проект.
+Удаляет проект, если инициатор — admin, создатель или lead-участник.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
 | `project_id` | `int` | `обязательный` | ID проекта; доступ проверяет dependency маршрута, принадлежность ресурса — сервис. |
 | `request` | `Request` | `обязательный` | HTTP-запрос Starlette/FastAPI. |
 | `_` | `None` | `Depends(enforce_csrf)` | Определяется именем/типом и контрактом вызывающего кода. |
-| `admin` | `User` | `Depends(require_admin)` | Определяется именем/типом и контрактом вызывающего кода. |
+| `current_user` | `User` | `Depends(get_current_user)` | Пользователь из dependency авторизации. |
 | `db` | `AsyncSession` | `Depends(get_db)` | Асинхронная SQLAlchemy-сессия текущего запроса. |
 
 Возвращает: `None`.
 
-Dependencies: `enforce_csrf`, `require_admin`, `get_db`.
+Dependencies: `enforce_csrf`, `get_current_user`, `get_db`.
 
 Маршруты:
 
@@ -374,14 +374,15 @@ router.delete('/{project_id}', status_code=status.HTTP_204_NO_CONTENT)
 <summary>Прямые вызовы в теле</summary>
 
 - `ProjectService`
-- `ProjectService(db).delete_project`
 - `get_client_ip`
+- `service.delete_project`
+- `service.ensure_can_manage_members`
 
 </details>
 
 ## list_members
 
-[backend/app/routers/projects.py:155](../../../../../backend/app/routers/projects.py#L155)
+[backend/app/routers/projects.py:157](../../../../../backend/app/routers/projects.py#L157)
 
 ```python
 async def list_members(project_id: int, _project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> list[ProjectMemberOut]
@@ -416,7 +417,7 @@ router.get('/{project_id}/members', response_model=list[ProjectMemberOut])
 
 ## add_member
 
-[backend/app/routers/projects.py:166](../../../../../backend/app/routers/projects.py#L166)
+[backend/app/routers/projects.py:168](../../../../../backend/app/routers/projects.py#L168)
 
 ```python
 async def add_member(project_id: int, payload: ProjectMemberCreate, request: Request, _: None=Depends(enforce_csrf), current_user: User=Depends(get_current_user), db: AsyncSession=Depends(get_db)) -> dict
@@ -455,7 +456,7 @@ router.post('/{project_id}/members', status_code=status.HTTP_201_CREATED)
 
 ## remove_member
 
-[backend/app/routers/projects.py:181](../../../../../backend/app/routers/projects.py#L181)
+[backend/app/routers/projects.py:183](../../../../../backend/app/routers/projects.py#L183)
 
 ```python
 async def remove_member(project_id: int, user_id: int, request: Request, _: None=Depends(enforce_csrf), current_user: User=Depends(get_current_user), db: AsyncSession=Depends(get_db)) -> None
@@ -494,7 +495,7 @@ router.delete('/{project_id}/members/{user_id}', status_code=status.HTTP_204_NO_
 
 ## list_project_activity
 
-[backend/app/routers/projects.py:196](../../../../../backend/app/routers/projects.py#L196)
+[backend/app/routers/projects.py:198](../../../../../backend/app/routers/projects.py#L198)
 
 ```python
 async def list_project_activity(project_id: int, limit: int=Query(50, ge=1, le=200), _project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> list[dict]

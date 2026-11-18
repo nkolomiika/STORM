@@ -265,14 +265,6 @@ class PasswordResetConfirmRequest(InputBaseModel):
     password: str = Field(min_length=8, max_length=128)
 
 
-class ReactivationRequestOut(BaseModel):
-    """Ответ на запрос возврата пользователя — с превью письма в dev."""
-
-    ok: bool = True
-    email_sent_to: EmailStr
-    mail_preview_url: str | None = None
-
-
 class ReactivationInfoOut(BaseModel):
     """Публичная проверка ссылки-возврата (для страницы /reactivate)."""
 
@@ -424,6 +416,7 @@ class ProjectMemberOut(BaseModel):
     user_id: int
     username: str
     email: EmailStr
+    avatar_url: str | None = None
     # Обе роли — глобальные пользовательские: аккаунтная и проектная.
     role: UserRole
     project_role: ProjectRole = ProjectRole.PENTESTER
@@ -474,6 +467,8 @@ class TaskTrackerTaskOut(BaseModel):
     component: WorksRefOut | None = None
     components: list[WorksRefOut] = Field(default_factory=list)
     is_demo: bool = False
+    project_exists: bool = False
+    project_id: int | None = None
     updated: str
     created: str
     # Ссылка на задачу в Task Tracker (для связывания тикета с проектом и отчёта).
@@ -492,6 +487,9 @@ class TaskTrackerTaskListOut(BaseModel):
     items: list[TaskTrackerTaskOut]
     next_page_token: str | None = None
     is_last: bool = True
+    total: int | None = None
+    active_total: int | None = None
+    closed_total: int | None = None
 
 
 class ProjectNoteCreate(InputBaseModel):
@@ -575,6 +573,18 @@ class HostIpAddressUpdate(InputBaseModel):
     ip_address: str | None = Field(default=None, min_length=1, max_length=45)
     label: str | None = Field(default=None, max_length=100)
     is_primary: bool | None = None
+
+
+class AgentIpAddressCreate(HostIpAddressCreate):
+    """IP агента: привязка к хосту необязательна, адрес строго IPv4/IPv6."""
+
+    model_config = ConfigDict(extra="forbid")
+    host_id: int | None = None
+
+    @field_validator("ip_address", mode="before")
+    @classmethod
+    def validate_ip(cls, value):
+        return normalize_ip_literal(value)
 
 
 class IpAddressChangeRequest(InputBaseModel):

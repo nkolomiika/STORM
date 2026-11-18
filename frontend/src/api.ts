@@ -30,7 +30,6 @@ import type {
   ProjectActivityItem,
   ProjectMember,
   ProjectStats,
-  PasswordResetResult,
   User,
   ProjectNote,
   ProjectCredential,
@@ -326,10 +325,9 @@ export async function updateUser(
   return data;
 }
 
-/** Возврат деактивированного пользователя: шлёт ему письмо со ссылкой-возвратом.
- *  Аккаунт разблокируется, только когда пользователь сам перейдёт по ссылке. */
-export async function reactivateUser(userId: number): Promise<PasswordResetResult> {
-  const { data } = await api.post<PasswordResetResult>(`/users/${userId}/reactivate`);
+/** Сразу разблокирует пользователя без отправки письма (только администратор). */
+export async function reactivateUser(userId: number): Promise<User> {
+  const { data } = await api.post<User>(`/users/${userId}/reactivate`);
   return data;
 }
 
@@ -949,18 +947,28 @@ export async function uploadProjectImage(projectId: number, file: File): Promise
   return data;
 }
 
+/** Сохраняет имя продукта из Content-Disposition при скачивании через Blob URL. */
+function namedReportBlob(data: Blob, disposition: unknown): Blob {
+  if (typeof disposition !== 'string') return data;
+  let name = '';
+  const encoded = disposition.match(/filename\*\s*=\s*UTF-8''([^;]+)/i)?.[1];
+  try { if (encoded) name = decodeURIComponent(encoded.trim()); } catch { /* Берём ASCII fallback. */ }
+  name ||= disposition.match(/filename\s*=\s*"([^"]+)"/i)?.[1] || '';
+  return name ? new File([data], name.replace(/[\\/\u0000-\u001f\u007f]/g, '_'), { type: data.type }) : data;
+}
+
 export async function downloadProjectCertificationReport(projectId: number): Promise<Blob> {
-  const { data } = await api.post(`/projects/${projectId}/reports/szi`, null, {
+  const { data, headers } = await api.post(`/projects/${projectId}/reports/szi`, null, {
     responseType: "blob",
   });
-  return data as Blob;
+  return namedReportBlob(data as Blob, headers['content-disposition']);
 }
 
 export async function downloadProjectAcceptanceReport(projectId: number): Promise<Blob> {
-  const { data } = await api.post(`/projects/${projectId}/reports/pp`, null, {
+  const { data, headers } = await api.post(`/projects/${projectId}/reports/pp`, null, {
     responseType: "blob",
   });
-  return data as Blob;
+  return namedReportBlob(data as Blob, headers['content-disposition']);
 }
 
 export async function listAgentTokens(): Promise<AgentApiToken[]> {
@@ -1003,13 +1011,16 @@ export async function markAllNotificationsRead(): Promise<void> {
 // ── TaskTracker «Tasks» (раздел Tasks) ──────────────────────────────────────────────
 // Бэкенд проксирует задачи Task Tracker пространства APPSEC (read-only). Поиск по имени и фильтр
 // по категории статуса выполняются на бэкенде Task Tracker, но фронт также фильтрует
-// загруженную страницу на клиенте — как список уязвимостей. Пагинация у TaskTracker
-// Cloud токенная, поэтому total не возвращается — отдаём items + next_page_token.
+// загруженные страницы на клиенте — как список уязвимостей. Нативный AS21
+// использует страницы с нуля; backend отдаёт порции по 20 и next_page_token.
 
 /** Список задач Task Tracker (пространство APPSEC). category: "todo"|"inprogress"|"done"|"". */
 export async function getTasks(params: {
   query?: string;
   category?: string;
+  page_number?: number;
+  sort?: 'first' | 'last';
+  refresh?: boolean;
 } = {}): Promise<TaskTrackerTaskList> {
   const { data } = await api.get<TaskTrackerTaskList>("/tasks", { params });
   return data;

@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.database import get_db
-from app.enums import UserRole
+from app.enums import ProjectRole, UserRole
 from app.exceptions import ForbiddenError, UnauthorizedError
 from app.models import AgentApiToken, AgentApiTokenProjectGrant, Project, ProjectMember, User
 from app.security import decode_token, hash_agent_token
@@ -68,6 +68,13 @@ async def require_admin(current_user: User = Depends(get_current_user)) -> User:
     """Проверяет, что текущий пользователь является администратором."""
     if current_user.role != UserRole.ADMIN:
         raise ForbiddenError("Недостаточно прав")
+    return current_user
+
+
+async def require_project_creator(current_user: User = Depends(get_current_user)) -> User:
+    """Разрешает создание проектов только администратору или глобальному lead."""
+    if current_user.role != UserRole.ADMIN and current_user.project_role != ProjectRole.LEAD:
+        raise ForbiddenError("Создавать проекты могут только lead и admin")
     return current_user
 
 

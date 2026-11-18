@@ -434,7 +434,8 @@ def _vuln_card_label(value: str, *, kind: ReportKind, vuln: Vulnerability, index
     label = _normalize_label(value)
     metrics = parse_cvss_vector(vuln.cvss_vector)
     if label.startswith("продукт"):
-        return f"ПП «{project.name}»" if project.name else ""
+        name = report_product_name(project)
+        return f"ПП «{name}»" if name else ""
     if label.startswith("адрес"):
         return _vuln_host_address(vuln, indexes)
     if label.startswith("cwe"):
@@ -1641,7 +1642,7 @@ def _update_severity_summary_table(doc: DocxDocument, severity_counts: dict[Seve
 
 def _update_project_intro(doc: DocxDocument, project: Project) -> None:
     """Заменяет «Программного Продукта XXX» и интервал работ в «Информация о проекте»."""
-    name = (project.name or "").strip()
+    name = report_product_name(project)
     start = _format_date(project.start_date)
     end = _format_date(project.end_date)
     pattern_dates_with_dots = re.compile(r"с \d{2}[.\-/]\d{2}[.\-/]\d{2,4} по \d{2}[.\-/]\d{2}[.\-/]\d{2,4}")
@@ -1736,11 +1737,30 @@ def _fill_credentials_table(doc: DocxDocument, credentials: list[dict]) -> None:
 
 
 def _report_version(name: str) -> str:
-    """Remove the product prefix only; preserve the entire original version suffix."""
+    """Убирает название продукта, сохраняя целиком суффикс версии дистрибутива."""
     match = re.search(r'(?<!\S)[vV]?\d+(?:\.\d+)+', name)
     if match is None:
         match = re.search(r'(?<!\S)[vV]?\d+(?:[-+][^\s]*)?\s*$', name)
     return name[match.start():].strip() if match else ''
+
+
+def report_product_name(project: Project) -> str:
+    """Берёт названия продуктов до версий из affected versions, без дублей.
+
+    Старое скалярное поле поддерживается. Если названия продукта в версиях нет,
+    сохраняется имя проекта; исходные данные проекта и Task Tracker не меняются.
+    """
+    versions = getattr(project, 'appsec_versions', None) or []
+    names = [str(item.get('name') or '').strip() for item in versions if isinstance(item, dict)]
+    if not any(names):
+        names = [(getattr(project, 'appsec_version_name', None) or '').strip()]
+    products = []
+    for name in names:
+        version = _report_version(name)
+        product = name[:-len(version)].strip() if version else name
+        if product and product not in products:
+            products.append(product)
+    return ', '.join(products) or (project.name or '').strip()
 
 
 def _distrib_version(project: Project) -> str:
@@ -1791,7 +1811,7 @@ def _update_cover_distrib_version(doc: DocxDocument, project: Project) -> None:
 
 
 def _update_cover_page(doc: DocxDocument, project: Project) -> None:
-    """Подставляет название проекта на обложку отчёта.
+    """Подставляет название продукта из affected versions на обложку отчёта.
 
     Текст обложки лежит внутри `<w:txbxContent>` (текстовых фреймов) и часто
     разнесён по нескольким соседним `<w:p>`-параграфам, причём «XXX» обычно
@@ -1799,7 +1819,7 @@ def _update_cover_page(doc: DocxDocument, project: Project) -> None:
     его суммарном тексте присутствует «Программного» или «Продукта», заменяем
     все «XXX» в любых run-ах внутри этого фрейма на имя проекта.
     """
-    name = (project.name or "").strip()
+    name = report_product_name(project)
     if not name:
         return
     body = doc.element.body
@@ -2358,7 +2378,7 @@ def _replace_pp_xxx_in_text(text: str, name: str) -> str:
 
 def _update_pp_headings(doc: DocxDocument, project: Project) -> None:
     """Заменяет XXX на название проекта в любых параграфах/ячейках вида «ПП XXX» / «ПП «XXX»»."""
-    name = (project.name or "").strip()
+    name = report_product_name(project)
     if not name:
         return
 
@@ -2479,7 +2499,7 @@ def _flatten_alternate_content(element) -> None:
 
 
 def _update_footers_and_headers(doc: DocxDocument, project: Project) -> None:
-    """Подставляет название проекта в футеры/хедеры всех секций.
+    """Подставляет название продукта из affected versions в футеры/хедеры всех секций.
 
     Текст футера лежит внутри `<w:txbxContent>` (текстовые поля), поэтому
     обходим XML-дерево соответствующих parts напрямую. Дополнительно схлопываем
@@ -2487,7 +2507,7 @@ def _update_footers_and_headers(doc: DocxDocument, project: Project) -> None:
     некоторых просмотрщиках текст футера дублируется (Choice + Fallback ветки
     отрисовываются обе).
     """
-    name = (project.name or "").strip()
+    name = report_product_name(project)
     for section in doc.sections:
         for container in (section.footer, section.header, section.first_page_footer,
                           section.first_page_header, section.even_page_footer,
@@ -2520,7 +2540,7 @@ def _update_object_under_test(doc: DocxDocument, project: Project, hosts: list[H
     параграф-плейсхолдер «XXX» (он уже под bullet-стилем `af5`) и клонируем его
     под каждый дополнительный хост.
     """
-    name = (project.name or "").strip()
+    name = report_product_name(project)
     host_labels: list[str] = []
     for host in hosts:
         label = host.hostname or host.ip_address

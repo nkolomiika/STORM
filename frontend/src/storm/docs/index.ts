@@ -42,29 +42,29 @@ export interface DocGroup {
 
 /** Три документа, на которые делится документация (порядок — как в оглавлении). */
 export const DOC_GROUPS: DocGroup[] = [
-  { audience: "user", title: "User" },
-  { audience: "admin", title: "Administrator" },
-  { audience: "agent", title: "Agent API" },
+  { audience: "user", title: "Пользователь" },
+  { audience: "admin", title: "Администратор" },
+  { audience: "agent", title: "Агентский API" },
 ];
 
 /** Главы в порядке отображения. Группируются по `audience` через DOC_GROUPS. */
 export const DOC_CHAPTERS: DocChapter[] = [
-  { id: "user-getting-started", title: "Getting started", audience: "user", body: userGettingStarted },
-  { id: "user-projects", title: "Projects", audience: "user", body: userProjects },
-  { id: "user-hosts", title: "Hosts and assets", audience: "user", body: userHosts },
-  { id: "user-vulnerabilities", title: "Vulnerabilities", audience: "user", body: userVulnerabilities },
-  { id: "user-notes", title: "Project notes", audience: "user", body: userNotes },
-  { id: "user-reports", title: "Reports", audience: "user", body: userReports },
-  { id: "user-task-tracker", title: "Task Tracker", audience: "user", body: userTaskTracker },
-  { id: "user-notifications", title: "Notifications", audience: "user", body: userNotifications },
-  { id: "user-profile", title: "Profile and security", audience: "user", body: userProfile },
-  { id: "user-team-lead", title: "Team lead workflow", audience: "user", body: userTeamLead },
-  { id: "admin-overview", title: "Administrator role", audience: "admin", body: adminOverview },
-  { id: "admin-users", title: "User management", audience: "admin", body: adminUsers },
-  { id: "admin-projects", title: "Projects", audience: "admin", body: adminProjects },
-  { id: "agent-overview", title: "Agent API overview", audience: "agent", body: agentOverview },
-  { id: "agent-tokens", title: "Tokens and permissions", audience: "agent", body: agentTokens },
-  { id: "agent-usage", title: "Authentication and endpoints", audience: "agent", body: agentUsage },
+  { id: "user-getting-started", title: "Начало работы", audience: "user", body: userGettingStarted },
+  { id: "user-projects", title: "Проекты", audience: "user", body: userProjects },
+  { id: "user-hosts", title: "Хосты и активы", audience: "user", body: userHosts },
+  { id: "user-vulnerabilities", title: "Уязвимости", audience: "user", body: userVulnerabilities },
+  { id: "user-notes", title: "Заметки проекта", audience: "user", body: userNotes },
+  { id: "user-reports", title: "Отчёты", audience: "user", body: userReports },
+  { id: "user-task-tracker", title: "Задачи Task Tracker", audience: "user", body: userTaskTracker },
+  { id: "user-notifications", title: "Уведомления", audience: "user", body: userNotifications },
+  { id: "user-profile", title: "Профиль и безопасность", audience: "user", body: userProfile },
+  { id: "user-team-lead", title: "Работа тимлида", audience: "user", body: userTeamLead },
+  { id: "admin-overview", title: "Роль администратора", audience: "admin", body: adminOverview },
+  { id: "admin-users", title: "Управление пользователями", audience: "admin", body: adminUsers },
+  { id: "admin-projects", title: "Проекты", audience: "admin", body: adminProjects },
+  { id: "agent-overview", title: "Обзор агентского API", audience: "agent", body: agentOverview },
+  { id: "agent-tokens", title: "Токены и права", audience: "agent", body: agentTokens },
+  { id: "agent-usage", title: "Авторизация и эндпоинты", audience: "agent", body: agentUsage },
 ];
 
 /**

@@ -1,6 +1,6 @@
 # HTTP API: контракты методов
 
-Документированных HTTP-операций: **161**.
+Документированных HTTP-операций: **170**.
 
 Справочник сгенерирован из актуальных OpenAPI v1/v2. Тела запросов и ответы описаны в [схемах](API_SCHEMAS.md). Для удобного вызова используйте защищённый Swagger `/api/v1/docs` или `/api/v2/docs` в запущенном приложении.
 
@@ -388,7 +388,7 @@ Operation ID: `revoke_agent_token_api_v1_agent_tokens__token_id__delete`.
 
 Operation ID: `me_api_v1_users_me_get`.
 
-Обработчик: `me` — [backend/app/routers/users.py:33](../backend/app/routers/users.py#L33).
+Обработчик: `me` — [backend/app/routers/users.py:32](../backend/app/routers/users.py#L32).
 
 Явные dependencies: `get_current_user`.
 
@@ -407,7 +407,7 @@ Operation ID: `me_api_v1_users_me_get`.
 
 Operation ID: `update_my_profile_api_v1_users_me_patch`.
 
-Обработчик: `update_my_profile` — [backend/app/routers/users.py:45](../backend/app/routers/users.py#L45).
+Обработчик: `update_my_profile` — [backend/app/routers/users.py:44](../backend/app/routers/users.py#L44).
 
 Явные dependencies: `enforce_csrf`, `get_current_user`, `get_db`.
 
@@ -429,7 +429,7 @@ Operation ID: `update_my_profile_api_v1_users_me_patch`.
 
 Operation ID: `my_profile_api_v1_users_me_profile_get`.
 
-Обработчик: `my_profile` — [backend/app/routers/users.py:39](../backend/app/routers/users.py#L39).
+Обработчик: `my_profile` — [backend/app/routers/users.py:38](../backend/app/routers/users.py#L38).
 
 Явные dependencies: `get_current_user`.
 
@@ -448,7 +448,7 @@ Operation ID: `my_profile_api_v1_users_me_profile_get`.
 
 Operation ID: `change_my_password_api_v1_users_me_password_patch`.
 
-Обработчик: `change_my_password` — [backend/app/routers/users.py:58](../backend/app/routers/users.py#L58).
+Обработчик: `change_my_password` — [backend/app/routers/users.py:57](../backend/app/routers/users.py#L57).
 
 Явные dependencies: `enforce_csrf`, `get_current_user`, `get_db`.
 
@@ -470,7 +470,7 @@ Operation ID: `change_my_password_api_v1_users_me_password_patch`.
 
 Operation ID: `setup_my_2fa_api_v1_users_me_2fa_setup_post`.
 
-Обработчик: `setup_my_2fa` — [backend/app/routers/users.py:76](../backend/app/routers/users.py#L76).
+Обработчик: `setup_my_2fa` — [backend/app/routers/users.py:75](../backend/app/routers/users.py#L75).
 
 Явные dependencies: `enforce_csrf`, `get_current_user`, `get_db`.
 
@@ -490,7 +490,7 @@ Operation ID: `setup_my_2fa_api_v1_users_me_2fa_setup_post`.
 
 Operation ID: `confirm_my_2fa_api_v1_users_me_2fa_confirm_post`.
 
-Обработчик: `confirm_my_2fa` — [backend/app/routers/users.py:88](../backend/app/routers/users.py#L88).
+Обработчик: `confirm_my_2fa` — [backend/app/routers/users.py:87](../backend/app/routers/users.py#L87).
 
 Явные dependencies: `enforce_csrf`, `get_current_user`, `get_db`.
 
@@ -512,7 +512,7 @@ Operation ID: `confirm_my_2fa_api_v1_users_me_2fa_confirm_post`.
 
 Operation ID: `disable_my_2fa_api_v1_users_me_2fa_disable_post`.
 
-Обработчик: `disable_my_2fa` — [backend/app/routers/users.py:101](../backend/app/routers/users.py#L101).
+Обработчик: `disable_my_2fa` — [backend/app/routers/users.py:100](../backend/app/routers/users.py#L100).
 
 Явные dependencies: `enforce_csrf`, `get_current_user`, `get_db`.
 
@@ -534,7 +534,7 @@ Operation ID: `disable_my_2fa_api_v1_users_me_2fa_disable_post`.
 
 Operation ID: `upload_my_avatar_api_v1_users_me_avatar_post`.
 
-Обработчик: `upload_my_avatar` — [backend/app/routers/users.py:114](../backend/app/routers/users.py#L114).
+Обработчик: `upload_my_avatar` — [backend/app/routers/users.py:113](../backend/app/routers/users.py#L113).
 
 Явные dependencies: `enforce_csrf`, `get_current_user`, `get_db`.
 
@@ -556,7 +556,7 @@ Operation ID: `upload_my_avatar_api_v1_users_me_avatar_post`.
 
 Operation ID: `list_users_api_v1_users_get`.
 
-Обработчик: `list_users` — [backend/app/routers/users.py:127](../backend/app/routers/users.py#L127).
+Обработчик: `list_users` — [backend/app/routers/users.py:126](../backend/app/routers/users.py#L126).
 
 Явные dependencies: `require_admin`, `get_db`.
 
@@ -577,7 +577,7 @@ Operation ID: `list_users_api_v1_users_get`.
 
 Operation ID: `create_invitation_api_v1_users_invitations_post`.
 
-Обработчик: `create_invitation` — [backend/app/routers/users.py:151](../backend/app/routers/users.py#L151).
+Обработчик: `create_invitation` — [backend/app/routers/users.py:150](../backend/app/routers/users.py#L150).
 
 Явные dependencies: `enforce_csrf`, `require_admin`, `get_db`.
 
@@ -599,7 +599,7 @@ Operation ID: `create_invitation_api_v1_users_invitations_post`.
 
 Operation ID: `list_invitations_api_v1_users_invitations_get`.
 
-Обработчик: `list_invitations` — [backend/app/routers/users.py:169](../backend/app/routers/users.py#L169).
+Обработчик: `list_invitations` — [backend/app/routers/users.py:168](../backend/app/routers/users.py#L168).
 
 Явные dependencies: `require_admin`, `get_db`.
 
@@ -618,7 +618,7 @@ Operation ID: `list_invitations_api_v1_users_invitations_get`.
 
 Operation ID: `resend_invitation_api_v1_users_invitations__invitation_id__resend_post`.
 
-Обработчик: `resend_invitation` — [backend/app/routers/users.py:181](../backend/app/routers/users.py#L181).
+Обработчик: `resend_invitation` — [backend/app/routers/users.py:180](../backend/app/routers/users.py#L180).
 
 Явные dependencies: `enforce_csrf`, `require_admin`, `get_db`.
 
@@ -639,7 +639,7 @@ Operation ID: `resend_invitation_api_v1_users_invitations__invitation_id__resend
 
 Operation ID: `revoke_invitation_api_v1_users_invitations__invitation_id__delete`.
 
-Обработчик: `revoke_invitation` — [backend/app/routers/users.py:199](../backend/app/routers/users.py#L199).
+Обработчик: `revoke_invitation` — [backend/app/routers/users.py:198](../backend/app/routers/users.py#L198).
 
 Явные dependencies: `enforce_csrf`, `require_admin`, `get_db`.
 
@@ -662,7 +662,7 @@ SSO-вход не подключает удалённый поиск IAM: в в�
 
 Operation ID: `search_users_api_v1_users_search_get`.
 
-Обработчик: `search_users` — [backend/app/routers/users.py:211](../backend/app/routers/users.py#L211).
+Обработчик: `search_users` — [backend/app/routers/users.py:210](../backend/app/routers/users.py#L210).
 
 Явные dependencies: `get_current_user`, `get_db`.
 
@@ -683,7 +683,7 @@ Operation ID: `search_users_api_v1_users_search_get`.
 
 Operation ID: `get_user_api_v1_users__user_id__get`.
 
-Обработчик: `get_user` — [backend/app/routers/users.py:227](../backend/app/routers/users.py#L227).
+Обработчик: `get_user` — [backend/app/routers/users.py:226](../backend/app/routers/users.py#L226).
 
 Явные dependencies: `require_admin`, `get_db`.
 
@@ -703,7 +703,7 @@ Operation ID: `get_user_api_v1_users__user_id__get`.
 
 Operation ID: `update_user_api_v1_users__user_id__put`.
 
-Обработчик: `update_user` — [backend/app/routers/users.py:251](../backend/app/routers/users.py#L251).
+Обработчик: `update_user` — [backend/app/routers/users.py:250](../backend/app/routers/users.py#L250).
 
 Явные dependencies: `enforce_csrf`, `require_admin`, `get_db`.
 
@@ -726,7 +726,7 @@ Operation ID: `update_user_api_v1_users__user_id__put`.
 
 Operation ID: `delete_user_api_v1_users__user_id__delete`.
 
-Обработчик: `delete_user` — [backend/app/routers/users.py:265](../backend/app/routers/users.py#L265).
+Обработчик: `delete_user` — [backend/app/routers/users.py:264](../backend/app/routers/users.py#L264).
 
 Явные dependencies: `enforce_csrf`, `require_admin`, `get_db`.
 
@@ -747,7 +747,7 @@ Operation ID: `delete_user_api_v1_users__user_id__delete`.
 
 Operation ID: `get_user_avatar_api_v1_users__user_id__avatar_get`.
 
-Обработчик: `get_user_avatar` — [backend/app/routers/users.py:238](../backend/app/routers/users.py#L238).
+Обработчик: `get_user_avatar` — [backend/app/routers/users.py:237](../backend/app/routers/users.py#L237).
 
 Явные dependencies: `get_current_user`, `get_db`.
 
@@ -763,14 +763,11 @@ Operation ID: `get_user_avatar_api_v1_users__user_id__avatar_get`.
 
 ### POST /api/v1/users/{user_id}/reactivate
 
-Возвращает деактивированного пользователя: шлёт ему письмо-возврат со ссылкой.
-
-Аккаунт разблокируется не здесь, а когда пользователь сам перейдёт по ссылке
-(там же сразу выдаётся сессия — см. /auth/reactivate).
+Сразу возвращает пользователю доступ; письмо и SMTP не используются.
 
 Operation ID: `reactivate_user_api_v1_users__user_id__reactivate_post`.
 
-Обработчик: `reactivate_user` — [backend/app/routers/users.py:277](../backend/app/routers/users.py#L277).
+Обработчик: `reactivate_user` — [backend/app/routers/users.py:276](../backend/app/routers/users.py#L276).
 
 Явные dependencies: `enforce_csrf`, `require_admin`, `get_db`.
 
@@ -782,7 +779,7 @@ Operation ID: `reactivate_user_api_v1_users__user_id__reactivate_post`.
 
 | HTTP | Ответ | Тип/схема |
 | --- | --- | --- |
-| 200 | Successful Response | application/json: ReactivationRequestOut |
+| 200 | Successful Response | application/json: UserOut |
 | 422 | Validation Error | application/json: HTTPValidationError |
 
 ### PATCH /api/v1/users/{user_id}/password
@@ -791,7 +788,7 @@ Operation ID: `reactivate_user_api_v1_users__user_id__reactivate_post`.
 
 Operation ID: `reset_password_api_v1_users__user_id__password_patch`.
 
-Обработчик: `reset_password` — [backend/app/routers/users.py:295](../backend/app/routers/users.py#L295).
+Обработчик: `reset_password` — [backend/app/routers/users.py:289](../backend/app/routers/users.py#L289).
 
 Явные dependencies: `enforce_csrf`, `require_admin`, `get_db`.
 
@@ -812,7 +809,7 @@ Operation ID: `reset_password_api_v1_users__user_id__password_patch`.
 
 Operation ID: `reset_2fa_api_v1_users__user_id__2fa_reset_post`.
 
-Обработчик: `reset_2fa` — [backend/app/routers/users.py:309](../backend/app/routers/users.py#L309).
+Обработчик: `reset_2fa` — [backend/app/routers/users.py:303](../backend/app/routers/users.py#L303).
 
 Явные dependencies: `enforce_csrf`, `require_admin`, `get_db`.
 
@@ -851,13 +848,13 @@ Operation ID: `list_projects_api_v1_projects_get`.
 
 ### POST /api/v1/projects
 
-Создаёт проект.
+Создаёт проект от имени admin/lead и добавляет автора в участники.
 
 Operation ID: `create_project_api_v1_projects_post`.
 
 Обработчик: `create_project` — [backend/app/routers/projects.py:41](../backend/app/routers/projects.py#L41).
 
-Явные dependencies: `enforce_csrf`, `require_admin`, `get_db`.
+Явные dependencies: `enforce_csrf`, `require_project_creator`, `get_db`.
 
 | Параметр | Где | Тип | Обязательный | Ограничения/по умолчанию |
 | --- | --- | --- | --- | --- |
@@ -1022,13 +1019,13 @@ Operation ID: `update_project_api_v1_projects__project_id__put`.
 
 ### DELETE /api/v1/projects/{project_id}
 
-Удаляет проект.
+Удаляет проект, если инициатор — admin, создатель или lead-участник.
 
 Operation ID: `delete_project_api_v1_projects__project_id__delete`.
 
 Обработчик: `delete_project` — [backend/app/routers/projects.py:143](../backend/app/routers/projects.py#L143).
 
-Явные dependencies: `enforce_csrf`, `require_admin`, `get_db`.
+Явные dependencies: `enforce_csrf`, `get_current_user`, `get_db`.
 
 | Параметр | Где | Тип | Обязательный | Ограничения/по умолчанию |
 | --- | --- | --- | --- | --- |
@@ -1047,7 +1044,7 @@ Operation ID: `delete_project_api_v1_projects__project_id__delete`.
 
 Operation ID: `list_members_api_v1_projects__project_id__members_get`.
 
-Обработчик: `list_members` — [backend/app/routers/projects.py:155](../backend/app/routers/projects.py#L155).
+Обработчик: `list_members` — [backend/app/routers/projects.py:157](../backend/app/routers/projects.py#L157).
 
 Явные dependencies: `require_project_access`, `get_db`.
 
@@ -1067,7 +1064,7 @@ Operation ID: `list_members_api_v1_projects__project_id__members_get`.
 
 Operation ID: `add_member_api_v1_projects__project_id__members_post`.
 
-Обработчик: `add_member` — [backend/app/routers/projects.py:166](../backend/app/routers/projects.py#L166).
+Обработчик: `add_member` — [backend/app/routers/projects.py:168](../backend/app/routers/projects.py#L168).
 
 Явные dependencies: `enforce_csrf`, `get_current_user`, `get_db`.
 
@@ -1090,7 +1087,7 @@ Operation ID: `add_member_api_v1_projects__project_id__members_post`.
 
 Operation ID: `remove_member_api_v1_projects__project_id__members__user_id__delete`.
 
-Обработчик: `remove_member` — [backend/app/routers/projects.py:181](../backend/app/routers/projects.py#L181).
+Обработчик: `remove_member` — [backend/app/routers/projects.py:183](../backend/app/routers/projects.py#L183).
 
 Явные dependencies: `enforce_csrf`, `get_current_user`, `get_db`.
 
@@ -1112,7 +1109,7 @@ Operation ID: `remove_member_api_v1_projects__project_id__members__user_id__dele
 
 Operation ID: `list_project_activity_api_v1_projects__project_id__activity_get`.
 
-Обработчик: `list_project_activity` — [backend/app/routers/projects.py:196](../backend/app/routers/projects.py#L196).
+Обработчик: `list_project_activity` — [backend/app/routers/projects.py:198](../backend/app/routers/projects.py#L198).
 
 Явные dependencies: `require_project_access`, `get_db`.
 
@@ -3038,18 +3035,21 @@ Operation ID: `export_openapi_file_api_v1_projects__project_id__hosts__host_id__
 
 ### GET /api/v1/tasks
 
-List Tasks
+Возвращает по 20 тикетов и доступные пользователю связи с проектами.
 
 Operation ID: `list_tasks_api_v1_tasks_get`.
 
-Обработчик: `list_tasks` — [backend/app/routers/task_tracker.py:11](../backend/app/routers/task_tracker.py#L11).
+Обработчик: `list_tasks` — [backend/app/routers/task_tracker.py:14](../backend/app/routers/task_tracker.py#L14).
 
-Явные dependencies: `get_current_user`.
+Явные dependencies: `get_current_user`, `get_db`.
 
 | Параметр | Где | Тип | Обязательный | Ограничения/по умолчанию |
 | --- | --- | --- | --- | --- |
 | `query` | query | `string \| null` | нет | — |
 | `category` | query | `string \| null` | нет | — |
+| `page_number` | query | `integer` | нет | {"maximum": 1000000, "minimum": 0, "default": 0} |
+| `sort` | query | `enum(first, last)` | нет | {"default": "last"} |
+| `refresh` | query | `boolean` | нет | {"default": false} |
 | `access_token` | cookie | `string \| null` | нет | — |
 
 | HTTP | Ответ | Тип/схема |
@@ -3059,13 +3059,13 @@ Operation ID: `list_tasks_api_v1_tasks_get`.
 
 ### GET /api/v1/tasks/{key}
 
-Get Task
+Читает карточку; ID связанного проекта отдаёт только при наличии доступа.
 
 Operation ID: `get_task_api_v1_tasks__key__get`.
 
-Обработчик: `get_task` — [backend/app/routers/task_tracker.py:16](../backend/app/routers/task_tracker.py#L16).
+Обработчик: `get_task` — [backend/app/routers/task_tracker.py:23](../backend/app/routers/task_tracker.py#L23).
 
-Явные dependencies: `get_current_user`.
+Явные dependencies: `get_current_user`, `get_db`.
 
 | Параметр | Где | Тип | Обязательный | Ограничения/по умолчанию |
 | --- | --- | --- | --- | --- |
@@ -3207,7 +3207,7 @@ Operation ID: `export_vulnerability_to_works_api_v1_projects__project_id__vulner
 
 Operation ID: `generate_szi_report_api_v1_projects__project_id__reports_szi_post`.
 
-Обработчик: `generate_szi_report` — [backend/app/routers/reports.py:40](../backend/app/routers/reports.py#L40).
+Обработчик: `generate_szi_report` — [backend/app/routers/reports.py:41](../backend/app/routers/reports.py#L41).
 
 Явные dependencies: `enforce_csrf`, `get_current_user`, `require_project_access`, `get_db`.
 
@@ -3228,7 +3228,7 @@ Operation ID: `generate_szi_report_api_v1_projects__project_id__reports_szi_post
 
 Operation ID: `generate_pp_report_api_v1_projects__project_id__reports_pp_post`.
 
-Обработчик: `generate_pp_report` — [backend/app/routers/reports.py:52](../backend/app/routers/reports.py#L52).
+Обработчик: `generate_pp_report` — [backend/app/routers/reports.py:53](../backend/app/routers/reports.py#L53).
 
 Явные dependencies: `enforce_csrf`, `get_current_user`, `require_project_access`, `get_db`.
 
@@ -3281,7 +3281,7 @@ List Agent Projects
 
 Operation ID: `list_agent_projects_projects_get`.
 
-Обработчик: `list_agent_projects` — [backend/app/routers/v2_agent.py:19](../backend/app/routers/v2_agent.py#L19).
+Обработчик: `list_agent_projects` — [backend/app/routers/v2_agent.py:23](../backend/app/routers/v2_agent.py#L23).
 
 Явные dependencies: `require_agent_scope('projects:read')`, `get_db`.
 
@@ -3300,7 +3300,7 @@ Get Agent Project
 
 Operation ID: `get_agent_project_projects__project_id__get`.
 
-Обработчик: `get_agent_project` — [backend/app/routers/v2_agent.py:38](../backend/app/routers/v2_agent.py#L38).
+Обработчик: `get_agent_project` — [backend/app/routers/v2_agent.py:42](../backend/app/routers/v2_agent.py#L42).
 
 Явные dependencies: `require_agent_scope('projects:read')`, `require_agent_project_access`.
 
@@ -3320,7 +3320,7 @@ List Agent Hosts
 
 Operation ID: `list_agent_hosts_projects__project_id__hosts_get`.
 
-Обработчик: `list_agent_hosts` — [backend/app/routers/v2_agent.py:47](../backend/app/routers/v2_agent.py#L47).
+Обработчик: `list_agent_hosts` — [backend/app/routers/v2_agent.py:51](../backend/app/routers/v2_agent.py#L51).
 
 Явные dependencies: `require_agent_scope('assets:read')`, `require_agent_project_access`, `get_db`.
 
@@ -3329,11 +3329,34 @@ Operation ID: `list_agent_hosts_projects__project_id__hosts_get`.
 | `project_id` | path | `integer` | да | — |
 | `page` | query | `integer` | нет | {"minimum": 1, "default": 1} |
 | `size` | query | `integer` | нет | {"maximum": 200, "minimum": 1, "default": 100} |
+| `origin` | query | `string` | нет | {"pattern": "^(host\|ip\|all)$", "default": "host"} |
 | `Authorization` | header | `string \| null` | нет | — |
 
 | HTTP | Ответ | Тип/схема |
 | --- | --- | --- |
 | 200 | Successful Response | application/json: object |
+| 422 | Validation Error | application/json: HTTPValidationError |
+
+### POST /api/v2/projects/{project_id}/hosts
+
+Создаёт хост с IP-адресами без запуска сканеров или DNS-запросов.
+
+Operation ID: `create_agent_host_projects__project_id__hosts_post`.
+
+Обработчик: `create_agent_host` — [backend/app/routers/v2_agent.py:76](../backend/app/routers/v2_agent.py#L76).
+
+Явные dependencies: `require_agent_scope('assets:write')`, `require_agent_project_access`, `get_db`.
+
+| Параметр | Где | Тип | Обязательный | Ограничения/по умолчанию |
+| --- | --- | --- | --- | --- |
+| `project_id` | path | `integer` | да | — |
+| `Authorization` | header | `string \| null` | нет | — |
+
+Тело: `application/json`, схема `HostCreate`, обязательно.
+
+| HTTP | Ответ | Тип/схема |
+| --- | --- | --- |
+| 201 | Successful Response | application/json: HostOut |
 | 422 | Validation Error | application/json: HTTPValidationError |
 
 ### GET /api/v2/projects/{project_id}/hosts/{host_id}
@@ -3342,7 +3365,7 @@ Get Agent Host
 
 Operation ID: `get_agent_host_projects__project_id__hosts__host_id__get`.
 
-Обработчик: `get_agent_host` — [backend/app/routers/v2_agent.py:60](../backend/app/routers/v2_agent.py#L60).
+Обработчик: `get_agent_host` — [backend/app/routers/v2_agent.py:65](../backend/app/routers/v2_agent.py#L65).
 
 Явные dependencies: `require_agent_scope('assets:read')`, `require_agent_project_access`, `get_db`.
 
@@ -3357,13 +3380,186 @@ Operation ID: `get_agent_host_projects__project_id__hosts__host_id__get`.
 | 200 | Successful Response | application/json: object |
 | 422 | Validation Error | application/json: HTTPValidationError |
 
+### GET /api/v2/projects/{project_id}/hosts/{host_id}/endpoints
+
+Читает эндпоинты хоста, принадлежащего доступному проекту.
+
+Operation ID: `list_agent_endpoints_projects__project_id__hosts__host_id__endpoints_get`.
+
+Обработчик: `list_agent_endpoints` — [backend/app/routers/v2_agent.py:89](../backend/app/routers/v2_agent.py#L89).
+
+Явные dependencies: `require_agent_scope('assets:read')`, `require_agent_project_access`, `get_db`.
+
+| Параметр | Где | Тип | Обязательный | Ограничения/по умолчанию |
+| --- | --- | --- | --- | --- |
+| `project_id` | path | `integer` | да | — |
+| `host_id` | path | `integer` | да | — |
+| `Authorization` | header | `string \| null` | нет | — |
+
+| HTTP | Ответ | Тип/схема |
+| --- | --- | --- |
+| 200 | Successful Response | application/json: list[EndpointOut] |
+| 422 | Validation Error | application/json: HTTPValidationError |
+
+### POST /api/v2/projects/{project_id}/hosts/{host_id}/endpoints
+
+Сохраняет разобранный запрос эндпоинта; сам HTTP-запрос не отправляется.
+
+Operation ID: `create_agent_endpoint_projects__project_id__hosts__host_id__endpoints_post`.
+
+Обработчик: `create_agent_endpoint` — [backend/app/routers/v2_agent.py:115](../backend/app/routers/v2_agent.py#L115).
+
+Явные dependencies: `require_agent_scope('assets:write')`, `require_agent_project_access`, `get_db`.
+
+| Параметр | Где | Тип | Обязательный | Ограничения/по умолчанию |
+| --- | --- | --- | --- | --- |
+| `project_id` | path | `integer` | да | — |
+| `host_id` | path | `integer` | да | — |
+| `Authorization` | header | `string \| null` | нет | — |
+
+Тело: `application/json`, схема `EndpointCreate`, обязательно.
+
+| HTTP | Ответ | Тип/схема |
+| --- | --- | --- |
+| 201 | Successful Response | application/json: EndpointOut |
+| 422 | Validation Error | application/json: HTTPValidationError |
+
+### GET /api/v2/projects/{project_id}/hosts/{host_id}/endpoints/{endpoint_id}
+
+Читает один эндпоинт с проверкой всей цепочки проект → хост → эндпоинт.
+
+Operation ID: `get_agent_endpoint_projects__project_id__hosts__host_id__endpoints__endpoint_id__get`.
+
+Обработчик: `get_agent_endpoint` — [backend/app/routers/v2_agent.py:102](../backend/app/routers/v2_agent.py#L102).
+
+Явные dependencies: `require_agent_scope('assets:read')`, `require_agent_project_access`, `get_db`.
+
+| Параметр | Где | Тип | Обязательный | Ограничения/по умолчанию |
+| --- | --- | --- | --- | --- |
+| `project_id` | path | `integer` | да | — |
+| `host_id` | path | `integer` | да | — |
+| `endpoint_id` | path | `integer` | да | — |
+| `Authorization` | header | `string \| null` | нет | — |
+
+| HTTP | Ответ | Тип/схема |
+| --- | --- | --- |
+| 200 | Successful Response | application/json: EndpointOut |
+| 422 | Validation Error | application/json: HTTPValidationError |
+
+### GET /api/v2/projects/{project_id}/ip-addresses
+
+Читает страницу всех привязок IP проекта, при необходимости по одному хосту.
+
+Operation ID: `list_agent_ip_addresses_projects__project_id__ip_addresses_get`.
+
+Обработчик: `list_agent_ip_addresses` — [backend/app/routers/v2_agent.py:129](../backend/app/routers/v2_agent.py#L129).
+
+Явные dependencies: `require_agent_scope('assets:read')`, `require_agent_project_access`, `get_db`.
+
+| Параметр | Где | Тип | Обязательный | Ограничения/по умолчанию |
+| --- | --- | --- | --- | --- |
+| `project_id` | path | `integer` | да | — |
+| `page` | query | `integer` | нет | {"minimum": 1, "default": 1} |
+| `size` | query | `integer` | нет | {"maximum": 200, "minimum": 1, "default": 100} |
+| `host_id` | query | `integer \| null` | нет | — |
+| `Authorization` | header | `string \| null` | нет | — |
+
+| HTTP | Ответ | Тип/схема |
+| --- | --- | --- |
+| 200 | Successful Response | application/json: PaginatedResponse_HostIpAddressOut_ |
+| 422 | Validation Error | application/json: HTTPValidationError |
+
+### POST /api/v2/projects/{project_id}/ip-addresses
+
+Добавляет IPv4/IPv6 к хосту либо отдельным активом, не запуская разведку.
+
+Operation ID: `create_agent_ip_address_projects__project_id__ip_addresses_post`.
+
+Обработчик: `create_agent_ip_address` — [backend/app/routers/v2_agent.py:156](../backend/app/routers/v2_agent.py#L156).
+
+Явные dependencies: `require_agent_scope('assets:write')`, `require_agent_project_access`, `get_db`.
+
+| Параметр | Где | Тип | Обязательный | Ограничения/по умолчанию |
+| --- | --- | --- | --- | --- |
+| `project_id` | path | `integer` | да | — |
+| `Authorization` | header | `string \| null` | нет | — |
+
+Тело: `application/json`, схема `AgentIpAddressCreate`, обязательно.
+
+| HTTP | Ответ | Тип/схема |
+| --- | --- | --- |
+| 201 | Successful Response | application/json: HostIpAddressOut |
+| 422 | Validation Error | application/json: HTTPValidationError |
+
+### GET /api/v2/projects/{project_id}/ip-addresses/{ip_id}
+
+Читает IP проекта с портами и сервисами без обращения к самому адресу.
+
+Operation ID: `get_agent_ip_address_projects__project_id__ip_addresses__ip_id__get`.
+
+Обработчик: `get_agent_ip_address` — [backend/app/routers/v2_agent.py:144](../backend/app/routers/v2_agent.py#L144).
+
+Явные dependencies: `require_agent_scope('assets:read')`, `require_agent_project_access`, `get_db`.
+
+| Параметр | Где | Тип | Обязательный | Ограничения/по умолчанию |
+| --- | --- | --- | --- | --- |
+| `project_id` | path | `integer` | да | — |
+| `ip_id` | path | `integer` | да | — |
+| `Authorization` | header | `string \| null` | нет | — |
+
+| HTTP | Ответ | Тип/схема |
+| --- | --- | --- |
+| 200 | Successful Response | application/json: HostIpAddressOut |
+| 422 | Validation Error | application/json: HTTPValidationError |
+
+### GET /api/v2/projects/{project_id}/credentials
+
+Читает креды только с отдельным scope; запрещает кэширование ответа с паролями.
+
+Operation ID: `list_agent_credentials_projects__project_id__credentials_get`.
+
+Обработчик: `list_agent_credentials` — [backend/app/routers/v2_agent.py:169](../backend/app/routers/v2_agent.py#L169).
+
+Явные dependencies: `require_agent_scope('credentials:read')`, `require_agent_project_access`, `get_db`.
+
+| Параметр | Где | Тип | Обязательный | Ограничения/по умолчанию |
+| --- | --- | --- | --- | --- |
+| `project_id` | path | `integer` | да | — |
+| `Authorization` | header | `string \| null` | нет | — |
+
+| HTTP | Ответ | Тип/схема |
+| --- | --- | --- |
+| 200 | Successful Response | application/json: list[ProjectCredentialOut] |
+| 422 | Validation Error | application/json: HTTPValidationError |
+
+### GET /api/v2/projects/{project_id}/credentials/{credential_id}
+
+Читает одну учётную запись проекта; ответ с паролем не кэшируется.
+
+Operation ID: `get_agent_credential_projects__project_id__credentials__credential_id__get`.
+
+Обработчик: `get_agent_credential` — [backend/app/routers/v2_agent.py:182](../backend/app/routers/v2_agent.py#L182).
+
+Явные dependencies: `require_agent_scope('credentials:read')`, `require_agent_project_access`, `get_db`.
+
+| Параметр | Где | Тип | Обязательный | Ограничения/по умолчанию |
+| --- | --- | --- | --- | --- |
+| `project_id` | path | `integer` | да | — |
+| `credential_id` | path | `integer` | да | — |
+| `Authorization` | header | `string \| null` | нет | — |
+
+| HTTP | Ответ | Тип/схема |
+| --- | --- | --- |
+| 200 | Successful Response | application/json: ProjectCredentialOut |
+| 422 | Validation Error | application/json: HTTPValidationError |
+
 ### GET /api/v2/projects/{project_id}/notes
 
 List Agent Notes
 
 Operation ID: `list_agent_notes_projects__project_id__notes_get`.
 
-Обработчик: `list_agent_notes` — [backend/app/routers/v2_agent.py:71](../backend/app/routers/v2_agent.py#L71).
+Обработчик: `list_agent_notes` — [backend/app/routers/v2_agent.py:196](../backend/app/routers/v2_agent.py#L196).
 
 Явные dependencies: `require_agent_scope('notes:read')`, `require_agent_project_access`, `get_db`.
 
@@ -3383,7 +3579,7 @@ Create Agent Note
 
 Operation ID: `create_agent_note_projects__project_id__notes_post`.
 
-Обработчик: `create_agent_note` — [backend/app/routers/v2_agent.py:94](../backend/app/routers/v2_agent.py#L94).
+Обработчик: `create_agent_note` — [backend/app/routers/v2_agent.py:219](../backend/app/routers/v2_agent.py#L219).
 
 Явные dependencies: `require_agent_scope('notes:write')`, `require_agent_project_access`, `get_db`.
 
@@ -3405,7 +3601,7 @@ Get Agent Note
 
 Operation ID: `get_agent_note_projects__project_id__notes__note_id__get`.
 
-Обработчик: `get_agent_note` — [backend/app/routers/v2_agent.py:82](../backend/app/routers/v2_agent.py#L82).
+Обработчик: `get_agent_note` — [backend/app/routers/v2_agent.py:207](../backend/app/routers/v2_agent.py#L207).
 
 Явные dependencies: `require_agent_scope('notes:read')`, `require_agent_project_access`, `get_db`.
 
@@ -3426,7 +3622,7 @@ Update Agent Note
 
 Operation ID: `update_agent_note_projects__project_id__notes__note_id__put`.
 
-Обработчик: `update_agent_note` — [backend/app/routers/v2_agent.py:106](../backend/app/routers/v2_agent.py#L106).
+Обработчик: `update_agent_note` — [backend/app/routers/v2_agent.py:231](../backend/app/routers/v2_agent.py#L231).
 
 Явные dependencies: `require_agent_scope('notes:write')`, `require_agent_project_access`, `get_db`.
 
@@ -3449,7 +3645,7 @@ List Agent Host Vulnerabilities
 
 Operation ID: `list_agent_host_vulnerabilities_projects__project_id__hosts__host_id__vulnerabilities_get`.
 
-Обработчик: `list_agent_host_vulnerabilities` — [backend/app/routers/v2_agent.py:119](../backend/app/routers/v2_agent.py#L119).
+Обработчик: `list_agent_host_vulnerabilities` — [backend/app/routers/v2_agent.py:244](../backend/app/routers/v2_agent.py#L244).
 
 Явные dependencies: `require_agent_scope('vulns:read')`, `require_agent_project_access`, `get_db`.
 
@@ -3472,7 +3668,7 @@ Get Agent Host Vulnerability
 
 Operation ID: `get_agent_host_vulnerability_projects__project_id__hosts__host_id__vulnerabilities__vulnerability_id__get`.
 
-Обработчик: `get_agent_host_vulnerability` — [backend/app/routers/v2_agent.py:133](../backend/app/routers/v2_agent.py#L133).
+Обработчик: `get_agent_host_vulnerability` — [backend/app/routers/v2_agent.py:258](../backend/app/routers/v2_agent.py#L258).
 
 Явные dependencies: `require_agent_scope('vulns:read')`, `require_agent_project_access`, `get_db`.
 
@@ -3494,7 +3690,7 @@ Create Agent Vulnerability
 
 Operation ID: `create_agent_vulnerability_projects__project_id__vulnerabilities_post`.
 
-Обработчик: `create_agent_vulnerability` — [backend/app/routers/v2_agent.py:154](../backend/app/routers/v2_agent.py#L154).
+Обработчик: `create_agent_vulnerability` — [backend/app/routers/v2_agent.py:279](../backend/app/routers/v2_agent.py#L279).
 
 Явные dependencies: `require_agent_scope('vulns:write')`, `require_agent_project_access`, `get_db`.
 
@@ -3516,7 +3712,7 @@ Update Agent Vulnerability
 
 Operation ID: `update_agent_vulnerability_projects__project_id__vulnerabilities__vuln_id__put`.
 
-Обработчик: `update_agent_vulnerability` — [backend/app/routers/v2_agent.py:166](../backend/app/routers/v2_agent.py#L166).
+Обработчик: `update_agent_vulnerability` — [backend/app/routers/v2_agent.py:291](../backend/app/routers/v2_agent.py#L291).
 
 Явные dependencies: `require_agent_scope('vulns:write')`, `require_agent_project_access`, `get_db`.
 

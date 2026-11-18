@@ -441,12 +441,62 @@ async def test_demo_seed_adds_stable_native_tickets_without_duplicate_projects(a
         for _ in range(2):
             result = await seed_task_units(db, ids['project'], target=target)
             await db.commit()
-            assert result['demo_tickets'] == 9
+            assert result['demo_tickets'] == 45
             units = json.loads(target.read_text())['content']
-            assert len(units) == 9 and len({unit['code'] for unit in units}) == 9
+            assert len(units) == 45 and len({unit['code'] for unit in units}) == 45
             assert len(units[1]['attributes']['affects_version_s_crpv']) == 2
             assert len(units[3]['attributes']['affects_version_s_crpv']) == 3
         assert await db.scalar(select(func.count()).select_from(Project)) == before
+
+
+@pytest.mark.parametrize('severity', ['info', 'unrealized'])
+async def test_info_exports_as_trivial_but_unrealized_never_reaches_tracker(api, monkeypatch, severity):
+    client, ids = api
+    calls = []
+    def handler(request):
+        calls.append(json.loads(request.content))
+        return httpx.Response(200, json={'id': 'STS-123'} if request.url.path.endswith('/create') else {'ok': True})
+    native_tracker(monkeypatch, handler)
+    configured = await client.put(f"projects/{ids['project']}", json={
+        'appsec_ticket_key': 'APPSEC-123', 'appsec_assignee': 'pentester', 'appsec_product_code': 'evp',
+        'appsec_components': [{'code': 'component', 'name': 'EVPC'}],
+        'appsec_versions': [{'code': 'version', 'name': 'Product 1.0'}]})
+    assert configured.status_code == 200, configured.text
+    vector = 'CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:N/SC:N/SI:N/SA:N'
+    created = await client.post(f"projects/{ids['project']}/vulnerabilities", json={
+        'title': severity, 'severity': severity, 'host_id': ids['host'],
+        **({'cvss_version': '4.0', 'cvss_vector': vector} if severity == 'info' else {})})
+    assert created.status_code == 201, created.text
+    response = await client.post(f"projects/{ids['project']}/vulnerabilities/{created.json()['id']}/works/export", json={})
+    if severity == 'unrealized':
+        assert response.status_code == 422, response.text
+        assert calls == []
+    else:
+        assert response.status_code == 200, response.text
+        attributes = calls[0]['attributes']
+        assert attributes['priority'] == 'trivial'
+        assert attributes['initial_criticality_cvss'] is None
+        assert attributes['original_cvss'] == vector.removeprefix('CVSS:4.0/')
+
+
+async def test_local_demo_populates_all_reference_suggestions_without_tt(api, monkeypatch, tmp_path):
+    from contextlib import aclosing
+    from app.database import get_db
+    from app.main import app
+    from scripts.seed_ui_demo import seed_task_units
+    client, ids = api
+    target = tmp_path/'demo.json'
+    async with aclosing(app.dependency_overrides[get_db]()) as stream:
+        db = await anext(stream)
+        await seed_task_units(db, ids['project'], target=target)
+        await db.commit()
+    monkeypatch.setattr(get_settings(), 'works_enabled', False)
+    monkeypatch.setattr(get_settings(), 'works_tasks_demo_file', str(target))
+    for path, count in [('components', 2), ('versions', 3), ('product-codes', 1)]:
+        result = await client.get('works/'+path)
+        assert result.status_code == 200, result.text
+        assert len(result.json()) == count
+    assert (await client.get('works/product-codes', params={'q': 'ost'})).json() == [{'code': '285902', 'name': 'OST'}]
 
 
 @pytest.mark.parametrize('vector', [

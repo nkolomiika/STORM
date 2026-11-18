@@ -6,7 +6,7 @@
 
 ## _safe_filename
 
-[backend/app/routers/reports.py:17](../../../../../backend/app/routers/reports.py#L17)
+[backend/app/routers/reports.py:18](../../../../../backend/app/routers/reports.py#L18)
 
 ```python
 def _safe_filename(name: str) -> str
@@ -32,7 +32,7 @@ def _safe_filename(name: str) -> str
 
 ## _content_disposition
 
-[backend/app/routers/reports.py:23](../../../../../backend/app/routers/reports.py#L23)
+[backend/app/routers/reports.py:24](../../../../../backend/app/routers/reports.py#L24)
 
 ```python
 def _content_disposition(project_name: str, suffix: str) -> str
@@ -58,13 +58,13 @@ def _content_disposition(project_name: str, suffix: str) -> str
 
 ## _stream_word_report
 
-[backend/app/routers/reports.py:31](../../../../../backend/app/routers/reports.py#L31)
+[backend/app/routers/reports.py:32](../../../../../backend/app/routers/reports.py#L32)
 
 ```python
 async def _stream_word_report(*, project_id: int, project: Project, db: AsyncSession, kind: str) -> StreamingResponse
 ```
 
-В теле вызывает `ReportService`, `ReportService(db).generate`, `StreamingResponse`, `_content_disposition`, `iter`.
+В теле вызывает `ReportService`, `ReportService(db).generate`, `StreamingResponse`, `_content_disposition`, `iter`, `report_product_name`.
 
 | Параметр | Тип | По умолчанию | Назначение |
 | --- | --- | --- | --- |
@@ -83,12 +83,13 @@ async def _stream_word_report(*, project_id: int, project: Project, db: AsyncSes
 - `StreamingResponse`
 - `_content_disposition`
 - `iter`
+- `report_product_name`
 
 </details>
 
 ## generate_szi_report
 
-[backend/app/routers/reports.py:40](../../../../../backend/app/routers/reports.py#L40)
+[backend/app/routers/reports.py:41](../../../../../backend/app/routers/reports.py#L41)
 
 ```python
 async def generate_szi_report(project_id: int, _: None=Depends(enforce_csrf), _user: User=Depends(get_current_user), project: Project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> StreamingResponse
@@ -123,7 +124,7 @@ router.post('/projects/{project_id}/reports/szi')
 
 ## generate_pp_report
 
-[backend/app/routers/reports.py:52](../../../../../backend/app/routers/reports.py#L52)
+[backend/app/routers/reports.py:53](../../../../../backend/app/routers/reports.py#L53)
 
 ```python
 async def generate_pp_report(project_id: int, _: None=Depends(enforce_csrf), _user: User=Depends(get_current_user), project: Project=Depends(require_project_access), db: AsyncSession=Depends(get_db)) -> StreamingResponse

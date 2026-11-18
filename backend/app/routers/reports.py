@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.dependencies import enforce_csrf, get_current_user, require_project_access
 from app.models import Project, User
+from app.reports.word_builder import report_product_name
 from app.services import ReportService
 
 router = APIRouter(tags=["reports"])
@@ -32,7 +33,7 @@ async def _stream_word_report(
     *, project_id: int, project: Project, db: AsyncSession, kind: str
 ) -> StreamingResponse:
     content = await ReportService(db).generate(project_id, kind)  # type: ignore[arg-type]
-    headers = {"Content-Disposition": _content_disposition(project.name, kind)}
+    headers = {"Content-Disposition": _content_disposition(report_product_name(project), kind)}
     return StreamingResponse(iter([content]), media_type=DOCX_MEDIA_TYPE, headers=headers)
 
 

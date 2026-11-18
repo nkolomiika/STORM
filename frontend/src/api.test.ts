@@ -208,3 +208,13 @@ it('requests product codes through the authenticated STORM proxy', async () => {
   expect(await api.findWorksProductCodes('#AM')).toEqual([{ code: '_am', name: '#AM' }]);
   expect(adapter.mock.calls.at(-1)?.[0]).toMatchObject({ url: '/works/product-codes', params: { q: '#AM' } });
 });
+
+it.each(['szi', 'pp'])('preserves the server product filename for the %s report', async (kind) => {
+  const name = `Продукт Platform V_${kind}.docx`;
+  adapter.mockImplementation(async (config) => ({ ...response(config, new Blob(['document'], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })),
+    headers: { 'content-disposition': `attachment; filename="report.docx"; filename*=UTF-8''${encodeURIComponent(name)}` } }));
+  const blob = await (kind === 'szi' ? api.downloadProjectCertificationReport(7) : api.downloadProjectAcceptanceReport(7));
+  expect(blob).toBeInstanceOf(File);
+  expect((blob as File).name).toBe(name);
+  expect(blob.size).toBe(8);
+});

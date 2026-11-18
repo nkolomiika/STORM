@@ -142,20 +142,44 @@ def test_word_builder_returns_non_empty_docx(builder) -> None:
     assert "10.0.0.1" in text or "api.demo.local" in text
 
 
-def test_word_report_formats_versions_and_keeps_original_project_versions():
+@pytest.mark.parametrize('builder', [build_szi, build_pp])
+def test_word_report_formats_versions_and_keeps_original_project_versions(builder):
     from copy import deepcopy
     data, indexes = _build_payload()
     versions = [{'code': 'v1', 'name': 'Platform V Stack 1.0.2'}, {'code': 'v2', 'name': 'Platform V Stack 2.0.1-beta.2'}]
     project = data['project']
     project.appsec_versions = deepcopy(versions)
     project.appsec_version_name = versions[0]['name']
-    content = build_szi(data, indexes, image_bytes_by_id={})
+    content = builder(data, indexes, image_bytes_by_id={})
     text = _doc_text(content)
-    assert '1.0.2, 2.0.1-beta.2' in text
+    if builder is build_szi:
+        assert '1.0.2, 2.0.1-beta.2' in text
     assert versions[0]['name'] not in text
     assert versions[1]['name'] not in text
     assert project.appsec_versions == versions
     assert project.appsec_version_name == 'Platform V Stack 1.0.2'
+    assert 'Platform V Stack' in text
+    assert 'DemoApp' not in text
+    assert project.name == 'DemoApp'
+
+
+@pytest.mark.parametrize('names,expected', [
+    (['Platform V Stack 1.0.2-beta.2'], 'Platform V Stack'),
+    (['Platform V Stack 1.0.2', 'Platform V Stack 2.0.1'], 'Platform V Stack'),
+    (['Platform V Stack 1.0.2', 'Platform V IAM SE 3.7.6'], 'Platform V Stack, Platform V IAM SE'),
+    (['Platform V Works::Pipeliner 2.2.2'], 'Platform V Works::Pipeliner'),
+    (['Platform V Monitor 7.0.103-beta1'], 'Platform V Monitor'),
+    (['Platform V Integrify 4.8.0.20_SUSC'], 'Platform V Integrify'),
+    (['Platform V Stack v1.0.2+2026.11'], 'Platform V Stack'),
+    (['Platform V Stack 1.0.2 build 42'], 'Platform V Stack'),
+    (['1.0.2'], 'DemoApp'),
+    ([], 'DemoApp'),
+])
+def test_report_product_name_preserves_prefix_and_deduplicates(names, expected):
+    from app.reports.word_builder import report_product_name
+    project = _make_project()
+    project.appsec_versions = [{'code': f'v{i}', 'name': name} for i, name in enumerate(names)]
+    assert report_product_name(project) == expected
 
 
 def test_expected_result_in_each_test_card_has_yellow_fill_instruction():
